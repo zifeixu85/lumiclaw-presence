@@ -1,0 +1,34 @@
+.DS_Store
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+*.log
+
+# Generated and local runtime state
+.generated/
+.runtime/
+output/
+tmp/
+var/
+
+# Private evidence and local-only material
+private/
+runtime-evidence/private/
+evidence/private/
+references/private/
+
+# Editor state
+.idea/
+.vscode/
+*.swp
