@@ -1,6 +1,6 @@
 # LumiClaw Presence
 
-[English](README.md) | [简体中文](README.zh-CN.md) | [Architecture](ARCHITECTURE.md) | [Roadmap](ROADMAP.md)
+[English](README.md) | [简体中文](README.zh-CN.md) | [Architecture](ARCHITECTURE.md) | [Roadmap](ROADMAP.md) | [Implementation status](IMPLEMENTATION-STATUS.md)
 
 > AI-native global brand operations for multi-brand, multi-market teams.
 
@@ -130,9 +130,11 @@ We do not claim guaranteed reach, follower growth, leads, or revenue.
 
 ## Planned technical architecture
 
-The selected reference stack is Node.js 24 LTS and TypeScript, with Next.js 16 for `web`, Fastify 5 for `api`, PostgreSQL 17 with Kysely for authoritative state, and Docker Compose as the first installation contract.
+The selected reference stack is Node.js 24 LTS and TypeScript, with Next.js 16 and `next-intl` for an English-default, Chinese-capable `web`, Fastify 5 for `api`, PostgreSQL 17 with Kysely for authoritative state, and Docker Compose as the first installation contract.
 
 The application is split into `web`, `api`, `mission-worker`, and a deterministic `action-operator`. AgentTeams runs in a separate execution domain through a Runtime Adapter; it is not the product database, secret store, or publishing operator. DeepSeek, EvoLink, and public-signal sources sit behind `ModelProvider`, `MediaGenerationProvider`, and `SignalProvider` ports. Publishing uses separate `PublishConnector` and `NativeHandoffAdapter` contracts.
+
+Publishing schedules are persisted in PostgreSQL with IANA time zones and explicit missed-run behavior. The initial `mission-worker` claims due occurrences through leases and restart-safe jobs; host crontab and in-memory timers are not the schedule source of truth. A recurring schedule never creates a perpetual publishing grant.
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for the planned service boundaries, provider ports, four-platform preview contract, and delivery gates.
 
@@ -142,11 +144,13 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the planned service boundaries, provi
 
 - this public repository;
 - the English and Chinese product, architecture, and roadmap documentation.
+- the bilingual module-level implementation register and per-SDD acceptance-report template.
 
 **Planned:**
 
 - the new domain contracts;
 - the Node.js 24 / Next.js 16 / Fastify 5 / PostgreSQL 17 application baseline;
+- `next-intl` locale routing, English/Chinese typed catalogs, and persistent schedule/occurrence contracts;
 - Docker Compose services for `web`, `api`, `mission-worker`, and `action-operator`;
 - the AgentTeams campaign runtime;
 - ActionGrant, ActionReceipt, and capability probing;
@@ -160,8 +164,8 @@ Legacy engineering assets exist in a separate private prototype, but they are no
 
 ## Build order
 
-1. Docker Compose skeleton, PostgreSQL migrations, domain schemas, canonical digests, and conformance fixtures.
-2. Campaign walking skeleton with four editable previews and capability/constraint fixtures.
+1. SDD-000 delivery foundation: license decision, Node workspace, Docker Compose, PostgreSQL migrations, `next-intl`, design shell, CI, and isolated AgentTeams smoke.
+2. Campaign walking skeleton with four editable previews, persistent schedule editor, and capability/constraint fixtures.
 3. A real six-member AgentTeams SHADOW mission with separated producers and auditor, routed through DeepSeek.
 4. Replay, fault denial, and human decision to single-use ActionGrant to ActionReceipt.
 5. Bluesky Direct plus LinkedIn and Xiaohongshu Handoffs; X Direct only if its Canary gate passes.
@@ -169,7 +173,7 @@ Legacy engineering assets exist in a separate private prototype, but they are no
 7. A second mission that correctly reuses approved learning.
 8. Fresh-install, recovery, provider-conformance, and single-agent versus multi-agent verification.
 
-The milestone outcomes, exit criteria, product horizons, and specification-driven workflow are maintained in the [public roadmap](ROADMAP.md).
+The milestone outcomes and exit criteria are maintained in the [public roadmap](ROADMAP.md); module state, blockers, evidence, and the next executable task live in the [implementation register](IMPLEMENTATION-STATUS.md).
 
 ## Repository scope
 

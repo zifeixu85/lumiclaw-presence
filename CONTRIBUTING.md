@@ -11,6 +11,8 @@ LumiClaw Presence is currently pre-alpha, and its root license has not yet been 
 - For platform behavior, include the official documentation URL, access date, account type, scopes, and observed response.
 - For execution bugs, include the artifact revision, capability snapshot, grant state, receipt state, and a redacted trace.
 
+Before implementation work begins, read the [implementation register](IMPLEMENTATION-STATUS.md), [architecture](ARCHITECTURE.md), [roadmap](ROADMAP.md), and the relevant SDD. Module state changes and acceptance evidence follow the task protocol in `AGENTS.md`.
+
 ## Design boundaries
 
 - Producers and auditors remain independent.
@@ -22,4 +24,4 @@ LumiClaw Presence is currently pre-alpha, and its root license has not yet been 
 
 ## Pull requests
 
-Please wait until the root license and contribution policy are added before submitting code. Once contributions open, every pull request will require tests, claim maturity updates, privacy review, and dependency/license disclosure.
+Please wait until the root license and contribution policy are added before submitting code. Once contributions open, every pull request will require tests, claim maturity updates, privacy review, dependency/license disclosure, an acceptance report where required, and synchronized English/Chinese implementation status.

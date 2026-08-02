@@ -2,8 +2,11 @@
 
 > Status: `PROPOSED | SPEC_READY | IN_PROGRESS | EVIDENCE_READY | ACCEPTED | BLOCKED`  
 > Milestone: `M0–M6`  
+> Progress module IDs: `M?-??`
 > Owner:  
+> Goal objective / task reference:
 > Target evidence maturity: `IMPLEMENTED | ENGINEERING_VERIFIED | EXTERNAL_CALIBRATED`  
+> Acceptance report: `docs/reports/acceptance/SDD-NNN-ACCEPTANCE.md`
 > Last updated: `YYYY-MM-DD`
 
 ## 1. User problem and outcome
@@ -39,6 +42,8 @@ Describe the happy path, empty state, loading/running state, blocked state, owne
 
 List affected objects, schemas, versions, state transitions, APIs/events, canonical digests, migrations, public/private fields, and compatibility rules.
 
+Where relevant, define stable error/message codes, locale-independent persisted values, content language, target market, IANA time zone, recurrence, occurrence identity, DST and misfire semantics. Never persist translated labels as domain enums.
+
 ## 6. AgentTeams and Skills
 
 - Team members and distinct responsibilities
@@ -63,6 +68,8 @@ For every external component, record:
 
 Cover invalid input, authorization failure, stale capability, agent/model timeout, partial task failure, connector timeout, unknown external state, restart recovery, duplicate prevention, revocation, and data rollback where applicable.
 
+For scheduled work, also cover clock/time-zone interpretation, DST gaps and folds, downtime misfires, lease expiry, duplicate workers, edited schedules, revoked approval, and recovery without mass catch-up or blind external action.
+
 ## 9. Acceptance criteria
 
 Use binary pass/fail statements. Include at least:
@@ -82,6 +89,8 @@ Use binary pass/fail statements. Include at least:
 - AgentTeams runtime test
 - Connector mock/sandbox test
 - Web E2E test
+- English/Chinese message parity and locale-routing test
+- Schedule/DST/misfire/restart test, when applicable
 - Dogfood or external protocol, when authorized
 - Secret/privacy scan
 
@@ -93,6 +102,30 @@ List the Run Manifest, Evidence Summary, screenshots or video, trace/ledger, tes
 
 Split work into child specs or issues of roughly half a day to three days. Show dependencies, parallel work, estimated effort, and the critical path.
 
+Name the exact progress-register modules. The first implementation commit moves them to `IN_PROGRESS`; the final evidence commit moves them only to the state justified by the acceptance report.
+
 ## 13. Alternatives and decision log
 
 Record alternatives considered, why they were rejected, and the evidence that would reopen the decision.
+
+## 14. Owner-participated acceptance
+
+For each check the owner can safely perform, specify:
+
+- why owner verification is useful;
+- prerequisites and test data;
+- numbered steps;
+- exact visible result;
+- failure signs;
+- evidence to return;
+- cleanup or rollback.
+
+If owner action is not useful or safe, state why and provide a read-only evidence-review protocol.
+
+## 15. Task closeout
+
+- Acceptance report path and status
+- Progress modules and final states
+- Remaining blockers and non-claims
+- Next executable module / SDD
+- Goal completion decision

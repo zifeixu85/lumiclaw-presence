@@ -1,8 +1,8 @@
 # LumiClaw Presence 路线图
 
-[English](ROADMAP.md) | [简体中文](ROADMAP.zh-CN.md) | [技术架构](ARCHITECTURE.zh-CN.md)
+[English](ROADMAP.md) | [简体中文](ROADMAP.zh-CN.md) | [技术架构](ARCHITECTURE.zh-CN.md) | [实现进度](IMPLEMENTATION-STATUS.zh-CN.md)
 
-这份路线图描述产品结果，不代表所有规划能力已经实现。当前实现真相以 [README](README.zh-CN.md) 为准；计划技术边界见[技术架构](ARCHITECTURE.zh-CN.md)。
+这份路线图描述产品结果，不代表所有规划能力已经实现。模块级进度见[实现进度表](IMPLEMENTATION-STATUS.zh-CN.md)；当前实现真相以 [README](README.zh-CN.md) 为准；计划技术边界见[技术架构](ARCHITECTURE.zh-CN.md)。
 
 ## 开发方法
 
@@ -31,6 +31,8 @@ Campaign 初始化
 - 冻结首个真实 Campaign 输入和 Owner 基线；
 - 建立 Node.js 24 与 TypeScript Workspace，规划 Next.js 16 `web`、Fastify 5 `api`、`mission-worker` 与确定性 `action-operator` 边界；
 - 建立 Docker Compose Skeleton、PostgreSQL 17 Migration 路径、Content-addressed Local Blob、SDD、CI、依赖政策与 License 决策；
+- 建立 `next-intl` 默认英文、支持中文的 UI Shell、类型化双语 Message 一致性、Locale Route、Design Token 与五主屏 Route Skeleton；
+- 让双语实现进度表、每 SDD Goal 与验收报告流程进入 CI；
 - 核验锁定且隔离的 AgentTeams 外部 Runtime Profile，完成新 Mission Smoke，并确保其内部状态不成为产品真源；
 - 用可点击低/高保真 Route 走完五主屏与四平台 Composer。
 
@@ -43,6 +45,7 @@ Campaign 初始化
 - 展示资料缺口、账号边界和有用的 Activation Plan；
 - Web、API/CLI 和 AgentTeams Adapter 读取同一个 Mission State。
 - 交付 X、Bluesky、LinkedIn 与小红书可编辑 Artifact、原生近似 Preview 和 Capability/Constraint Fixture。
+- 保存带 IANA 时区的一次性或受约束重复排程，验证 DST/Misfire，本阶段不执行外部动作；
 
 完成：一个真实 LumiClaw Campaign 可在没有隐藏 Demo 状态的前提下进入 Readiness，并重新打开四个平台 Revision。
 
@@ -62,6 +65,7 @@ Campaign 初始化
 
 - 把精确 OwnerDecision 转成短时、一次性 ActionGrant；
 - 在独立、无 LLM 的 `action-operator` 执行前，原子持久化 Grant 与 Outbox 状态变更；
+- 使用 PostgreSQL Lease 领取到期 Schedule Occurrence，完成重启恢复，并证明重复 Schedule 不持有永久 Grant；
 - 通过 Bluesky 官方路径发布并读取原生对象对账；
 - 提供诚实 LinkedIn Native Handoff 与 URL 回填；
 - 提供诚实小红书发布包 Handoff，并通过 URL 或批准证据对账；
@@ -116,6 +120,6 @@ LumiClaw 拥有业务语义与证据链：Brand Graph、Campaign Mission、Claim
 
 ## SDD 推进
 
-每个里程碑使用一个 Epic SDD，并拆成约半天至三天可独立完成和验证的 Child Specs。Spec 必须写清用户结果、Journey 与 UI 状态、Domain/API 合同、AgentTeams 角色与 Skills、权限、依赖与 License、失败与回滚、Pass/Fail 验收、测试计划和证据成熟度。
+每个里程碑使用一个 Epic SDD，并拆成约半天至三天可独立完成和验证的 Child Specs。每个有边界的 SDD 使用独立 Codex 对话与一个明确 Goal。Spec 必须写清用户结果、Journey 与 UI 状态、Domain/API 合同、AgentTeams 角色与 Skills、权限、依赖与 License、失败与回滚、Pass/Fail 验收、测试计划、Owner 可参与验收步骤和证据成熟度。
 
-使用 [SDD 模板](docs/specs/SPEC-TEMPLATE.md)。日期到达不等于完成，Exit Criteria 通过才算完成。
+开始前必须读取并更新[实现进度表](IMPLEMENTATION-STATUS.zh-CN.md)。结束时使用[验收报告模板](docs/reports/ACCEPTANCE-REPORT-TEMPLATE.md)生成报告；在 Owner 必需验收尚未记录前只能标记 `EVIDENCE_READY`。使用 [SDD 模板](docs/specs/SPEC-TEMPLATE.md)。日期或聊天回复不等于完成，Exit Criteria 通过才算完成。

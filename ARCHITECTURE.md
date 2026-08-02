@@ -57,7 +57,7 @@ The Web never stores platform tokens or calls publishing APIs directly. The API 
 | Area | Selected baseline | Boundary |
 |---|---|---|
 | Runtime | Node.js 24 LTS, TypeScript, ESM, npm workspaces | One versioned monorepo; versions and digests will be locked in code |
-| Web | Next.js 16, React 19.2, TanStack Query, React Hook Form | Product UI and same-origin entry only; no second mutation path in Server Actions |
+| Web | Next.js 16, React 19.2, `next-intl`, TanStack Query, React Hook Form | English-first, Chinese-capable product UI and same-origin entry only; no second mutation path in Server Actions |
 | API | Fastify 5 | REST/OpenAPI, SSE, sessions, authorization, validation, and control-plane mutations |
 | Database | PostgreSQL 17 | The sole authoritative business store |
 | Data access | `pg`, Kysely, `node-pg-migrate` | Reviewable SQL and explicit migrations |
@@ -77,13 +77,44 @@ The first Docker Compose contract is planned around four application processes a
 |---|---|---|
 | `web` | Five-screen product journey, editable composer, native-like previews, review UI | Platform secrets, direct publishing, authoritative domain mutations |
 | `api` | Organization and campaign APIs, schema validation, revisions, decisions, capability and receipt queries, SSE | Long-running jobs and external platform actions |
-| `mission-worker` | Jobs, AgentTeams dispatch and recovery, DeepSeek calls, EvoLink tasks, signal ingestion, capability probes, evidence export | Social-account write credentials and approved-action execution |
+| `mission-worker` | Jobs, persistent schedule claiming/recovery, AgentTeams dispatch and recovery, DeepSeek calls, EvoLink tasks, signal ingestion, capability probes, evidence export | Social-account write credentials and approved-action execution |
 | `action-operator` | Verify and consume exact ActionGrants, call approved connectors, append receipts and reconciliation records | LLMs, AgentTeams, content editing, broad private context |
 | `migrate` | Run and record explicit database migrations once | Serving application traffic |
 | `postgres` | Business facts, shared mission state, jobs, outbox, trace, and ledger | Large provider blobs and plaintext secrets; an encrypted local SecretBroker store may use a separately protected schema |
 | `agentteams` | Optional Compose profile or externally managed runtime | Product database, secret store, or publishing operator |
 
 The default path uses PostgreSQL jobs, leases, heartbeats, `FOR UPDATE SKIP LOCKED`, and an action outbox. Redis is not part of the initial authoritative path. AgentTeams remains a separate execution domain and must not become the only copy of an artifact, task event, or trace.
+
+## Internationalization and time semantics
+
+The planned Web shell uses `next-intl` with Next.js App Router. Initial UI locales are `en` (default) and `zh-CN`, with locale-aware routes, a persisted user or organization preference, typed message catalogs, and CI parity checks. API and domain contracts return stable codes plus parameters; translated labels are never persisted as enums, audit states, or receipt semantics.
+
+Four concepts remain independent:
+
+- UI locale: how the operator sees LumiClaw;
+- content language: the language of a campaign artifact;
+- target market: the market whose policy, narrative, and audience apply;
+- schedule time zone: the IANA zone used to compute an occurrence.
+
+Locale-aware date and number display must not change the persisted instant. Schedule entry always displays the selected IANA zone and the resolved UTC instant before approval.
+
+## Persistent scheduling, not ephemeral cron
+
+Scheduling is planned as governed business state. The initial implementation does not depend on host crontab or an in-memory `node-cron` timer. PostgreSQL stores `publishing_schedules`, immutable or versioned `schedule_occurrences`, `next_run_at` as `timestamptz`, the IANA time zone, and either a one-time instant or a constrained RFC 5545 recurrence rule.
+
+The `mission-worker` initially runs the scheduler loop and claims due occurrences with row locks, a lease, heartbeat, and duplicate-prevention key. A hosted deployment may later split this loop into a dedicated scheduler process without changing the schedule or occurrence contracts. Every schedule declares an explicit misfire policy—`SKIP`, `RUN_ONCE`, or `RESCHEDULE`—so downtime never causes an unbounded catch-up burst.
+
+~~~text
+Schedule
+→ due Occurrence
+→ exact ArtifactRevision and AuditDecision
+→ exact OwnerDecision
+→ time-bounded, single-use ActionGrant
+→ Action Operator
+→ ActionReceipt or reconciliation
+~~~
+
+A recurring schedule never owns a perpetual grant. In the first governed path, each occurrence requires an exact approved revision and a fresh grant. Editing content, target account, execution time, or recurrence invalidates affected approval/grant state. M1 delivers the persistent model and editor without external action; M3 adds due-occurrence execution, restart recovery, and receipt reconciliation.
 
 ## Control-plane state and governed actions
 
@@ -160,6 +191,7 @@ apps/
   mission-worker/
   action-operator/
 packages/
+  i18n/
   domain/
   db/
   mission-compiler/
@@ -177,6 +209,7 @@ infra/
 docs/
   architecture/
   design/
+  reports/
   specs/
 scripts/
 test/
@@ -188,10 +221,10 @@ This is a target layout. Directories will be added only when a milestone has an 
 
 The architecture becomes evidence through milestone exits, not through this document:
 
-- M0 establishes the Compose skeleton, database migration path, design contract, and platform routes;
-- M1 delivers the campaign walking skeleton and four editable previews with capability fixtures;
+- M0 establishes the Compose skeleton, database migration path, `next-intl` English/Chinese shell, design contract, progress register, and platform routes;
+- M1 delivers the campaign walking skeleton, persistent schedule editor, and four editable previews with capability fixtures;
 - M2 connects DeepSeek and the six-member AgentTeams shadow mission with independent audit;
-- M3 must pass Bluesky Direct plus LinkedIn and Xiaohongshu Handoffs; X Direct remains a gated Canary;
+- M3 must pass persistent occurrence recovery, Bluesky Direct plus LinkedIn and Xiaohongshu Handoffs; X Direct remains a gated Canary;
 - M4 closes one response/learning loop and isolates at least one non-critical `SignalProvider` PoC;
 - M5 proves a fresh Docker install, backup/restore, provider conformance, evidence export, and complete state matrix;
 - M6 calibrates shadow use with a real design partner before broader autonomy or tenancy claims.

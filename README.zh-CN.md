@@ -1,6 +1,6 @@
 # LumiClaw Presence
 
-[English](README.md) | [简体中文](README.zh-CN.md) | [技术架构](ARCHITECTURE.zh-CN.md) | [路线图](ROADMAP.zh-CN.md)
+[English](README.md) | [简体中文](README.zh-CN.md) | [技术架构](ARCHITECTURE.zh-CN.md) | [路线图](ROADMAP.zh-CN.md) | [实现进度](IMPLEMENTATION-STATUS.zh-CN.md)
 
 > 面向多品牌、多市场团队的 AI 原生全球品牌运营系统。
 
@@ -130,9 +130,11 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 ## 计划技术架构
 
-已选择的参考栈是 Node.js 24 LTS 与 TypeScript；`web` 使用 Next.js 16，`api` 使用 Fastify 5，权威状态使用 PostgreSQL 17 与 Kysely；Docker Compose 是首个安装合同。
+已选择的参考栈是 Node.js 24 LTS 与 TypeScript；`web` 使用 Next.js 16 与 `next-intl`，默认英文并支持中文；`api` 使用 Fastify 5，权威状态使用 PostgreSQL 17 与 Kysely；Docker Compose 是首个安装合同。
 
 应用拆分为 `web`、`api`、`mission-worker` 和确定性的 `action-operator`。AgentTeams 通过 Runtime Adapter 运行在独立执行域，不是产品数据库、Secret Store 或发布 Operator。DeepSeek、EvoLink 与公开信号来源分别位于 `ModelProvider`、`MediaGenerationProvider` 和 `SignalProvider` 端口之后；发布侧另用 `PublishConnector` 与 `NativeHandoffAdapter` 合同。
+
+发布排程持久化在 PostgreSQL，并显式保存 IANA 时区与错过执行策略。首期 `mission-worker` 使用 Lease 和可恢复 Job 领取到期 Occurrence；Host crontab 和进程内 Timer 不是真源。重复 Schedule 不能创建永久发布 Grant。
 
 计划中的服务边界、Provider 端口、四平台 Preview 合同与交付 Gate 详见[技术架构](ARCHITECTURE.zh-CN.md)。
 
@@ -142,11 +144,13 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 - 公开仓；
 - 中英文产品、技术架构与路线图文档。
+- 双语模块级实现进度表与每 SDD 验收报告模板。
 
 **仍在规划：**
 
 - 新领域合同；
 - Node.js 24 / Next.js 16 / Fastify 5 / PostgreSQL 17 应用基线；
+- `next-intl` Locale Route、中英文类型化 Catalog 与持久化 Schedule/Occurrence 合同；
 - `web`、`api`、`mission-worker`、`action-operator` 的 Docker Compose 服务；
 - AgentTeams Campaign Runtime；
 - ActionGrant、ActionReceipt 与 Capability Probe；
@@ -160,8 +164,8 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 ## 实现顺序
 
-1. Docker Compose Skeleton、PostgreSQL Migration、领域 Schema、canonical digest 与 Conformance Fixture；
-2. Campaign Walking Skeleton、四平台可编辑 Preview 与 Capability/Constraint Fixture；
+1. SDD-000 交付基础：License 决策、Node Workspace、Docker Compose、PostgreSQL Migration、`next-intl`、Design Shell、CI 与隔离 AgentTeams Smoke；
+2. Campaign Walking Skeleton、四平台可编辑 Preview、持久化 Schedule Editor 与 Capability/Constraint Fixture；
 3. 经 DeepSeek 路由、Producer 与 Auditor 分离的六成员 AgentTeams SHADOW Mission；
 4. Replay、故障拒绝，以及 Human Decision → 单次 ActionGrant → ActionReceipt；
 5. Bluesky Direct、LinkedIn 与小红书 Handoff；X Direct 只有 Canary Gate 通过才开启；
@@ -169,7 +173,7 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 7. 下一 Mission 正确复用已批准学习；
 8. Fresh Install、恢复、Provider Conformance，以及同条件单 Agent / 多 Agent 验证。
 
-各阶段的用户结果、Exit Criteria、产品 Horizon 和 SDD 推进方式维护在[公开路线图](ROADMAP.zh-CN.md)中。
+各阶段的用户结果和 Exit Criteria 维护在[公开路线图](ROADMAP.zh-CN.md)中；模块状态、Blocker、Evidence 与下一可执行任务以[实现进度表](IMPLEMENTATION-STATUS.zh-CN.md)为准。
 
 ## 仓库范围
 

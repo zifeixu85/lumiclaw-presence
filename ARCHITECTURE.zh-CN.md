@@ -57,7 +57,7 @@ Web 不保存平台 Token，也不直接调用发布 API。API 是所有客户�
 | 范围 | 已选择基线 | 边界 |
 |---|---|---|
 | Runtime | Node.js 24 LTS、TypeScript、ESM、npm workspaces | 单一版本化 Monorepo；进入代码后锁定版本与镜像 digest |
-| Web | Next.js 16、React 19.2、TanStack Query、React Hook Form | 只负责产品 UI 与同源入口；不在 Server Action 中建立第二条 Mutation 路径 |
+| Web | Next.js 16、React 19.2、`next-intl`、TanStack Query、React Hook Form | 默认英文、支持中文的产品 UI 与同源入口；不在 Server Action 中建立第二条 Mutation 路径 |
 | API | Fastify 5 | REST/OpenAPI、SSE、Session、授权、校验与 Control Plane Mutation |
 | Database | PostgreSQL 17 | 唯一权威业务库 |
 | 数据访问 | `pg`、Kysely、`node-pg-migrate` | 可审阅 SQL 与显式 Migration |
@@ -77,13 +77,44 @@ Web 不保存平台 Token，也不直接调用发布 API。API 是所有客户�
 |---|---|---|
 | `web` | 五主屏产品旅程、可编辑 Composer、平台原生近似预览与 Review UI | 平台密钥、直发、权威领域 Mutation |
 | `api` | Organization/Campaign API、Schema 校验、Revision、Decision、Capability/Receipt 查询、SSE | 长任务与外部平台动作 |
-| `mission-worker` | Job、AgentTeams Dispatch/恢复、DeepSeek、EvoLink、信号接入、Capability Probe、Evidence Export | 社媒账号写凭据与批准动作执行 |
+| `mission-worker` | Job、持久化排程领取/恢复、AgentTeams Dispatch/恢复、DeepSeek、EvoLink、信号接入、Capability Probe、Evidence Export | 社媒账号写凭据与批准动作执行 |
 | `action-operator` | 验签并消费精确 ActionGrant、调用已批准 Connector、追加 Receipt 与对账记录 | LLM、AgentTeams、改稿、无关私有上下文 |
 | `migrate` | 一次性执行并记录显式数据库 Migration | 提供应用流量 |
 | `postgres` | 业务事实、Shared Mission State、Job、Outbox、Trace 与 Ledger | 大型 Provider Blob 与明文密钥；本地加密 Secret Broker 可使用独立受保护 Schema |
 | `agentteams` | 可选 Compose Profile 或外部管理 Runtime | 产品数据库、Secret Store 或发布 Operator |
 
 默认使用 PostgreSQL Job、Lease、Heartbeat、`FOR UPDATE SKIP LOCKED` 和 Action Outbox；Redis 不进入首期权威路径。AgentTeams 保持独立执行域，不能成为 Artifact、Task Event 或 Trace 的唯一副本。
+
+## 国际化与时间语义
+
+计划中的 Web Shell 使用 Next.js App Router 与 `next-intl`。首批 UI Locale 为 `en`（默认）和 `zh-CN`，提供带 Locale 的路由、持久化的用户或组织偏好、类型化 Message Catalog，并在 CI 检查双语 Key 一致性。API 与领域合同只返回稳定 Code 与参数；翻译后的标签不得作为 Enum、审计状态或 Receipt 语义入库。
+
+以下四个概念必须相互独立：
+
+- UI Locale：运营者怎样查看 LumiClaw；
+- Content Language：Campaign Artifact 使用什么语言；
+- Target Market：使用哪一市场的规则、叙事与受众；
+- Schedule Time Zone：用哪个 IANA 时区计算执行 Occurrence。
+
+日期与数字可以按 Locale 展示，但不能改变持久化 Instant。用户批准排程前，界面必须同时显示所选 IANA 时区与解析后的 UTC 时间。
+
+## 持久化排程，而不是临时 Cron
+
+排程是受治理的业务状态。首期实现不依赖 Host crontab，也不把进程内 `node-cron` 作为真源。PostgreSQL 保存 `publishing_schedules`、不可变或版本化的 `schedule_occurrences`、使用 `timestamptz` 的 `next_run_at`、IANA 时区，以及一次性时间或受约束的 RFC 5545 重复规则。
+
+`mission-worker` 首期同时运行 Scheduler Loop，通过行锁、Lease、Heartbeat 与去重键领取到期 Occurrence。云端规模扩大后可以拆为独立 Scheduler 进程，但不改变 Schedule/Occurrence 合同。每个 Schedule 必须明确选择 `SKIP`、`RUN_ONCE` 或 `RESCHEDULE` Misfire Policy，避免宕机后无限补跑。
+
+~~~text
+Schedule
+→ 到期 Occurrence
+→ 精确 ArtifactRevision 与 AuditDecision
+→ 精确 OwnerDecision
+→ 有时限、单次使用的 ActionGrant
+→ Action Operator
+→ ActionReceipt 或 Reconciliation
+~~~
+
+重复排程不能持有永久 Grant。首条治理路径中，每个 Occurrence 都绑定精确批准的 Revision 与新的 Grant。修改内容、目标账号、执行时间或重复规则，都会使受影响的批准/Grant 失效。M1 只交付持久化模型与编辑器，不执行外部动作；M3 再加入到期执行、重启恢复与 Receipt 对账。
 
 ## Control Plane 状态与受治理动作
 
@@ -160,6 +191,7 @@ apps/
   mission-worker/
   action-operator/
 packages/
+  i18n/
   domain/
   db/
   mission-compiler/
@@ -177,6 +209,7 @@ infra/
 docs/
   architecture/
   design/
+  reports/
   specs/
 scripts/
 test/
@@ -188,10 +221,10 @@ test/
 
 架构必须通过里程碑 Exit 形成证据，不能由本文直接宣称完成：
 
-- M0 建立 Compose Skeleton、数据库 Migration、设计合同与平台 Route；
-- M1 交付 Campaign Walking Skeleton、四平台可编辑 Preview 与 Capability Fixture；
+- M0 建立 Compose Skeleton、数据库 Migration、`next-intl` 中英文 Shell、设计合同、进度表与平台 Route；
+- M1 交付 Campaign Walking Skeleton、持久化 Schedule Editor、四平台可编辑 Preview 与 Capability Fixture；
 - M2 接入 DeepSeek，并运行六成员 AgentTeams SHADOW Mission 与独立 Auditor；
-- M3 必须通过 Bluesky Direct、LinkedIn Handoff 与小红书 Handoff；X Direct 保持分级准入 Canary；
+- M3 必须通过持久化 Occurrence 恢复、Bluesky Direct、LinkedIn Handoff 与小红书 Handoff；X Direct 保持分级准入 Canary；
 - M4 完成一条 Response/Learning 闭环，并隔离验证至少一个非关键路径 `SignalProvider` PoC；
 - M5 验证 Fresh Docker Install、备份恢复、Provider Conformance、Evidence Export 与完整状态矩阵；
 - M6 先与真实设计伙伴校准 SHADOW 使用，再扩大自治或多租户声明。

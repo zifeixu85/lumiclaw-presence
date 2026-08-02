@@ -1,8 +1,8 @@
 # LumiClaw Presence Roadmap
 
-[English](ROADMAP.md) | [简体中文](ROADMAP.zh-CN.md) | [Architecture](ARCHITECTURE.md)
+[English](ROADMAP.md) | [简体中文](ROADMAP.zh-CN.md) | [Architecture](ARCHITECTURE.md) | [Implementation status](IMPLEMENTATION-STATUS.md)
 
-This roadmap describes product outcomes, not a promise that every planned capability already exists. See the [README](README.md) for current implementation truth and [architecture](ARCHITECTURE.md) for the planned technical boundaries.
+This roadmap describes product outcomes, not a promise that every planned capability already exists. See the [implementation register](IMPLEMENTATION-STATUS.md) for module-level delivery state, the [README](README.md) for current implementation truth, and [architecture](ARCHITECTURE.md) for the planned technical boundaries.
 
 ## How we are building
 
@@ -31,6 +31,8 @@ Each milestone is a user-visible vertical slice. Product UI, domain contracts, A
 - Freeze the first real campaign input and owner baseline.
 - Establish a Node.js 24 and TypeScript workspace with planned Next.js 16 `web`, Fastify 5 `api`, `mission-worker`, and deterministic `action-operator` boundaries.
 - Establish the Docker Compose skeleton, PostgreSQL 17 migration path, content-addressed local blob storage, SDD workflow, CI, dependency policy, and license decision.
+- Establish the `next-intl` English-default and Chinese UI shell, typed message parity, locale routing, design tokens, and five-screen route skeleton.
+- Make the bilingual implementation register, per-SDD goal, and acceptance-report workflow executable in CI.
 - Verify a pinned, isolated AgentTeams external runtime profile and create a new mission smoke test without treating its internal state as product state.
 - Produce clickable low/high-fidelity routes for the complete five-screen journey and all four platform composers.
 
@@ -43,6 +45,7 @@ Exit: the repository installs through the documented Compose path, migrations an
 - Show missing evidence, account boundaries, and a useful activation plan.
 - Use one shared mission state across Web, API/CLI, and the AgentTeams adapter.
 - Deliver editable X, Bluesky, LinkedIn, and Xiaohongshu artifacts with native-like previews and capability/constraint fixtures.
+- Save one-time or constrained recurring schedules with an IANA time zone, DST/misfire validation, and no external action yet.
 
 Exit: a real LumiClaw campaign can reach readiness and reopen its four editable platform revisions without hidden demo-only state.
 
@@ -62,6 +65,7 @@ Exit: the six-member team returns digest-validated artifacts; one valid revision
 
 - Turn an exact OwnerDecision into a short-lived, single-use ActionGrant.
 - Persist the grant and outbox transition atomically before the separate, no-LLM `action-operator` executes.
+- Claim due schedule occurrences through PostgreSQL leases, recover after restart, and prove that recurring schedules never hold perpetual grants.
 - Publish through the official Bluesky path and reconcile the native record.
 - Provide an honest LinkedIn native handoff and URL reconciliation.
 - Provide an honest Xiaohongshu content-package handoff and URL or approved-evidence reconciliation.
@@ -116,6 +120,6 @@ We integrate replaceable infrastructure where appropriate: AgentTeams as an exte
 
 ## Specification-driven delivery
 
-Every milestone is implemented through one Epic SDD and child specs small enough to finish and verify in roughly half a day to three days. A spec must define the user outcome, journey and UI states, domain/API contracts, AgentTeams roles and skills, permissions, dependencies and licenses, failure and rollback behavior, pass/fail acceptance criteria, test plan, and evidence maturity.
+Every milestone is implemented through one Epic SDD and child specs small enough to finish and verify in roughly half a day to three days. Each bounded SDD runs in a separate Codex task and one explicit goal. A spec must define the user outcome, journey and UI states, domain/API contracts, AgentTeams roles and skills, permissions, dependencies and licenses, failure and rollback behavior, pass/fail acceptance criteria, test plan, owner-participated verification, and evidence maturity.
 
-Use [the SDD template](docs/specs/SPEC-TEMPLATE.md). A date does not complete a milestone; its exit criteria do.
+Before starting, read and update the [implementation register](IMPLEMENTATION-STATUS.md). At closeout, create an acceptance report from [the report template](docs/reports/ACCEPTANCE-REPORT-TEMPLATE.md), then use `EVIDENCE_READY` until required owner acceptance is recorded. Use [the SDD template](docs/specs/SPEC-TEMPLATE.md). A date or chat response does not complete a milestone; its exit criteria do.
