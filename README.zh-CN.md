@@ -1,6 +1,6 @@
 # LumiClaw Presence
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[English](README.md) | [简体中文](README.zh-CN.md) | [路线图](ROADMAP.zh-CN.md)
 
 > 面向多品牌、多市场团队的 AI 原生全球品牌运营系统。
 
@@ -150,6 +150,8 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 6. 一条真实 Response → Outcome → Scoped Learning；
 7. 下一 Mission 正确复用已批准学习；
 8. 同条件下比较单 Agent 与多 Agent。
+
+各阶段的用户结果、Exit Criteria、产品 Horizon 和 SDD 推进方式维护在[公开路线图](ROADMAP.zh-CN.md)中。
 
 ## 仓库范围
 

@@ -1,6 +1,6 @@
 # LumiClaw Presence
 
-[English](README.md) | [简体中文](README.zh-CN.md)
+[English](README.md) | [简体中文](README.zh-CN.md) | [Roadmap](ROADMAP.md)
 
 > AI-native global brand operations for multi-brand, multi-market teams.
 
@@ -150,6 +150,8 @@ Legacy engineering assets exist in a separate private prototype, but they are no
 6. One real response to a reviewed outcome and scoped learning proposal.
 7. A second mission that correctly reuses approved learning.
 8. Single-agent versus multi-agent evaluation under the same conditions.
+
+The milestone outcomes, exit criteria, product horizons, and specification-driven workflow are maintained in the [public roadmap](ROADMAP.md).
 
 ## Repository scope
 
