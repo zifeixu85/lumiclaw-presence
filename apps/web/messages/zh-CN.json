@@ -1,0 +1,91 @@
+{
+  "Meta": {
+    "title": "LumiClaw Presence｜交付基础",
+    "description": "全球品牌运营的受治理交付基础。"
+  },
+  "Shell": {
+    "brand": "LumiClaw Presence",
+    "category": "AI 原生全球品牌运营",
+    "mode": "DEMO_SEED / NOT_LIVE",
+    "milestone": "M0 · 交付基础",
+    "localeLabel": "界面语言",
+    "localeSwitch": "English",
+    "skipToContent": "跳到主要内容",
+    "evidenceLabel": "证据状态",
+    "evidenceValue": "本地工程验证中",
+    "journeyLabel": "Campaign Journey",
+    "ownerLabel": "Owner 下一步",
+    "footer": "预览不代表账号已连接、产物已批准或平台已发布。",
+    "nav": {
+      "campaigns": "Campaigns / Start",
+      "setup": "Setup & Readiness",
+      "mission": "Mission Workspace",
+      "review": "Review & Action",
+      "learn": "Response & Learn"
+    }
+  },
+  "Screens": {
+    "campaigns": {
+      "eyebrow": "01 · 从目标开始",
+      "title": "让一次业务目标，成为可审阅的协同行动。",
+      "summary": "这里将汇总真实 Campaign、上轮结果和唯一下一步。M0 只验证导航、状态语言和交付边界。",
+      "status": "尚无 LIVE Campaign",
+      "basis": "当前依据：SDD-000、锁定依赖与公开架构",
+      "next": "复验 M0 基础；通过后由 Coordinator 创建 M1 SDD。"
+    },
+    "setup": {
+      "eyebrow": "02 · 准备度",
+      "title": "先看见事实、权限与资料缺口。",
+      "summary": "未来的 Setup 会把 Identity、Product、Market、AccountMandate 与 Claim–Evidence 放在同一准备度视图。",
+      "status": "DEMO_SEED · 资料模型尚未实现",
+      "basis": "当前依据：公开架构中的 Claim 与 AccountMandate 边界",
+      "next": "不要上传真实资料；等待 M1 的领域合同与隐私门禁。"
+    },
+    "mission": {
+      "eyebrow": "03 · 协作空间",
+      "title": "同一个事实核，四种平台原生表达。",
+      "summary": "三栏 Composer 基线展示 ActivationUnit、可编辑字段与近似预览的关系；它不是 Agent 运行或平台连接证据。",
+      "status": "ADAPTER CONTRACT ONLY · 无 Agent turn",
+      "basis": "当前依据：六角色拓扑合同与四平台 Preview 计划",
+      "next": "审阅信息层级与诚实能力标签，不执行任何外部动作。"
+    },
+    "review": {
+      "eyebrow": "04 · 审阅与动作",
+      "title": "批准的是精确版本，不是一句模糊的“发吧”。",
+      "summary": "未来这里会展示 Revision、Audit、OwnerDecision、Grant 与 Receipt。M0 不创建任何批准或执行凭证。",
+      "status": "BLOCKED BY DESIGN · 无可批准 Revision",
+      "basis": "当前依据：Producer/Auditor 分离与短时单次 Grant 规则",
+      "next": "只审阅状态文案；不要提供平台 Token 或尝试发布。"
+    },
+    "learn": {
+      "eyebrow": "05 · 回应与学习",
+      "title": "把真实回应带回下一轮，而不是静默改写事实。",
+      "summary": "未来的 Interaction、Outcome、Disposition 与 LearningProposal 都必须有来源、作用域与 Owner 决定。",
+      "status": "EMPTY · 无真实互动",
+      "basis": "当前依据：作用域学习与不可静默修改规则",
+      "next": "确认空状态没有把 Fixture 冒充客户反馈或业务结果。"
+    }
+  },
+  "Mission": {
+    "rail": "Activation Units",
+    "composer": "Editable Composer",
+    "preview": "Native-like Preview",
+    "constraint": "能力快照未连接",
+    "disclaimer": "近似预览；平台原生渲染可能变化。",
+    "platforms": {
+      "x": "X · PREPARE ONLY",
+      "bluesky": "Bluesky · NOT CONNECTED",
+      "linkedin": "LinkedIn · HANDOFF PLANNED",
+      "xiaohongshu": "小红书 · HANDOFF PLANNED"
+    }
+  },
+  "States": {
+    "needsInput": "需要补充资料",
+    "preparing": "正在准备计划",
+    "needsReview": "需要审阅",
+    "blocked": "已阻断",
+    "needsOwner": "等待你的决定",
+    "unknown": "状态待核对",
+    "ready": "基础已就绪"
+  }
+}

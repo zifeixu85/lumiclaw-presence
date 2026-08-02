@@ -1,0 +1,77 @@
+name: SDD delivery gates
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sdd-delivery-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Static, test, build, SBOM and review surfaces
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Use exact Node and npm cache
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - name: Verify npm version
+        run: test "$(npm --version)" = "11.13.0"
+      - name: Reproducible install
+        run: npm ci
+      - name: Static and evidence gates
+        run: npm run verify:static
+      - name: Generated dependency documents are current
+        run: git diff --exit-code -- docs/dependencies/LICENSE-INVENTORY.json docs/dependencies/VERSION-MANIFEST.json
+      - name: Production build
+        run: npm run build
+      - name: Storybook review build
+        run: npm run storybook:build
+      - name: Upload public-safe machine evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdd-000-static-evidence
+          path: .evidence/sdd-000/
+          if-no-files-found: warn
+          retention-days: 7
+
+  compose-integration:
+    name: Fresh volume, failure and persistence integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Use exact Node and npm cache
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - name: Verify npm version
+        run: test "$(npm --version)" = "11.13.0"
+      - name: Reproducible install
+        run: npm ci
+      - name: Compose integration contract
+        run: npm run verify:compose
+      - name: Isolated AgentTeams image and adapter smoke
+        run: npm run verify:agentteams-images
+      - name: Upload Compose evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdd-000-compose-evidence
+          path: |
+            .evidence/sdd-000/compose-verification.json
+            .evidence/sdd-000/agentteams-image-smoke.json
+          if-no-files-found: warn
+          retention-days: 7

@@ -1,0 +1,91 @@
+{
+  "Meta": {
+    "title": "LumiClaw Presence | Delivery Foundation",
+    "description": "An evidence-bound delivery foundation for global brand operations."
+  },
+  "Shell": {
+    "brand": "LumiClaw Presence",
+    "category": "AI-native global brand operations",
+    "mode": "DEMO_SEED / NOT_LIVE",
+    "milestone": "M0 · Delivery foundation",
+    "localeLabel": "Interface language",
+    "localeSwitch": "简体中文",
+    "skipToContent": "Skip to main content",
+    "evidenceLabel": "Evidence status",
+    "evidenceValue": "Local engineering verification",
+    "journeyLabel": "Campaign Journey",
+    "ownerLabel": "Owner next step",
+    "footer": "A preview does not mean an account is connected, an artifact is approved, or a platform action occurred.",
+    "nav": {
+      "campaigns": "Campaigns / Start",
+      "setup": "Setup & Readiness",
+      "mission": "Mission Workspace",
+      "review": "Review & Action",
+      "learn": "Response & Learn"
+    }
+  },
+  "Screens": {
+    "campaigns": {
+      "eyebrow": "01 · Start with the objective",
+      "title": "Turn one business objective into reviewable coordinated action.",
+      "summary": "This surface will summarize real campaigns, prior outcomes, and one next step. M0 verifies navigation, state language, and delivery boundaries only.",
+      "status": "No LIVE campaign exists",
+      "basis": "Current basis: SDD-000, pinned dependencies, and public architecture",
+      "next": "Verify the M0 foundation; the Coordinator creates M1 only after acceptance."
+    },
+    "setup": {
+      "eyebrow": "02 · Readiness",
+      "title": "See facts, permissions, and material gaps first.",
+      "summary": "Future Setup work will place Identity, Product, Market, AccountMandate, and Claim–Evidence in one readiness view.",
+      "status": "DEMO_SEED · data model not implemented",
+      "basis": "Current basis: public Claim and AccountMandate architecture",
+      "next": "Do not upload real material; wait for M1 domain and privacy gates."
+    },
+    "mission": {
+      "eyebrow": "03 · Collaboration workspace",
+      "title": "One factual core, four platform-native expressions.",
+      "summary": "The three-column Composer baseline relates ActivationUnit, editable fields, and approximate previews. It is not Agent execution or account-connection evidence.",
+      "status": "ADAPTER CONTRACT ONLY · no Agent turn",
+      "basis": "Current basis: six-role topology contract and four planned previews",
+      "next": "Review the information hierarchy and honest capability labels; execute nothing externally."
+    },
+    "review": {
+      "eyebrow": "04 · Review and action",
+      "title": "Approve an exact revision, never an ambiguous “send it”.",
+      "summary": "This area will show Revision, Audit, OwnerDecision, Grant, and Receipt. M0 creates no approval or execution credential.",
+      "status": "BLOCKED BY DESIGN · no approvable Revision",
+      "basis": "Current basis: Producer/Auditor separation and short-lived single-use Grant rules",
+      "next": "Review state copy only; do not provide platform tokens or attempt publication."
+    },
+    "learn": {
+      "eyebrow": "05 · Response and learning",
+      "title": "Bring real responses into the next round without silently rewriting truth.",
+      "summary": "Future Interaction, Outcome, Disposition, and LearningProposal objects require provenance, scope, and an Owner decision.",
+      "status": "EMPTY · no real interaction",
+      "basis": "Current basis: scoped learning and no silent mutation rules",
+      "next": "Confirm the empty state never presents a fixture as customer feedback or a business result."
+    }
+  },
+  "Mission": {
+    "rail": "Activation Units",
+    "composer": "Editable Composer",
+    "preview": "Native-like Preview",
+    "constraint": "Capability snapshot not connected",
+    "disclaimer": "Approximate preview; native rendering may change.",
+    "platforms": {
+      "x": "X · PREPARE ONLY",
+      "bluesky": "Bluesky · NOT CONNECTED",
+      "linkedin": "LinkedIn · HANDOFF PLANNED",
+      "xiaohongshu": "Xiaohongshu · HANDOFF PLANNED"
+    }
+  },
+  "States": {
+    "needsInput": "Needs material",
+    "preparing": "Preparing plan",
+    "needsReview": "Needs review",
+    "blocked": "Blocked",
+    "needsOwner": "Needs your decision",
+    "unknown": "Needs reconciliation",
+    "ready": "Foundation ready"
+  }
+}

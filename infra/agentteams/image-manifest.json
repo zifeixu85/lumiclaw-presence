@@ -1,0 +1,28 @@
+{
+  "runtime": "AgentTeams",
+  "requestedVersion": "v1.2.0",
+  "source": "https://github.com/agentscope-ai/AgentTeams",
+  "license": "Apache-2.0",
+  "verifiedAt": "2026-08-03",
+  "images": [
+    {
+      "component": "manager",
+      "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-manager",
+      "tag": "v1.2.0",
+      "digest": "sha256:a429666fcc66fa01b81da3bc9ea5af98437697ef794f811ac7d358d4286c317e",
+      "platformVerified": "linux/arm64"
+    },
+    {
+      "component": "worker",
+      "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-copaw-worker",
+      "tag": "v1.2.0",
+      "digest": "sha256:dcdd9103535cfac247267e0f69661820c801396d58e2c8e0c14eefd40b63b7bc",
+      "platformVerified": "linux/arm64"
+    }
+  ],
+  "limitations": [
+    "Local image tags and digests are engineering observations, not a production identity claim.",
+    "The previously running controller reported build identity dev and is not reused by this profile.",
+    "M0 performs an isolated CLI/adapter contract smoke without a live LLM-backed AgentTeam."
+  ]
+}

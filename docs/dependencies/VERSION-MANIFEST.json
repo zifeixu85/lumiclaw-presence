@@ -1,0 +1,165 @@
+{
+  "schemaVersion": "1.0.0",
+  "sourceLockSha256": "88f91873bd2a0d69fafb03ba3bd5541a759c9cc38dd7fbd2db282f71d777cc90",
+  "runtime": {
+    "node": "24.16.0",
+    "npm": "11.13.0",
+    "packageManager": "npm@11.13.0",
+    "typescript": "5.9.3",
+    "moduleSystem": "ESM"
+  },
+  "directPackages": [
+    {
+      "name": "@cyclonedx/cyclonedx-npm",
+      "version": "6.0.0",
+      "classification": "development"
+    },
+    {
+      "name": "@storybook/addon-a11y",
+      "version": "10.5.5",
+      "classification": "development"
+    },
+    {
+      "name": "@storybook/nextjs-vite",
+      "version": "10.5.5",
+      "classification": "development"
+    },
+    {
+      "name": "@swc/helpers",
+      "version": "0.5.23",
+      "classification": "development"
+    },
+    {
+      "name": "@types/node",
+      "version": "26.1.2",
+      "classification": "development"
+    },
+    {
+      "name": "@types/pg",
+      "version": "8.15.5",
+      "classification": "development"
+    },
+    {
+      "name": "@types/react",
+      "version": "19.2.18",
+      "classification": "development"
+    },
+    {
+      "name": "@types/react-dom",
+      "version": "19.2.4",
+      "classification": "development"
+    },
+    {
+      "name": "ajv",
+      "version": "8.20.0",
+      "classification": "runtime"
+    },
+    {
+      "name": "eslint",
+      "version": "9.39.5",
+      "classification": "development"
+    },
+    {
+      "name": "eslint-config-next",
+      "version": "16.2.12",
+      "classification": "development"
+    },
+    {
+      "name": "fastify",
+      "version": "5.11.0",
+      "classification": "runtime"
+    },
+    {
+      "name": "jsdom",
+      "version": "30.0.1",
+      "classification": "development"
+    },
+    {
+      "name": "kysely",
+      "version": "0.29.4",
+      "classification": "runtime"
+    },
+    {
+      "name": "next",
+      "version": "16.2.12",
+      "classification": "runtime"
+    },
+    {
+      "name": "next-intl",
+      "version": "4.13.4",
+      "classification": "runtime"
+    },
+    {
+      "name": "node-pg-migrate",
+      "version": "9.0.0",
+      "classification": "runtime"
+    },
+    {
+      "name": "pg",
+      "version": "8.22.0",
+      "classification": "runtime"
+    },
+    {
+      "name": "react",
+      "version": "19.2.8",
+      "classification": "runtime"
+    },
+    {
+      "name": "react-dom",
+      "version": "19.2.8",
+      "classification": "runtime"
+    },
+    {
+      "name": "storybook",
+      "version": "10.5.5",
+      "classification": "development"
+    },
+    {
+      "name": "tsx",
+      "version": "4.23.4",
+      "classification": "development"
+    },
+    {
+      "name": "typescript",
+      "version": "5.9.3",
+      "classification": "development"
+    },
+    {
+      "name": "vitest",
+      "version": "4.1.10",
+      "classification": "development"
+    },
+    {
+      "name": "yaml",
+      "version": "2.9.0",
+      "classification": "development"
+    }
+  ],
+  "overrides": {},
+  "containers": {
+    "node": [
+      "node:24.16.0-bookworm-slim@sha256:2c87ef9bd3c6a3bd4b472b4bec2ce9d16354b0c574f736c476489d09f560a203"
+    ],
+    "postgres": "postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4",
+    "agentTeams": [
+      {
+        "component": "manager",
+        "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-manager",
+        "tag": "v1.2.0",
+        "digest": "sha256:a429666fcc66fa01b81da3bc9ea5af98437697ef794f811ac7d358d4286c317e",
+        "platformVerified": "linux/arm64"
+      },
+      {
+        "component": "worker",
+        "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-copaw-worker",
+        "tag": "v1.2.0",
+        "digest": "sha256:dcdd9103535cfac247267e0f69661820c801396d58e2c8e0c14eefd40b63b7bc",
+        "platformVerified": "linux/arm64"
+      }
+    ]
+  },
+  "lockfile": {
+    "format": 3,
+    "packages": 975
+  }
+}
