@@ -31,7 +31,7 @@ Campaign 初始化
 - 冻结首个真实 Campaign 输入和 Owner 基线；
 - 建立 Node.js 24 与 TypeScript Workspace，规划 Next.js 16 `web`、Fastify 5 `api`、`mission-worker` 与确定性 `action-operator` 边界；
 - 建立 Docker Compose Skeleton、PostgreSQL 17 Migration 路径、Content-addressed Local Blob、SDD、CI、依赖政策与 License 决策；
-- 建立 `next-intl` 默认英文、支持中文的 UI Shell、类型化双语 Message 一致性、Locale Route、Design Token 与五主屏 Route Skeleton；
+- 建立 `next-intl` 默认中文、支持英文的 UI Shell、类型化双语 Message 一致性、Locale Route、Design Token 与五主屏 Route Skeleton；
 - 让双语实现进度表、每 SDD Goal 与验收报告流程进入 CI；
 - 核验锁定且隔离的 AgentTeams 外部 Runtime Profile，完成新 Mission Smoke，并确保其内部状态不成为产品真源；
 - 用可点击低/高保真 Route 走完五主屏与四平台 Composer。

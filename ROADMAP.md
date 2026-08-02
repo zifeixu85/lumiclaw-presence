@@ -31,7 +31,7 @@ Each milestone is a user-visible vertical slice. Product UI, domain contracts, A
 - Freeze the first real campaign input and owner baseline.
 - Establish a Node.js 24 and TypeScript workspace with planned Next.js 16 `web`, Fastify 5 `api`, `mission-worker`, and deterministic `action-operator` boundaries.
 - Establish the Docker Compose skeleton, PostgreSQL 17 migration path, content-addressed local blob storage, SDD workflow, CI, dependency policy, and license decision.
-- Establish the `next-intl` English-default and Chinese UI shell, typed message parity, locale routing, design tokens, and five-screen route skeleton.
+- Establish the `next-intl` Chinese-default and English UI shell, typed message parity, locale routing, design tokens, and five-screen route skeleton.
 - Make the bilingual implementation register, per-SDD goal, and acceptance-report workflow executable in CI.
 - Verify a pinned, isolated AgentTeams external runtime profile and create a new mission smoke test without treating its internal state as product state.
 - Produce clickable low/high-fidelity routes for the complete five-screen journey and all four platform composers.

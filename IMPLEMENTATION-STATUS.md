@@ -25,18 +25,18 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | Metric | Current value |
 |---|---|
-| Accepted modules | `0 / 39` (`0%`) |
-| Evidence ready | `1 / 39` |
-| Blocked | `1 / 39` |
-| Active implementation SDD | None; next planned Epic is `SDD-000 Delivery Foundation` |
-| Earliest owner blocker | Root license before the first public code commit |
-| Next executable module | `M0-03` Monorepo and package baseline, after `SDD-000` reaches `SPEC_READY` |
+| Accepted modules | `2 / 39` (`5.1%`) |
+| Evidence ready | `0 / 39` |
+| Blocked | `0 / 39` |
+| Active implementation SDD | `SDD-000 Delivery Foundation` — coordinator dispatch |
+| Earliest owner blocker | None for M0 implementation; provider credentials are deferred to their SDDs |
+| Next executable module | `M0-03` Monorepo and package baseline; coordinator-assigned `IN_PROGRESS` |
 
 ## Milestone progress
 
 | Milestone | State | Accepted | Current module mix | Exit evidence |
 |---|---|---:|---|---|
-| M0 — Delivery foundation | `IN_PROGRESS` | `0 / 7` | 1 evidence-ready, 1 blocked, 5 not started | Fresh Compose shell, migrations, CI, isolated AgentTeams smoke, design/i18n foundation |
+| M0 — Delivery foundation | `IN_PROGRESS` | `2 / 7` | 2 accepted, 1 in progress, 4 not started | Fresh Compose shell, migrations, CI, isolated AgentTeams smoke, design/i18n foundation |
 | M1 — Campaign walking skeleton | `NOT_STARTED` | `0 / 6` | 6 not started | Persisted campaign, four editable previews, schedule editor, shared control-plane state |
 | M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 not started | Six-member AgentTeams run, DeepSeek gateway, revision/audit, fault denial, trace |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 not started | Exact grants, persistent scheduler, Bluesky Direct, honest Handoffs, receipts/reconciliation |
@@ -50,11 +50,11 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
-| M0-01 | Product, platform and technical architecture documentation | `EVIDENCE_READY` | Owner review | [Baseline acceptance report](docs/reports/acceptance/M0-01-ARCHITECTURE-BASELINE-ACCEPTANCE.md); owner confirms the baseline |
-| M0-02 | Root license and contribution policy | `BLOCKED` | Owner decision | License file, dependency policy and updated contribution rules |
-| M0-03 | Node/TypeScript monorepo and locked package baseline | `NOT_STARTED` | SDD-000 | Reproducible install, lockfile, version manifest, license inventory |
+| M0-01 | Product, platform and technical architecture documentation | `ACCEPTED` | Complete | [Accepted baseline report](docs/reports/acceptance/M0-01-ARCHITECTURE-BASELINE-ACCEPTANCE.md) |
+| M0-02 | Root license and contribution policy | `ACCEPTED` | Complete | [Accepted Apache-2.0 and dependency-policy report](docs/reports/acceptance/M0-02-LICENSE-AND-DEPENDENCY-POLICY-ACCEPTANCE.md) |
+| M0-03 | Node/TypeScript monorepo and locked package baseline | `IN_PROGRESS` | SDD-000 | Reproducible install, lockfile, version manifest, license inventory |
 | M0-04 | Docker Compose, PostgreSQL migrations and local BlobStore | `NOT_STARTED` | M0-03 | Fresh volumes boot, migration success/failure tests, health checks and persistence test |
-| M0-05 | Next.js shell, `next-intl`, design tokens and five-screen routes | `NOT_STARTED` | M0-03 | English/Chinese switch, typed message parity, route smoke, Pencil/Storybook baseline |
+| M0-05 | Next.js shell, `next-intl`, design tokens and five-screen routes | `NOT_STARTED` | M0-03 | Chinese-default/English switch, typed message parity, route smoke, Pencil/Storybook baseline |
 | M0-06 | Isolated AgentTeams runtime profile and adapter smoke | `NOT_STARTED` | M0-04 | No shared secrets/host ports, pinned digest, health/capability report, team smoke |
 | M0-07 | CI, secret scan, SBOM and status/report checks | `NOT_STARTED` | M0-03 | CI verifies tests, message parity, status IDs, reports, licenses and secret hygiene |
 
@@ -122,15 +122,15 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 ## Mandatory task protocol
 
-Each new milestone or bounded SDD runs in a separate Codex task:
+Each new milestone or bounded SDD runs in a separate Codex task coordinated by the primary project task:
 
 1. Read `AGENTS.md`, this register, `ARCHITECTURE.md`, `ROADMAP.md`, and the relevant SDD before changing code.
-2. Select the exact module IDs, verify dependencies, and create/resume one goal for the SDD.
-3. Update selected modules to `IN_PROGRESS` in both language files in the first intentional commit.
+2. The coordinator selects exact module IDs, verifies dependencies, creates the executor task, and assigns one goal for the SDD.
+3. Before dispatch, the coordinator updates only the currently executable module to `IN_PROGRESS` in both language files.
 4. Implement only the SDD scope; record discoveries that change scope instead of silently expanding it.
-5. Run the acceptance matrix and create `docs/reports/acceptance/SDD-NNN-ACCEPTANCE.md` from the report template.
+5. Run the acceptance matrix and create a Chinese `docs/reports/acceptance/SDD-NNN-ACCEPTANCE.md` from the report template.
 6. List which checks the owner can perform, with prerequisites, exact steps, expected results, and evidence to return.
 7. Set `EVIDENCE_READY` when machine verification is complete but owner acceptance remains. Set `ACCEPTED` only after all required acceptance is recorded.
-8. Update this register, the Chinese mirror, evidence links, blockers and next module before ending the task.
+8. The executor returns a structured status handoff. The coordinator independently verifies it, integrates approved work, and updates this register, the Chinese mirror, evidence links, blockers and next module.
 
 The current source task is never allowed to declare completion only in chat while leaving this register stale.

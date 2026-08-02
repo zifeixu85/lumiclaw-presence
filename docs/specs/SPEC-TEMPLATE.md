@@ -104,6 +104,8 @@ Split work into child specs or issues of roughly half a day to three days. Show 
 
 Name the exact progress-register modules. The first implementation commit moves them to `IN_PROGRESS`; the final evidence commit moves them only to the state justified by the acceptance report.
 
+Use the Spec Kit lifecycle as a method reference: Constitution → Specify → Clarify → Plan → Checklist → Tasks → Analyze → Implement → Converge/Accept. LumiClaw's `AGENTS.md`, architecture rules, claim discipline, progress register, and this SDD remain authoritative. Installing or generating files with the Spec Kit CLI is optional and requires a pinned-version and dependency review.
+
 ## 13. Alternatives and decision log
 
 Record alternatives considered, why they were rejected, and the evidence that would reopen the decision.
@@ -124,8 +126,9 @@ If owner action is not useful or safe, state why and provide a read-only evidenc
 
 ## 15. Task closeout
 
-- Acceptance report path and status
+- Chinese acceptance report path and status
 - Progress modules and final states
 - Remaining blockers and non-claims
 - Next executable module / SDD
 - Goal completion decision
+- Structured executor-to-coordinator status handoff

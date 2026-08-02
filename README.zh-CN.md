@@ -130,7 +130,7 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 ## 计划技术架构
 
-已选择的参考栈是 Node.js 24 LTS 与 TypeScript；`web` 使用 Next.js 16 与 `next-intl`，默认英文并支持中文；`api` 使用 Fastify 5，权威状态使用 PostgreSQL 17 与 Kysely；Docker Compose 是首个安装合同。
+已选择的参考栈是 Node.js 24 LTS 与 TypeScript；`web` 使用 Next.js 16 与 `next-intl`，默认中文并支持英文；`api` 使用 Fastify 5，权威状态使用 PostgreSQL 17 与 Kysely；Docker Compose 是首个安装合同。
 
 应用拆分为 `web`、`api`、`mission-worker` 和确定性的 `action-operator`。AgentTeams 通过 Runtime Adapter 运行在独立执行域，不是产品数据库、Secret Store 或发布 Operator。DeepSeek、EvoLink 与公开信号来源分别位于 `ModelProvider`、`MediaGenerationProvider` 和 `SignalProvider` 端口之后；发布侧另用 `PublishConnector` 与 `NativeHandoffAdapter` 合同。
 
@@ -185,4 +185,4 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 计划实现基线为 Node.js 24 LTS、TypeScript、ESM、npm workspaces、schema-first 合同和自动 Conformance Test。
 
-根 License 尚未选择。在加入 License 前，本仓只是公开源码仓而不是开源发行版，暂不接收代码贡献。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+LumiClaw Presence 采用 [Apache License 2.0](LICENSE)。依赖、资产、Provider、容器和旧工程迁移文件遵守[依赖与许可证政策](docs/DEPENDENCY-POLICY.zh-CN.md)。项目仍处于 Pre-alpha，不代表 Production-ready。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。

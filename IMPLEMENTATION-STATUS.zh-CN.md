@@ -25,18 +25,18 @@
 
 | 指标 | 当前值 |
 |---|---|
-| 已验收模块 | `0 / 39`（`0%`） |
-| 证据已就绪 | `1 / 39` |
-| 被阻塞 | `1 / 39` |
-| 当前实现 SDD | 无；下一份计划中的 Epic 是 `SDD-000 Delivery Foundation` |
-| 最早 Owner 阻塞项 | 首个公开代码提交前确定根 License |
-| 下一个可执行模块 | `SDD-000` 达到 `SPEC_READY` 后启动 `M0-03` Monorepo 与依赖基线 |
+| 已验收模块 | `2 / 39`（`5.1%`） |
+| 证据已就绪 | `0 / 39` |
+| 被阻塞 | `0 / 39` |
+| 当前实现 SDD | `SDD-000 Delivery Foundation` — Coordinator 正在派发 |
+| 最早 Owner 阻塞项 | M0 实现无；Provider Credential 延后到各自 SDD |
+| 下一个可执行模块 | `M0-03` Monorepo 与依赖基线，Coordinator 已标记 `IN_PROGRESS` |
 
 ## 里程碑总进度
 
 | 里程碑 | 状态 | 已验收 | 当前模块分布 | Exit Evidence |
 |---|---|---:|---|---|
-| M0 — Delivery foundation | `IN_PROGRESS` | `0 / 7` | 1 个证据就绪、1 个阻塞、5 个未开始 | Compose 产品壳、Migration、CI、隔离 AgentTeams Smoke、设计与 i18n 基线 |
+| M0 — Delivery foundation | `IN_PROGRESS` | `2 / 7` | 2 个已验收、1 个进行中、4 个未开始 | Compose 产品壳、Migration、CI、隔离 AgentTeams Smoke、设计与 i18n 基线 |
 | M1 — Campaign walking skeleton | `NOT_STARTED` | `0 / 6` | 6 个未开始 | 持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State |
 | M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 个未开始 | 六成员 AgentTeams、DeepSeek Gateway、Revision/Audit、故障拒绝与 Trace |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
@@ -50,11 +50,11 @@
 
 | ID | 模块 | 状态 | 依赖 | 必须提交的证据 / 验收 |
 |---|---|---|---|---|
-| M0-01 | 产品、平台与技术架构文档 | `EVIDENCE_READY` | Owner Review | [架构基线验收报告](docs/reports/acceptance/M0-01-ARCHITECTURE-BASELINE-ACCEPTANCE.md)；Owner 确认技术基线 |
-| M0-02 | 根 License 与贡献政策 | `BLOCKED` | Owner 决策 | License、依赖政策与更新后的贡献规则 |
-| M0-03 | Node/TypeScript Monorepo 与锁定依赖基线 | `NOT_STARTED` | SDD-000 | 可复现安装、Lockfile、版本 Manifest 与许可证清单 |
+| M0-01 | 产品、平台与技术架构文档 | `ACCEPTED` | 已完成 | [已验收架构基线报告](docs/reports/acceptance/M0-01-ARCHITECTURE-BASELINE-ACCEPTANCE.md) |
+| M0-02 | 根 License 与贡献政策 | `ACCEPTED` | 已完成 | [已验收 Apache-2.0 与依赖政策报告](docs/reports/acceptance/M0-02-LICENSE-AND-DEPENDENCY-POLICY-ACCEPTANCE.md) |
+| M0-03 | Node/TypeScript Monorepo 与锁定依赖基线 | `IN_PROGRESS` | SDD-000 | 可复现安装、Lockfile、版本 Manifest 与许可证清单 |
 | M0-04 | Docker Compose、PostgreSQL Migration 与 Local BlobStore | `NOT_STARTED` | M0-03 | Fresh Volume 启动、Migration 成败测试、Healthcheck 与持久化测试 |
-| M0-05 | Next.js Shell、`next-intl`、设计 Token 与五主屏 Route | `NOT_STARTED` | M0-03 | 中英文切换、类型化文案一致性、Route Smoke、Pencil/Storybook 基线 |
+| M0-05 | Next.js Shell、`next-intl`、设计 Token 与五主屏 Route | `NOT_STARTED` | M0-03 | 默认中文/英文切换、类型化文案一致性、Route Smoke、Pencil/Storybook 基线 |
 | M0-06 | 隔离 AgentTeams Runtime Profile 与 Adapter Smoke | `NOT_STARTED` | M0-04 | 无共享 Secret/HostPort、锁定 Digest、Health/Capability Report 与 Team Smoke |
 | M0-07 | CI、Secret Scan、SBOM 与进度/报告检查 | `NOT_STARTED` | M0-03 | CI 校验测试、文案一致性、进度 ID、报告、许可证与 Secret Hygiene |
 
@@ -122,15 +122,15 @@
 
 ## 强制任务流程
 
-每个新里程碑或边界明确的 SDD 使用一个独立 Codex 任务：
+每个新里程碑或边界明确的 SDD 使用一个独立 Codex 任务，由项目主任务担任 Coordinator：
 
 1. 修改代码前读取 `AGENTS.md`、本进度表、`ARCHITECTURE.zh-CN.md`、`ROADMAP.zh-CN.md` 与相关 SDD。
-2. 选择精确模块 ID，核验依赖，并为本 SDD 创建或恢复一个 Goal。
-3. 在第一笔有意提交中，同时把中英文进度表对应模块更新为 `IN_PROGRESS`。
+2. Coordinator 选择精确模块 ID、核验依赖、创建 Executor 任务并分配一个 Goal。
+3. 派发前由 Coordinator 只把当前可执行模块在中英文进度表同步更新为 `IN_PROGRESS`。
 4. 只实现 SDD 范围；改变范围的发现必须记录，不能静默扩张。
-5. 运行验收矩阵，并从报告模板生成 `docs/reports/acceptance/SDD-NNN-ACCEPTANCE.md`。
+5. 运行验收矩阵，并从报告模板生成中文 `docs/reports/acceptance/SDD-NNN-ACCEPTANCE.md`。
 6. 列出 Owner 可参与的验收项，包括前置条件、精确步骤、预期结果和需要返回的证据。
 7. 机器验证完成但仍等待 Owner 验收时设为 `EVIDENCE_READY`；只有要求内验收全部记录后才能设为 `ACCEPTED`。
-8. 结束任务前更新中英文进度表、证据链接、阻塞项和下一模块。
+8. Executor 返回结构化 Status Handoff；Coordinator 独立复验、集成通过的交付，再更新中英文进度表、Evidence、Blocker 与下一模块。
 
 不允许只在聊天中宣布任务完成，却让本进度表保持过期。

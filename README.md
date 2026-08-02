@@ -130,7 +130,7 @@ We do not claim guaranteed reach, follower growth, leads, or revenue.
 
 ## Planned technical architecture
 
-The selected reference stack is Node.js 24 LTS and TypeScript, with Next.js 16 and `next-intl` for an English-default, Chinese-capable `web`, Fastify 5 for `api`, PostgreSQL 17 with Kysely for authoritative state, and Docker Compose as the first installation contract.
+The selected reference stack is Node.js 24 LTS and TypeScript, with Next.js 16 and `next-intl` for a Chinese-default, English-capable `web`, Fastify 5 for `api`, PostgreSQL 17 with Kysely for authoritative state, and Docker Compose as the first installation contract.
 
 The application is split into `web`, `api`, `mission-worker`, and a deterministic `action-operator`. AgentTeams runs in a separate execution domain through a Runtime Adapter; it is not the product database, secret store, or publishing operator. DeepSeek, EvoLink, and public-signal sources sit behind `ModelProvider`, `MediaGenerationProvider`, and `SignalProvider` ports. Publishing uses separate `PublishConnector` and `NativeHandoffAdapter` contracts.
 
@@ -185,4 +185,4 @@ It will not contain private research notes, internal decision records, raw custo
 
 The planned implementation baseline is Node.js 24 LTS, TypeScript, ESM, npm workspaces, schema-first contracts, and automated conformance tests.
 
-A root license has not yet been selected. Until a license is added, this is a public source repository but not an open-source release, and code contributions are paused. See [CONTRIBUTING.md](CONTRIBUTING.md).
+LumiClaw Presence is licensed under [Apache License 2.0](LICENSE). Dependencies, assets, providers, containers, and migrated legacy files follow the [dependency policy](docs/DEPENDENCY-POLICY.md). The project remains pre-alpha and is not production-ready. See [CONTRIBUTING.md](CONTRIBUTING.md).

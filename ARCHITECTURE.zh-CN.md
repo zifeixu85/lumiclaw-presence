@@ -57,7 +57,7 @@ Web 不保存平台 Token，也不直接调用发布 API。API 是所有客户�
 | 范围 | 已选择基线 | 边界 |
 |---|---|---|
 | Runtime | Node.js 24 LTS、TypeScript、ESM、npm workspaces | 单一版本化 Monorepo；进入代码后锁定版本与镜像 digest |
-| Web | Next.js 16、React 19.2、`next-intl`、TanStack Query、React Hook Form | 默认英文、支持中文的产品 UI 与同源入口；不在 Server Action 中建立第二条 Mutation 路径 |
+| Web | Next.js 16、React 19.2、`next-intl`、TanStack Query、React Hook Form | 默认中文、支持英文的产品 UI 与同源入口；不在 Server Action 中建立第二条 Mutation 路径 |
 | API | Fastify 5 | REST/OpenAPI、SSE、Session、授权、校验与 Control Plane Mutation |
 | Database | PostgreSQL 17 | 唯一权威业务库 |
 | 数据访问 | `pg`、Kysely、`node-pg-migrate` | 可审阅 SQL 与显式 Migration |
@@ -87,7 +87,7 @@ Web 不保存平台 Token，也不直接调用发布 API。API 是所有客户�
 
 ## 国际化与时间语义
 
-计划中的 Web Shell 使用 Next.js App Router 与 `next-intl`。首批 UI Locale 为 `en`（默认）和 `zh-CN`，提供带 Locale 的路由、持久化的用户或组织偏好、类型化 Message Catalog，并在 CI 检查双语 Key 一致性。API 与领域合同只返回稳定 Code 与参数；翻译后的标签不得作为 Enum、审计状态或 Receipt 语义入库。
+计划中的 Web Shell 使用 Next.js App Router 与 `next-intl`。首批 UI Locale 为 `zh-CN`（默认）和 `en`，提供带 Locale 的路由、持久化的用户或组织偏好、类型化 Message Catalog，并在 CI 检查双语 Key 一致性。API 与领域合同只返回稳定 Code 与参数；翻译后的标签不得作为 Enum、审计状态或 Receipt 语义入库。
 
 以下四个概念必须相互独立：
 

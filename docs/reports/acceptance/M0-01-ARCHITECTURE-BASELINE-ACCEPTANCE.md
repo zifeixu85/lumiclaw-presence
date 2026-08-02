@@ -1,108 +1,65 @@
-# M0-01 Acceptance Report — Architecture and Delivery Baseline
+# M0-01 验收报告｜技术架构与交付基线
 
-> SDD: Pre-SDD documentation baseline; successor is `SDD-000 Delivery Foundation`
-> Progress module IDs: `M0-01`
-> Goal objective: Freeze the technical, i18n, scheduling, progress, SDD, and acceptance baseline before implementation
-> Commit / build identity: the Git commit that first adds this report
-> Report status: `EVIDENCE_READY`
-> Evidence maturity: `IMPLEMENTED` documentation; product runtime remains `PLANNED`
-> Generated: `2026-08-03`
+> SDD：SDD 流程建立前的文档基线；后继为 `SDD-000 Delivery Foundation`
+> 进度模块 ID：`M0-01`
+> Goal Objective：在实现前冻结技术、i18n、排程、进度、SDD 与验收基线
+> Commit / Build Identity：首次加入本报告的 Git Commit 及其后 Owner 修订
+> 报告状态：`ACCEPTED`
+> 证据成熟度：文档为 `IMPLEMENTED`；产品 Runtime 仍为 `PLANNED`
+> 生成日期：`2026-08-03`
 
-## 1. Delivered outcome
+## 一、交付结果
 
-A contributor can now determine the selected product architecture, bilingual UI contract, persistent scheduling model, milestone/module sequence, mandatory SDD workflow, and acceptance rules from the public repository. No product service or dependency is claimed as implemented.
+贡献者现在可以从公开仓确定产品架构、默认中文/支持英文的 UI 合同、持久化排程模型、里程碑与模块顺序、强制 SDD 流程和验收规则。本文不声称产品 Service 或 Dependency 已经实现。
 
-## 2. Scope delivered
+## 二、交付范围
 
-### Included
+### 已包含
 
-- English and Chinese README, architecture, roadmap, and implementation status;
-- Next.js 16 plus planned `next-intl` English/Chinese UI contract;
-- PostgreSQL-backed schedule/occurrence design and explicit cron decision;
-- 39-module M0–M6 progress register with evidence and blockers;
-- SDD and acceptance-report templates;
-- mandatory per-task goal, status, evidence, and owner-acceptance protocol.
+- 中英文 README、Architecture、Roadmap 与 Implementation Status；
+- Next.js 16 + `next-intl`，默认 `zh-CN`、支持 `en`；
+- PostgreSQL Schedule/Occurrence 设计与 Cron 裁决；
+- M0–M6 共 39 个模块的进度表；
+- SDD 与中文 Acceptance Report Template；
+- 每任务 Goal、Coordinator/Executor、Evidence 与 Owner 验收协议。
 
-### Excluded or deferred
+### 未包含
 
-- package installation, source code, database migrations, Docker services, or runtime tests;
-- root license decision;
-- `SDD-000` and all implementation modules;
-- platform credentials or live external actions.
+- Package 安装、源码、Migration、Docker Service 或 Runtime Test；
+- `SDD-000` 与实现模块；
+- 平台 Credential 或真实外部动作。
 
-## 3. Implementation evidence
+## 三、验证结果
 
-| Area | Files / objects | Evidence |
+| 检查 | 结果 | Evidence |
 |---|---|---|
-| Product / navigation | `README.md`, `README.zh-CN.md` | Both languages link architecture, roadmap, and progress truth |
-| Architecture | `ARCHITECTURE.md`, `ARCHITECTURE.zh-CN.md` | Service, provider, i18n, schedule, grant, and milestone boundaries |
-| Delivery | `ROADMAP.md`, `ROADMAP.zh-CN.md` | M0–M6 vertical delivery order |
-| Progress | `IMPLEMENTATION-STATUS.md`, Chinese mirror | 39 matching IDs and states |
-| SDD / acceptance | `docs/specs/SPEC-TEMPLATE.md`, report template | Binary acceptance, owner UAT, failure and rollback requirements |
-| Agent rules | `AGENTS.md` | Mandatory task-start and closeout contract |
+| 中英文进度 ID/状态一致 | `PASS` | 39 / 39，无差异 |
+| 本地 Markdown Link | `PASS` | 无缺失目标 |
+| Patch / Whitespace | `PASS` | `git diff --check` 无错误 |
+| Secret / Privacy | `PASS` | 未发现 Credential 或私有 Raw Payload |
+| Runtime / E2E | `N/A` | 文档基线明确不声明 Runtime |
 
-## 4. Automated verification
+## 四、Owner 验收
 
-| Check | Command or protocol | Expected | Actual | Result |
-|---|---|---|---|---|
-| Progress parity | Parse both status tables and compare IDs/states | 39/39 IDs; no mismatch | 39/39; no mismatch | `PASS` |
-| Markdown links | Resolve repository-relative Markdown links | No missing target | No missing target | `PASS` |
-| Patch hygiene | `git diff --check` plus trailing-space scan for new files | No new whitespace error | No error | `PASS` |
-| Secret/privacy | Review changed public Markdown for credential-shaped content and private raw data | No credential or private payload | None found | `PASS` |
-| Runtime / E2E | Not applicable to a documentation-only baseline | Explicitly not claimed | Not run | `N/A` |
+Owner 于 2026-08-03 明确回复 `M0-01 ACCEPTED`，并要求：
 
-## 5. Acceptance criteria result
+- UI 默认 Locale 改为 `zh-CN`；
+- 根许可证使用 Apache-2.0；
+- SDD 参考 GitHub Spec Kit；
+- 最终验收报告默认使用中文；
+- 后续由 Coordinator 新建独立开发任务，Executor 回报状态，Coordinator 更新总进度。
 
-| Criterion ID | Result | Evidence | Notes |
-|---|---|---|---|
-| AC-01 | `PASS` | Bilingual README/Architecture/Roadmap | Current stack and product boundary are navigable |
-| AC-02 | `PASS` | Architecture i18n section | `en`, `zh-CN`, content language, market, and time zone are separated |
-| AC-03 | `PASS` | Architecture scheduling section | PostgreSQL occurrence model replaces ephemeral cron truth |
-| AC-04 | `PASS` | Bilingual progress register | 39 module IDs/states match |
-| AC-05 | `PASS` | AGENTS, SDD and report templates | Goal, SDD, evidence, owner acceptance, and closeout are mandatory |
-| AC-06 | `PENDING_OWNER` | UAT-01 below | Owner confirms the baseline is suitable for implementation |
+上述要求已进入公开与内部工程规则。
 
-## 6. Owner-participated acceptance
+## 五、限制与非声明
 
-### UAT-01 — Approve the implementation baseline
+- 架构通过不等于 Runtime 已实现；
+- `next-intl`、PostgreSQL Schema、Docker、AgentTeams、Provider 与 Connector 仍为 `PLANNED`；
+- 不声明客户 UAT、业务结果、真实发布或 Production Readiness。
 
-- **Why the owner should verify this:** These decisions constrain every following implementation task and define what may be called complete.
-- **Prerequisites:** Open the repository locally or on GitHub; no API key or Docker service is required.
-- **Safety/data note:** This is read-only review and performs no external action.
-- **Steps:**
-  1. Open `IMPLEMENTATION-STATUS.zh-CN.md` and confirm the M0–M6 sequence and next task `SDD-000`.
-  2. Open `ARCHITECTURE.zh-CN.md`; review “国际化与时间语义” and “持久化排程，而不是临时 Cron.”
-  3. Confirm that UI language is independent from content language/market/time zone.
-  4. Confirm that M1 creates schedules without publishing and M3 adds governed scheduled execution.
-  5. Open `AGENTS.md`; confirm each SDD uses a separate task/goal, updates the progress register, creates an acceptance report, and gives you exact UAT steps.
-  6. Record either `ACCEPTED` or the exact section and requested change.
-- **Expected visible result:** The four documents agree on the stack, sequencing, schedule safety, bilingual scope, and acceptance workflow.
-- **Failure signs:** Conflicting module states, a promise that code already exists, an ephemeral cron path, or no way for the owner to verify a phase.
-- **Evidence to return:** A written `M0-01 ACCEPTED` decision, or a list of requested changes.
-- **Cleanup / rollback:** None; review is read-only. Rejection keeps `M0-01` at `EVIDENCE_READY` or moves it to `BLOCKED` with reason.
-- **Owner result:** `PENDING`
+## 六、最终决定
 
-## 7. Failures, limitations and non-claims
-
-- Known blocker: root license remains an owner decision (`M0-02`).
-- Accepted limitation: the schedule design is unimplemented and unbenchmarked.
-- `next-intl`, PostgreSQL schema, Docker processes, AgentTeams, providers, and connectors remain `PLANNED`.
-- No customer UAT, business outcome, live post, or production readiness is claimed.
-
-## 8. Rollback and recovery
-
-The baseline is documentation-only and recoverable through Git revert. Any architecture change must update the decision log, both language documents, the progress register, and affected SDD acceptance criteria in the same change.
-
-## 9. Progress register update
-
-| Module ID | Previous state | New state | Reason / evidence |
-|---|---|---|---|
-| M0-01 | `NOT_STARTED` | `EVIDENCE_READY` | Bilingual architecture, roadmap, status, rules, templates, and machine checks are ready; owner acceptance remains |
-
-## 10. Acceptance decision
-
-- Automated acceptance: `PASS`
-- Owner acceptance required: `YES`
-- Owner decision: `PENDING`
-- Final module state: `EVIDENCE_READY`
-- Next module / SDD: `SDD-000 Delivery Foundation`; `M0-03` is the first executable implementation module after `SPEC_READY`
+- 自动化验证：`PASS`
+- Owner 决定：`ACCEPTED`
+- 最终模块状态：`ACCEPTED`
+- 下一阶段：`SDD-000 Delivery Foundation`

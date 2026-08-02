@@ -57,7 +57,7 @@ The Web never stores platform tokens or calls publishing APIs directly. The API 
 | Area | Selected baseline | Boundary |
 |---|---|---|
 | Runtime | Node.js 24 LTS, TypeScript, ESM, npm workspaces | One versioned monorepo; versions and digests will be locked in code |
-| Web | Next.js 16, React 19.2, `next-intl`, TanStack Query, React Hook Form | English-first, Chinese-capable product UI and same-origin entry only; no second mutation path in Server Actions |
+| Web | Next.js 16, React 19.2, `next-intl`, TanStack Query, React Hook Form | Chinese-default, English-capable product UI and same-origin entry only; no second mutation path in Server Actions |
 | API | Fastify 5 | REST/OpenAPI, SSE, sessions, authorization, validation, and control-plane mutations |
 | Database | PostgreSQL 17 | The sole authoritative business store |
 | Data access | `pg`, Kysely, `node-pg-migrate` | Reviewable SQL and explicit migrations |
@@ -87,7 +87,7 @@ The default path uses PostgreSQL jobs, leases, heartbeats, `FOR UPDATE SKIP LOCK
 
 ## Internationalization and time semantics
 
-The planned Web shell uses `next-intl` with Next.js App Router. Initial UI locales are `en` (default) and `zh-CN`, with locale-aware routes, a persisted user or organization preference, typed message catalogs, and CI parity checks. API and domain contracts return stable codes plus parameters; translated labels are never persisted as enums, audit states, or receipt semantics.
+The planned Web shell uses `next-intl` with Next.js App Router. Initial UI locales are `zh-CN` (default) and `en`, with locale-aware routes, a persisted user or organization preference, typed message catalogs, and CI parity checks. API and domain contracts return stable codes plus parameters; translated labels are never persisted as enums, audit states, or receipt semantics.
 
 Four concepts remain independent:
 

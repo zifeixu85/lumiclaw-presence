@@ -55,12 +55,12 @@ Synthetic or de-identified fixtures are never customer UAT. A successful run is 
 - Do not copy competitor or upstream source without an explicit dependency and license decision.
 - Postiz is POC-GATED. Do not fork it, copy its providers, or share its internal database or queues.
 - HTTP isolation reduces architectural coupling; it is not a legal safe harbor.
-- The root license is not yet selected. Do not label the repository MIT, Apache-2.0, AGPL, or production-ready until the owner decides.
+- The repository is licensed under Apache-2.0. Follow `docs/DEPENDENCY-POLICY.md`; preserve third-party licenses and NOTICE obligations. Apache-2.0 does not make unreviewed dependencies compatible or the product production-ready.
 
 ## Engineering
 
 - Baseline: Node.js 24 LTS, TypeScript/ESM, npm workspaces, Next.js 16/React 19.2, Fastify 5, PostgreSQL 17, Kysely, and JSON Schema/Ajv.
-- The Web baseline uses `next-intl`. Initial UI locales are `en` (default) and `zh-CN`; message catalogs are typed and must pass locale-parity checks. UI locale, campaign content language, target market, and schedule time zone are separate fields.
+- The Web baseline uses `next-intl`. Initial UI locales are `zh-CN` (default) and `en`; message catalogs are typed and must pass locale-parity checks. UI locale, campaign content language, target market, and schedule time zone are separate fields.
 - Docker Compose is the first local and single-host self-host contract. PostgreSQL is the only authoritative business database; do not introduce Redis or a second object-store service before a measured need.
 - The initial application processes are `web`, `api`, `mission-worker`, and a separate `action-operator`. AgentTeams remains an external/profile runtime domain behind an adapter.
 - Scheduling is persistent business state, not an in-memory timer. Do not use OS crontab or `node-cron` as the source of truth. Store schedules and occurrences in PostgreSQL with IANA time zones, explicit misfire policy, leases, heartbeats, restart recovery, and duplicate prevention. The `mission-worker` owns the first scheduler loop; a later dedicated scheduler may use the same contracts.
@@ -73,13 +73,13 @@ Synthetic or de-identified fixtures are never customer UAT. A successful run is 
 - Do not migrate generated output, private evidence, credentials, or legacy Work App product semantics.
 - Do not count a connector/operator role as one of the required agents.
 
-## Delivery, SDD, and progress rules
+## Delivery, SDD, coordination, and progress rules
 
 - `IMPLEMENTATION-STATUS.md` is the canonical implementation progress register. Its Chinese mirror must contain the same module IDs and states in the same commit.
 - At the start of every implementation task, read this file, `IMPLEMENTATION-STATUS.md`, `ARCHITECTURE.md`, `ROADMAP.md`, and the relevant SDD before changing code.
-- Run each milestone or bounded SDD in a separate Codex task. Use one explicit goal for that SDD when goal mode is available; do not mark the goal complete before required verification, the acceptance report, and the progress-register update are complete.
-- Select exact module IDs and verify dependencies. Set selected modules to `IN_PROGRESS` in both progress files in the first intentional implementation commit.
+- The coordinator creates a separate Codex task and one explicit goal for each milestone or bounded SDD. The coordinator owns canonical progress transitions, integration, final acceptance, and the next-task decision.
+- Before dispatch, the coordinator selects exact module IDs, verifies dependencies, and sets only the currently executable module to `IN_PROGRESS` in both progress files. Executor tasks do not alter canonical progress unless the coordinator explicitly delegates it.
 - Use `docs/specs/SPEC-TEMPLATE.md`. A spec must reach `SPEC_READY` before implementation and must include binary acceptance criteria, failure/recovery behavior, exact user-visible verification, and rollback.
-- Every completed implementation task creates `docs/reports/acceptance/SDD-NNN-ACCEPTANCE.md` from the report template. Record exact commands and results, evidence paths, known limitations, rollback, and every check the owner can perform with prerequisites, numbered steps, expected result, failure signs, evidence to return, and cleanup.
+- Every completed implementation task creates a Chinese `docs/reports/acceptance/SDD-NNN-ACCEPTANCE.md` from the report template and returns a structured status handoff to the coordinator. Record exact commands and results, evidence paths, known limitations, rollback, and every check the owner can perform with prerequisites, numbered steps, expected result, failure signs, evidence to return, and cleanup.
 - Use `EVIDENCE_READY` when machine verification is complete but required owner/user acceptance is pending. Use `ACCEPTED` only after the SDD criteria, automated checks, evidence report, and required owner/user decision all pass.
-- Before ending the task, update both progress files with evidence, blockers, and the next executable module. Chat text alone never changes implementation status.
+- Before ending an executor task, report proposed module states, evidence, blockers, commit/worktree identity, and the next candidate step. The coordinator independently verifies these claims and updates both progress files. Chat text alone never changes implementation status.
