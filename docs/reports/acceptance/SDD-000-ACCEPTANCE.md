@@ -6,7 +6,7 @@
 > Executor Task：`019fbe95-9577-7d02-900f-948d3861369c` 派生的 SDD-000 Executor 任务
 > Worktree：`/Users/ameng/Documents/Projects/GOAI-hangzhou/worktrees/lumiclaw-presence/sdd-000-delivery-foundation`
 > Branch / Base：`codex/sdd-000-delivery-foundation` / `5acc7cd508f07fdeabe74e39e366158bf58463f6`
-> Delivery Commit：本报告所在本地提交；绝对 hash 见 Executor 最终 `STATUS_HANDOFF`，避免在同一提交内制造自引用 hash
+> Delivery Commits：实现提交 `14ab5fbdb636f4b934179e16f13e1a8da23bf5cb`；本报告收尾提交的绝对 hash 见 Executor 最终 `STATUS_HANDOFF`，避免同一提交自引用
 > 报告状态：`EVIDENCE_READY`
 > 证据成熟度：`ENGINEERING_VERIFIED`
 > 生成日期：`2026-08-03`
@@ -183,9 +183,9 @@ Executor 未修改双语 `IMPLEMENTATION-STATUS` 的规范状态。建议由 Coo
 
 - Worktree / Branch / Base：见报告头；只在 Coordinator 指定 Worktree 工作。
 - Changed Files：`.gitignore` 及 100+ 个 SDD-000 文件，集中于 `.github/`、`apps/`、`packages/`、`infra/`、`scripts/`、`docs/specs/`、`docs/dependencies/`、`docs/design/` 与本报告；两份规范 Implementation Status 无改动。
-- Commits：本地提交 hash 由最终 `STATUS_HANDOFF` 给出。
+- Commits：实现提交 `14ab5fbdb636f4b934179e16f13e1a8da23bf5cb`；仅验收报告收尾的第二个本地提交 hash 由最终 `STATUS_HANDOFF` 给出。
 - Push / PR / Deploy：全部 `NO`。
-- 未提交状态：最终交接以 `git status --short` 为准；计划在全量验证通过后本地提交。
+- 未提交状态：全量验证后已创建本地提交；最终交接时 `git status --short` 为空。
 - Blocker：无实现 blocker；Owner UAT、Coordinator 独立复验和远端 CI 为待办，不阻止建议 `EVIDENCE_READY`。
 - 下一候选步骤：Coordinator 验收 SDD-000 并更新双语进度真源；之后才选择 `SDD-001 Campaign Walking Skeleton`，不得由本 Executor 自动开始 M1。
 
