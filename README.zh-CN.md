@@ -1,10 +1,10 @@
 # LumiClaw Presence
 
-[English](README.md) | [简体中文](README.zh-CN.md) | [路线图](ROADMAP.zh-CN.md)
+[English](README.md) | [简体中文](README.zh-CN.md) | [技术架构](ARCHITECTURE.zh-CN.md) | [路线图](ROADMAP.zh-CN.md)
 
 > 面向多品牌、多市场团队的 AI 原生全球品牌运营系统。
 
-**状态：** Pre-alpha，目前只有文档。产品方向已经冻结，首个可运行纵向切片正在构建。除非明确标注，以下能力均为规划。
+**状态：** Pre-alpha，目前只有文档。产品方向和参考架构已经冻结，首个可运行纵向切片是下一步计划。除非明确标注，以下能力均为规划。
 
 LumiClaw Presence 把一个业务目标转化为跨身份、品牌、产品、市场和公开账号的协同行动，在已批准的事实、权限与责任边界内执行，并把真实回应带回下一轮决策。
 
@@ -48,18 +48,24 @@ LumiClaw Presence 计划成为这条闭环的控制与学习层。Connector、�
 → 有证据约束的 Claim
 → 专业 AgentTeams 成员
 → 独立生产与审校
+→ 四个平台可编辑原生版本
 → Human Owner 精确批准
-→ 一个官方 Connector 直发
-→ 一个诚实 Native Handoff
+→ 受治理的直发或诚实 Native Handoff
 → 真实 Response、Outcome 与 Disposition
 → 有作用域的 LearningProposal
 → 故障重放被拒绝
 ~~~
 
-计划中的参考路径：
+首个 Composer 与 Review 路径计划提供四个平台版本，并清楚区分执行语义：
 
-- 使用官方 API 的 LumiClaw 自有 Bluesky Connector；
-- 当前账号能力连接和验证完成前，LinkedIn 使用用户驱动 Native Handoff。
+| 平台 | 可编辑产物与 Preview | 执行路径 |
+|---|---|---|
+| Bluesky | 必过 | 官方 Direct 必过，并用 URI/CID 对账 |
+| LinkedIn | 必过 | 用户驱动 Native Handoff 必过，并用 URL 对账 |
+| 小红书 | 必过 | 用户驱动发布包 Handoff 必过，并用 URL 或批准证据对账 |
+| X | 必过 | 官方 Direct 是 POC-GATED Canary；失败时显式降级为 Handoff，且不得阻塞 Hero |
+
+Preview 可用不代表 Connector 已存在，也不代表当前账号允许 Direct。
 
 Postiz 是独立 PoC 候选，不进入 Hero 关键路径；LumiClaw 不 Fork 或复制其源码。
 
@@ -122,19 +128,31 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 项目不承诺曝光、涨粉、线索或收入。
 
+## 计划技术架构
+
+已选择的参考栈是 Node.js 24 LTS 与 TypeScript；`web` 使用 Next.js 16，`api` 使用 Fastify 5，权威状态使用 PostgreSQL 17 与 Kysely；Docker Compose 是首个安装合同。
+
+应用拆分为 `web`、`api`、`mission-worker` 和确定性的 `action-operator`。AgentTeams 通过 Runtime Adapter 运行在独立执行域，不是产品数据库、Secret Store 或发布 Operator。DeepSeek、EvoLink 与公开信号来源分别位于 `ModelProvider`、`MediaGenerationProvider` 和 `SignalProvider` 端口之后；发布侧另用 `PublishConnector` 与 `NativeHandoffAdapter` 合同。
+
+计划中的服务边界、Provider 端口、四平台 Preview 合同与交付 Gate 详见[技术架构](ARCHITECTURE.zh-CN.md)。
+
 ## 当前实现真相
 
 **已经实现：**
 
 - 公开仓；
-- 中英文产品文档。
+- 中英文产品、技术架构与路线图文档。
 
 **仍在规划：**
 
 - 新领域合同；
+- Node.js 24 / Next.js 16 / Fastify 5 / PostgreSQL 17 应用基线；
+- `web`、`api`、`mission-worker`、`action-operator` 的 Docker Compose 服务；
 - AgentTeams Campaign Runtime；
 - ActionGrant、ActionReceipt 与 Capability Probe；
-- Bluesky 直发与 LinkedIn Handoff；
+- 四平台可编辑 Preview；
+- Bluesky Direct、LinkedIn 与小红书 Handoff，以及分级准入的 X Direct Canary；
+- DeepSeek、EvoLink 与隔离的 SignalProvider Adapter；
 - Response Disposition、作用域学习与 Flight Replay；
 - Web 产品面。
 
@@ -142,14 +160,14 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 ## 实现顺序
 
-1. 领域 Schema、canonical digest 与 Conformance Fixture；
-2. Producer 与 Auditor 分离的 AgentTeams SHADOW Mission；
-3. Replay 与故障拒绝；
-4. Human Decision → 单次 ActionGrant → ActionReceipt；
-5. 一个官方直发 Connector 与一个 Native Handoff；
-6. 一条真实 Response → Outcome → Scoped Learning；
+1. Docker Compose Skeleton、PostgreSQL Migration、领域 Schema、canonical digest 与 Conformance Fixture；
+2. Campaign Walking Skeleton、四平台可编辑 Preview 与 Capability/Constraint Fixture；
+3. 经 DeepSeek 路由、Producer 与 Auditor 分离的六成员 AgentTeams SHADOW Mission；
+4. Replay、故障拒绝，以及 Human Decision → 单次 ActionGrant → ActionReceipt；
+5. Bluesky Direct、LinkedIn 与小红书 Handoff；X Direct 只有 Canary Gate 通过才开启；
+6. 一条真实 Response → Outcome → Scoped Learning，以及一个隔离的 SignalProvider PoC；
 7. 下一 Mission 正确复用已批准学习；
-8. 同条件下比较单 Agent 与多 Agent。
+8. Fresh Install、恢复、Provider Conformance，以及同条件单 Agent / 多 Agent 验证。
 
 各阶段的用户结果、Exit Criteria、产品 Horizon 和 SDD 推进方式维护在[公开路线图](ROADMAP.zh-CN.md)中。
 
@@ -161,6 +179,6 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 ## 开发与许可证
 
-实现基线为 Node.js 20+、ESM、npm workspaces、schema-first 合同和自动 Conformance Test。
+计划实现基线为 Node.js 24 LTS、TypeScript、ESM、npm workspaces、schema-first 合同和自动 Conformance Test。
 
 根 License 尚未选择。在加入 License 前，本仓只是公开源码仓而不是开源发行版，暂不接收代码贡献。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。

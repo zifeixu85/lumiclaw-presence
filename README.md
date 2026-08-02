@@ -1,10 +1,10 @@
 # LumiClaw Presence
 
-[English](README.md) | [简体中文](README.zh-CN.md) | [Roadmap](ROADMAP.md)
+[English](README.md) | [简体中文](README.zh-CN.md) | [Architecture](ARCHITECTURE.md) | [Roadmap](ROADMAP.md)
 
 > AI-native global brand operations for multi-brand, multi-market teams.
 
-**Status:** Pre-alpha and documentation-only. The product direction is defined; the first runnable vertical slice is being built. Unless explicitly marked otherwise, the capabilities below are planned.
+**Status:** Pre-alpha and documentation-only. The product direction and reference architecture are defined; the first runnable vertical slice is planned next. Unless explicitly marked otherwise, the capabilities below are planned.
 
 LumiClaw Presence turns one business objective into coordinated action across identities, brands, products, markets, and public accounts. It executes within approved facts, permissions, and ownership boundaries, then brings real responses back into the next decision.
 
@@ -48,18 +48,24 @@ real campaign objective
 → evidence-bound claims
 → specialized AgentTeams members
 → independent production and audit
+→ four editable platform-native revisions
 → exact human approval
-→ one official direct publish
-→ one honest native handoff
+→ governed direct publish or honest native handoff
 → real response signal and disposition
 → scoped learning proposal
 → replayed fault denial
 ~~~
 
-The planned reference paths are:
+The first composer and review path plans four platform variants with different, explicit execution semantics:
 
-- a LumiClaw-owned Bluesky connector using the official API;
-- a user-driven LinkedIn native handoff until the specific account capability is connected and verified.
+| Platform | Editable artifact and preview | Execution path |
+|---|---|---|
+| Bluesky | Required | Official Direct must pass, with URI/CID reconciliation |
+| LinkedIn | Required | User-driven Native Handoff must pass, with URL reconciliation |
+| Xiaohongshu | Required | User-driven content-package Handoff must pass, with URL or approved evidence reconciliation |
+| X | Required | Official Direct is a PoC-gated Canary; it falls back to explicit Handoff and cannot block the Hero |
+
+A preview does not imply that a connector exists or that an account currently permits direct action.
 
 Postiz is a separate proof-of-concept candidate, not a dependency of the critical path. We will not fork or copy its source into LumiClaw.
 
@@ -122,19 +128,31 @@ LumiClaw Presence is intended to own governed global brand actions and learning.
 
 We do not claim guaranteed reach, follower growth, leads, or revenue.
 
+## Planned technical architecture
+
+The selected reference stack is Node.js 24 LTS and TypeScript, with Next.js 16 for `web`, Fastify 5 for `api`, PostgreSQL 17 with Kysely for authoritative state, and Docker Compose as the first installation contract.
+
+The application is split into `web`, `api`, `mission-worker`, and a deterministic `action-operator`. AgentTeams runs in a separate execution domain through a Runtime Adapter; it is not the product database, secret store, or publishing operator. DeepSeek, EvoLink, and public-signal sources sit behind `ModelProvider`, `MediaGenerationProvider`, and `SignalProvider` ports. Publishing uses separate `PublishConnector` and `NativeHandoffAdapter` contracts.
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the planned service boundaries, provider ports, four-platform preview contract, and delivery gates.
+
 ## Current implementation truth
 
 **Implemented:**
 
 - this public repository;
-- the English and Chinese product documentation.
+- the English and Chinese product, architecture, and roadmap documentation.
 
 **Planned:**
 
 - the new domain contracts;
+- the Node.js 24 / Next.js 16 / Fastify 5 / PostgreSQL 17 application baseline;
+- Docker Compose services for `web`, `api`, `mission-worker`, and `action-operator`;
 - the AgentTeams campaign runtime;
 - ActionGrant, ActionReceipt, and capability probing;
-- Bluesky direct publishing and LinkedIn native handoff;
+- four editable platform previews;
+- Bluesky Direct, LinkedIn and Xiaohongshu Handoffs, and the gated X Direct Canary;
+- DeepSeek, EvoLink, and isolated SignalProvider adapters;
 - response disposition, scoped learning, and Flight replay;
 - a web product surface.
 
@@ -142,14 +160,14 @@ Legacy engineering assets exist in a separate private prototype, but they are no
 
 ## Build order
 
-1. Domain schemas, canonical digests, and conformance fixtures.
-2. A real AgentTeams SHADOW mission with separated producer and auditor roles.
-3. Replay and fault denial.
-4. Human decision to single-use ActionGrant to ActionReceipt.
-5. One official direct connector and one native handoff.
-6. One real response to a reviewed outcome and scoped learning proposal.
+1. Docker Compose skeleton, PostgreSQL migrations, domain schemas, canonical digests, and conformance fixtures.
+2. Campaign walking skeleton with four editable previews and capability/constraint fixtures.
+3. A real six-member AgentTeams SHADOW mission with separated producers and auditor, routed through DeepSeek.
+4. Replay, fault denial, and human decision to single-use ActionGrant to ActionReceipt.
+5. Bluesky Direct plus LinkedIn and Xiaohongshu Handoffs; X Direct only if its Canary gate passes.
+6. One real response to a reviewed outcome and scoped learning proposal, plus one isolated SignalProvider PoC.
 7. A second mission that correctly reuses approved learning.
-8. Single-agent versus multi-agent evaluation under the same conditions.
+8. Fresh-install, recovery, provider-conformance, and single-agent versus multi-agent verification.
 
 The milestone outcomes, exit criteria, product horizons, and specification-driven workflow are maintained in the [public roadmap](ROADMAP.md).
 
@@ -161,6 +179,6 @@ It will not contain private research notes, internal decision records, raw custo
 
 ## Development and licensing
 
-The implementation baseline is Node.js 20+, ESM, npm workspaces, schema-first contracts, and automated conformance tests.
+The planned implementation baseline is Node.js 24 LTS, TypeScript, ESM, npm workspaces, schema-first contracts, and automated conformance tests.
 
 A root license has not yet been selected. Until a license is added, this is a public source repository but not an open-source release, and code contributions are paused. See [CONTRIBUTING.md](CONTRIBUTING.md).

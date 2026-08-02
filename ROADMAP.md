@@ -1,8 +1,8 @@
 # LumiClaw Presence Roadmap
 
-[English](ROADMAP.md) | [简体中文](ROADMAP.zh-CN.md)
+[English](ROADMAP.md) | [简体中文](ROADMAP.zh-CN.md) | [Architecture](ARCHITECTURE.md)
 
-This roadmap describes product outcomes, not a promise that every planned capability already exists. See the [README](README.md) for current implementation truth.
+This roadmap describes product outcomes, not a promise that every planned capability already exists. See the [README](README.md) for current implementation truth and [architecture](ARCHITECTURE.md) for the planned technical boundaries.
 
 ## How we are building
 
@@ -13,6 +13,7 @@ campaign setup
 → activation plan
 → AgentTeams shadow work
 → independent audit
+→ four editable platform revisions
 → exact owner approval
 → governed direct action or native handoff
 → reconciled receipt
@@ -28,40 +29,46 @@ Each milestone is a user-visible vertical slice. Product UI, domain contracts, A
 ### M0 — Delivery foundation · NOW
 
 - Freeze the first real campaign input and owner baseline.
-- Establish the application shell, SDD workflow, CI, dependency policy, and license decision.
-- Verify the pinned AgentTeams runtime and create a new mission smoke test.
-- Produce a clickable version of the complete five-screen journey.
+- Establish a Node.js 24 and TypeScript workspace with planned Next.js 16 `web`, Fastify 5 `api`, `mission-worker`, and deterministic `action-operator` boundaries.
+- Establish the Docker Compose skeleton, PostgreSQL 17 migration path, content-addressed local blob storage, SDD workflow, CI, dependency policy, and license decision.
+- Verify a pinned, isolated AgentTeams external runtime profile and create a new mission smoke test without treating its internal state as product state.
+- Produce clickable low/high-fidelity routes for the complete five-screen journey and all four platform composers.
 
-Exit: the repository installs, tests, and opens a labeled product shell; the first vertical-slice spec is ready.
+Exit: the repository installs through the documented Compose path, migrations and tests pass, a labeled product shell opens, and the first vertical-slice spec is ready.
 
 ### M1 — Campaign walking skeleton · NEXT
 
-- Create, save, and reopen a real CampaignBrief.
-- Model identity, product, market, account mandate, claims, evidence, and activation units.
+- Create, save, and reopen a real CampaignBrief using PostgreSQL as the authoritative state.
+- Model identity, product, market, account mandate, claims, evidence, and four activation units.
 - Show missing evidence, account boundaries, and a useful activation plan.
 - Use one shared mission state across Web, API/CLI, and the AgentTeams adapter.
+- Deliver editable X, Bluesky, LinkedIn, and Xiaohongshu artifacts with native-like previews and capability/constraint fixtures.
 
-Exit: a real LumiClaw campaign can reach readiness without hidden demo-only state.
+Exit: a real LumiClaw campaign can reach readiness and reopen its four editable platform revisions without hidden demo-only state.
 
 ### M2 — Governed shadow campaign
 
 - Run one mission leader and five domain specialists in AgentTeams; the leader orchestrates but does not produce domain artifacts.
-- Produce distinct founder and product-account artifacts.
+- Route model work through the `ModelProvider` port and the planned DeepSeek V4 gateway.
+- Produce distinct founder and product-account artifacts across all four platform variants.
 - Keep producers and the independent auditor separate.
-- Show revision diffs, audit evidence, owner review, shared state, and trace.
-- Inject one claim fault and prove that no external action can occur.
+- Bring uploaded or `MediaGenerationProvider`-derived media into immutable revisions without auto-approval.
+- Show revision diffs, audit evidence, owner review, shared state, and trace in the LumiClaw control plane.
+- Inject one claim or platform-constraint fault and prove that no external action can occur.
 
-Exit: one valid artifact reaches owner review and one invalid artifact is blocked and revised.
+Exit: the six-member team returns digest-validated artifacts; one valid revision reaches owner review and one invalid revision is blocked and revised.
 
 ### M3 — Controlled live activation
 
 - Turn an exact OwnerDecision into a short-lived, single-use ActionGrant.
-- Persist an outbox attempt before execution.
+- Persist the grant and outbox transition atomically before the separate, no-LLM `action-operator` executes.
 - Publish through the official Bluesky path and reconcile the native record.
 - Provide an honest LinkedIn native handoff and URL reconciliation.
-- Distinguish published, user-action-required, failed, and unknown states.
+- Provide an honest Xiaohongshu content-package handoff and URL or approved-evidence reconciliation.
+- Run the official X Direct PoC; enable only a scoped Canary if OAuth, scope, budget, idempotency, failure, and read-back gates all pass, otherwise downgrade to X Handoff.
+- Distinguish published, handoff-reconciled, user-action-required, failed, and unknown states.
 
-Exit: one direct action and one native handoff complete with truthful receipts and no unauthorized or duplicate action.
+Exit: Bluesky Direct, LinkedIn Handoff, and Xiaohongshu Handoff complete with truthful receipts and no unauthorized or duplicate action. X Direct is optional and cannot block this exit.
 
 ### M4 — Response and learning loop
 
@@ -69,17 +76,18 @@ Exit: one direct action and one native handoff complete with truthful receipts a
 - Let the owner decide its outcome and disposition.
 - Review, accept, reject, scope, and roll back a LearningProposal.
 - Show exactly which approved learning a second mission reused.
+- Complete at least one isolated, non-critical `SignalProvider` PoC with purpose, provenance, terms, quarantine, schema, and retention gates.
 
-Exit: Mission 1 → response → learning decision → Mission 2 is reproducible without cross-account or cross-market leakage.
+Exit: Mission 1 → response → learning decision → Mission 2 is reproducible without cross-account or cross-market leakage; third-party signal data cannot bypass evidence review.
 
 ### M5 — Runnable product candidate
 
 - Integrate the complete five-screen Web journey.
-- Cover empty, blocked, expired, revoked, unknown, recovery, and success states.
+- Cover empty, blocked, expired, revoked, unknown, recovery, and success states across the four platform previews and action modes.
 - Compare single-agent, minimum-team, and full-team runs under the same conditions.
-- Provide a fresh-install path, CI, conformance tests, evidence export, and a public-safe example.
+- Provide fresh Docker installation, backup/restore rehearsal, CI, provider and connector conformance tests, evidence export, accessibility/visual checks, and a public-safe example.
 
-Exit: a new machine can run one normal loop and one fail-closed loop from the documented setup.
+Exit: a new machine can run one normal loop and one fail-closed loop from the documented Compose setup without hidden services on the developer's machine.
 
 ### M6 — External calibration and hardening
 
@@ -104,7 +112,7 @@ The later horizons are direction, not implementation claims.
 
 LumiClaw owns the business semantics and evidence chain: Brand Graph, Campaign Mission, Claim/Evidence, role context, artifact revisions, independent audit, owner decisions, grants, receipts, outcomes, scoped learning, and Flight conformance.
 
-We integrate replaceable infrastructure where appropriate: AgentTeams, Web and database frameworks, official platform SDKs, storage, queues, secret managers, and observability backends. Postiz remains a separately deployed, proof-of-concept adapter candidate; it is not part of the critical path and its source is not copied into this repository.
+We integrate replaceable infrastructure where appropriate: AgentTeams as an external execution domain; DeepSeek behind `ModelProvider`; EvoLink behind `MediaGenerationProvider`; public sources behind `SignalProvider`; official actions behind `PublishConnector`; and user-driven completion behind `NativeHandoffAdapter`. Web and database frameworks, storage, secret managers, and observability backends remain infrastructure choices. Postiz remains a separately deployed, proof-of-concept adapter candidate; it is not part of the critical path and its source is not copied into this repository.
 
 ## Specification-driven delivery
 
