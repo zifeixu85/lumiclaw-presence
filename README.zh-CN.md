@@ -2,117 +2,163 @@
 
 [English](README.md) | [简体中文](README.zh-CN.md)
 
-> 面向全球市场公开经营的、可治理多 Agent 基础设施。
+> 面向多品牌、多市场团队的 AI 原生全球品牌运营系统。
 
-**状态：** 早期建设中。产品方向已经明确，首个可运行纵切面正在构建。
+**状态：** Pre-alpha，目前只有文档。产品方向已经冻结，首个可运行纵向切片正在构建。除非明确标注，以下能力均为规划。
 
-LumiClaw Presence 帮助创始人和小团队经营不同市场中的公开账号，同时避免把不受控的业务权限交给 AI。系统把经营目标、已验证的企业事实、市场信号、账号上下文和明确授权，编译为一支专业 Agent 团队执行的有边界 Mission。
+LumiClaw Presence 把一个业务目标转化为跨身份、品牌、产品、市场和公开账号的协同行动，在已批准的事实、权限与责任边界内执行，并把真实回应带回下一轮决策。
 
-它不是另一个多平台发帖器。发布只是完整经营循环中的一个受治理动作；完整循环还包括研究、策略、市场原生表达、独立审校、负责人批准、动作回执、入站信号识别、交接和有作用域的学习。
+长期愿景是 **Global Presence OS**；第一能力表面是 **Global SocialOps**；第一个可购买任务是 **Global Campaign Activation & Response**。
 
-## LumiClaw Presence 做什么
+## 要解决的问题
 
-- 把一个主要经营目标转化为有边界的 `PresenceMission`。
-- 分离证据研究、策略、生产、独立审校和外部动作权限。
-- 从共享且有证据支撑的内容内核，生成适合不同市场和账号的原生版本。
-- 将每次外部动作绑定到精确内容版本、账号、动作类型和有效时间。
-- 把评论、提及、允许读取的消息和指标整理为可审阅的业务信号。
-- 将高价值信号形成可追踪的交接包，交给负责人或下游系统。
-- 提出有作用域的学习建议，而不静默修改已批准事实、策略或共享 Skill。
+生成内容和排程发布正在变得便宜。真正困难的是：
 
-## 面向谁
+- 谁应该代表哪个品牌或产品发声；
+- 不同市场和账号应该采取什么不同动作；
+- 每条重要主张怎样绑定仍然有效的证据；
+- 生产、独立审校、人工批准和执行怎样真正分权；
+- 怎样证明外部平台实际做了什么；
+- 不支持的动作和未知状态怎样诚实降级与对账；
+- 真实回复怎样进入有作用域、可审阅的下一轮学习。
 
-首批关注以下创始人和小团队：
+LumiClaw Presence 计划成为这条闭环的控制与学习层。Connector、排程器、模型和 Inbox Provider 均可替换。
 
-- 正在为全球市场经营企业、产品或专业身份；
-- 有真实进展或专业知识需要持续表达；
-- 已运营至少一个公开账号；
-- 重要公开表达仍由创始人或负责人亲自审阅；
-- 尚未拥有完整的全球社媒或 GTM 运营团队。
+## 产品层级
 
-## Mission 流程
+| 层级 | 定义 |
+|---|---|
+| 长期愿景 | Global Presence OS |
+| 当前类别 | AI-native Global Brand Operations |
+| 产品 | LumiClaw Presence |
+| 第一能力表面 | Global SocialOps |
+| 第一可购买任务 | Global Campaign Activation & Response |
+| 治理运行时 | Presence Governance & Execution Runtime |
+| 信任模块 | Presence Agent Flight Simulator |
 
-```text
-经营目标
-→ 身份、市场、受众和账号上下文
-→ 已确认事实与公开信号
-→ 可验证的策略假设
-→ Presence Mission 与专业 Agent 团队
-→ 内容内核、市场叙事和账号版本
-→ 独立审校
-→ 负责人精确批准
-→ 发布、草稿或明确交接
-→ 动作回执与入站互动
-→ 结果信号或线索信号
-→ 交接与有作用域的学习建议
-```
+愿景说明产品可以走到哪里，不代表完整企业套件已经实现。
 
-## 核心设计原则
+## 首个计划纵切面
 
-### 目标驱动，而不是帖子驱动
+第一条纵向切面将围绕一项真实 LumiClaw Campaign，让创始人身份和产品身份协同行动：
 
-每个 Mission 从一个主要经营目标开始。目标会改变团队拓扑、Skills、上下文、指标、信号规则和学习范围。
+~~~text
+真实 Campaign 目标
+→ 身份、产品、市场、账号与 Mandate
+→ 有证据约束的 Claim
+→ 专业 AgentTeams 成员
+→ 独立生产与审校
+→ Human Owner 精确批准
+→ 一个官方 Connector 直发
+→ 一个诚实 Native Handoff
+→ 真实 Response、Outcome 与 Disposition
+→ 有作用域的 LearningProposal
+→ 故障重放被拒绝
+~~~
 
-### 真实的职责分离
+计划中的参考路径：
 
-生产者不能批准自己的产物，审校者不能发布，动作执行者不能修改已批准内容。对于受治理动作，人类负责人始终拥有最终决定权。
+- 使用官方 API 的 LumiClaw 自有 Bluesky Connector；
+- 当前账号能力连接和验证完成前，LinkedIn 使用用户驱动 Native Handoff。
 
-### 证据与精确授权
+Postiz 是独立 PoC 候选，不进入 Hero 关键路径；LumiClaw 不 Fork 或复制其源码。
 
-重要主张保留来源。批准绑定到精确 Artifact digest、目标账号、动作和有效时间；执行必须返回外部回执，否则失败关闭。
+## 核心合同
 
-### 感知能力的连接器
+LumiClaw 计划拥有：
 
-平台能力按真实账号探测。不支持的动作必须明确降级为草稿、导出、通知或用户驱动的原生交接。
+- Organization、Identity、Brand、Product、Market；
+- ChannelAccount 与 AccountMandate；
+- CampaignMission 与 ActivationUnit；
+- Claim 与 Evidence；
+- ArtifactRevision 与独立 AuditDecision；
+- Human OwnerDecision；
+- 短时、一次性 ActionGrant；
+- CapabilitySnapshot 与 ActionReceipt；
+- InteractionEvent、OutcomeSignal 与 Disposition；
+- LearningProposal 与作用域 ApprovedMemory。
 
-### 有作用域、可审阅的学习
+更换外部发布器后，这些业务对象和证据链不能消失。
 
-观察可以生成 `LearningProposal`，但不能静默成为长期真相。被接受的学习必须版本化、有作用域、可审阅并可回滚。
+## 安全与治理
+
+- Producer 不能审校或批准自己的产物；
+- Auditor 只能 PASS、FAIL 或 ESCALATE，不能静默改稿；
+- Human Owner 批准精确版本、账号、动作和时间窗口；
+- 确定性 Operator 不能修改批准内容或扩大授权；
+- 平台能力按真实账号探测；
+- HTTP 200 或队列 ID 不等于发布成功；
+- 外部状态未知时先对账，不盲目重试；
+- 观察只能生成 LearningProposal，不能静默修改已批准事实或共享 Skill；
+- 密钥和私有账号数据不得进入 Prompt、公开 Fixture 或 Commit。
+
+## Presence Agent Flight Simulator
+
+计划中的信任模块会在扩大权限前重放冻结的历史输入并注入故障：
+
+~~~text
+Frozen Input
+→ Historical Replay
+→ Fault Injection
+→ Readiness Report
+→ Autonomy Envelope
+→ Shadow
+→ Canary
+→ Scoped Permission Expansion
+~~~
+
+Replay 通过是工程证据，不是法律、文化、平台或业务安全认证。
 
 ## 产品边界
 
-LumiClaw Presence 负责：
+LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不替代：
 
-- Presence 目标、Campaign 和 Mission 定义；
-- Mission 所需的公开市场与账号信号；
-- 符合市场和账号语境的原生表达；
-- 审校、批准、动作授权与动作回执；
-- 自有账号的互动信号整理；
-- 线索信号准备与交接；
-- 有证据约束的学习建议。
-
-它不试图替代：
-
-- 完整 CRM、销售 Pipeline 或收入预测系统；
+- 完整 CRM、销售 Pipeline 或收入预测；
 - 付费媒体投放；
 - 企业整体战略、定价或产品管理；
 - 不受限制的自动评论、关注或私信；
 - 人类法律与合规判断；
 - 对业务结果负责的人类负责人。
 
-## 首个计划纵切面
+项目不承诺曝光、涨粉、线索或收入。
 
-首个纵切面是 **Weekly Global Update** Mission：创始人提供一项真实产品进展和一个主要目标；Agent 团队研究相关信号，形成可验证策略，为选定账号生成原生版本，进行独立审校，请求精确批准，只执行真实支持的动作，并把后续互动整理为业务信号和学习建议。
+## 当前实现真相
 
-该纵切面会逐步实现和验证。规划中的能力不会被表述为已经完成。
+**已经实现：**
+
+- 公开仓；
+- 中英文产品文档。
+
+**仍在规划：**
+
+- 新领域合同；
+- AgentTeams Campaign Runtime；
+- ActionGrant、ActionReceipt 与 Capability Probe；
+- Bluesky 直发与 LinkedIn Handoff；
+- Response Disposition、作用域学习与 Flight Replay；
+- Web 产品面。
+
+旧私有原型存在部分工程资产，但不能写成当前产品已经实现。任何复用都将逐文件记录来源、License、语义变化和新测试。
+
+## 实现顺序
+
+1. 领域 Schema、canonical digest 与 Conformance Fixture；
+2. Producer 与 Auditor 分离的 AgentTeams SHADOW Mission；
+3. Replay 与故障拒绝；
+4. Human Decision → 单次 ActionGrant → ActionReceipt；
+5. 一个官方直发 Connector 与一个 Native Handoff；
+6. 一条真实 Response → Outcome → Scoped Learning；
+7. 下一 Mission 正确复用已批准学习；
+8. 同条件下比较单 Agent 与多 Agent。
 
 ## 仓库范围
 
-本仓库将包含公开产品实现、领域 Schema、可复用 Skills、Connector 契约、测试、示例和公开技术文档。
+本仓库将保存公开产品代码、领域 Schema、可复用 Skill、Connector 契约、测试、示例和技术文档。
 
-本仓库不会包含私有研究笔记、内部决策记录、客户原始资料、私有运行证据、凭据、Token 或账号数据。
-
-## 路线图
-
-1. 定义最小领域契约与一致性测试。
-2. 构建一个包含至少三种不同 Agent 职责的受治理 Mission。
-3. 完成一次能力感知、具有精确回执的真实账号动作。
-4. 将一条允许读取的真实入站互动转化为经确认的信号与交接。
-5. 在下一次 Mission 中使用一条经人批准、有作用域的学习建议。
-6. 在相同条件下比较单 Agent、最小团队和动态团队的表现。
+本仓库不会保存私有研究、内部决策稿、客户原始资料、私信、凭据、Token、账号数据或私有 Runtime Evidence。
 
 ## 开发与许可证
 
-首个可运行纵切面完成时，将补充开发环境和贡献指南。
+实现基线为 Node.js 20+、ESM、npm workspaces、schema-first 合同和自动 Conformance Test。
 
-仓库许可证尚未确定。首个公开发布版本前会冻结许可证和贡献条款。
+根 License 尚未选择。在加入 License 前，本仓只是公开源码仓而不是开源发行版，暂不接收代码贡献。详见 [CONTRIBUTING.md](CONTRIBUTING.md)。
