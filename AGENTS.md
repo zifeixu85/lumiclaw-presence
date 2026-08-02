@@ -27,6 +27,7 @@ Synthetic or de-identified fixtures are never customer UAT. A successful run is 
 
 - AgentTeams is the multi-agent runtime for the reference path.
 - Every reference mission uses at least three real members with distinct responsibilities.
+- The current reference Hero uses one orchestration-only Presence Mission Leader plus five domain members. The Leader may not generate domain artifacts or substitute for the Claim Steward, Planner, Producers, or Auditor.
 - Producer and independent auditor must be separate.
 - The auditor may pass, fail, or escalate; it may not silently edit or approve.
 - A human owner approves exact revisions and external actions.
@@ -55,6 +56,7 @@ Synthetic or de-identified fixtures are never customer UAT. A successful run is 
 ## Engineering
 
 - Baseline: Node.js 20+, ESM, npm workspaces.
+- Milestone order and exit criteria live in `ROADMAP.md`; new vertical slices use `docs/specs/SPEC-TEMPLATE.md`.
 - Prefer schema-first contracts, canonical serialization, stable digests, and negative fixtures.
 - Migrate legacy code file by file with source commit/digest, semantic changes, license status, and regression tests.
 - Do not migrate generated output, private evidence, credentials, or legacy Work App product semantics.
