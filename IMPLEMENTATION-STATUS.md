@@ -28,7 +28,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | Accepted modules | `2 / 39` (`5.1%`) |
 | Evidence ready | `0 / 39` |
 | Blocked | `0 / 39` |
-| Active implementation SDD | `SDD-000 Delivery Foundation` — coordinator dispatch |
+| Active implementation SDD | `SDD-000 Delivery Foundation` — Executor task `019fc3ce-a7e5-7133-b035-a9be3245b4b3` active |
 | Earliest owner blocker | None for M0 implementation; provider credentials are deferred to their SDDs |
 | Next executable module | `M0-03` Monorepo and package baseline; coordinator-assigned `IN_PROGRESS` |
 

@@ -28,7 +28,7 @@
 | 已验收模块 | `2 / 39`（`5.1%`） |
 | 证据已就绪 | `0 / 39` |
 | 被阻塞 | `0 / 39` |
-| 当前实现 SDD | `SDD-000 Delivery Foundation` — Coordinator 正在派发 |
+| 当前实现 SDD | `SDD-000 Delivery Foundation` — Executor 任务 `019fc3ce-a7e5-7133-b035-a9be3245b4b3` 已启动 |
 | 最早 Owner 阻塞项 | M0 实现无；Provider Credential 延后到各自 SDD |
 | 下一个可执行模块 | `M0-03` Monorepo 与依赖基线，Coordinator 已标记 `IN_PROGRESS` |
 
