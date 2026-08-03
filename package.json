@@ -22,7 +22,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "npm run build:runtime",
-    "build:runtime": "npm run build --workspace @lumiclaw/blob-store && npm run build --workspace @lumiclaw/domain && npm run build --workspace @lumiclaw/db && npm run build --workspace @lumiclaw/i18n && npm run build --workspace @lumiclaw/process-health && npm run build --workspace @lumiclaw/runtime-agentteams && npm run build --workspace @lumiclaw/api && npm run build --workspace @lumiclaw/mission-worker && npm run build --workspace @lumiclaw/action-operator && npm run build --workspace @lumiclaw/web",
+    "build:runtime": "npm run build --workspace @lumiclaw/blob-store && npm run build --workspace @lumiclaw/domain && npm run build --workspace @lumiclaw/mission-compiler && npm run build --workspace @lumiclaw/db && npm run build --workspace @lumiclaw/i18n && npm run build --workspace @lumiclaw/process-health && npm run build --workspace @lumiclaw/runtime-agentteams && npm run build --workspace @lumiclaw/api && npm run build --workspace @lumiclaw/mission-worker && npm run build --workspace @lumiclaw/action-operator && npm run build --workspace @lumiclaw/web",
     "storybook": "npm run storybook --workspace @lumiclaw/web",
     "storybook:build": "npm run storybook:build --workspace @lumiclaw/web",
     "check:messages": "node scripts/check-message-parity.mjs",
