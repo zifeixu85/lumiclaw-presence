@@ -26,7 +26,7 @@ Campaign 初始化
 
 ## 当前开发顺序
 
-### M0｜交付基础 · NOW
+### M0｜交付基础 · 已交付
 
 - 冻结首个真实 Campaign 输入和 Owner 基线；
 - 建立 Node.js 24 与 TypeScript Workspace，规划 Next.js 16 `web`、Fastify 5 `api`、`mission-worker` 与确定性 `action-operator` 边界；
@@ -38,7 +38,7 @@ Campaign 初始化
 
 完成：仓库可通过文档中的 Compose 路径安装，Migration 与测试通过，带状态标记的产品壳可打开；首个纵向 Spec 达到可开发状态。
 
-### M1｜Campaign Walking Skeleton · NEXT
+### M1｜Campaign Walking Skeleton · 当前验收切片
 
 - 使用 PostgreSQL 权威状态创建、保存并重新打开真实 CampaignBrief；
 - 建模 Identity、Product、Market、AccountMandate、Claim/Evidence 与四个 ActivationUnit；

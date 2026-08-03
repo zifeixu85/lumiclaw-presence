@@ -28,7 +28,7 @@ const controlledFetch = async () =>
     headers: {'content-type': 'application/json'}
   });
 const report = await probeRuntime(runtime, 'http://controlled-fixture.invalid', 'CONTROLLED_FIXTURE', controlledFetch);
-const outputDir = path.join(root, '.evidence/sdd-000');
+const outputDir = path.join(root, '.evidence/sdd-001');
 await mkdir(outputDir, {recursive: true});
 await writeFile(
   path.join(outputDir, 'agentteams-capability-report.json'),

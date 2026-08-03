@@ -4,7 +4,7 @@
 
 > 面向多品牌、多市场团队的 AI 原生全球品牌运营系统。
 
-**状态：** Pre-alpha，目前只有文档。产品方向和参考架构已经冻结，首个可运行纵向切片是下一步计划。除非明确标注，以下能力均为规划。
+**状态：** Pre-alpha，已有本地、非实时的 M1 Campaign Walking Skeleton。本分支可在 PostgreSQL 中创建、保存和重新打开合成 Campaign，编辑四平台版本，并持久化不执行的排程；仍等待 Coordinator/Owner 验收，不代表生产就绪。
 
 LumiClaw Presence 把一个业务目标转化为跨身份、品牌、产品、市场和公开账号的协同行动，在已批准的事实、权限与责任边界内执行，并把真实回应带回下一轮决策。
 
@@ -38,7 +38,7 @@ LumiClaw Presence 计划成为这条闭环的控制与学习层。Connector、�
 
 愿景说明产品可以走到哪里，不代表完整企业套件已经实现。
 
-## 首个计划纵切面
+## 首个受治理纵切面
 
 第一条纵向切面将围绕一项真实 LumiClaw Campaign，让创始人身份和产品身份协同行动：
 
@@ -140,21 +140,20 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 ## 当前实现真相
 
-**已经实现：**
+**当前分支的工程验证候选（等待 Coordinator 复核与 Owner 验收）：**
 
-- 公开仓；
-- 中英文产品、技术架构与路线图文档。
-- 双语模块级实现进度表与每 SDD 验收报告模板。
+- 已验收的 M0 Node/npm Workspace、Docker Compose/PostgreSQL/BlobStore 基础、双语 Next.js Shell、质量门禁与隔离 AgentTeams v1.2.0 Adapter Smoke；
+- 租户约束的 Organization、Identity、Brand、Product、Market、ChannelAccount、AccountMandate 合同与 Migration；
+- 版本化 CampaignBrief、GoalProfile、Claim/Evidence、ActivationPlan/ActivationUnit、ArtifactRevision、CapabilitySnapshot 与六角色 MissionContract，并提供 Canonical Digest；
+- Fastify REST/OpenAPI Control API，以及 PostgreSQL 创建/保存/重开、Idempotency-Key、ETag 冲突、Snapshot 和租户隔离；
+- 默认中文、支持英文的五主屏 M1 状态，以及 X、Bluesky、LinkedIn、小红书四种可编辑且结构不同的 Preview；
+- PostgreSQL PublishingSchedule/ScheduleOccurrence，覆盖受约束 RRULE、IANA 时区、DST gap/fold、Misfire 与编辑失效；
+- 不包含到期执行、真实平台动作、模型/Provider 调用、OwnerDecision、ActionGrant、ActionReceipt 或真实客户数据。
 
 **仍在规划：**
 
-- 新领域合同；
-- Node.js 24 / Next.js 16 / Fastify 5 / PostgreSQL 17 应用基线；
-- `next-intl` Locale Route、中英文类型化 Catalog 与持久化 Schedule/Occurrence 合同；
-- `web`、`api`、`mission-worker`、`action-operator` 的 Docker Compose 服务；
 - AgentTeams Campaign Runtime；
 - ActionGrant、ActionReceipt 与 Capability Probe；
-- 四平台可编辑 Preview；
 - Bluesky Direct、LinkedIn 与小红书 Handoff，以及分级准入的 X Direct Canary；
 - DeepSeek、EvoLink 与隔离的 SignalProvider Adapter；
 - Response Disposition、作用域学习与 Flight Replay；

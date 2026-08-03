@@ -41,12 +41,12 @@ const mission: MissionCopy = {
 };
 
 const meta = {
-  title: 'Foundation/Product Shell',
+  title: 'M1/Campaign States',
   component: ProductShell,
   parameters: {
     docs: {
       description: {
-        component: 'M0 review baseline only. This story contains no live Campaign, Agent turn, approval, account, or platform action.'
+        component: 'M1 state fixtures. These stories remain DEMO_SEED / NOT_LIVE and perform no network or platform action.'
       }
     }
   }
@@ -55,23 +55,29 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const MissionContractOnly: Story = {
+const screen = {
+  eyebrow: '03 · 为不同平台准备内容',
+  title: '一次准备，形成四个平台各自合适的表达。',
+  summary: '同一条品牌信息会按照不同平台的表达习惯分别准备，同时保留编辑区和发布前预览。',
+  status: '四个平台内容可编辑、预览和保存',
+  basis: '内容来自合成演示种子；没有调用模型或平台，也不会批准或发布。',
+  next: '修改任一平台内容，检查预览，然后保存新版本。',
+  previewTitle: '这里将展示四个平台的内容版本',
+  previewItems: ['每个平台准备的表达方式', '可以由你修改的内容', '发送或发布前的效果预览'] as [string, string, string],
+  technicalStatus: 'COMPOSER_PERSISTED / NO_AGENT_TURN / NO_PUBLISH',
+  technicalBasis: '四平台 ArtifactRevision 与持久化合同可重开；真实 AgentTeams Mission 尚未运行。'
+};
+
+export const Loading: Story = {
   args: {
     locale: 'zh-CN',
     routeId: 'mission',
     labels,
-    screen: {
-      eyebrow: '03 · 为不同平台准备内容',
-      title: '一次准备，形成四个平台各自合适的表达。',
-      summary: '同一条品牌信息会按照不同平台的表达习惯分别准备，同时保留编辑区和发布前预览。',
-      status: '当前只展示工作方式，AI 团队尚未开始',
-      basis: '没有连接模型或平台账号，也没有生成、批准或发布任何内容。',
-      next: '查看四个平台的内容位置和预览方式，判断是否符合你的工作习惯。',
-      previewTitle: '这里将展示四个平台的内容版本',
-      previewItems: ['每个平台准备的表达方式', '可以由你修改的内容', '发送或发布前的效果预览'],
-      technicalStatus: 'ADAPTER_CONTRACT_ONLY / NO_AGENT_TURN',
-      technicalBasis: '六角色 TeamProfile 和四平台 Adapter 边界已验证；真实 AgentTeams Mission 尚未运行。'
-    },
-    mission
+    screen, mission, workspaceState: 'loading'
   }
 };
+
+export const Empty: Story = {args: {locale: 'zh-CN', routeId: 'campaigns', labels, screen, mission, workspaceState: 'empty'}};
+export const Blocked: Story = {args: {locale: 'zh-CN', routeId: 'learn', labels, screen, mission, workspaceState: 'blocked'}};
+export const NeedsOwner: Story = {args: {locale: 'zh-CN', routeId: 'review', labels, screen, mission, workspaceState: 'needs-owner'}};
+export const Recovery: Story = {args: {locale: 'zh-CN', routeId: 'mission', labels, screen, mission, workspaceState: 'recovery'}};

@@ -5,6 +5,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@lumiclaw/i18n': fileURLToPath(new URL('./packages/i18n/src/index.ts', import.meta.url))
+      , '@lumiclaw/domain': fileURLToPath(new URL('./packages/domain/src/index.ts', import.meta.url))
+      , '@lumiclaw/db': fileURLToPath(new URL('./packages/db/src/index.ts', import.meta.url))
     }
   },
   test: {

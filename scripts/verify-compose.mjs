@@ -1,10 +1,11 @@
 import {execFileSync, spawnSync} from 'node:child_process';
-import {mkdir, writeFile} from 'node:fs/promises';
+import {mkdir, readdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const project = 'lumiclaw-sdd000-verify';
-const evidenceDir = path.join(root, '.evidence/sdd-000');
+const project = 'lumiclaw-sdd001-verify';
+const evidenceDir = path.join(root, '.evidence/sdd-001');
+const expectedMigrationRows = (await readdir(path.join(root, 'packages/db/migrations'))).filter((file) => /^\d+.*\.cjs$/u.test(file)).length;
 const events = [];
 const checks = {};
 
@@ -78,7 +79,7 @@ try {
     'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At',
     '-c', 'SELECT count(*) FROM pgmigrations'
   ]).trim(), 10);
-  if (initialMigrationRows !== 1) throw new Error(`Expected one migration ledger row, received ${initialMigrationRows}.`);
+  if (initialMigrationRows !== expectedMigrationRows) throw new Error(`Expected ${expectedMigrationRows} migration ledger rows, received ${initialMigrationRows}.`);
   checks.initialMigrationLedgerRows = initialMigrationRows;
 
   docker([
@@ -108,8 +109,8 @@ try {
   const webEnglish = await fetch('http://127.0.0.1:3110/en/mission').then((response) => response.text());
   if (
     !webChinese.includes('DEMO_SEED / NOT_LIVE') ||
-    !webEnglish.includes('This shows the workflow only; the AI team has not started') ||
-    !webEnglish.includes('ADAPTER_CONTRACT_ONLY / NO_AGENT_TURN')
+    !webEnglish.includes('Four platform variants can be edited, previewed, and saved') ||
+    !webEnglish.includes('COMPOSER_PERSISTED / NO_AGENT_TURN / NO_PUBLISH')
   ) {
     throw new Error('Locale route, customer-language, or non-live marker smoke failed.');
   }
@@ -142,7 +143,7 @@ try {
     'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At',
     '-c', 'SELECT count(*) FROM pgmigrations'
   ]).trim(), 10);
-  if (finalMigrationRows !== 1) throw new Error(`Migration replay changed the ledger to ${finalMigrationRows} rows.`);
+  if (finalMigrationRows !== expectedMigrationRows) throw new Error(`Migration replay changed the ledger to ${finalMigrationRows} rows.`);
   checks.finalMigrationLedgerRows = finalMigrationRows;
   result = 'PASS';
 } catch (error) {
@@ -164,4 +165,4 @@ try {
   if (cleanupError !== null && primaryError === null) throw new Error(cleanupError);
 }
 
-console.info(JSON.stringify({status: result, project, evidence: '.evidence/sdd-000/compose-verification.json'}));
+console.info(JSON.stringify({status: result, project, evidence: '.evidence/sdd-001/compose-verification.json'}));

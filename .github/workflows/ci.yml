@@ -40,8 +40,8 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: sdd-000-static-evidence
-          path: .evidence/sdd-000/
+          name: sdd-001-static-evidence
+          path: .evidence/sdd-001/
           if-no-files-found: warn
           retention-days: 7
 
@@ -63,15 +63,18 @@ jobs:
         run: npm ci
       - name: Compose integration contract
         run: npm run verify:compose
+      - name: PostgreSQL Campaign API integration contract
+        run: npm run verify:campaign-api
       - name: Isolated AgentTeams image and adapter smoke
         run: npm run verify:agentteams-images
       - name: Upload Compose evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: sdd-000-compose-evidence
+          name: sdd-001-integration-evidence
           path: |
-            .evidence/sdd-000/compose-verification.json
-            .evidence/sdd-000/agentteams-image-smoke.json
+            .evidence/sdd-001/compose-verification.json
+            .evidence/sdd-001/api-integration.json
+            .evidence/sdd-001/agentteams-image-smoke.json
           if-no-files-found: warn
           retention-days: 7

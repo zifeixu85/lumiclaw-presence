@@ -1,6 +1,6 @@
 {
   "name": "@lumiclaw/web",
-  "version": "0.0.0-m0",
+  "version": "0.1.0-m1",
   "private": true,
   "type": "module",
   "license": "Apache-2.0",
@@ -14,6 +14,7 @@
     "storybook:build": "STORYBOOK_DISABLE_TELEMETRY=1 storybook build --output-dir storybook-static"
   },
   "dependencies": {
+    "@lumiclaw/domain": "*",
     "@lumiclaw/i18n": "*",
     "next": "16.2.12",
     "next-intl": "4.13.4",

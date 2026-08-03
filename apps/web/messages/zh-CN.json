@@ -1,6 +1,6 @@
 {
   "Meta": {
-    "title": "LumiClaw Presence｜交付基础",
+    "title": "LumiClaw Presence｜推广任务骨架",
     "description": "从一个目标出发，安全地准备、审核并改进各平台内容。"
   },
   "Shell": {
@@ -12,7 +12,7 @@
     "localeSwitch": "English",
     "skipToContent": "跳到主要内容",
     "evidenceLabel": "当前环境",
-    "evidenceValue": "安全演示中",
+    "evidenceValue": "可保存的安全演示",
     "journeyLabel": "完成一次推广的五个步骤",
     "statusLabel": "当前情况",
     "ownerLabel": "你现在可以做",
@@ -33,71 +33,71 @@
       "eyebrow": "01 · 明确这次想达成什么",
       "title": "从一个清楚的推广目标开始。",
       "summary": "这里将帮助你说明要推广什么、面向谁，以及希望对方采取什么行动。之后的内容准备和审核都会围绕同一个目标进行。",
-      "status": "当前是流程预览，还不能创建真实任务",
-      "basis": "你现在看到的是产品体验版，系统尚未保存任何品牌或推广数据。",
-      "next": "先浏览完整流程，判断它是否符合你的日常工作方式。",
+      "status": "可以创建、保存并重新打开演示推广任务",
+      "basis": "数据写入本地 PostgreSQL；所有内容仍是公开安全的演示种子，不连接真实账号。",
+      "next": "填写目标与行动号召，创建第一个演示推广任务。",
       "previewTitle": "正式使用时，这里会汇总",
       "previewItems": {
         "first": "这次推广要达成的目标",
         "second": "当前进展和仍缺少的信息",
         "third": "下一件需要你处理的事情"
       },
-      "technicalStatus": "BUSINESS_DATA_EMPTY / FOUNDATION_READY",
-      "technicalBasis": "SDD-000、锁定依赖与公开架构已通过本地工程验证。"
+      "technicalStatus": "CAMPAIGN_PERSISTENCE_READY / DEMO_SEED",
+      "technicalBasis": "REST、OpenAPI、Idempotency-Key、ETag 和版本快照由同一 PostgreSQL 控制面支持。"
     },
     "setup": {
       "eyebrow": "02 · 准备可信的品牌信息",
       "title": "先把事实准备好，再开始写内容。",
       "summary": "品牌介绍、产品卖点、目标市场和可使用的证明材料会集中在这里，避免不同平台各说一套。",
-      "status": "尚未添加品牌资料",
-      "basis": "当前演示不接收真实文件，也没有连接任何品牌或平台账号。",
-      "next": "继续查看内容制作流程；现在请不要上传真实资料。",
+      "status": "最小品牌、产品、市场与依据矩阵可保存",
+      "basis": "页面只使用合成资料；草稿事实会明确显示为需要你补全，而不会被当作批准事实。",
+      "next": "检查品牌矩阵与事实依据，保留公开安全的演示内容。",
       "previewTitle": "正式使用时，你会在这里确认",
       "previewItems": {
         "first": "品牌和产品的基本信息",
         "second": "可以对外使用的事实与证明",
         "third": "目标市场和平台账号是否准备好"
       },
-      "technicalStatus": "NEEDS_INPUT / DEMO_SEED",
-      "technicalBasis": "Identity、Product、Market、AccountMandate 与 Claim–Evidence 仍属于后续领域实现。"
+      "technicalStatus": "TENANT_GRAPH_READY / CLAIM_EVIDENCE_VERSIONED",
+      "technicalBasis": "Organization、Identity、Brand、Product、Market、ChannelAccount、AccountMandate 与 Claim–Evidence 已具备租户约束。"
     },
     "mission": {
       "eyebrow": "03 · 为不同平台准备内容",
       "title": "一次准备，形成四个平台各自合适的表达。",
       "summary": "同一条品牌信息会按照 X、Bluesky、LinkedIn 和小红书的表达习惯分别准备，同时保留编辑区和发布前预览。",
-      "status": "当前只展示工作方式，AI 团队尚未开始",
-      "basis": "没有连接模型或平台账号，也没有生成、批准或发布任何内容。",
-      "next": "查看四个平台的内容位置和预览方式，判断是否符合你的工作习惯。",
+      "status": "四个平台内容可编辑、预览和保存",
+      "basis": "内容来自合成演示种子；没有调用模型或平台，也不会批准或发布。",
+      "next": "修改任一平台内容，检查预览，然后保存新版本。",
       "previewTitle": "这里将展示四个平台的内容版本",
       "previewItems": {
         "first": "每个平台准备的表达方式",
         "second": "可以由你修改的内容",
         "third": "发送或发布前的效果预览"
       },
-      "technicalStatus": "ADAPTER_CONTRACT_ONLY / NO_AGENT_TURN",
-      "technicalBasis": "六角色 TeamProfile 和四平台 Adapter 边界已验证；真实 AgentTeams Mission 尚未运行。"
+      "technicalStatus": "COMPOSER_PERSISTED / NO_AGENT_TURN / NO_PUBLISH",
+      "technicalBasis": "四平台 ArtifactRevision、CapabilitySnapshot 与六角色 MissionContract 可重开；真实 AgentTeams Mission 尚未运行。"
     },
     "review": {
       "eyebrow": "04 · 由你做最后确认",
       "title": "发布之前，你始终拥有最后决定权。",
       "summary": "内容、事实依据和风险提示会放在一起，让你清楚知道将发布什么、为什么这样写。只有你确认后，未来才可能进入执行。",
-      "status": "目前没有需要你审核的内容",
-      "basis": "演示环境没有真实文案、平台账号或发布权限。",
-      "next": "确认这个审核步骤是否让你感到清楚、可控和放心。",
+      "status": "存在需要你补全依据的草稿事实",
+      "basis": "页面显示准确版本和稳定摘要，但本阶段不产生批准决定或发布权限。",
+      "next": "核对事实状态、依据数量和当前版本；不要把演示内容视为已批准。",
       "previewTitle": "正式审核时，你会一起看到",
       "previewItems": {
         "first": "准备发布的准确内容",
         "second": "支持这些表达的事实依据",
         "third": "风险提示和需要你确认的决定"
       },
-      "technicalStatus": "BLOCKED / NO_APPROVABLE_REVISION",
-      "technicalBasis": "Producer/Auditor 分离、精确 Revision 与短时单次 ActionGrant 仍是执行硬边界。"
+      "technicalStatus": "NEEDS_OWNER / NO_OWNER_DECISION / NO_ACTION_GRANT",
+      "technicalBasis": "精确 Revision 与摘要已实现；Producer/Auditor、OwnerDecision、ActionGrant 和 Receipt 属于后续受治理执行。"
     },
     "learn": {
       "eyebrow": "05 · 从真实反馈中改进",
       "title": "看见真实反馈，再决定下一轮怎么改。",
       "summary": "这里会把评论、互动和结果整理成可追溯的反馈，并提出改进建议；系统不会自行改写你的品牌事实。",
-      "status": "目前没有真实平台反馈",
+      "status": "已明确阻断：目前没有真实平台反馈",
       "basis": "没有连接平台账号，也没有导入客户、评论或互动数据。",
       "next": "确认这里清楚区分了真实反馈、系统建议和你的最终决定。",
       "previewTitle": "正式使用时，这里会整理",
@@ -106,7 +106,7 @@
         "second": "有依据的结果和变化",
         "third": "等待你确认的下一轮改进建议"
       },
-      "technicalStatus": "EMPTY / NO_LIVE_INTERACTION",
+      "technicalStatus": "BLOCKED / NO_LIVE_INTERACTION",
       "technicalBasis": "Interaction、Outcome、Disposition 与 LearningProposal 均未实现或写入。"
     }
   },
