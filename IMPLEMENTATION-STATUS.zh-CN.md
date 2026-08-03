@@ -4,7 +4,7 @@
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
 > **快照日期：** 2026-08-04
-> **当前阶段：** M1 已验收；下一阶段为 M2 — Governed shadow campaign
+> **当前阶段：** M2 — Governed shadow campaign
 > **当前实现真相：** M0 与 M1 已实现并验收。产品现在具备租户感知的品牌图、受治理的 Campaign/Claim/Evidence 合同、PostgreSQL/API 持久化、默认中文的双语五屏流程、四平台可编辑原生近似预览，以及不执行外部动作的持久排程模型。真实 AgentTeams Mission、模型/Provider 调用、Connector 与外部动作仍未实现。当前视觉壳只是功能骨架，不是最终产品设计；`UX-M1-001` 记录了需要把执行资格提示与排程草稿指引分离。
 
 ## 进度状态合同
@@ -28,9 +28,9 @@
 | 已验收模块 | `13 / 39`（`33.3%`） |
 | 证据已就绪 | `0 / 39` |
 | 被阻塞 | `0 / 39` |
-| 当前实现 SDD | 无；SDD-001 已验收，SDD-002 等待 Coordinator 派发 |
+| 当前实现 SDD | `SDD-002 Governed SHADOW Campaign` — 已选择并等待独立 Executor 派发 |
 | 最早 Owner 阻塞项 | 本地 M2 SHADOW 工作无；Provider Credential 继续延后到各自 SDD |
-| 下一个可执行模块 | `M2-01` 六成员 AgentTeams Mission Runtime — `NOT_STARTED` |
+| 下一个可执行模块 | `M2-01` AgentTeams Runtime Adapter 与 Shared Mission State — `IN_PROGRESS` |
 
 ## 里程碑总进度
 
@@ -38,7 +38,7 @@
 |---|---|---:|---|---|
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 个已验收 | [SDD-000 验收报告](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)，以及 Compose、Migration、CI 映射、隔离 AgentTeams Smoke、设计与 i18n 证据 |
 | M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 个已验收 | [SDD-001 验收报告](docs/reports/acceptance/SDD-001-ACCEPTANCE.md)：持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State；最终视觉与交互收敛仍在规划中 |
-| M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 个未开始 | 六成员 AgentTeams、DeepSeek Gateway、Revision/Audit、故障拒绝与 Trace |
+| M2 — Governed shadow campaign | `IN_PROGRESS` | `0 / 6` | 1 个进行中、5 个未开始 | 六成员 AgentTeams、DeepSeek Gateway、Revision/Audit、故障拒绝与 Trace |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 个未开始 | Interaction → Outcome → Scoped Learning → 下一 Mission，隔离 SignalProvider PoC |
 | M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 个未开始 | Fresh Install、恢复演练、Conformance、可访问性、Evidence Export 与 Demo |
@@ -73,7 +73,7 @@
 
 | ID | 模块 | 状态 | 依赖 | 必须提交的证据 / 验收 |
 |---|---|---|---|---|
-| M2-01 | AgentTeams Runtime Adapter 与 Shared Mission State | `NOT_STARTED` | M0-06、M1-02 | Project/Task 生命周期、ACK/Submit、Digest 导入与重启恢复 |
+| M2-01 | AgentTeams Runtime Adapter 与 Shared Mission State | `IN_PROGRESS` | M0-06、M1-02；SDD-002 | Project/Task 生命周期、ACK/Submit、Digest 导入与重启恢复 |
 | M2-02 | 六成员 AgentTeam 与锁定 Skill | `NOT_STARTED` | M2-01 | Leader + 五领域成员、Context/权限分离与 SkillLock |
 | M2-03 | DeepSeek ModelProvider Gateway | `NOT_STARTED` | M0-07 | 结构化输出、模型/费用快照、超时重试与隐私安全 Fixture |
 | M2-04 | Artifact Revision、Independent Audit 与 Owner Review | `NOT_STARTED` | M1-05、M2-02 | Re-audit 失效、Producer/Auditor 分权与 Revision Diff E2E |

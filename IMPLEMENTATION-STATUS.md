@@ -4,7 +4,7 @@
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
 > **Snapshot:** 2026-08-04
-> **Current phase:** M1 accepted; M2 — Governed shadow campaign is next
+> **Current phase:** M2 — Governed shadow campaign
 > **Current implementation truth:** M0 and M1 are implemented and accepted. The product now has a tenant-aware brand graph, governed Campaign/Claim/Evidence contracts, PostgreSQL/API persistence, Chinese-default bilingual five-screen flow, four editable native-like previews, and a persistent non-executing schedule model. Live AgentTeams missions, model/provider calls, connectors and external actions remain unimplemented. The current visual shell is a functional skeleton, not the final product design; `UX-M1-001` records the need to separate execution readiness from schedule-draft guidance.
 
 ## Progress contract
@@ -28,9 +28,9 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | Accepted modules | `13 / 39` (`33.3%`) |
 | Evidence ready | `0 / 39` |
 | Blocked | `0 / 39` |
-| Active implementation SDD | None; SDD-001 is accepted and SDD-002 is ready for Coordinator dispatch |
+| Active implementation SDD | `SDD-002 Governed SHADOW Campaign` — selected for independent Executor dispatch |
 | Earliest owner blocker | None for local M2 SHADOW work; provider credentials remain deferred to their SDDs |
-| Next executable module | `M2-01` Six-member AgentTeams Mission runtime — `NOT_STARTED` |
+| Next executable module | `M2-01` AgentTeams Runtime Adapter and shared mission state — `IN_PROGRESS` |
 
 ## Milestone progress
 
@@ -38,7 +38,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 |---|---|---:|---|---|
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 accepted | [SDD-000 acceptance](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) plus fresh Compose, migrations, CI mapping, isolated AgentTeams smoke and design/i18n evidence |
 | M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 accepted | [SDD-001 acceptance](docs/reports/acceptance/SDD-001-ACCEPTANCE.md): persisted campaign, four editable previews, schedule editor, shared control-plane state; final visual/interaction refinement remains planned |
-| M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 not started | Six-member AgentTeams run, DeepSeek gateway, revision/audit, fault denial, trace |
+| M2 — Governed shadow campaign | `IN_PROGRESS` | `0 / 6` | 1 in progress, 5 not started | Six-member AgentTeams run, DeepSeek gateway, revision/audit, fault denial, trace |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 not started | Exact grants, persistent scheduler, Bluesky Direct, honest Handoffs, receipts/reconciliation |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 not started | Interaction → outcome → scoped learning → next mission, isolated SignalProvider PoC |
 | M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 not started | Fresh install, restore drill, conformance, accessibility, evidence export and demo |
@@ -73,7 +73,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
-| M2-01 | AgentTeams Runtime Adapter and shared mission state | `NOT_STARTED` | M0-06, M1-02 | Project/task lifecycle, ACK/Submit, digest import and restart recovery |
+| M2-01 | AgentTeams Runtime Adapter and shared mission state | `IN_PROGRESS` | M0-06, M1-02; SDD-002 | Project/task lifecycle, ACK/Submit, digest import and restart recovery |
 | M2-02 | Six-member AgentTeam and locked Skills | `NOT_STARTED` | M2-01 | Leader plus five domain members, context/permission separation and SkillLock |
 | M2-03 | DeepSeek ModelProvider gateway | `NOT_STARTED` | M0-07 | Structured output, model/cost snapshot, timeout/retry and privacy-safe fixtures |
 | M2-04 | Artifact revision, independent audit and owner review | `NOT_STARTED` | M1-05, M2-02 | Re-audit invalidation, producer/auditor separation and revision diff E2E |
