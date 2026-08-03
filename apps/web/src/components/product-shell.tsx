@@ -2,6 +2,7 @@ import type {AppLocale, RouteId} from '@lumiclaw/i18n';
 import {routeIds} from '@lumiclaw/i18n';
 import {Link} from '@/i18n/navigation';
 import type {ScreenCopy} from '@/lib/shell-copy';
+import {CampaignWorkspace, type WorkspaceFixtureState} from './campaign-workspace';
 
 export type ShellLabels = {
   brand: string;
@@ -37,13 +38,14 @@ type ProductShellProps = {
   labels: ShellLabels;
   screen: ScreenCopy;
   mission?: MissionCopy;
+  workspaceState?: WorkspaceFixtureState | undefined;
 };
 
 function hrefFor(routeId: RouteId): string {
   return routeId === 'campaigns' ? '/' : `/${routeId}`;
 }
 
-export function ProductShell({locale, routeId, labels, screen, mission}: ProductShellProps) {
+export function ProductShell({locale, routeId, labels, screen, workspaceState}: ProductShellProps) {
   const alternateLocale: AppLocale = locale === 'zh-CN' ? 'en' : 'zh-CN';
   const currentHref = hrefFor(routeId);
 
@@ -108,7 +110,7 @@ export function ProductShell({locale, routeId, labels, screen, mission}: Product
           <p>{screen.basis}</p>
         </section>
 
-        {routeId === 'mission' && mission !== undefined ? <MissionBaseline copy={mission} /> : <FoundationCanvas screen={screen} />}
+        <CampaignWorkspace locale={locale} routeId={routeId} fixtureState={workspaceState} />
 
         <details className="technical-details">
           <summary>{labels.technicalDetailsLabel}</summary>
@@ -135,57 +137,5 @@ export function ProductShell({locale, routeId, labels, screen, mission}: Product
 
       <footer className="truth-footer">{labels.footer}</footer>
     </div>
-  );
-}
-
-function FoundationCanvas({screen}: {screen: ScreenCopy}) {
-  return (
-    <section className="foundation-canvas" aria-label={screen.previewTitle}>
-      <div className="canvas-grid" aria-hidden="true" />
-      <span className="canvas-kicker">{screen.previewTitle}</span>
-      <p>01</p>
-      <ul className="future-list">
-        {screen.previewItems.map((item, index) => (
-          <li key={item}>
-            <span>{String(index + 1).padStart(2, '0')}</span>
-            <strong>{item}</strong>
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
-function MissionBaseline({copy}: {copy: MissionCopy}) {
-  return (
-    <section className="composer-grid" aria-label="Four-platform composer baseline">
-      <div className="composer-column activation-column">
-        <h2>{copy.rail}</h2>
-        <ol>
-          {copy.platforms.map((platform, index) => (
-            <li key={platform.id}>
-              <span>{String(index + 1).padStart(2, '0')}</span>
-              <strong>{platform.label}</strong>
-              <small>{copy.constraint}</small>
-            </li>
-          ))}
-        </ol>
-      </div>
-      <div className="composer-column editor-column">
-        <h2>{copy.composer}</h2>
-        <div className="field-skeleton"><span /><span /><span /></div>
-        <div className="field-skeleton tall"><span /><span /><span /></div>
-      </div>
-      <div className="composer-column preview-column">
-        <h2>{copy.preview}</h2>
-        <div className="preview-card">
-          <div className="preview-avatar">LP</div>
-          <span />
-          <span />
-          <span />
-        </div>
-        <p>{copy.disclaimer}</p>
-      </div>
-    </section>
   );
 }

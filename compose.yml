@@ -121,6 +121,7 @@ services:
     command: [npm, --workspace, "@lumiclaw/web", run, start]
     environment:
       PORT: "3000"
+      CONTROL_API_URL: http://api:4000
     ports:
       - target: 3000
         published: "${LUMICLAW_WEB_PORT:-3100}"

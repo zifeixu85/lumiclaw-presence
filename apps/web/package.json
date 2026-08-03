@@ -14,6 +14,7 @@
     "storybook:build": "STORYBOOK_DISABLE_TELEMETRY=1 storybook build --output-dir storybook-static"
   },
   "dependencies": {
+    "@lumiclaw/domain": "*",
     "@lumiclaw/i18n": "*",
     "next": "16.2.12",
     "next-intl": "4.13.4",
