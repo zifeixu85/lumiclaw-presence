@@ -1,6 +1,6 @@
 {
   "name": "@lumiclaw/api",
-  "version": "0.0.0-m0",
+  "version": "0.1.0-m1",
   "private": true,
   "type": "module",
   "license": "Apache-2.0",
@@ -10,6 +10,8 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@lumiclaw/db": "*",
+    "@lumiclaw/domain": "*",
     "fastify": "5.11.0"
   }
 }

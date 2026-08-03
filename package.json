@@ -37,6 +37,7 @@
     "verify:static": "npm run lint && npm run typecheck && npm run test && npm run check:messages && npm run check:status && npm run check:report && npm run check:secrets && npm run check:compose && npm run check:runtime-profile && npm run verify:dependencies",
     "verify": "npm run verify:static && npm run build && npm run storybook:build",
     "verify:compose": "node scripts/verify-compose.mjs",
+    "verify:campaign-api": "node scripts/verify-campaign-api.mjs",
     "verify:agentteams-images": "node scripts/verify-agentteams-images.mjs",
     "evidence:package-source": "node scripts/package-source-evidence.mjs",
     "evidence:manifest": "node scripts/write-evidence-manifest.mjs"
