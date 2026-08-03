@@ -6,14 +6,14 @@
 > Executor Task：`019fbe95-9577-7d02-900f-948d3861369c` 派生的 SDD-000 Executor 任务
 > Worktree：`/Users/ameng/Documents/Projects/GOAI-hangzhou/worktrees/lumiclaw-presence/sdd-000-delivery-foundation`
 > Branch / Base：`codex/sdd-000-delivery-foundation` / `5acc7cd508f07fdeabe74e39e366158bf58463f6`
-> Delivery Commits：实现提交 `14ab5fbdb636f4b934179e16f13e1a8da23bf5cb`；本报告收尾提交的绝对 hash 见 Executor 最终 `STATUS_HANDOFF`，避免同一提交自引用
+> Delivery Commits：实现提交 `14ab5fbdb636f4b934179e16f13e1a8da23bf5cb`；验收收尾提交 `bbabf3a56b71677fc42de9e893b4647881b4dc38`；本次客户语言修正提交的绝对 hash 见 Executor 最终 `STATUS_HANDOFF`，避免同一提交自引用
 > 报告状态：`EVIDENCE_READY`
 > 证据成熟度：`ENGINEERING_VERIFIED`
 > 生成日期：`2026-08-03`
 
 ## 一、交付结果
 
-SDD-000 已把公开仓库从 documentation-only 基线扩展为可安装、可构建、可在本机 Compose 复验的 M0 Delivery Foundation：Node.js 24/npm workspaces Monorepo、PostgreSQL 17 Migration、内容寻址 Local BlobStore、中文默认且支持英文的五屏 Next.js 产品 Shell、Storybook/Pencil 审阅面、隔离的 AgentTeams v1.2.0 Runtime Profile/Adapter Contract，以及本地与 CI 质量门禁。
+SDD-000 已把公开仓库从 documentation-only 基线扩展为可安装、可构建、可在本机 Compose 复验的 M0 Delivery Foundation：Node.js 24/npm workspaces Monorepo、PostgreSQL 17 Migration、内容寻址 Local BlobStore、中文默认且支持英文的五屏 Next.js 产品 Shell、Storybook/Pencil 审阅面、隔离的 AgentTeams v1.2.0 Runtime Profile/Adapter Contract，以及本地与 CI 质量门禁。Owner 首轮查看后指出主界面语言过度工程化；本次已把五步导航、状态、依据与下一步改成客户语言，并将稳定状态码和工程依据收进默认折叠的技术详情。
 
 所有业务数据均为 `DEMO_SEED / NOT_LIVE`。本次没有连接 API Key、真实账号、外部平台或真实数据库，没有迁移旧私有资料，也没有实现 M1 业务。自动化结果支持 `ENGINEERING_VERIFIED` 与建议模块状态 `EVIDENCE_READY`；Owner UAT 和 Coordinator 独立复验仍为 `PENDING`，因此不声明规范 `ACCEPTED`。
 
@@ -44,16 +44,18 @@ SDD-000 已把公开仓库从 documentation-only 基线扩展为可安装、可�
 | Monorepo / Dependency | `package.json`、`package-lock.json`、`.nvmrc`、`.npmrc`、`docs/dependencies/` | `npm ci` 不改 lockfile；975 个 lockfile package 条目；生成完整 inventory 与 SBOM。 |
 | Database / Blob | `compose.yml`、`infra/compose/Dockerfile`、`packages/db/`、`packages/blob-store/` | `.evidence/sdd-000/compose-verification.json`：fresh volume、真实 broken SQL、依赖失败、一次 migration ledger、restart/down-up DB 与 blob persistence、恢复和 project-scoped cleanup。 |
 | API / Worker | `apps/api/`、`apps/mission-worker/`、`apps/action-operator/`、`packages/process-health/` | 四服务健康合同持续标记 `mode=DEMO_SEED`、`live=false`；Operator 无 AgentTeams/模型依赖且 blob 只读。 |
-| UI / i18n | `apps/web/`、`packages/i18n/`、`DESIGN.md` | 12 个双语静态产品 route、类型化 message、65 个 parity key、无前缀中文固定、英文深链与 route-preserving locale link；standalone 静态资产复验。 |
-| Design review | `apps/web/.storybook/`、`docs/design/lumiclaw-presence-m0.pen`、`docs/design/exports/` | Storybook static build；Pencil 工具创建的一张完整 Mission overview，Pencil snapshot 无 layout problem；PNG/PDF 人工查看。 |
+| UI / i18n | `apps/web/`、`packages/i18n/`、`DESIGN.md` | 12 个双语静态产品 route、类型化 message、99 个 parity key、无前缀中文固定、英文深链与 route-preserving locale link；客户主视图与折叠技术详情分层；standalone 静态资产复验。 |
+| Design review | `apps/web/.storybook/`、`docs/design/lumiclaw-presence-m0.pen`、`docs/design/exports/` | Storybook static build；Pencil 工具创建的一张完整 Mission overview，并同步为客户语言；Pencil snapshot 无 layout problem；PNG 人工查看，PDF 由同一已验证 PNG 生成。 |
 | AgentTeams / Skill | `infra/agentteams/`、`packages/runtime-agentteams/`、`scripts/verify-agentteams-images.mjs` | `.evidence/sdd-000/agentteams-image-smoke.json`：真实 v1.2.0 manager/worker image CLI 启动 + controlled fixture；`liveAgentTeamRun=false`；M0 未创建 Skill。 |
 | Security / Privacy / License | `scripts/secret-scan.mjs`、`scripts/dependency-inventory.mjs`、`.github/workflows/ci.yml` | 正向 Secret fixture 被拒绝，127 个仓库文件 scan 通过；未知/未批准 license 失败关闭；Actions 权限只读且 action 均锁 commit SHA。 |
 
 设计证据 SHA-256：
 
-- Pencil：`ad375a01a36493bd4a7d2fc9993d311baf62c7203fdcb4aa810d27e118f6beea`
-- PNG：`ab99b40710e417ed00f3f3692ba5197f64566f55ac2296dc6d85406dbff09d2b`
-- PDF：`0b2416d7792c9eed2a62cabb2fa63e8d030feebe494582ebb1308307fe381045`
+- Pencil：`8471213ee92bf77993bdb81db4cbfdbd5fc9b0f646d151472485b31c2ed237c9`
+- PNG：`ae3e265031c978fa48984adef386729edabe4eb35872e68e1c054b0f6bbc6612`
+- PDF：`324496a6af0924563e49ce43e04b85cf92ec061a6980ca5310f79804de51dd8a`
+
+Pencil PNG 由 `export_nodes` 成功生成（`2880 × 2048`）。Pencil PDF 导出接口本轮返回工具错误，因此没有声称该接口成功；单页 PDF 使用 macOS `sips` 从上述已验证 PNG 生成，`file` 识别为 `PDF 1.3 / 1 page`。
 
 ## 四、自动化验证
 
@@ -62,12 +64,12 @@ SDD-000 已把公开仓库从 documentation-only 基线扩展为可安装、可�
 | 检查 | 命令或协议 | 期望 | 实际 | 结果 |
 |---|---|---|---|---|
 | Reproducible install | lockfile SHA-256 before/after + `npm ci` | 精确 runtime；无 lock mutation | 精确版本通过；lock 摘要前后均为 `88f91873bd2a0d69fafb03ba3bd5541a759c9cc38dd7fbd2db282f71d777cc90` | `PASS` |
-| Unit / Contract | `npm test` | 所有正反 fixture 通过 | 11 个 test file / 29 个 test；Blob 并发/损坏/遍历、Runtime 版本/不可达/UNKNOWN、secret/message/status/report 等全部通过 | `PASS` |
+| Unit / Contract | `npm test` | 所有正反 fixture 通过 | 11 个 test file / 30 个 test；Blob 并发/损坏/遍历、Runtime 版本/不可达/UNKNOWN、客户主视图工程术语回归、secret/message/status/report 等全部通过 | `PASS` |
 | Lint / Type | `npm run lint && npm run typecheck` | 无 lint/type error | 9 个 workspace typecheck 与仓库 lint 通过 | `PASS` |
 | Dependency / SBOM | `npm run verify:dependencies` | manifest/inventory/SBOM 生成，未知 license 失败关闭 | 生成 `docs/dependencies/*.json` 与 `.evidence/sdd-000/sbom.cdx.json` | `PASS` |
 | Build / Routes | `npm run build` | runtime + Next standalone 构建；12 个产品 route | Next 16 build 通过，`postbuild` 复制 standalone static/public assets | `PASS` |
 | Storybook | `npm run storybook:build` | 可审阅静态 Storybook | `apps/web/storybook-static/` 生成 | `PASS` |
-| Browser visible smoke | 本地 standalone server + in-app browser：先 `/en/mission` 再 `/mission`；五屏/双语 DOM 与 screenshot | 无前缀仍中文；英文深链；truth marker、四平台与 Owner next step 可见 | 10 个双语页面可达；locale Cookie 不改变无前缀默认；`/favicon.ico` 200；无 server error | `PASS` |
+| Browser visible smoke | 本地 standalone server + in-app browser：`/`、`/setup`、`/mission`、`/review`、`/learn`、`/en/mission` | 每屏用客户语言说明当前情况、依据与可做事项；技术详情默认收起但可展开；truth marker 始终可见 | 六条路径逐页通过；折叠详情可展开并显示稳定状态码；浏览器 console 无 warning/error | `PASS` |
 | Database / Integration | `npm run verify:compose` | broken SQL/DB unavailable 非零；fresh migration；health；restart/down-up persistence；cleanup | `.evidence/sdd-000/compose-verification.json` 为 `result=PASS`、`cleanup=PASS` | `PASS` |
 | AgentTeams image / adapter | `npm run verify:agentteams-images` 与 `npm run check:runtime-profile` | digest 固定、真实镜像 CLI 可启动、controlled report 正确、隔离负向失败关闭 | manager/worker v1.2.0 probe `PASS`；无 live run claim；项目清理为空 | `PASS` |
 | Full static/build gate | `npm run verify` | report/message/status/secret/license/SBOM + build + Storybook 全通过 | 本地完整门禁通过 | `PASS` |
@@ -87,9 +89,9 @@ GitHub Actions 未 Push，故只声明工作流配置已由本地等价命令验
 | AC-06 | `PASS` | broken migration fixture、Compose evidence | 真实无效 SQL、缺失目录与 unavailable PostgreSQL 都非零；应用未错误 Ready；恢复后 fresh start 成功。 |
 | AC-07 | `PASS` | `packages/blob-store/src/index.test.ts` | deterministic/idempotent/read、8 路并发原子提交、无 tmp、malformed/traversal、corruption、missing。 |
 | AC-08 | `PASS` | browser smoke、Compose evidence、`apps/web/src/i18n/routing.ts` | `/`/无前缀固定中文，`/en` 英文，locale link 保留 route，双语 truth marker。 |
-| AC-09 | `PASS` | 12-route build、`product-shell.tsx`、browser smoke | 五屏均有目标/状态/依据/下一步；Mission 四平台均为未连接/计划标签。 |
+| AC-09 | `PASS` | 12-route build、`product-shell.tsx`、客户语言回归测试、browser smoke | 五屏均以客户语言呈现目标/当前情况/依据/可做事项；Mission 四平台均为未连接/计划标签；工程术语不出现在中文主视图。 |
 | AC-10 | `PASS` | `check-message-parity.test.ts`、`packages/i18n/` | missing/extra/structure mismatch 都被拒绝；route/state 使用稳定 code。 |
-| AC-11 | `PASS` | `globals.css`、Storybook build、Pencil/PNG/PDF hashes | Token 被产品壳消费；设计面可独立审阅。 |
+| AC-11 | `PASS` | `globals.css`、Storybook build、Pencil snapshot、Pencil/PNG/PDF hashes | Token 被产品壳消费；Web、Storybook 与 Pencil 均使用客户语言，设计面可独立审阅。 |
 | AC-12 | `PASS` | `infra/agentteams/`、Runtime tests | digest 固定；host share/socket/home/port/secret/health/resource/PID 负向均失败关闭。 |
 | AC-13 | `PASS` | Runtime unit tests、两个 AgentTeams evidence JSON | SUCCESS/FAILED/UNKNOWN、版本 mismatch、dependency unavailable、unknown identity 分离；始终 `live=false`。 |
 | AC-14 | `PASS` | `npm run verify`、`npm run verify:compose`、`.github/workflows/ci.yml` | 所有本地门禁通过并映射进 CI；未声称远端 CI 已运行。 |
@@ -105,19 +107,22 @@ GitHub Actions 未 Push，故只声明工作流配置已由本地等价命令验
 - **为什么需要 Owner 验证：**只有 Owner 能判断五屏是否用非工程语言解释清楚“目标、当前状态、依据、唯一下一步”，并确认视觉不会暗示真实连接或业务成功。
 - **前置条件：**Docker Desktop 已启动；checkout 到最终本地 Commit；本机 Node `24.16.0`、npm `11.13.0`；不准备任何 API Key。
 - **安全 / 数据说明：**全部是 `DEMO_SEED / NOT_LIVE`；不填写真实公司、账号、客户或平台资料，不执行外部动作。
+- **Owner 首轮反馈（2026-08-03）：**运行与信息可见性可以通过；客户可理解性未通过，原因是 Campaign、Mission、Owner、Adapter 等词过度工程化，理解成本高。
+- **本轮修正：**五步导航改为“创建推广任务 → 准备品牌资料 → 制作各平台内容 → 审核并确认 → 查看反馈并优化”；每屏先给“当前情况、为什么、你现在可以做”，稳定状态码与工程依据默认折叠。
 - **操作步骤：**
   1. 在 Worktree 运行 `npm ci`。
   2. 运行 `docker compose up --build --detach --wait`，预期所有长期服务 healthy，浏览器打开 `http://127.0.0.1:3100/`。
-  3. 确认默认中文、页头始终显示 `DEMO_SEED / NOT_LIVE`；依次打开 Campaigns、Setup、Mission、Review、Learn。
-  4. 对每屏二元回答：是否看见目标、状态、依据、唯一 Owner 下一步；Mission 是否只显示 X/Bluesky/LinkedIn/小红书未连接或计划状态。
-  5. 在 Mission 切换 English，确认 URL 为 `/en/mission` 且仍停在 Mission；再打开无前缀 `/mission`，确认回到中文。
+  3. 确认默认中文、页头始终显示 `DEMO_SEED / NOT_LIVE`；依次打开“创建推广任务、准备品牌资料、制作各平台内容、审核并确认、查看反馈并优化”。
+  4. 对每屏二元回答：是否无需理解工程名词就能看懂“这是做什么、现在怎样、为什么、我可以做什么”；“制作各平台内容”是否只显示 X/Bluesky/LinkedIn/小红书未连接或计划状态。
+  5. 在“制作各平台内容”切换 English，确认 URL 为 `/en/mission` 且仍停在同一步；再打开无前缀 `/mission`，确认回到中文。
   6. 运行 `npm run storybook` 并打开 `http://127.0.0.1:6006/`；查看 Product Shell / Foundation State。
   7. 打开 `docs/design/exports/bi8Au.png` 或 PDF，比较 truth label、五步旅程、三栏 Composer 与唯一下一步。
 - **期望可见结果：**五屏与两种语言均可读；没有 raw key、断链、假实时、假连接、假批准、假发布或业务成功声明；Storybook/Pencil 与 Web 方向一致。
 - **失败信号：**无前缀显示英文、locale switch 丢失 route、缺屏、移动/桌面严重断裂、`DEMO_SEED / NOT_LIVE` 消失、平台被显示为 Connected/Published、Owner 不知道下一步。
-- **需要返回的证据：**中文 Mission、英文 Mission、Storybook state、Pencil overview 四张截图，加书面 `UAT-01 PASS` 或失败项。
+- **需要返回的证据：**中文“制作各平台内容”、英文同屏、Storybook state、Pencil overview 四张截图，加书面 `UAT-01 PASS` 或失败项。
 - **清理 / 回滚：**停止 Storybook；运行 `docker compose down`。该命令保留本项目 named volumes；本 UAT 不要求 `--volumes`。
-- **Owner 结果：**`PENDING`
+- **Owner 首轮结果：**可见性与流程路径 `PASS`；客户可理解性 `FAIL`，已完成代码和设计面修正。
+- **Owner 修正版复验：**`PENDING`
 
 ### UAT-02｜只读工程证据与安全边界
 
@@ -149,7 +154,7 @@ GitHub Actions 未 Push，故只声明工作流配置已由本地等价命令验
 
 ## 八、失败、限制与非声明
 
-- **已发现并修复：**Storybook 8 peer 冲突、ESLint 10/TypeScript 7 toolchain peer 冲突、Docker tsbuildinfo 假缓存、Postgres `cap_drop: ALL` 启动权限、Next standalone 启动命令/静态资产、locale Cookie 改写无前缀默认语言、缺失 favicon 导致 500、Blob 并发/tmp 与 Runtime mismatch 测试缺口。
+- **已发现并修复：**Storybook 8 peer 冲突、ESLint 10/TypeScript 7 toolchain peer 冲突、Docker tsbuildinfo 假缓存、Postgres `cap_drop: ALL` 启动权限、Next standalone 启动命令/静态资产、locale Cookie 改写无前缀默认语言、缺失 favicon 导致 500、Blob 并发/tmp 与 Runtime mismatch 测试缺口；Owner 首轮指出产品主界面过度工程化后，Web/Storybook/Pencil 已统一为客户语言并增加主视图术语回归测试。
 - **Known limitations：**`npm audit` 仍报告 3 个 high，来自 Next `16.2.12` 内置 `postcss@8.4.31` 与可选 `sharp@0.34.5`；当前没有安全的同主版本自动修复，npm 的 `--force` 建议会错误降级到 Next 9。M0 只允许本地非实时 fixture，生产发布保持阻断。
 - **Known limitations：**安装闭包仍有 `prebuild-install`、`glob@10`、`tsconfck` transitive deprecation；Next Docker runtime 仍含较多构建依赖；完整生产镜像瘦身、漏洞治理、无障碍认证和跨浏览器矩阵均延期。
 - **Known limitations：**Pencil 只交付一张完整 Mission desktop overview；其他四屏与完整状态矩阵由 Web/Storybook 表达，不声明五张 Pencil frame。
@@ -182,8 +187,8 @@ Executor 未修改双语 `IMPLEMENTATION-STATUS` 的规范状态。建议由 Coo
 状态交接摘要：
 
 - Worktree / Branch / Base：见报告头；只在 Coordinator 指定 Worktree 工作。
-- Changed Files：`.gitignore` 及 100+ 个 SDD-000 文件，集中于 `.github/`、`apps/`、`packages/`、`infra/`、`scripts/`、`docs/specs/`、`docs/dependencies/`、`docs/design/` 与本报告；两份规范 Implementation Status 无改动。
-- Commits：实现提交 `14ab5fbdb636f4b934179e16f13e1a8da23bf5cb`；仅验收报告收尾的第二个本地提交 hash 由最终 `STATUS_HANDOFF` 给出。
+- Changed Files：`.gitignore` 及 100+ 个 SDD-000 文件，集中于 `.github/`、`apps/`、`packages/`、`infra/`、`scripts/`、`docs/specs/`、`docs/dependencies/`、`docs/design/` 与本报告；本轮额外修改双语文案、产品壳、Storybook、Pencil/PNG/PDF、客户语言测试、Compose 文案 smoke 与源码包 provenance；两份规范 Implementation Status 无改动。
+- Commits：实现提交 `14ab5fbdb636f4b934179e16f13e1a8da23bf5cb`；验收收尾提交 `bbabf3a56b71677fc42de9e893b4647881b4dc38`；客户语言修正提交 hash 由最终 `STATUS_HANDOFF` 给出。
 - Push / PR / Deploy：全部 `NO`。
 - 未提交状态：全量验证后已创建本地提交；最终交接时 `git status --short` 为空。
 - Blocker：无实现 blocker；Owner UAT、Coordinator 独立复验和远端 CI 为待办，不阻止建议 `EVIDENCE_READY`。

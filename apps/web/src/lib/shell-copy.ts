@@ -10,7 +10,30 @@ export type ScreenCopy = {
   status: string;
   basis: string;
   next: string;
+  previewTitle: string;
+  previewItems: [string, string, string];
+  technicalStatus: string;
+  technicalBasis: string;
 };
+
+function fromRoute(t: Translator, routeId: RouteId): ScreenCopy {
+  return {
+    eyebrow: t(`${routeId}.eyebrow`),
+    title: t(`${routeId}.title`),
+    summary: t(`${routeId}.summary`),
+    status: t(`${routeId}.status`),
+    basis: t(`${routeId}.basis`),
+    next: t(`${routeId}.next`),
+    previewTitle: t(`${routeId}.previewTitle`),
+    previewItems: [
+      t(`${routeId}.previewItems.first`),
+      t(`${routeId}.previewItems.second`),
+      t(`${routeId}.previewItems.third`)
+    ],
+    technicalStatus: t(`${routeId}.technicalStatus`),
+    technicalBasis: t(`${routeId}.technicalBasis`)
+  };
+}
 
 export function getScreenCopy(t: Translator, routeId: RouteId): ScreenCopy {
   switch (routeId) {
@@ -28,56 +51,21 @@ export function getScreenCopy(t: Translator, routeId: RouteId): ScreenCopy {
 }
 
 function fromCampaigns(t: Translator): ScreenCopy {
-  return {
-    eyebrow: t('campaigns.eyebrow'),
-    title: t('campaigns.title'),
-    summary: t('campaigns.summary'),
-    status: t('campaigns.status'),
-    basis: t('campaigns.basis'),
-    next: t('campaigns.next')
-  };
+  return fromRoute(t, 'campaigns');
 }
 
 function fromSetup(t: Translator): ScreenCopy {
-  return {
-    eyebrow: t('setup.eyebrow'),
-    title: t('setup.title'),
-    summary: t('setup.summary'),
-    status: t('setup.status'),
-    basis: t('setup.basis'),
-    next: t('setup.next')
-  };
+  return fromRoute(t, 'setup');
 }
 
 function fromMission(t: Translator): ScreenCopy {
-  return {
-    eyebrow: t('mission.eyebrow'),
-    title: t('mission.title'),
-    summary: t('mission.summary'),
-    status: t('mission.status'),
-    basis: t('mission.basis'),
-    next: t('mission.next')
-  };
+  return fromRoute(t, 'mission');
 }
 
 function fromReview(t: Translator): ScreenCopy {
-  return {
-    eyebrow: t('review.eyebrow'),
-    title: t('review.title'),
-    summary: t('review.summary'),
-    status: t('review.status'),
-    basis: t('review.basis'),
-    next: t('review.next')
-  };
+  return fromRoute(t, 'review');
 }
 
 function fromLearn(t: Translator): ScreenCopy {
-  return {
-    eyebrow: t('learn.eyebrow'),
-    title: t('learn.title'),
-    summary: t('learn.summary'),
-    status: t('learn.status'),
-    basis: t('learn.basis'),
-    next: t('learn.next')
-  };
+  return fromRoute(t, 'learn');
 }

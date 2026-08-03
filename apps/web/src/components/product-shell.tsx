@@ -13,7 +13,11 @@ export type ShellLabels = {
   evidenceLabel: string;
   evidenceValue: string;
   journeyLabel: string;
+  statusLabel: string;
   ownerLabel: string;
+  technicalDetailsLabel: string;
+  technicalStateLabel: string;
+  technicalEvidenceLabel: string;
   footer: string;
   nav: Record<RouteId, string>;
 };
@@ -98,13 +102,27 @@ export function ProductShell({locale, routeId, labels, screen, mission}: Product
 
         <section className="state-ledger" aria-label={screen.status}>
           <div>
-            <span className="ledger-index">STATE</span>
+            <span className="ledger-index">{labels.statusLabel}</span>
             <strong>{screen.status}</strong>
           </div>
           <p>{screen.basis}</p>
         </section>
 
-        {routeId === 'mission' && mission !== undefined ? <MissionBaseline copy={mission} /> : <FoundationCanvas routeId={routeId} />}
+        {routeId === 'mission' && mission !== undefined ? <MissionBaseline copy={mission} /> : <FoundationCanvas screen={screen} />}
+
+        <details className="technical-details">
+          <summary>{labels.technicalDetailsLabel}</summary>
+          <dl>
+            <div>
+              <dt>{labels.technicalStateLabel}</dt>
+              <dd><code>{screen.technicalStatus}</code></dd>
+            </div>
+            <div>
+              <dt>{labels.technicalEvidenceLabel}</dt>
+              <dd>{screen.technicalBasis}</dd>
+            </div>
+          </dl>
+        </details>
 
         <section className="owner-next" aria-labelledby="owner-next-title">
           <span aria-hidden="true">→</span>
@@ -120,17 +138,20 @@ export function ProductShell({locale, routeId, labels, screen, mission}: Product
   );
 }
 
-function FoundationCanvas({routeId}: {routeId: RouteId}) {
+function FoundationCanvas({screen}: {screen: ScreenCopy}) {
   return (
-    <section className="foundation-canvas" aria-label={`${routeId} foundation state`}>
+    <section className="foundation-canvas" aria-label={screen.previewTitle}>
       <div className="canvas-grid" aria-hidden="true" />
-      <span className="canvas-kicker">FOUNDATION / {routeId.toUpperCase()}</span>
+      <span className="canvas-kicker">{screen.previewTitle}</span>
       <p>01</p>
-      <div className="empty-object">
-        <span />
-        <span />
-        <span />
-      </div>
+      <ul className="future-list">
+        {screen.previewItems.map((item, index) => (
+          <li key={item}>
+            <span>{String(index + 1).padStart(2, '0')}</span>
+            <strong>{item}</strong>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

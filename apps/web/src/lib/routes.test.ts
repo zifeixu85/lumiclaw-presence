@@ -12,13 +12,42 @@ describe('product shell route contract', () => {
   });
 
   it('marks both locales as non-live', () => {
-    expect(en.Shell.mode).toBe('DEMO_SEED / NOT_LIVE');
-    expect(zh.Shell.mode).toBe('DEMO_SEED / NOT_LIVE');
+    expect(en.Shell.mode).toContain('DEMO_SEED / NOT_LIVE');
+    expect(zh.Shell.mode).toContain('DEMO_SEED / NOT_LIVE');
   });
 
   it('describes all four platform baselines without published state', () => {
     const platformLabels = Object.values(zh.Mission.platforms);
     expect(platformLabels).toHaveLength(4);
     expect(platformLabels.join(' ')).not.toContain('PUBLISHED');
+  });
+
+  it('keeps engineering terminology out of primary Chinese customer copy', () => {
+    const primaryCopy = JSON.stringify({
+      shell: {
+        category: zh.Shell.category,
+        milestone: zh.Shell.milestone,
+        evidenceLabel: zh.Shell.evidenceLabel,
+        evidenceValue: zh.Shell.evidenceValue,
+        journeyLabel: zh.Shell.journeyLabel,
+        ownerLabel: zh.Shell.ownerLabel,
+        footer: zh.Shell.footer,
+        nav: zh.Shell.nav
+      },
+      screens: Object.fromEntries(
+        Object.entries(zh.Screens).map(([id, screen]) => [id, {
+          eyebrow: screen.eyebrow,
+          title: screen.title,
+          summary: screen.summary,
+          status: screen.status,
+          basis: screen.basis,
+          next: screen.next,
+          previewTitle: screen.previewTitle,
+          previewItems: screen.previewItems
+        }])
+      ),
+      mission: zh.Mission
+    });
+    expect(primaryCopy).not.toMatch(/SDD|M0|M1|Adapter|Agent turn|Campaign|Claim|AccountMandate|Revision|Audit|OwnerDecision|ActionGrant|Receipt|Fixture|ActivationUnit|Composer|Coordinator/u);
   });
 });

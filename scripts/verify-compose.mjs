@@ -106,14 +106,18 @@ try {
 
   const webChinese = await fetch('http://127.0.0.1:3110/').then((response) => response.text());
   const webEnglish = await fetch('http://127.0.0.1:3110/en/mission').then((response) => response.text());
-  if (!webChinese.includes('DEMO_SEED / NOT_LIVE') || !webEnglish.includes('ADAPTER CONTRACT ONLY')) {
-    throw new Error('Locale route or non-live marker smoke failed.');
+  if (
+    !webChinese.includes('DEMO_SEED / NOT_LIVE') ||
+    !webEnglish.includes('This shows the workflow only; the AI team has not started') ||
+    !webEnglish.includes('ADAPTER_CONTRACT_ONLY / NO_AGENT_TURN')
+  ) {
+    throw new Error('Locale route, customer-language, or non-live marker smoke failed.');
   }
-  checks.webLocaleAndTruthMarkers = true;
+  checks.webLocaleCustomerLanguageAndTruthMarkers = true;
   const prefixlessWithEnglishPreference = await fetch('http://127.0.0.1:3110/mission', {
     headers: {cookie: 'NEXT_LOCALE=en'}
   }).then((response) => response.text());
-  if (!prefixlessWithEnglishPreference.includes('Owner 下一步')) {
+  if (!prefixlessWithEnglishPreference.includes('你现在可以做')) {
     throw new Error('Prefixless routes must remain on the default zh-CN locale.');
   }
   checks.defaultLocaleIgnoresPreferenceCookie = true;

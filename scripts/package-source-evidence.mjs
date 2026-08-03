@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {execFileSync, spawnSync} from 'node:child_process';
+import {execFileSync} from 'node:child_process';
 import {mkdir, readFile, rm, stat, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
@@ -9,7 +9,8 @@ if (path.resolve(topLevel) !== root) throw new Error('Run source packaging from 
 
 execFileSync(process.execPath, ['scripts/secret-scan.mjs'], {cwd: root, stdio: 'pipe'});
 
-const files = execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], {
+const head = execFileSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'}).trim();
+const files = execFileSync('git', ['ls-tree', '-r', '--name-only', head], {
   cwd: root,
   encoding: 'utf8'
 })
@@ -29,12 +30,10 @@ const manifestPath = path.join(evidenceRoot, 'source-package-manifest.json');
 await mkdir(evidenceRoot, {recursive: true});
 await rm(archive, {force: true});
 
-const zip = spawnSync('zip', ['-q', archive, '-@'], {
+execFileSync('git', ['archive', '--format=zip', `--output=${archive}`, head], {
   cwd: root,
-  encoding: 'utf8',
-  input: `${files.join('\n')}\n`
+  stdio: 'pipe'
 });
-if (zip.status !== 0) throw new Error(`zip failed: ${zip.stderr || zip.stdout}`);
 
 const archiveBytes = await readFile(archive);
 const archiveStat = await stat(archive);
@@ -42,7 +41,9 @@ const manifest = {
   schemaVersion: '1.0.0',
   sdd: 'SDD-000',
   base: '5acc7cd508f07fdeabe74e39e366158bf58463f6',
-  head: execFileSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'}).trim(),
+  head,
+  sourceRevision: head,
+  workingTreeSnapshot: false,
   branch: execFileSync('git', ['branch', '--show-current'], {cwd: root, encoding: 'utf8'}).trim(),
   worktree: root,
   generatedAt: new Date().toISOString(),

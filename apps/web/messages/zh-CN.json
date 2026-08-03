@@ -1,82 +1,126 @@
 {
   "Meta": {
     "title": "LumiClaw Presence｜交付基础",
-    "description": "全球品牌运营的受治理交付基础。"
+    "description": "从一个目标出发，安全地准备、审核并改进各平台内容。"
   },
   "Shell": {
     "brand": "LumiClaw Presence",
-    "category": "AI 原生全球品牌运营",
-    "mode": "DEMO_SEED / NOT_LIVE",
-    "milestone": "M0 · 交付基础",
+    "category": "你的全球品牌运营工作台",
+    "mode": "演示环境 · DEMO_SEED / NOT_LIVE",
+    "milestone": "产品体验版 · 不会执行真实操作",
     "localeLabel": "界面语言",
     "localeSwitch": "English",
     "skipToContent": "跳到主要内容",
-    "evidenceLabel": "证据状态",
-    "evidenceValue": "本地工程验证中",
-    "journeyLabel": "Campaign Journey",
-    "ownerLabel": "Owner 下一步",
-    "footer": "预览不代表账号已连接、产物已批准或平台已发布。",
+    "evidenceLabel": "当前环境",
+    "evidenceValue": "安全演示中",
+    "journeyLabel": "完成一次推广的五个步骤",
+    "statusLabel": "当前情况",
+    "ownerLabel": "你现在可以做",
+    "technicalDetailsLabel": "查看技术与验收信息",
+    "technicalStateLabel": "稳定状态码",
+    "technicalEvidenceLabel": "工程依据",
+    "footer": "这是安全演示：没有连接真实账号，不会审批或发布任何内容。",
     "nav": {
-      "campaigns": "Campaigns / Start",
-      "setup": "Setup & Readiness",
-      "mission": "Mission Workspace",
-      "review": "Review & Action",
-      "learn": "Response & Learn"
+      "campaigns": "创建推广任务",
+      "setup": "准备品牌资料",
+      "mission": "制作各平台内容",
+      "review": "审核并确认",
+      "learn": "查看反馈并优化"
     }
   },
   "Screens": {
     "campaigns": {
-      "eyebrow": "01 · 从目标开始",
-      "title": "让一次业务目标，成为可审阅的协同行动。",
-      "summary": "这里将汇总真实 Campaign、上轮结果和唯一下一步。M0 只验证导航、状态语言和交付边界。",
-      "status": "尚无 LIVE Campaign",
-      "basis": "当前依据：SDD-000、锁定依赖与公开架构",
-      "next": "复验 M0 基础；通过后由 Coordinator 创建 M1 SDD。"
+      "eyebrow": "01 · 明确这次想达成什么",
+      "title": "从一个清楚的推广目标开始。",
+      "summary": "这里将帮助你说明要推广什么、面向谁，以及希望对方采取什么行动。之后的内容准备和审核都会围绕同一个目标进行。",
+      "status": "当前是流程预览，还不能创建真实任务",
+      "basis": "你现在看到的是产品体验版，系统尚未保存任何品牌或推广数据。",
+      "next": "先浏览完整流程，判断它是否符合你的日常工作方式。",
+      "previewTitle": "正式使用时，这里会汇总",
+      "previewItems": {
+        "first": "这次推广要达成的目标",
+        "second": "当前进展和仍缺少的信息",
+        "third": "下一件需要你处理的事情"
+      },
+      "technicalStatus": "BUSINESS_DATA_EMPTY / FOUNDATION_READY",
+      "technicalBasis": "SDD-000、锁定依赖与公开架构已通过本地工程验证。"
     },
     "setup": {
-      "eyebrow": "02 · 准备度",
-      "title": "先看见事实、权限与资料缺口。",
-      "summary": "未来的 Setup 会把 Identity、Product、Market、AccountMandate 与 Claim–Evidence 放在同一准备度视图。",
-      "status": "DEMO_SEED · 资料模型尚未实现",
-      "basis": "当前依据：公开架构中的 Claim 与 AccountMandate 边界",
-      "next": "不要上传真实资料；等待 M1 的领域合同与隐私门禁。"
+      "eyebrow": "02 · 准备可信的品牌信息",
+      "title": "先把事实准备好，再开始写内容。",
+      "summary": "品牌介绍、产品卖点、目标市场和可使用的证明材料会集中在这里，避免不同平台各说一套。",
+      "status": "尚未添加品牌资料",
+      "basis": "当前演示不接收真实文件，也没有连接任何品牌或平台账号。",
+      "next": "继续查看内容制作流程；现在请不要上传真实资料。",
+      "previewTitle": "正式使用时，你会在这里确认",
+      "previewItems": {
+        "first": "品牌和产品的基本信息",
+        "second": "可以对外使用的事实与证明",
+        "third": "目标市场和平台账号是否准备好"
+      },
+      "technicalStatus": "NEEDS_INPUT / DEMO_SEED",
+      "technicalBasis": "Identity、Product、Market、AccountMandate 与 Claim–Evidence 仍属于后续领域实现。"
     },
     "mission": {
-      "eyebrow": "03 · 协作空间",
-      "title": "同一个事实核，四种平台原生表达。",
-      "summary": "三栏 Composer 基线展示 ActivationUnit、可编辑字段与近似预览的关系；它不是 Agent 运行或平台连接证据。",
-      "status": "ADAPTER CONTRACT ONLY · 无 Agent turn",
-      "basis": "当前依据：六角色拓扑合同与四平台 Preview 计划",
-      "next": "审阅信息层级与诚实能力标签，不执行任何外部动作。"
+      "eyebrow": "03 · 为不同平台准备内容",
+      "title": "一次准备，形成四个平台各自合适的表达。",
+      "summary": "同一条品牌信息会按照 X、Bluesky、LinkedIn 和小红书的表达习惯分别准备，同时保留编辑区和发布前预览。",
+      "status": "当前只展示工作方式，AI 团队尚未开始",
+      "basis": "没有连接模型或平台账号，也没有生成、批准或发布任何内容。",
+      "next": "查看四个平台的内容位置和预览方式，判断是否符合你的工作习惯。",
+      "previewTitle": "这里将展示四个平台的内容版本",
+      "previewItems": {
+        "first": "每个平台准备的表达方式",
+        "second": "可以由你修改的内容",
+        "third": "发送或发布前的效果预览"
+      },
+      "technicalStatus": "ADAPTER_CONTRACT_ONLY / NO_AGENT_TURN",
+      "technicalBasis": "六角色 TeamProfile 和四平台 Adapter 边界已验证；真实 AgentTeams Mission 尚未运行。"
     },
     "review": {
-      "eyebrow": "04 · 审阅与动作",
-      "title": "批准的是精确版本，不是一句模糊的“发吧”。",
-      "summary": "未来这里会展示 Revision、Audit、OwnerDecision、Grant 与 Receipt。M0 不创建任何批准或执行凭证。",
-      "status": "BLOCKED BY DESIGN · 无可批准 Revision",
-      "basis": "当前依据：Producer/Auditor 分离与短时单次 Grant 规则",
-      "next": "只审阅状态文案；不要提供平台 Token 或尝试发布。"
+      "eyebrow": "04 · 由你做最后确认",
+      "title": "发布之前，你始终拥有最后决定权。",
+      "summary": "内容、事实依据和风险提示会放在一起，让你清楚知道将发布什么、为什么这样写。只有你确认后，未来才可能进入执行。",
+      "status": "目前没有需要你审核的内容",
+      "basis": "演示环境没有真实文案、平台账号或发布权限。",
+      "next": "确认这个审核步骤是否让你感到清楚、可控和放心。",
+      "previewTitle": "正式审核时，你会一起看到",
+      "previewItems": {
+        "first": "准备发布的准确内容",
+        "second": "支持这些表达的事实依据",
+        "third": "风险提示和需要你确认的决定"
+      },
+      "technicalStatus": "BLOCKED / NO_APPROVABLE_REVISION",
+      "technicalBasis": "Producer/Auditor 分离、精确 Revision 与短时单次 ActionGrant 仍是执行硬边界。"
     },
     "learn": {
-      "eyebrow": "05 · 回应与学习",
-      "title": "把真实回应带回下一轮，而不是静默改写事实。",
-      "summary": "未来的 Interaction、Outcome、Disposition 与 LearningProposal 都必须有来源、作用域与 Owner 决定。",
-      "status": "EMPTY · 无真实互动",
-      "basis": "当前依据：作用域学习与不可静默修改规则",
-      "next": "确认空状态没有把 Fixture 冒充客户反馈或业务结果。"
+      "eyebrow": "05 · 从真实反馈中改进",
+      "title": "看见真实反馈，再决定下一轮怎么改。",
+      "summary": "这里会把评论、互动和结果整理成可追溯的反馈，并提出改进建议；系统不会自行改写你的品牌事实。",
+      "status": "目前没有真实平台反馈",
+      "basis": "没有连接平台账号，也没有导入客户、评论或互动数据。",
+      "next": "确认这里清楚区分了真实反馈、系统建议和你的最终决定。",
+      "previewTitle": "正式使用时，这里会整理",
+      "previewItems": {
+        "first": "来自各平台的真实互动",
+        "second": "有依据的结果和变化",
+        "third": "等待你确认的下一轮改进建议"
+      },
+      "technicalStatus": "EMPTY / NO_LIVE_INTERACTION",
+      "technicalBasis": "Interaction、Outcome、Disposition 与 LearningProposal 均未实现或写入。"
     }
   },
   "Mission": {
-    "rail": "Activation Units",
-    "composer": "Editable Composer",
-    "preview": "Native-like Preview",
-    "constraint": "能力快照未连接",
-    "disclaimer": "近似预览；平台原生渲染可能变化。",
+    "rail": "各平台内容",
+    "composer": "内容编辑区",
+    "preview": "发布前预览",
+    "constraint": "尚未连接平台账号",
+    "disclaimer": "这是效果示意；正式发布前仍需你确认。",
     "platforms": {
-      "x": "X · PREPARE ONLY",
-      "bluesky": "Bluesky · NOT CONNECTED",
-      "linkedin": "LinkedIn · HANDOFF PLANNED",
-      "xiaohongshu": "小红书 · HANDOFF PLANNED"
+      "x": "X · 仅展示准备方式",
+      "bluesky": "Bluesky · 尚未连接",
+      "linkedin": "LinkedIn · 计划人工交接",
+      "xiaohongshu": "小红书 · 计划人工交接"
     }
   },
   "States": {

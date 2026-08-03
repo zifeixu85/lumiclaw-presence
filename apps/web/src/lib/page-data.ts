@@ -20,7 +20,11 @@ export async function getPageData(locale: AppLocale, routeId: RouteId) {
     evidenceLabel: shell('evidenceLabel'),
     evidenceValue: shell('evidenceValue'),
     journeyLabel: shell('journeyLabel'),
+    statusLabel: shell('statusLabel'),
     ownerLabel: shell('ownerLabel'),
+    technicalDetailsLabel: shell('technicalDetailsLabel'),
+    technicalStateLabel: shell('technicalStateLabel'),
+    technicalEvidenceLabel: shell('technicalEvidenceLabel'),
     footer: shell('footer'),
     nav: {
       campaigns: shell('nav.campaigns'),

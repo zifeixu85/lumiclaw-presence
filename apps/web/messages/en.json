@@ -1,82 +1,126 @@
 {
   "Meta": {
     "title": "LumiClaw Presence | Delivery Foundation",
-    "description": "An evidence-bound delivery foundation for global brand operations."
+    "description": "Plan, review, and improve market-specific content from one clear objective."
   },
   "Shell": {
     "brand": "LumiClaw Presence",
-    "category": "AI-native global brand operations",
-    "mode": "DEMO_SEED / NOT_LIVE",
-    "milestone": "M0 · Delivery foundation",
+    "category": "Your global brand operations workspace",
+    "mode": "Demo environment · DEMO_SEED / NOT_LIVE",
+    "milestone": "Product preview · no live actions",
     "localeLabel": "Interface language",
     "localeSwitch": "简体中文",
     "skipToContent": "Skip to main content",
-    "evidenceLabel": "Evidence status",
-    "evidenceValue": "Local engineering verification",
-    "journeyLabel": "Campaign Journey",
-    "ownerLabel": "Owner next step",
-    "footer": "A preview does not mean an account is connected, an artifact is approved, or a platform action occurred.",
+    "evidenceLabel": "Current environment",
+    "evidenceValue": "Safe product preview",
+    "journeyLabel": "Five steps from objective to improvement",
+    "statusLabel": "Where things stand",
+    "ownerLabel": "What you can do now",
+    "technicalDetailsLabel": "View technical and acceptance details",
+    "technicalStateLabel": "Stable state code",
+    "technicalEvidenceLabel": "Engineering evidence",
+    "footer": "This is a safe preview: no real account is connected and nothing can be approved or published.",
     "nav": {
-      "campaigns": "Campaigns / Start",
-      "setup": "Setup & Readiness",
-      "mission": "Mission Workspace",
-      "review": "Review & Action",
-      "learn": "Response & Learn"
+      "campaigns": "Start a campaign",
+      "setup": "Prepare brand information",
+      "mission": "Create platform content",
+      "review": "Review and confirm",
+      "learn": "Learn and improve"
     }
   },
   "Screens": {
     "campaigns": {
-      "eyebrow": "01 · Start with the objective",
-      "title": "Turn one business objective into reviewable coordinated action.",
-      "summary": "This surface will summarize real campaigns, prior outcomes, and one next step. M0 verifies navigation, state language, and delivery boundaries only.",
-      "status": "No LIVE campaign exists",
-      "basis": "Current basis: SDD-000, pinned dependencies, and public architecture",
-      "next": "Verify the M0 foundation; the Coordinator creates M1 only after acceptance."
+      "eyebrow": "01 · Be clear about the outcome",
+      "title": "Start with one clear campaign objective.",
+      "summary": "This is where you will explain what you are promoting, who it is for, and what you want people to do. Content and review will stay anchored to that objective.",
+      "status": "This is a process preview; real campaigns cannot be created yet",
+      "basis": "The product preview has not stored any brand or campaign data.",
+      "next": "Walk through the complete flow and decide whether it fits how you work.",
+      "previewTitle": "When ready, this area will summarize",
+      "previewItems": {
+        "first": "The outcome you want this campaign to achieve",
+        "second": "Current progress and missing information",
+        "third": "The next item that needs your attention"
+      },
+      "technicalStatus": "BUSINESS_DATA_EMPTY / FOUNDATION_READY",
+      "technicalBasis": "SDD-000, pinned dependencies, and the public architecture passed local engineering verification."
     },
     "setup": {
-      "eyebrow": "02 · Readiness",
-      "title": "See facts, permissions, and material gaps first.",
-      "summary": "Future Setup work will place Identity, Product, Market, AccountMandate, and Claim–Evidence in one readiness view.",
-      "status": "DEMO_SEED · data model not implemented",
-      "basis": "Current basis: public Claim and AccountMandate architecture",
-      "next": "Do not upload real material; wait for M1 domain and privacy gates."
+      "eyebrow": "02 · Prepare trusted brand information",
+      "title": "Get the facts ready before writing content.",
+      "summary": "Your brand story, product value, target market, and supporting proof will live together here so every platform starts from the same truth.",
+      "status": "No brand information has been added",
+      "basis": "This preview does not accept real files and is not connected to any brand or platform account.",
+      "next": "Continue to the content workflow; do not upload real material yet.",
+      "previewTitle": "When ready, you will confirm",
+      "previewItems": {
+        "first": "Core brand and product information",
+        "second": "Facts and proof that may be used publicly",
+        "third": "Target markets and account readiness"
+      },
+      "technicalStatus": "NEEDS_INPUT / DEMO_SEED",
+      "technicalBasis": "Identity, Product, Market, AccountMandate, and Claim–Evidence remain future domain work."
     },
     "mission": {
-      "eyebrow": "03 · Collaboration workspace",
-      "title": "One factual core, four platform-native expressions.",
-      "summary": "The three-column Composer baseline relates ActivationUnit, editable fields, and approximate previews. It is not Agent execution or account-connection evidence.",
-      "status": "ADAPTER CONTRACT ONLY · no Agent turn",
-      "basis": "Current basis: six-role topology contract and four planned previews",
-      "next": "Review the information hierarchy and honest capability labels; execute nothing externally."
+      "eyebrow": "03 · Prepare content for each platform",
+      "title": "Prepare once, then shape the message for four platforms.",
+      "summary": "The same brand message will be prepared for X, Bluesky, LinkedIn, and Xiaohongshu, with an editing area and a preview before anything is shared.",
+      "status": "This shows the workflow only; the AI team has not started",
+      "basis": "No model or platform account is connected, and no content has been generated, approved, or published.",
+      "next": "Review the four content areas and previews, then decide whether the workflow feels natural.",
+      "previewTitle": "Four platform-specific content versions will appear here",
+      "previewItems": {
+        "first": "A suitable expression for each platform",
+        "second": "Content you can edit before review",
+        "third": "A preview before handoff or publication"
+      },
+      "technicalStatus": "ADAPTER_CONTRACT_ONLY / NO_AGENT_TURN",
+      "technicalBasis": "The six-role TeamProfile and four-platform adapter boundary are verified; no live AgentTeams Mission ran."
     },
     "review": {
-      "eyebrow": "04 · Review and action",
-      "title": "Approve an exact revision, never an ambiguous “send it”.",
-      "summary": "This area will show Revision, Audit, OwnerDecision, Grant, and Receipt. M0 creates no approval or execution credential.",
-      "status": "BLOCKED BY DESIGN · no approvable Revision",
-      "basis": "Current basis: Producer/Auditor separation and short-lived single-use Grant rules",
-      "next": "Review state copy only; do not provide platform tokens or attempt publication."
+      "eyebrow": "04 · You make the final call",
+      "title": "You stay in control before anything is published.",
+      "summary": "Content, supporting facts, and risk notes will appear together so you know exactly what may be shared and why. Nothing moves forward without your confirmation.",
+      "status": "There is currently nothing for you to review",
+      "basis": "The demo has no real copy, platform account, or permission to publish.",
+      "next": "Decide whether this review step feels clear, controlled, and trustworthy.",
+      "previewTitle": "A real review will bring together",
+      "previewItems": {
+        "first": "The exact content proposed for sharing",
+        "second": "The facts that support each statement",
+        "third": "Risk notes and decisions that need you"
+      },
+      "technicalStatus": "BLOCKED / NO_APPROVABLE_REVISION",
+      "technicalBasis": "Producer/Auditor separation, exact revisions, and short-lived single-use ActionGrants remain hard execution boundaries."
     },
     "learn": {
-      "eyebrow": "05 · Response and learning",
-      "title": "Bring real responses into the next round without silently rewriting truth.",
-      "summary": "Future Interaction, Outcome, Disposition, and LearningProposal objects require provenance, scope, and an Owner decision.",
-      "status": "EMPTY · no real interaction",
-      "basis": "Current basis: scoped learning and no silent mutation rules",
-      "next": "Confirm the empty state never presents a fixture as customer feedback or a business result."
+      "eyebrow": "05 · Improve from real feedback",
+      "title": "See what people actually did, then decide what to change.",
+      "summary": "Comments, interactions, and outcomes will be organized into traceable feedback and suggestions. The system will never rewrite your approved brand facts on its own.",
+      "status": "There is no real platform feedback yet",
+      "basis": "No platform account is connected and no customer, comment, or interaction data has been imported.",
+      "next": "Confirm that real feedback, system suggestions, and your final decision are clearly separated.",
+      "previewTitle": "When ready, this area will organize",
+      "previewItems": {
+        "first": "Real interactions from each platform",
+        "second": "Evidence-backed outcomes and changes",
+        "third": "Suggestions waiting for your decision"
+      },
+      "technicalStatus": "EMPTY / NO_LIVE_INTERACTION",
+      "technicalBasis": "Interaction, Outcome, Disposition, and LearningProposal are not implemented or persisted."
     }
   },
   "Mission": {
-    "rail": "Activation Units",
-    "composer": "Editable Composer",
-    "preview": "Native-like Preview",
-    "constraint": "Capability snapshot not connected",
-    "disclaimer": "Approximate preview; native rendering may change.",
+    "rail": "Content by platform",
+    "composer": "Editing area",
+    "preview": "Preview before sharing",
+    "constraint": "No platform account connected",
+    "disclaimer": "This is an illustration; you will still confirm before anything is shared.",
     "platforms": {
-      "x": "X · PREPARE ONLY",
-      "bluesky": "Bluesky · NOT CONNECTED",
-      "linkedin": "LinkedIn · HANDOFF PLANNED",
-      "xiaohongshu": "Xiaohongshu · HANDOFF PLANNED"
+      "x": "X · preparation preview only",
+      "bluesky": "Bluesky · not connected",
+      "linkedin": "LinkedIn · manual handoff planned",
+      "xiaohongshu": "Xiaohongshu · manual handoff planned"
     }
   },
   "States": {
