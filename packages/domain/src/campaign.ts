@@ -2,6 +2,7 @@ import {sha256Digest} from './canonical.js';
 import {validateCampaignShape} from './campaign-schema.js';
 import {mandateMatchesUnit, type ArtifactRevision, type CampaignDocument, type Claim, type PlatformArtifact} from './campaign-types.js';
 import {validateOrganizationGraph} from './graph.js';
+import {isStoredScheduleContractValid} from './schedule.js';
 import type {Platform, ValidationIssue, ValidationResult} from './types.js';
 
 export function canonicalCampaignPayload(document: CampaignDocument): unknown {
@@ -19,6 +20,18 @@ export function validateCampaignDocument(value: unknown, now = new Date()): Vali
   const issues: ValidationIssue[] = [];
   const graphResult = validateOrganizationGraph(document.graph, now);
   if (!graphResult.ok) issues.push(...graphResult.issues);
+
+  const campaignIds = [
+    document.id,
+    ...document.evidenceRefs.map((item) => item.id),
+    ...document.claims.map((item) => item.id),
+    ...document.activationPlan.units.map((item) => item.id),
+    ...document.capabilitySnapshots.map((item) => item.id),
+    ...document.artifactRevisions.map((item) => item.id),
+    ...document.publishingSchedules.map((item) => item.id),
+    ...document.scheduleOccurrences.map((item) => item.id)
+  ];
+  if (new Set(campaignIds).size !== campaignIds.length) issues.push(issue('CAMPAIGN_DUPLICATE_ID', '/', 'Campaign-scoped object IDs must be unique.'));
 
   if (document.organizationId !== document.graph.organization.id) issues.push(issue('CAMPAIGN_ORGANIZATION_SCOPE_MISMATCH', '/organizationId', 'Campaign and graph organization scopes differ.'));
   const scoped = [...document.evidenceRefs, ...document.claims, ...document.activationPlan.units, ...document.capabilitySnapshots, ...document.artifactRevisions, ...document.publishingSchedules, ...document.scheduleOccurrences];
@@ -44,6 +57,12 @@ export function validateCampaignDocument(value: unknown, now = new Date()): Vali
   const evidence = new Set(document.evidenceRefs.map((item) => item.id));
   const capabilities = new Map(document.capabilitySnapshots.map((snapshot) => [snapshot.id, snapshot]));
   const units = new Map(document.activationPlan.units.map((unit) => [unit.id, unit]));
+  const capabilityPlatforms = new Set(document.capabilitySnapshots.map((snapshot) => snapshot.platform));
+  const capabilityAccounts = new Set(document.capabilitySnapshots.map((snapshot) => snapshot.channelAccountId));
+  if (capabilities.size !== 4 || capabilityPlatforms.size !== 4 || capabilityAccounts.size !== 4) issues.push(issue('ARTIFACT_CAPABILITY_SCOPE_INVALID', '/capabilitySnapshots', 'Campaign must contain exactly one CapabilitySnapshot for every M1 platform account.'));
+  const artifactUnitIds = new Set(document.artifactRevisions.map((revision) => revision.activationUnitId));
+  const artifactPlatforms = new Set(document.artifactRevisions.map((revision) => revision.platform));
+  if (artifactUnitIds.size !== units.size || [...units.keys()].some((id) => !artifactUnitIds.has(id)) || artifactPlatforms.size !== 4) issues.push(issue('ARTIFACT_ACTIVATION_SCOPE_INVALID', '/artifactRevisions', 'Campaign must contain exactly one current artifact for every ActivationUnit and M1 platform.'));
   for (const [index, revision] of document.artifactRevisions.entries()) {
     const unit = units.get(revision.activationUnitId);
     if (unit === undefined || revision.campaignId !== document.id || revision.platform !== unit.platform) issues.push(issue('ARTIFACT_ACTIVATION_SCOPE_INVALID', `/artifactRevisions/${index}`, 'Artifact revision does not match the Campaign/ActivationUnit/platform.'));
@@ -63,9 +82,13 @@ export function validateCampaignDocument(value: unknown, now = new Date()): Vali
 
   const revisionIds = new Set(document.artifactRevisions.map((revision) => revision.id));
   const schedules = new Map(document.publishingSchedules.map((schedule) => [schedule.id, schedule]));
+  if (document.publishingSchedules.filter((schedule) => schedule.status === 'ACTIVE').length > 1) issues.push(issue('SCHEDULE_SCOPE_INVALID', '/publishingSchedules', 'M1 permits only one active Campaign schedule.'));
   document.publishingSchedules.forEach((schedule, index) => {
     if (schedule.campaignId !== document.id) issues.push(issue('SCHEDULE_SCOPE_INVALID', `/publishingSchedules/${index}/campaignId`, 'Schedule does not belong to this Campaign.'));
-    if (schedule.status === 'ACTIVE' && schedule.sourceArtifactRevisionIds.some((id) => !revisionIds.has(id))) issues.push(issue('SCHEDULE_SOURCE_REVISION_STALE', `/publishingSchedules/${index}/sourceArtifactRevisionIds`, 'Active schedule references a stale ArtifactRevision.'));
+    const scheduleRevisionIds = new Set(schedule.sourceArtifactRevisionIds);
+    if (schedule.status === 'ACTIVE' && (scheduleRevisionIds.size !== revisionIds.size || [...revisionIds].some((id) => !scheduleRevisionIds.has(id)))) issues.push(issue('SCHEDULE_SOURCE_REVISION_STALE', `/publishingSchedules/${index}/sourceArtifactRevisionIds`, 'Active schedule must reference every exact current ArtifactRevision.'));
+    const occurrences = document.scheduleOccurrences.filter((occurrence) => occurrence.scheduleId === schedule.id);
+    if (!isStoredScheduleContractValid(schedule, occurrences, document.artifactRevisions)) issues.push(issue('SCHEDULE_CONTRACT_INVALID', `/publishingSchedules/${index}`, 'Schedule or occurrence data does not match the deterministic M1 preview contract.'));
   });
   document.scheduleOccurrences.forEach((occurrence, index) => {
     const schedule = schedules.get(occurrence.scheduleId);

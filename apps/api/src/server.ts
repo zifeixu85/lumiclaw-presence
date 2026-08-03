@@ -20,8 +20,8 @@ type SchedulePreviewBody = {localStart: string; timeZone: string; rrule?: string
 
 export function buildApi(options: BuildOptions = {}): FastifyInstance {
   const app = Fastify({logger: false});
-  const repository = options.repository ?? new MemoryCampaignRepository();
   const now = options.now ?? (() => new Date());
+  const repository = options.repository ?? new MemoryCampaignRepository(now);
   app.addHook('onClose', async () => repository.close());
 
   app.get('/health', async (_request, reply) => {
@@ -82,6 +82,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (organizationId === undefined) return;
     const value = await repository.getMissionContract(organizationId, request.params.campaignId);
     if (value === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+    if (value.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: value.digest, version: value.version, gapCodes: value.gapCodes});
     return {code: 'MISSION_CONTRACT_READY', mode: 'DEMO_SEED', live: false, ...value};
   });
 
@@ -91,7 +92,8 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     const envelope = await repository.get(organizationId, request.params.campaignId);
     if (envelope === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
     try {
-      const value = createPublishingSchedule({organizationId, campaignId: request.params.campaignId, artifactRevisions: envelope.document.artifactRevisions, ...request.body}, now());
+      const input = parseSchedulePreviewBody(request.body);
+      const value = createPublishingSchedule({...input, organizationId, campaignId: request.params.campaignId, artifactRevisions: envelope.document.artifactRevisions}, now());
       return {code: 'SCHEDULE_PREVIEW_READY', mode: 'DEMO_SEED', live: false, executionAllowed: false, ...value};
     } catch (error) { return sendDomainOrUnavailable(reply, error); }
   });
@@ -133,6 +135,18 @@ function sendDomainOrUnavailable(reply: FastifyReply, error: unknown) {
 }
 
 function errorBody(code: string) { return {code, mode: 'DEMO_SEED', live: false}; }
+
+function parseSchedulePreviewBody(value: unknown): SchedulePreviewBody {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) throw new CampaignPreparationError('CAMPAIGN_VALIDATION_FAILED', 'Schedule preview schema validation failed.', [{code: 'SCHEMA_INVALID', path: '/', message: 'Expected an object.'}]);
+  const record = value as Record<string, unknown>;
+  const allowed = new Set(['localStart', 'timeZone', 'rrule', 'foldPreference', 'misfirePolicy']);
+  const invalid = Object.keys(record).filter((key) => !allowed.has(key));
+  const rruleValid = record.rrule === undefined || record.rrule === null || typeof record.rrule === 'string';
+  if (invalid.length > 0 || typeof record.localStart !== 'string' || typeof record.timeZone !== 'string' || !['EARLIER', 'LATER'].includes(String(record.foldPreference)) || !['SKIP', 'HOLD_FOR_OWNER'].includes(String(record.misfirePolicy)) || !rruleValid) {
+    throw new CampaignPreparationError('CAMPAIGN_VALIDATION_FAILED', 'Schedule preview schema validation failed.', [{code: 'SCHEMA_INVALID', path: '/', message: invalid.length > 0 ? `Unknown fields: ${invalid.join(', ')}` : 'Invalid schedule preview field type.'}]);
+  }
+  return record as SchedulePreviewBody;
+}
 
 async function start(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;

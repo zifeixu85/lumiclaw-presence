@@ -55,6 +55,15 @@ describe('M1 Campaign API contract', () => {
     expect(created.headers.etag).toMatch(/^"campaign-/u);
   });
 
+  it('returns a domain rejection rather than availability failure for malformed nested contracts', async () => {
+    const app = buildApi({now}); apps.push(app);
+    const document = createDemoCampaignDocument() as unknown as {organizationId: string; artifactRevisions: unknown[]};
+    document.artifactRevisions[0] = {};
+    const response = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers: {'x-lumiclaw-organization-id': document.organizationId, 'idempotency-key': 'malformed-campaign'}, payload: document});
+    expect(response.statusCode).toBe(422);
+    expect(response.json().code).toBe('CAMPAIGN_VALIDATION_FAILED');
+  });
+
   it('previews persistent schedule rows while rejecting DST gaps and never enabling execution', async () => {
     const app = buildApi({now}); apps.push(app);
     const document = createDemoCampaignDocument();
@@ -67,5 +76,29 @@ describe('M1 Campaign API contract', () => {
     const gap = await app.inject({method: 'POST', url: `/api/v1/campaigns/${document.id}/schedule-preview`, headers, payload: {localStart: '2026-03-08T02:30', timeZone: 'America/New_York', foldPreference: 'EARLIER', misfirePolicy: 'SKIP'}});
     expect(gap.statusCode).toBe(422);
     expect(gap.json().code).toBe('DST_GAP');
+    const forged = await app.inject({method: 'POST', url: `/api/v1/campaigns/${document.id}/schedule-preview`, headers, payload: {localStart: '2026-09-01T09:00', timeZone: 'UTC', foldPreference: 'EARLIER', misfirePolicy: 'SKIP', organizationId: document.graph.identities[0]!.id}});
+    expect(forged.statusCode).toBe(422);
+    expect(forged.json().details[0].code).toBe('SCHEMA_INVALID');
+  });
+
+  it('re-derives time-bound readiness on reopen without changing the stored digest', async () => {
+    let instant = new Date('2026-08-03T12:00:00.000Z');
+    const clock = () => instant;
+    const app = buildApi({now: clock}); apps.push(app);
+    const document = createDemoCampaignDocument();
+    const headers = {'x-lumiclaw-organization-id': document.organizationId, 'idempotency-key': 'time-readiness-001'};
+    const created = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers, payload: document});
+    const digest = created.json().digest;
+    instant = new Date('2027-02-01T00:00:00.000Z');
+    const reopened = await app.inject({method: 'GET', url: `/api/v1/campaigns/${document.id}`, headers});
+    expect(reopened.json().readiness).toBe('BLOCKED');
+    expect(reopened.json().gapCodes).toContain('CLAIM_EXPIRED');
+    expect(reopened.json().digest).toBe(digest);
+    const list = await app.inject({method: 'GET', url: '/api/v1/campaigns', headers});
+    expect(list.json().campaigns[0].readiness).toBe('BLOCKED');
+    const mission = await app.inject({method: 'GET', url: `/api/v1/campaigns/${document.id}/mission-contract`, headers});
+    expect(mission.statusCode).toBe(409);
+    expect(mission.json().code).toBe('CAMPAIGN_BLOCKED');
+    expect(mission.json().digest).toBe(digest);
   });
 });

@@ -15,7 +15,7 @@
 - M1 table names are explicit and organization-scoped. Composite FKs prevent cross-organization graph edges.
 - Campaign head is mutable only for current version/digest pointers. `campaign_snapshots`, `artifact_revisions`, and schedule versions preserve history.
 - Idempotency is transactionally stored with the mutation result.
-- Schedule save resolves the wall time before commit and creates only preview occurrences in `NEEDS_REVIEW`.
+- Schedule preview resolves the wall time before Campaign PUT and creates only non-executing occurrence states; future rows remain `PENDING`, while past rows follow `SKIP | HOLD_FOR_OWNER`.
 - No secret/ref/token/private payload column is introduced.
 
 ## API and error design
@@ -50,4 +50,3 @@
 - Run M1 down migration only on the exact local test project if data rollback is explicitly needed.
 - Ordinary `docker compose down` keeps data for reopen evidence.
 - Verification cleanup uses one exact project name and never prune/global deletion.
-

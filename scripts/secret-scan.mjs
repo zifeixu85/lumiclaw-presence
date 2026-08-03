@@ -1,5 +1,5 @@
 import {execFileSync} from 'node:child_process';
-import {readFile, stat} from 'node:fs/promises';
+import {mkdir, readFile, stat, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const patterns = [
@@ -35,6 +35,15 @@ async function scanRepository() {
 
 if (process.argv[1] !== undefined && import.meta.url === new URL(`file://${path.resolve(process.argv[1])}`).href) {
   const result = await scanRepository();
+  const evidencePath = path.join(process.cwd(), '.evidence/sdd-001/secret-scan.json');
+  await mkdir(path.dirname(evidencePath), {recursive: true});
+  await writeFile(evidencePath, `${JSON.stringify({
+    schemaVersion: '1.0.0',
+    status: result.findings.length === 0 ? 'PASS' : 'FAIL',
+    generatedAt: new Date().toISOString(),
+    scannedFiles: result.files,
+    findings: result.findings
+  }, null, 2)}\n`);
   if (result.findings.length > 0) {
     console.error(JSON.stringify({code: 'SECRET_SCAN_FAILED', ...result}, null, 2));
     process.exit(1);

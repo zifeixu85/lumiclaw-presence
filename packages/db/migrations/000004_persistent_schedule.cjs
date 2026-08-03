@@ -17,6 +17,7 @@ exports.up = (pgm) => {
     {columns: ['organization_id', 'schedule_id', 'schedule_version'], references: 'publishing_schedules(organization_id,id,version)', onDelete: 'CASCADE'}
   ]}});
   pgm.addConstraint('schedule_occurrences', 'schedule_occurrence_ordinal_unique', {unique: ['organization_id', 'schedule_id', 'schedule_version', 'ordinal']});
+  pgm.addConstraint('schedule_occurrences', 'schedule_occurrence_instant_unique', {unique: ['organization_id', 'schedule_id', 'schedule_version', 'scheduled_for']});
   pgm.createIndex('schedule_occurrences', ['state', 'scheduled_for']);
 };
 

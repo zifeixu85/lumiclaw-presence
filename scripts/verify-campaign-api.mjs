@@ -61,24 +61,32 @@ try {
   const invalid = structuredClone(created.body.document); invalid.claims[0].subjectId = invalid.graph.identities[0].id;
   await request(`/api/v1/campaigns/${document.id}`, {method: 'PUT', headers: {...headers, 'idempotency-key': 'integration-invalid-0001', 'if-match': created.headers.get('etag')}, body: JSON.stringify(invalid)}, 422);
   checks.invalidProductScopeRejected = true;
-  const update = structuredClone(created.body.document);
-  const x = update.artifactRevisions.find((item) => item.platform === 'X');
+  const contentUpdate = structuredClone(created.body.document);
+  const x = contentUpdate.artifactRevisions.find((item) => item.platform === 'X');
   x.content.posts[0] = 'Persisted X integration edit.';
+  const contentSaved = await request(`/api/v1/campaigns/${document.id}`, {method: 'PUT', headers: {...headers, 'idempotency-key': 'integration-save-00001', 'if-match': created.headers.get('etag')}, body: JSON.stringify(contentUpdate)}, 200);
+  if (contentSaved.body.version !== 2 || contentSaved.body.digest === created.body.digest) throw new Error('Content save did not advance version/digest.');
   await request(`/api/v1/campaigns/${document.id}/schedule-preview`, {method: 'POST', headers: {'content-type': 'application/json', 'x-lumiclaw-organization-id': organizationId}, body: JSON.stringify({localStart: '2026-03-08T02:30', timeZone: 'America/New_York', foldPreference: 'EARLIER', misfirePolicy: 'SKIP'})}, 422);
   await request(`/api/v1/campaigns/${document.id}/schedule-preview`, {method: 'POST', headers: {'content-type': 'application/json', 'x-lumiclaw-organization-id': organizationId}, body: JSON.stringify({localStart: '2026-09-01T09:00', timeZone: 'Invalid/Zone', foldPreference: 'EARLIER', misfirePolicy: 'SKIP'})}, 422);
   const schedulePreview = await request(`/api/v1/campaigns/${document.id}/schedule-preview`, {method: 'POST', headers: {'content-type': 'application/json', 'x-lumiclaw-organization-id': organizationId}, body: JSON.stringify({localStart: '2026-11-01T01:30', timeZone: 'America/New_York', rrule: 'FREQ=WEEKLY;INTERVAL=1;COUNT=2', foldPreference: 'LATER', misfirePolicy: 'HOLD_FOR_OWNER'})}, 200);
-  update.publishingSchedules.push(schedulePreview.body.schedule);
-  update.scheduleOccurrences.push(...schedulePreview.body.occurrences);
-  const saved = await request(`/api/v1/campaigns/${document.id}`, {method: 'PUT', headers: {...headers, 'idempotency-key': 'integration-save-00001', 'if-match': created.headers.get('etag')}, body: JSON.stringify(update)}, 200);
-  if (saved.body.version !== 2 || saved.body.digest === created.body.digest) throw new Error('Save did not advance version/digest.');
+  const scheduleUpdate = structuredClone(contentSaved.body.document);
+  scheduleUpdate.publishingSchedules.push(schedulePreview.body.schedule);
+  scheduleUpdate.scheduleOccurrences.push(...schedulePreview.body.occurrences);
+  const [saved, concurrentReplay] = await Promise.all([
+    request(`/api/v1/campaigns/${document.id}`, {method: 'PUT', headers: {...headers, 'idempotency-key': 'integration-save-00002', 'if-match': contentSaved.headers.get('etag')}, body: JSON.stringify(scheduleUpdate)}, 200),
+    request(`/api/v1/campaigns/${document.id}`, {method: 'PUT', headers: {...headers, 'idempotency-key': 'integration-save-00002', 'if-match': contentSaved.headers.get('etag')}, body: JSON.stringify(scheduleUpdate)}, 200)
+  ]);
+  if (saved.body.digest !== concurrentReplay.body.digest || new Set([saved.headers.get('idempotency-replayed'), concurrentReplay.headers.get('idempotency-replayed')]).size !== 2) throw new Error('Concurrent idempotent update did not serialize and replay the first result.');
+  if (saved.body.version !== 3 || saved.body.document.publishingSchedules[0].status !== 'ACTIVE') throw new Error('Schedule did not persist against the exact saved artifact revision.');
   checks.saved = {version: saved.body.version, digest: saved.body.digest};
-  await request(`/api/v1/campaigns/${document.id}`, {method: 'PUT', headers: {...headers, 'idempotency-key': 'integration-stale-00001', 'if-match': created.headers.get('etag')}, body: JSON.stringify(update)}, 412);
+  await request(`/api/v1/campaigns/${document.id}`, {method: 'PUT', headers: {...headers, 'idempotency-key': 'integration-stale-00001', 'if-match': created.headers.get('etag')}, body: JSON.stringify(scheduleUpdate)}, 412);
   checks.staleEtagRejected = true;
   const editAfterSchedule = structuredClone(saved.body.document);
   editAfterSchedule.artifactRevisions.find((item) => item.platform === 'X').content.posts[0] = 'Persisted edit invalidates the schedule.';
-  const invalidated = await request(`/api/v1/campaigns/${document.id}`, {method: 'PUT', headers: {...headers, 'idempotency-key': 'integration-save-00002', 'if-match': saved.headers.get('etag')}, body: JSON.stringify(editAfterSchedule)}, 200);
+  const invalidated = await request(`/api/v1/campaigns/${document.id}`, {method: 'PUT', headers: {...headers, 'idempotency-key': 'integration-save-00003', 'if-match': saved.headers.get('etag')}, body: JSON.stringify(editAfterSchedule)}, 200);
   if (invalidated.body.document.publishingSchedules[0].status !== 'INVALIDATED' || invalidated.body.document.scheduleOccurrences.some((item) => item.state === 'PENDING')) throw new Error('Content edit did not invalidate the schedule contract.');
-  checks.schedule = {dstGapRejected: true, invalidZoneRejected: true, occurrences: schedulePreview.body.occurrences.length, invalidatedOnEdit: true};
+  checks.schedule = {dstGapRejected: true, invalidZoneRejected: true, occurrences: schedulePreview.body.occurrences.length, activePersistedBeforeEdit: true, invalidatedOnEdit: true};
+  checks.concurrentIdempotencyReplay = true;
   const mission = await request(`/api/v1/campaigns/${document.id}/mission-contract`, {headers: {'x-lumiclaw-organization-id': organizationId}}, 200);
   if (mission.body.digest !== invalidated.body.digest || mission.body.contract.sourceDigest !== invalidated.body.digest) throw new Error('Mission contract does not import the persisted digest.');
   checks.missionDigest = mission.body.digest;
@@ -91,7 +99,7 @@ try {
   if (reopened.body.digest !== invalidated.body.digest || reopened.body.document.artifactRevisions.find((item) => item.platform === 'X').content.posts[0] !== 'Persisted edit invalidates the schedule.') throw new Error('Restart/down-up reopen lost Campaign state.');
   checks.restartAndDownUpPersistence = true;
   const counts = docker(['exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At', '-F', ',', '-c', 'SELECT (SELECT count(*) FROM campaigns),(SELECT count(*) FROM campaign_snapshots),(SELECT count(*) FROM artifact_revisions),(SELECT count(*) FROM idempotency_records),(SELECT count(*) FROM publishing_schedules),(SELECT count(*) FROM schedule_occurrences)']).trim().split(',').map(Number);
-  if (counts[0] !== 1 || counts[1] !== 3 || counts[2] !== 6 || counts[3] !== 3 || counts[4] !== 1 || counts[5] !== 2) throw new Error(`Unexpected persisted counts: ${counts.join(',')}`);
+  if (counts[0] !== 1 || counts[1] !== 4 || counts[2] !== 6 || counts[3] !== 4 || counts[4] !== 1 || counts[5] !== 2) throw new Error(`Unexpected persisted counts: ${counts.join(',')}`);
   checks.persistedCounts = {campaigns: counts[0], snapshots: counts[1], artifactRevisions: counts[2], idempotencyRecords: counts[3], publishingSchedules: counts[4], scheduleOccurrences: counts[5]};
   result = 'PASS';
 } catch (error) {

@@ -31,3 +31,22 @@
 ## Decision
 
 No unresolved product direction, credential, permission, dependency, or testability conflict blocks implementation. Constitution, Specify, Clarifications, Plan, Checklist, Tasks, and this analysis agree. SDD-001 is `SPEC_READY` as of 2026-08-03; implementation may begin in the assigned Worktree.
+
+## Post-implementation convergence analysis
+
+| Check | Result | Evidence / convergence decision |
+|---|---|---|
+| Dependency order | PASS | M1-01 through M1-06 were implemented and locally committed in order; M2 remains spec-only. |
+| Server authority | PASS | Client aggregate writes use strict schemas; Evidence, Capability, Activation scope, approved Claim fields, artifact revisions, and schedule authority are validated or derived server-side. |
+| Persistence integrity | PASS | PostgreSQL reopen verifies stored document/digest/ETag consistency and re-evaluates time-bound readiness; corrupt state fails closed. |
+| Concurrency and history | PASS | Transaction advisory locking serializes idempotency keys; stale ETags fail; artifact/schedule history is append-only and replaced occurrences are invalidated. |
+| Schedule truth | PASS | UTC candidates are deterministically recomputed from local time/IANA zone/fold; forged fields and duplicate RRULE keys fail; no due execution path exists. |
+| Product surface | PASS | Four distinct editors/previews expose persisted identity/account/capability/mode/constraints; approved Claims are visibly immutable; zh-CN/en share one Campaign. |
+| Recovery | PASS | Fresh/broken migration, database outage, restart/down-up, Campaign/blob persistence, and exact project cleanup pass; PostgreSQL idle-client disconnect no longer terminates API. |
+| Responsive/browser | PASS | Real local Web/API/PostgreSQL flow reopens v4; CDP `390 × 844` measurement reports document/body `390` with only the navigation rail locally scrollable; console warning/error count is zero. |
+| External review | PASS WITH CORRECTIONS | ChatGPT Pro returned `CHANGES_REQUIRED`; every P1 was independently reproduced or rejected with evidence, remediated, and re-run locally. Pro is not an acceptance authority. |
+| Claims and status | PASS | Evidence maturity is `ENGINEERING_VERIFIED`; Owner UAT/Coordinator acceptance, production, external actions, customers, growth, leads, and revenue remain unclaimed. Both progress registers have zero diff. |
+
+## Convergence decision
+
+The implementation and evidence now satisfy the 16 binary SDD criteria at the Executor layer. SDD-001 advances to `EVIDENCE_READY`, not `ACCEPTED`. Owner UAT and Coordinator independent verification remain required; no M2 implementation may start in this task.

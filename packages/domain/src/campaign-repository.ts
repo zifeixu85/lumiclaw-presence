@@ -26,7 +26,7 @@ export interface CampaignRepository {
   health(): Promise<boolean>;
   list(organizationId: string): Promise<CampaignSummary[]>;
   get(organizationId: string, campaignId: string): Promise<CampaignEnvelope | undefined>;
-  getMissionContract(organizationId: string, campaignId: string): Promise<{contract: MissionContract; digest: string; version: number} | undefined>;
+  getMissionContract(organizationId: string, campaignId: string): Promise<{contract: MissionContract; digest: string; version: number; readiness: CampaignEnvelope['readiness']; gapCodes: string[]} | undefined>;
   create(organizationId: string, document: CampaignDocument, idempotencyKey: string, requestDigest: string, now?: Date): Promise<MutationResult>;
   update(organizationId: string, campaignId: string, document: CampaignDocument, expectedEtag: string, idempotencyKey: string, requestDigest: string, now?: Date): Promise<MutationResult>;
   close(): Promise<void>;

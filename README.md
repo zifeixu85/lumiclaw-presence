@@ -140,7 +140,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the planned service boundaries, provi
 
 ## Current implementation truth
 
-**Implemented on the current branch:**
+**Engineering-verified candidate on the current branch (pending Coordinator verification and Owner acceptance):**
 
 - the accepted M0 Node/npm workspace, Docker Compose/PostgreSQL/BlobStore foundation, bilingual Next.js shell, quality gates, and isolated AgentTeams v1.2.0 adapter smoke;
 - tenant-aware Organization, Identity, Brand, Product, Market, ChannelAccount, and AccountMandate contracts and migrations;
@@ -157,7 +157,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the planned service boundaries, provi
 - Bluesky Direct, LinkedIn and Xiaohongshu Handoffs, and the gated X Direct Canary;
 - DeepSeek, EvoLink, and isolated SignalProvider adapters;
 - response disposition, scoped learning, and Flight replay;
-- a web product surface.
+- hosted authentication, multi-tenant RLS, and a production web surface.
 
 Legacy engineering assets exist in a separate private prototype, but they are not treated as implementation of this product. Reuse will happen file by file with provenance, licensing, semantic-change notes, and new tests.
 

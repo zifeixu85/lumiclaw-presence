@@ -41,7 +41,7 @@
 
 - Add bounded RRULE parser/canonicalizer, IANA resolver, gap/fold candidates, misfire, schedule/version/occurrence schemas and tables.
 - Add schedule form and local/zone/UTC preview; require explicit fold choice.
-- Repository update versions schedules, cancels superseded future previews, and leaves all new occurrences `NEEDS_REVIEW`.
+- Repository update retains replaced schedule history, invalidates superseded future previews, and leaves future occurrences `PENDING` without execution authority.
 - Tests first: normal zone, invalid zone/rule, New York gap/fold, earlier/later, misfire, uniqueness, edit invalidation, no execution/grant.
 - Checkpoint: API/UI/DB schedule tests pass and no mission-worker scheduler exists.
 
@@ -60,3 +60,9 @@
 - Create `docs/reports/acceptance/SDD-001-ACCEPTANCE.md`, Owner UAT, run manifest, commits, and structured handoff.
 - Checkpoint: every AC has evidence, progress registers have no diff, no Push/PR/Deploy/action occurred; only then complete the Goal.
 
+## Execution outcome
+
+- T01–T06: completed in dependency order with domain, migration, API, Web, platform, and schedule tests.
+- T07: completed as specification only; SDD-002 is `SPEC_READY` with no implementation.
+- T08: Executor convergence complete; machine/browser/external-review evidence and Chinese acceptance report are ready.
+- Acceptance authority remains external to this task: proposed state is `EVIDENCE_READY`, with Owner UAT and Coordinator review pending.

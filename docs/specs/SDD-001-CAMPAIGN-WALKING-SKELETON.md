@@ -1,6 +1,6 @@
 # SDD-001 — Campaign Walking Skeleton
 
-> Status: `SPEC_READY`  
+> Status: `EVIDENCE_READY`
 > Milestone: `M1 — Campaign walking skeleton`  
 > Progress module IDs: `M1-01`, `M1-02`, `M1-03`, `M1-04`, `M1-05`, `M1-06`  
 > Owner: A梦  
@@ -20,7 +20,9 @@ GitHub Spec Kit is used as a method without installing `specify` or creating `.s
 5. **Checklist:** `docs/specs/sdd-001/CHECKLIST.md` checks requirements, tenancy, security, i18n, time, license, evidence, and non-claims.
 6. **Tasks:** `docs/specs/sdd-001/TASKS.md` orders M1-01 through M1-06 and names file/test checkpoints.
 7. **Analyze:** `docs/specs/sdd-001/ANALYZE.md` records the cross-artifact review and the decision to enter `SPEC_READY` before implementation.
-8. **Implement / Converge / Accept:** implementation starts only after this spec-ready state. Closeout maps every criterion to evidence and produces the Chinese acceptance report and status handoff.
+8. **Implement:** M1-01 through M1-06 were implemented in dependency order after the `SPEC_READY` gate.
+9. **Converge:** local unit/static/build/Storybook, PostgreSQL/API, Compose recovery, AgentTeams boundary, browser/390px, secret/license/SBOM, source-package, and external-review gates are recorded in the acceptance report.
+10. **Accept:** the Executor proposes `EVIDENCE_READY`; canonical `ACCEPTED` remains a Coordinator/Owner decision and the public progress registers are unchanged.
 
 ## 1. User problem and outcome
 
@@ -164,10 +166,10 @@ Canonical payload excludes server envelope fields (`version`, `digest`, ETag, ti
 
 | Platform | Editable minimum | Preview minimum | Execution mode fixture |
 |---|---|---|---|
-| X | post/thread items, media refs, alt text | feed/thread, author, media grid, weighted counter | `PREPARE_ONLY` |
-| Bluesky | text/thread items, facets/links, embed ref, alt text | feed/thread, handle, embed/facet indication | `DIRECT_PLANNED_NOT_CONNECTED` |
-| LinkedIn | commentary, author kind, link card/media refs | person/company header, see-more, card/media | `NATIVE_HANDOFF_PLANNED` |
-| Xiaohongshu | title, body, topics, cover, carousel/poster refs | phone note card/detail, cover, topics | `NATIVE_HANDOFF_PLANNED` |
+| X | post/thread items and alt text | feed/thread, author, editor character counts | `PREPARE_ONLY` |
+| Bluesky | text/thread items, embed URL, alt text | feed/thread, handle, embed card | `DIRECT_PLANNED_NOT_CONNECTED` |
+| LinkedIn | commentary, author kind, link title/URL | person/company header, see-more, link card | `NATIVE_HANDOFF_PLANNED` |
+| Xiaohongshu | title, body, topics, cover label | phone note card/detail, cover, topics | `NATIVE_HANDOFF_PLANNED` |
 
 Constraints come from the referenced versioned CapabilitySnapshot, never React constants. Save revalidates them on the server. Preview always shows target account/identity, snapshot capture time, execution mode, violations, and the native-rendering disclaimer.
 
@@ -179,12 +181,12 @@ Constraints come from the referenced versioned CapabilitySnapshot, never React c
 - `localStart` as a timezone-less wall-clock string;
 - IANA `timeZone`;
 - resolved `scheduledFor` UTC instant;
-- fold disambiguation `EARLIER | LATER | REJECT`;
-- misfire `SKIP | RUN_ONCE | RESCHEDULE`;
-- for recurrence, canonical `FREQ=DAILY|WEEKLY`, `INTERVAL=1..30`, optional weekly `BYDAY`, and exactly one bounded `COUNT=1..90` or `UNTIL` no more than 365 days from start;
-- state `ENABLED | PAUSED | CANCELLED`, revision, `approvalState=NOT_REVIEWED`, and invalidation reason.
+- fold disambiguation `EARLIER | LATER`; a fold always requires an explicit Owner choice and there is no implicit default;
+- misfire `SKIP | HOLD_FOR_OWNER` with no execution path;
+- for recurrence, the deliberately narrow M1 subset is exactly canonical `FREQ=DAILY|WEEKLY;INTERVAL=1..30;COUNT=1..50`; `BYDAY`, `UNTIL`, monthly rules, and unbounded recurrence are rejected;
+- state `ACTIVE | INVALIDATED`, version, exact source ArtifactRevision IDs, and invalidation reason.
 
-Zero matching UTC instants is `SCHEDULE_DST_GAP`. Two matching instants is `SCHEDULE_DST_FOLD` unless the Owner selects `EARLIER` or `LATER`; both candidate UTC instants are returned for review. M1 creates immutable/versioned Occurrence previews in `NEEDS_REVIEW`; it does not claim due rows, lease them, grant action, or call the Operator. Editing content/account/time/recurrence cancels superseded future previews and resets review/grant references to absent.
+Zero matching UTC instants is rejected as `DST_GAP`. For a fold, the required `EARLIER | LATER` choice resolves the selected UTC instant/offset; unit tests prove both candidates differ by the expected transition. Future previews are `PENDING`; a past instant becomes `MISSED` for `SKIP` or `NEEDS_OWNER` for `HOLD_FOR_OWNER`. M1 never claims due rows, leases them, grants action, or calls the Operator. Content/account edits create new ArtifactRevisions and invalidate the bound schedule; a time/recurrence replacement appends a new schedule, retains the prior history as `INVALIDATED`, and invalidates its pending occurrences.
 
 ### 5.6 REST and OpenAPI
 
@@ -203,7 +205,7 @@ Idempotency records bind organization, method, route, key, request digest, statu
 
 ### 5.7 PostgreSQL tables and history
 
-Migration `000002_campaign_walking_skeleton.cjs` adds organization graph tables, Campaign aggregate/snapshot, Claims/Evidence, artifacts/revisions, CapabilitySnapshots, schedules/occurrences, and idempotency records. Composite organization foreign keys prevent cross-tenant references. Unique constraints include `(organization_id,id)`, `(organization_id,campaign_id,version)`, artifact revision identity, `(organization_id,schedule_id,version)`, and occurrence `(organization_id,schedule_id,scheduled_for)`.
+Migrations `000002_organization_graph.cjs`, `000003_campaign_control_plane.cjs`, and `000004_persistent_schedule.cjs` add the organization graph, Campaign aggregate/snapshot, Claims/Evidence, artifacts/revisions, CapabilitySnapshots, idempotency, schedules, and occurrences. Composite organization foreign keys prevent cross-tenant references. Unique constraints include `(organization_id,id)`, `(organization_id,campaign_id,version)`, artifact revision identity, `(organization_id,schedule_id,version)`, and occurrence ordinal plus scheduled instant within each schedule version.
 
 Mutable aggregate heads point to append-only snapshots/revisions. The down migration removes only M1 tables in reverse dependency order and is authorized only for project-scoped local test data.
 
@@ -260,7 +262,7 @@ No M1 failure invokes a provider, platform, scheduler execution, AgentTeams Miss
 | AC-05 | Same idempotency key/body replays the same create/update result; reused key/different body, missing key, stale/missing ETag, and cross-tenant access fail without duplicate or overwrite. |
 | AC-06 | Five Web screens consume the same API state and visibly cover empty, loading, blocked, needs-owner, saved, conflict, and recovery/non-live states in both locales without raw message keys or live claims. |
 | AC-07 | X, Bluesky, LinkedIn, and Xiaohongshu each have editable models, distinct native-like previews, server-validated versioned constraint fixtures, account/identity/mode/snapshot/disclaimer display, and saved revisions that reopen unchanged. |
-| AC-08 | One-time and constrained RRULE schedules persist IANA zone, local wall time, UTC resolution, misfire and version; invalid IANA/RRULE, DST gap, unresolved fold, and edit invalidation tests pass; every M1 occurrence is `NEEDS_REVIEW` and no due action is executed. |
+| AC-08 | One-time and constrained RRULE schedules persist IANA zone, local wall time, UTC resolution, misfire and version; invalid IANA/RRULE, DST gap, both fold choices, forged occurrence, schedule replacement, account/content invalidation tests pass; occurrences remain only `PENDING | MISSED | NEEDS_OWNER | INVALIDATED` and no due action is executed. |
 | AC-09 | The deterministic compiler smoke imports the persisted Campaign/source digest into an adapter input with six separated role IDs and no action permission while `live=false`; no AgentTeams Project/model/provider call occurs. |
 | AC-10 | At a real `390 × 844` browser viewport, document width is at most viewport width for create, reopen, composer, constraint error, and schedule states; desktop remains usable and browser console has no application warning/error. |
 | AC-11 | `npm ci` leaves the lockfile unchanged; lint, typecheck, unit/contract, messages/status/report/secret/license/SBOM, production build, Storybook, PostgreSQL integration, and Compose fresh/failure/recovery/persistence gates pass. |
@@ -290,10 +292,10 @@ All default/test content is synthetic. Real external calls are prohibited, not s
 
 Required machine evidence under ignored `.evidence/sdd-001/`:
 
-- `domain-contracts.json`, `api-integration.json`, `compose-verification.json`;
+- `api-integration.json`, `compose-verification.json`, and exact unit/contract results in the acceptance report;
 - `browser-verification.json` and public-safe screenshot/image hashes;
 - `source-package-manifest.json`, `secret-scan.json`, dependency inventory/SBOM;
-- `mission-compiler-smoke.json`, full `run-manifest.json`;
+- `agentteams-capability-report.json`, `agentteams-image-smoke.json`, full `run-manifest.json`;
 - Chinese `docs/reports/acceptance/SDD-001-ACCEPTANCE.md`.
 
 Valid claim after all machine verification: `ENGINEERING_VERIFIED — the local M1 Campaign walking skeleton persists and reopens one synthetic Campaign with four editable preview revisions and a non-executing persistent schedule contract.`
@@ -368,4 +370,3 @@ The detailed file surfaces and test-first checkpoints are in `docs/specs/sdd-001
 - Proposed module states after machine verification: `M1-01` through `M1-06` → `EVIDENCE_READY`; Coordinator/Owner decide canonical `ACCEPTED` transitions.
 - The Goal remains active until implementation, full verification, Chinese report, local commits, source ZIP/Pro record, Owner protocol, and structured handoff are complete.
 - Next candidate after Coordinator acceptance: implement `SDD-002 Governed SHADOW Campaign`; no M2 code starts in this task.
-

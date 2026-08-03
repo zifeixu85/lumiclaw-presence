@@ -3,9 +3,9 @@ import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const project = 'lumiclaw-sdd000-agentteams-verify';
+const project = 'lumiclaw-sdd001-agentteams-verify';
 const composeFile = 'infra/agentteams/compose.agentteams-profile.yml';
-const evidencePath = path.join(root, '.evidence/sdd-000/agentteams-image-smoke.json');
+const evidencePath = path.join(root, '.evidence/sdd-001/agentteams-image-smoke.json');
 const events = [];
 const baseArgs = ['compose', '--project-name', project, '-f', composeFile, '--profile', 'agentteams-smoke'];
 
@@ -78,4 +78,4 @@ try {
   if (cleanupError !== null && primaryError === null) throw new Error(cleanupError);
 }
 
-console.info(JSON.stringify({status: result, project, evidence: '.evidence/sdd-000/agentteams-image-smoke.json'}));
+console.info(JSON.stringify({status: result, project, evidence: '.evidence/sdd-001/agentteams-image-smoke.json'}));

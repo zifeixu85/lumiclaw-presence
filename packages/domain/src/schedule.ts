@@ -16,6 +16,10 @@ export type ScheduleInput = {
 };
 
 export function createPublishingSchedule(input: ScheduleInput, now = new Date()): {schedule: PublishingSchedule; occurrences: ScheduleOccurrence[]} {
+  if (typeof input.localStart !== 'string') throw new ScheduleContractError('LOCAL_TIME_INVALID', 'Local time must use YYYY-MM-DDTHH:mm.');
+  if (input.rrule !== undefined && input.rrule !== null && typeof input.rrule !== 'string') throw new ScheduleContractError('RRULE_INVALID', 'RRULE must be a string or null.');
+  if (input.foldPreference !== 'EARLIER' && input.foldPreference !== 'LATER') throw new ScheduleContractError('FOLD_PREFERENCE_INVALID', 'Fold preference must be EARLIER or LATER.');
+  if (input.misfirePolicy !== 'SKIP' && input.misfirePolicy !== 'HOLD_FOR_OWNER') throw new ScheduleContractError('MISFIRE_POLICY_INVALID', 'Misfire policy must be SKIP or HOLD_FOR_OWNER.');
   const rule = input.rrule === undefined || input.rrule === null || input.rrule.trim() === '' ? null : parseRrule(input.rrule);
   const walls = expandWallTimes(input.localStart, rule);
   const scheduleId = createUuidV7(now.getTime());
@@ -74,6 +78,23 @@ export function invalidateStaleSchedules(schedules: PublishingSchedule[], occurr
   };
 }
 
+export function isStoredScheduleContractValid(schedule: PublishingSchedule, occurrences: ScheduleOccurrence[], artifactRevisions: ArtifactRevision[]): boolean {
+  try {
+    const expected = createPublishingSchedule({organizationId: schedule.organizationId, campaignId: schedule.campaignId, artifactRevisions, localStart: schedule.localStart, timeZone: schedule.timeZone, rrule: schedule.rrule, foldPreference: schedule.foldPreference, misfirePolicy: schedule.misfirePolicy}, new Date(schedule.createdAt));
+    if (schedule.kind !== expected.schedule.kind || schedule.rrule !== expected.schedule.rrule) return false;
+    if (occurrences.length !== expected.occurrences.length) return false;
+    const actualByOrdinal = new Map(occurrences.map((item) => [item.ordinal, item]));
+    return expected.occurrences.every((item) => {
+      const actual = actualByOrdinal.get(item.ordinal);
+      const expectedState = schedule.status === 'INVALIDATED' && item.state === 'PENDING' ? 'INVALIDATED' : item.state;
+      return actual !== undefined && actual.organizationId === schedule.organizationId && actual.campaignId === schedule.campaignId && actual.scheduleId === schedule.id && actual.scheduleVersion === schedule.version && actual.localWallTime === item.localWallTime && actual.scheduledForUtc === item.scheduledForUtc && actual.utcOffsetMinutes === item.utcOffsetMinutes && actual.state === expectedState && actual.misfireReason === item.misfireReason;
+    });
+  } catch (error) {
+    if (error instanceof ScheduleContractError || error instanceof RangeError) return false;
+    throw error;
+  }
+}
+
 export function resolveWallTime(localWallTime: string, timeZone: string, foldPreference: ScheduleFoldPreference): {instant: Date; offsetMinutes: number; ambiguity: 'EXACT' | 'FOLD_EARLIER' | 'FOLD_LATER'} {
   const parts = parseLocal(localWallTime);
   assertTimeZone(timeZone);
@@ -92,12 +113,13 @@ export function resolveWallTime(localWallTime: string, timeZone: string, foldPre
 
 function parseRrule(value: string): {frequency: 'DAILY' | 'WEEKLY'; interval: number; count: number; canonical: string} {
   const normalized = value.trim().toUpperCase().replace(/^RRULE:/u, '');
-  const fields = new Map(normalized.split(';').map((part) => {
+  const parts = normalized.split(';');
+  const fields = new Map(parts.map((part) => {
     const [key, fieldValue, ...rest] = part.split('=');
     if (key === undefined || fieldValue === undefined || rest.length > 0) throw new ScheduleContractError('RRULE_INVALID', 'RRULE fields must use KEY=VALUE.');
     return [key, fieldValue];
   }));
-  if (fields.size !== 3 || !fields.has('FREQ') || !fields.has('INTERVAL') || !fields.has('COUNT')) throw new ScheduleContractError('RRULE_INVALID', 'M1 RRULE requires exactly FREQ, INTERVAL, and COUNT.');
+  if (fields.size !== parts.length || fields.size !== 3 || !fields.has('FREQ') || !fields.has('INTERVAL') || !fields.has('COUNT')) throw new ScheduleContractError('RRULE_INVALID', 'M1 RRULE requires exactly one FREQ, INTERVAL, and COUNT field.');
   const frequency = fields.get('FREQ');
   if (frequency !== 'DAILY' && frequency !== 'WEEKLY') throw new ScheduleContractError('RRULE_INVALID', 'M1 supports DAILY or WEEKLY only.');
   const interval = Number(fields.get('INTERVAL'));
@@ -126,6 +148,7 @@ function parseLocal(value: string): {year: number; month: number; day: number; h
 }
 
 function assertTimeZone(timeZone: string): void {
+  if (typeof timeZone !== 'string' || timeZone.length === 0) throw new ScheduleContractError('TIME_ZONE_INVALID', 'An IANA time zone is required.');
   try { new Intl.DateTimeFormat('en-CA', {timeZone}).format(); } catch { throw new ScheduleContractError('TIME_ZONE_INVALID', `${timeZone} is not a supported IANA time zone.`); }
 }
 
@@ -139,7 +162,7 @@ function formatLocal(formatter: Intl.DateTimeFormat, date: Date): string {
 }
 
 export class ScheduleContractError extends Error {
-  constructor(public readonly code: 'LOCAL_TIME_INVALID' | 'TIME_ZONE_INVALID' | 'DST_GAP' | 'TIME_ZONE_RESOLUTION_FAILED' | 'RRULE_INVALID', message: string) {
+  constructor(public readonly code: 'LOCAL_TIME_INVALID' | 'TIME_ZONE_INVALID' | 'FOLD_PREFERENCE_INVALID' | 'MISFIRE_POLICY_INVALID' | 'DST_GAP' | 'TIME_ZONE_RESOLUTION_FAILED' | 'RRULE_INVALID', message: string) {
     super(message);
     this.name = 'ScheduleContractError';
   }

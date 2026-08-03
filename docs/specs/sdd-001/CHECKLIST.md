@@ -39,3 +39,15 @@
 
 No `[NEEDS CLARIFICATION]` marker remains. The requirements, plan, tests, failure paths, and owner-visible outcomes are executable without new authority or credentials.
 
+## Convergence checklist
+
+- [x] All 16 acceptance criteria map to concrete automated, PostgreSQL/Compose, browser, or documented Owner evidence.
+- [x] ChatGPT Pro findings were treated as untrusted input, independently checked, corrected where valid, and reverified.
+- [x] PostgreSQL/API idempotency, ETag, tenant isolation, invalid scope, digest reopen, temporal readiness, schedule DST/misfire/invalidation, and recovery have positive and negative coverage.
+- [x] Four platform stories and real-browser previews expose persisted context and constraints; `390 × 844` has no document-level overflow.
+- [x] Secret/license/SBOM/source-package gates are fail-closed and machine evidence is content-validated before maturity is written.
+- [x] Chinese acceptance report includes exact commands, failures/fixes, limitations, rollback, Owner UAT, claims, and status proposal.
+- [x] Both canonical implementation progress files remain unchanged.
+- [x] M2 Epic SDD remains `SPEC_READY` and no M2 code, provider, AgentTeams Mission, or external action was implemented.
+
+Closeout result: `EVIDENCE_READY`; Coordinator/Owner acceptance remains pending.
