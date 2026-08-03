@@ -26,7 +26,7 @@ Each milestone is a user-visible vertical slice. Product UI, domain contracts, A
 
 ## Current build sequence
 
-### M0 — Delivery foundation · NOW
+### M0 — Delivery foundation · DELIVERED
 
 - Freeze the first real campaign input and owner baseline.
 - Establish a Node.js 24 and TypeScript workspace with planned Next.js 16 `web`, Fastify 5 `api`, `mission-worker`, and deterministic `action-operator` boundaries.
@@ -38,7 +38,7 @@ Each milestone is a user-visible vertical slice. Product UI, domain contracts, A
 
 Exit: the repository installs through the documented Compose path, migrations and tests pass, a labeled product shell opens, and the first vertical-slice spec is ready.
 
-### M1 — Campaign walking skeleton · NEXT
+### M1 — Campaign walking skeleton · CURRENT ACCEPTANCE SLICE
 
 - Create, save, and reopen a real CampaignBrief using PostgreSQL as the authoritative state.
 - Model identity, product, market, account mandate, claims, evidence, and four activation units.

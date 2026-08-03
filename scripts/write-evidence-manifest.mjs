@@ -3,7 +3,7 @@ import {readdir, readFile, stat, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const evidenceRoot = path.join(root, '.evidence/sdd-000');
+const evidenceRoot = path.join(root, '.evidence/sdd-001');
 
 async function collect(directory) {
   const entries = await readdir(directory, {withFileTypes: true});
@@ -30,10 +30,10 @@ for (const file of files.sort()) {
 
 const manifest = {
   schemaVersion: '1.0.0',
-  sdd: 'SDD-000',
+  sdd: 'SDD-001',
   maturity: 'ENGINEERING_VERIFIED',
   generatedAt: new Date().toISOString(),
-  fixtureDisclosure: 'Synthetic/local foundation evidence only; not customer UAT or production verification.',
+  fixtureDisclosure: 'Synthetic/local Campaign evidence only; not customer UAT, live platform execution, or production verification.',
   files: manifestFiles
 };
 await writeFile(path.join(evidenceRoot, 'run-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);

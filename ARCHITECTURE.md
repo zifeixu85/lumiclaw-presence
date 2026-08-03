@@ -2,7 +2,7 @@
 
 [English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE.zh-CN.md) | [README](README.md) | [Roadmap](ROADMAP.md)
 
-> **Status:** Documentation-only and `PLANNED`. This document defines the intended reference architecture; the public repository does not yet ship the services, dependencies, connectors, or deployment described below.
+> **Status:** Mixed implementation truth. M0 and the local non-live M1 control plane are implemented on this branch; AgentTeams Missions, providers, governed approval/grants, connectors, external actions, and production deployment remain `PLANNED`.
 
 ## Architecture goals
 

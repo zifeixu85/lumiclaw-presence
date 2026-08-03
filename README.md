@@ -4,7 +4,7 @@
 
 > AI-native global brand operations for multi-brand, multi-market teams.
 
-**Status:** Pre-alpha and documentation-only. The product direction and reference architecture are defined; the first runnable vertical slice is planned next. Unless explicitly marked otherwise, the capabilities below are planned.
+**Status:** Pre-alpha with a local, non-live M1 Campaign walking skeleton. This branch can create, save, and reopen a synthetic Campaign in PostgreSQL, edit four platform variants, and persist non-executing schedules. It is awaiting Coordinator/Owner acceptance and is not production-ready.
 
 LumiClaw Presence turns one business objective into coordinated action across identities, brands, products, markets, and public accounts. It executes within approved facts, permissions, and ownership boundaries, then brings real responses back into the next decision.
 
@@ -38,7 +38,7 @@ LumiClaw Presence is designed as the control and learning layer for that loop. C
 
 The vision describes where the product can grow. It is not a claim that an enterprise suite already exists.
 
-## First planned vertical slice
+## First governed vertical slice
 
 The first slice will run one real LumiClaw campaign across a founder identity and a product identity:
 
@@ -140,21 +140,20 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the planned service boundaries, provi
 
 ## Current implementation truth
 
-**Implemented:**
+**Implemented on the current branch:**
 
-- this public repository;
-- the English and Chinese product, architecture, and roadmap documentation.
-- the bilingual module-level implementation register and per-SDD acceptance-report template.
+- the accepted M0 Node/npm workspace, Docker Compose/PostgreSQL/BlobStore foundation, bilingual Next.js shell, quality gates, and isolated AgentTeams v1.2.0 adapter smoke;
+- tenant-aware Organization, Identity, Brand, Product, Market, ChannelAccount, and AccountMandate contracts and migrations;
+- versioned CampaignBrief, GoalProfile, Claim/Evidence, ActivationPlan/ActivationUnit, ArtifactRevision, CapabilitySnapshot, and six-role MissionContract contracts with canonical digests;
+- a Fastify REST/OpenAPI control API with PostgreSQL create/save/reopen, Idempotency-Key, ETag conflicts, snapshots, and tenant isolation;
+- Chinese-default and English five-screen M1 states plus editable, distinct previews for X, Bluesky, LinkedIn, and Xiaohongshu;
+- PostgreSQL PublishingSchedule/ScheduleOccurrence state with constrained RRULE, IANA time zones, DST gap/fold, misfire, and edit invalidation contracts;
+- no due-action executor, external platform action, model/provider call, OwnerDecision, ActionGrant, ActionReceipt, or real customer data.
 
 **Planned:**
 
-- the new domain contracts;
-- the Node.js 24 / Next.js 16 / Fastify 5 / PostgreSQL 17 application baseline;
-- `next-intl` locale routing, English/Chinese typed catalogs, and persistent schedule/occurrence contracts;
-- Docker Compose services for `web`, `api`, `mission-worker`, and `action-operator`;
 - the AgentTeams campaign runtime;
 - ActionGrant, ActionReceipt, and capability probing;
-- four editable platform previews;
 - Bluesky Direct, LinkedIn and Xiaohongshu Handoffs, and the gated X Direct Canary;
 - DeepSeek, EvoLink, and isolated SignalProvider adapters;
 - response disposition, scoped learning, and Flight replay;

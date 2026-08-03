@@ -24,8 +24,8 @@ const forbidden = files.filter((file) =>
 );
 if (forbidden.length > 0) throw new Error(`Refusing to package forbidden paths: ${forbidden.join(', ')}`);
 
-const evidenceRoot = path.join(root, '.evidence/sdd-000/source-packages');
-const archive = path.join(evidenceRoot, 'lumiclaw-presence-sdd-000-source.zip');
+const evidenceRoot = path.join(root, '.evidence/sdd-001/source-packages');
+const archive = path.join(evidenceRoot, 'lumiclaw-presence-sdd-001-source.zip');
 const manifestPath = path.join(evidenceRoot, 'source-package-manifest.json');
 await mkdir(evidenceRoot, {recursive: true});
 await rm(archive, {force: true});
@@ -39,8 +39,9 @@ const archiveBytes = await readFile(archive);
 const archiveStat = await stat(archive);
 const manifest = {
   schemaVersion: '1.0.0',
-  sdd: 'SDD-000',
-  base: '5acc7cd508f07fdeabe74e39e366158bf58463f6',
+  sdd: 'SDD-001',
+  taskId: '019fc6d8-2c5a-76d3-b3ad-ddb96b56f62e',
+  base: '4568277f9dc8e302141b93bb38ded20200fb31a9',
   head,
   sourceRevision: head,
   workingTreeSnapshot: false,

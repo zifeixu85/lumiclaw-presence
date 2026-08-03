@@ -2,7 +2,7 @@
 
 [English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE.zh-CN.md) | [README](README.zh-CN.md) | [路线图](ROADMAP.zh-CN.md)
 
-> **状态：** 当前只有文档，全部为 `PLANNED`。本文定义计划中的参考架构；公开仓尚未交付下述服务、依赖、Connector 或部署。
+> **状态：** 本文同时标记实现与规划边界。当前分支已实现 M0 与本地非实时 M1 Control Plane；AgentTeams Mission、Provider、受治理批准/Grant、Connector、外部动作和生产部署仍为 `PLANNED`。
 
 ## 架构目标
 
