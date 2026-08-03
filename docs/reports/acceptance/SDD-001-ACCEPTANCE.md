@@ -8,7 +8,7 @@
 > Branch / Base：`codex/sdd-001-campaign-walking-skeleton` / `4568277f9dc8e302141b93bb38ded20200fb31a9`  
 > 报告状态：`EVIDENCE_READY`  
 > 证据成熟度：`ENGINEERING_VERIFIED`  
-> 生成日期：`2026-08-03`
+> 生成日期：`2026-08-04`
 
 ## 一、交付结果
 
@@ -64,12 +64,21 @@ Executor 已完成机器验证和真实本地浏览器 rehearsal；Owner UAT 与
 | PostgreSQL/API | `npm run verify:campaign-api` | create/replay/conflict/scope/schedule/restart/down-up/cleanup 通过 | `result=PASS`、`cleanup=PASS`；跨 Campaign child ID 与 forged occurrence 均 422；排程保存由服务端重派生；4 snapshots、6 artifact revisions、4 idempotency records、1 schedule、2 occurrences | `PASS` |
 | Compose failure/recovery | `npm run verify:compose` | fresh、broken SQL、DB unavailable、health、restart/down-up Campaign+blob persistence、精确清理 | `.evidence/sdd-001/compose-verification.json` 记录 `result=PASS`、`cleanup=PASS` | `PASS` |
 | Build / Storybook / static gates | `npm run verify` | lint/type/test/message/status/report/secret/license/SBOM/build/Storybook 全通过 | CI-equivalent 本地完整门禁通过；Next production 与 Storybook static build 成功 | `PASS` |
+| Storybook Fix-1 browser runtime | `npm run check:storybook-browser-safety`；静态服务器 + 真实内置浏览器 | 四个 Story 可见，preview runtime console 无 warning/error，不携带 Node-only digest/runtime | 四个 manager URL 均显示预期内容，无 component/`Buffer` failure；四个 `iframe.html` 隔离预览均为 warning/error `0`；Story bundle `2,339` bytes，forbidden `[]` | `PASS` |
 | AgentTeams image boundary | `npm run verify:agentteams-images` 与 `npm run check:runtime-profile` | 固定 v1.2.0 镜像/profile 合同，无 live Mission claim | 真实 image CLI/controlled adapter smoke 通过，`liveAgentTeamRun=false` | `PASS` |
 | Browser product flow | 真实 Compose Web/API/PostgreSQL；desktop、`390 × 844`、`/en/mission`、console | create/edit/save/schedule/reopen/conflict recovery，四 preview distinct；document 不溢出；console 无应用错误 | 原 rehearsal v4 跨页面/英文深链保持四平台与失效历史；最终 authority-fix rehearsal 证明 fold 默认未选/按钮禁用、显式 LATER + HOLD_FOR_OWNER 保存、真实 412 后 local draft 不丢、三方 rebase 同时保留 server CTA 与 local X 文本并保存 v4；390px html/body 为 `390`；console warning/error `0` | `PASS` |
 | Dependency / SBOM / secret | `npm run verify:dependencies && npm run check:secrets` | 无未知/禁用 license 或 Secret | 956 package entries，disallowed `[]`；tracked public source scan 通过 | `PASS` |
 | Evidence manifest | `npm run evidence:manifest` | ignored machine evidence有 byte/SHA-256 清单 | `.evidence/sdd-001/run-manifest.json` 生成 | `PASS` |
 
 GitHub Actions 未 Push，故只声明工作流与本地等价门禁，远端 CI run 为 `NOT_CLAIMED`。
+
+### Fix-1｜静态 Storybook 浏览器运行时阻断修正
+
+- **复现：**Coordinator 复验 Head `030f86b04824f17b01fe661599279283b1875399` 的 `/?path=/story/m1-four-platform-previews--x` 时，静态 build 虽通过，但 preview 显示 “The component failed to render properly”，console 为 `ReferenceError: Buffer is not defined`；构建同时出现 `node:crypto` externalized 警告。
+- **根因：**`platform-preview.stories.tsx` 在浏览器 story 中值导入 `createDemoCampaignDocument()`；该 helper 会继续触发 canonical digest/UUID 的服务端 `node:crypto` 与 `Buffer` 路径。Vite 可产出静态文件，但真实浏览器没有 Node globals，因此 build-only 门禁产生假阳性。
+- **修正：**Story 改用与原 DEMO_SEED 等价的静态、合成、browser-safe `PlatformArtifact` args，`@lumiclaw/domain` 只保留 type-only import；没有向客户端加入 Node crypto/Buffer polyfill，没有更改服务端 canonical serialization/digest/authority。新增 `check:storybook-browser-safety` 在每次 Storybook build 后拒绝 story bundle 重新引入 `node:crypto`、`Buffer`、`createDemoCampaignDocument` 或 `digestCampaign`。
+- **真实浏览器：**manager 路径 `--x`、`--bluesky`、`--linked-in`、`--xiaohongshu` 均可见，且无 render/Buffer failure；对应 `iframe.html?id=...&viewMode=story` 的四个独立 preview runtime 均找到平台特征文案，console warning/error 各为 `0`。
+- **门禁与回归：**`npm ci`、`npm run verify`、`npm run verify:campaign-api`、`npm run verify:compose`、`git diff --check` 全部通过；`package-lock.json` 仍为 `de71bb2b075a766c80a703216d0bd1db71f98414031ea7cef0a327e0c8f482c5`；API/DB/主产品代码未改动。
 
 ## 五、验收标准结果
 
@@ -81,11 +90,11 @@ GitHub Actions 未 Push，故只声明工作流与本地等价门禁，远端 CI
 | AC-04 | `PASS` | API/OpenAPI、repository、integration evidence | 所有 Campaign route 通过 PostgreSQL repository；Web 只经同源 proxy 调用。 |
 | AC-05 | `PASS` | API unit/integration、real browser conflict rehearsal | 相同请求 replay；并发同 key 序列化；reuse/missing key、missing/stale ETag、cross-tenant 均无重复或覆盖；412 后本地草稿与 server 变更经显式三方 rebase 同时保留。 |
 | AC-06 | `PASS` | Web reducer/component/story、message parity、browser | 五屏和两种 locale 共用真实 aggregate；required states 与 non-live 文案可见，无 raw key。 |
-| AC-07 | `PASS` | platform adapters、Storybook stories、browser | 四个编辑模型/preview class 不同；server constraint/revision 保存后重开不变。 |
+| AC-07 | `PASS` | platform adapters、Storybook stories、browser | 四个编辑模型/preview class 不同；server constraint/revision 保存后重开不变；Fix-1 的四个静态 Story 在真实浏览器隔离 preview runtime 中均可见且 console warning/error 为 0。 |
 | AC-08 | `PASS` | `schedule.test.ts`、migration、API/browser evidence | ONCE/RRULE、IANA、无默认 fold、gap/fold、preview 跨时 misfire、forged occurrence、同次 content+schedule 拒绝、服务端重派生、replacement、edit invalidation 正反通过；没有执行态。 |
 | AC-09 | `PASS` | mission-compiler 单元合同/runtime profile | exact digest、六角色、Leader/Producer/Auditor 分离、`live=false`、无 action 权限或 provider call。 |
 | AC-10 | `PASS` | 真实 browser rehearsal、CSS fix | 390px 下 document/body 均无横向溢出；四平台 rail 只在自身滚动；desktop 可用，console 清洁。 |
-| AC-11 | `PASS` | clean install、`npm run verify`、两项 integration | lock、static、unit/contract、report/status/message/secret/license/SBOM、build/Storybook、PostgreSQL/Compose 全通过。 |
+| AC-11 | `PASS` | clean install、`npm run verify`、两项 integration | lock、static、unit/contract、report/status/message/secret/license/SBOM、build/Storybook、PostgreSQL/Compose 全通过；Storybook build 已串联 browser-safety bundle 门禁。 |
 | AC-12 | `PASS` | `.evidence/sdd-001/compose-verification.json` | fresh/create/reopen/restart/down-up 持久；broken migration/DB unavailable 失败关闭；cleanup project-scoped。 |
 | AC-13 | `PASS` | SDD-002 与 `sdd-002/` lifecycle | 状态 `SPEC_READY`、范围限 M2 Governed SHADOW，无实现 claim。 |
 | AC-14 | `PASS` | 本报告、`check:report`、Git diff | 16 条 AC、命令、Pro、限制、Rollback、UAT、交接齐全；两份 status 相对 Base diff 为 0。 |
@@ -147,7 +156,8 @@ GitHub Actions 未 Push，故只声明工作流与本地等价门禁，远端 CI
 
 ## 八、失败、限制与非声明
 
-- **已发现并修复：**M0 的 390px document overflow（曾为 `scrollWidth=872`）通过 grid `minmax(0,1fr)` 与移动布局约束修复；最终 document/body 为 `390/390`。Compose 重启 PostgreSQL 时，Pool idle client error 曾令 API 退出；增加 pool error handling 后 failure/recovery 门禁通过。外部复核后继续修复首次创建 authority、全部 governed Claim、Organization/Brand 修订上下文、跨 Campaign child ID、保存时排程重派生、无默认 fold、412/422 恢复、最新草稿 rebase、platform discriminator、calendar-aware RFC 3339 与严格 OpenAPI graph。
+- **已发现并修复：**M0 的 390px document overflow（曾为 `scrollWidth=872`）通过 grid `minmax(0,1fr)` 与移动布局约束修复；最终 document/body 为 `390/390`。Compose 重启 PostgreSQL 时，Pool idle client error 曾令 API 退出；增加 pool error handling 后 failure/recovery 门禁通过。外部复核后继续修复首次创建 authority、全部 governed Claim、Organization/Brand 修订上下文、跨 Campaign child ID、保存时排程重派生、无默认 fold、412/422 恢复、最新草稿 rebase、platform discriminator、calendar-aware RFC 3339 与严格 OpenAPI graph。Fix-1 进一步修复了 Storybook static build 通过但浏览器因 `Buffer` 缺失而崩溃的假阳性，并新增 bundle 防回归门禁。
+- **Known limitations：**Story 组件所在的四个隔离 preview runtime console 均无 warning/error；Storybook `10.5.5` 的 manager 壳自身仍会从 `sb-manager/globals-runtime.js` 输出一条 v11 `PopoverProvider ariaLabel` 弃用 warning。该提示不来自 LumiClaw story/component，本轮未以 console monkeypatch 隐藏，也未为消除工具壳提示而扩大至 Storybook 升级。
 - **Known limitations：**M1 的 tenant boundary 是显式 organization header + row/FK validation，不是生产 authentication/authorization/RLS；只适用于本地 engineering fixture。
 - **Known limitations：**RRULE 只支持有界 DAILY/WEEKLY 子集；时区解析依赖 Node `v24.16.0` / ICU `78.3` / tzdata `2026b`，跨 runtime conformance 与未来 tzdata 更新需重新验证。
 - **Known limitations：**390px 平台 tab rail 允许自己的 bounded horizontal scroll；验收通过的是 document 无严重横向溢出，不是所有内容绝不横向滚动。
