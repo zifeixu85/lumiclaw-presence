@@ -1,0 +1,35 @@
+{
+  "id": "m0-isolated-agentteams-v1.2.0",
+  "runtime": "agentteams",
+  "version": "v1.2.0",
+  "endpointMode": "isolated-profile",
+  "images": [
+    {
+      "component": "manager",
+      "tag": "v1.2.0",
+      "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-manager",
+      "digest": "sha256:a429666fcc66fa01b81da3bc9ea5af98437697ef794f811ac7d358d4286c317e"
+    },
+    {
+      "component": "worker",
+      "tag": "v1.2.0",
+      "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-copaw-worker",
+      "digest": "sha256:dcdd9103535cfac247267e0f69661820c801396d58e2c8e0c14eefd40b63b7bc"
+    }
+  ],
+  "publishedPorts": [],
+  "mounts": [
+    {"type": "tmpfs", "target": "/tmp", "readOnly": false}
+  ],
+  "secretRefs": [],
+  "security": {
+    "capDrop": ["ALL"],
+    "noNewPrivileges": true,
+    "readOnlyRootFilesystem": true,
+    "pidsLimit": 64,
+    "memoryBytes": 268435456,
+    "cpus": 0.5,
+    "privateNetwork": true,
+    "healthcheck": true
+  }
+}

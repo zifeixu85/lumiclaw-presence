@@ -1,0 +1,12 @@
+{
+  "id": "global-campaign-hero-topology-contract",
+  "runtimeVersion": "v1.2.0",
+  "roles": [
+    {"id": "presence-mission-leader", "responsibility": "Project/DAG orchestration only", "orchestrationOnly": true, "permissions": ["orchestrate"]},
+    {"id": "claim-steward", "responsibility": "Evidence and Claim grounding", "orchestrationOnly": false, "permissions": ["produce"]},
+    {"id": "campaign-planner", "responsibility": "Activation planning", "orchestrationOnly": false, "permissions": ["produce"]},
+    {"id": "founder-producer", "responsibility": "Founder identity artifact production", "orchestrationOnly": false, "permissions": ["produce"]},
+    {"id": "product-producer", "responsibility": "Product account artifact production", "orchestrationOnly": false, "permissions": ["produce"]},
+    {"id": "independent-auditor", "responsibility": "Independent PASS/FAIL/ESCALATE audit", "orchestrationOnly": false, "permissions": ["audit"]}
+  ]
+}

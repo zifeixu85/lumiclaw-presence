@@ -1,0 +1,56 @@
+name: lumiclaw-agentteams-m0-smoke
+
+x-probe-security: &probe-security
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 64
+  mem_limit: 256m
+  cpus: 0.50
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=16m
+  networks: [runtime-smoke]
+
+services:
+  capability-fixture:
+    profiles: [agentteams-smoke]
+    build:
+      context: ../..
+      dockerfile: infra/compose/Dockerfile
+    command: [node, scripts/agentteams-capability-fixture.mjs]
+    environment:
+      PORT: "8090"
+    <<: *probe-security
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:8090/health').then(r=>{if(!r.ok)process.exit(1)})"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+
+  agentteams-manager-probe:
+    profiles: [agentteams-smoke]
+    image: higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-manager:v1.2.0@sha256:a429666fcc66fa01b81da3bc9ea5af98437697ef794f811ac7d358d4286c317e
+    entrypoint: [agt]
+    command: [version, --output, json]
+    environment:
+      AGENTTEAMS_CONTROLLER_URL: http://capability-fixture:8090
+    depends_on:
+      capability-fixture:
+        condition: service_healthy
+    <<: *probe-security
+
+  agentteams-worker-probe:
+    profiles: [agentteams-smoke]
+    image: higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-copaw-worker:v1.2.0@sha256:dcdd9103535cfac247267e0f69661820c801396d58e2c8e0c14eefd40b63b7bc
+    entrypoint: [agt]
+    command: [version, --output, json]
+    environment:
+      AGENTTEAMS_CONTROLLER_URL: http://capability-fixture:8090
+    depends_on:
+      capability-fixture:
+        condition: service_healthy
+    <<: *probe-security
+
+networks:
+  runtime-smoke:
+    internal: true

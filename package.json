@@ -1,0 +1,58 @@
+{
+  "name": "lumiclaw-presence",
+  "version": "0.0.0-m0",
+  "private": true,
+  "description": "Evidence-bound delivery foundation for LumiClaw Presence.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": "24.16.0",
+    "npm": "11.13.0"
+  },
+  "packageManager": "npm@11.13.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "preinstall": "node scripts/check-runtime.mjs",
+    "clean": "node scripts/clean.mjs",
+    "lint": "eslint .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "npm run build:runtime",
+    "build:runtime": "npm run build --workspace @lumiclaw/blob-store && npm run build --workspace @lumiclaw/db && npm run build --workspace @lumiclaw/i18n && npm run build --workspace @lumiclaw/process-health && npm run build --workspace @lumiclaw/runtime-agentteams && npm run build --workspace @lumiclaw/api && npm run build --workspace @lumiclaw/mission-worker && npm run build --workspace @lumiclaw/action-operator && npm run build --workspace @lumiclaw/web",
+    "storybook": "npm run storybook --workspace @lumiclaw/web",
+    "storybook:build": "npm run storybook:build --workspace @lumiclaw/web",
+    "check:messages": "node scripts/check-message-parity.mjs",
+    "check:status": "node scripts/check-status-parity.mjs",
+    "check:report": "node scripts/check-acceptance-report.mjs docs/reports/acceptance/SDD-000-ACCEPTANCE.md",
+    "check:secrets": "node scripts/secret-scan.mjs",
+    "check:compose": "node scripts/check-compose-policy.mjs",
+    "check:runtime-profile": "tsx scripts/check-agentteams-profile.ts",
+    "dependencies:inventory": "node scripts/dependency-inventory.mjs",
+    "dependencies:sbom": "mkdir -p .evidence/sdd-000 && cyclonedx-npm --output-file .evidence/sdd-000/sbom.cdx.json --output-format JSON",
+    "verify:dependencies": "npm run dependencies:inventory && npm run dependencies:sbom",
+    "verify:static": "npm run lint && npm run typecheck && npm run test && npm run check:messages && npm run check:status && npm run check:report && npm run check:secrets && npm run check:compose && npm run check:runtime-profile && npm run verify:dependencies",
+    "verify": "npm run verify:static && npm run build && npm run storybook:build",
+    "verify:compose": "node scripts/verify-compose.mjs",
+    "verify:agentteams-images": "node scripts/verify-agentteams-images.mjs",
+    "evidence:package-source": "node scripts/package-source-evidence.mjs",
+    "evidence:manifest": "node scripts/write-evidence-manifest.mjs"
+  },
+  "devDependencies": {
+    "@cyclonedx/cyclonedx-npm": "6.0.0",
+    "@swc/helpers": "0.5.23",
+    "@types/node": "26.1.2",
+    "@types/react": "19.2.18",
+    "@types/react-dom": "19.2.4",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.2.12",
+    "jsdom": "30.0.1",
+    "tsx": "4.23.4",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10",
+    "yaml": "2.9.0"
+  }
+}
