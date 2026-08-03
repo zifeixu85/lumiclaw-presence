@@ -4,8 +4,8 @@
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
 > **Snapshot:** 2026-08-03
-> **Current phase:** M0 — Delivery foundation
-> **Current implementation truth:** Documentation-only. No product runtime has been implemented in this repository.
+> **Current phase:** M0 accepted; M1 — Campaign walking skeleton ready for dispatch
+> **Current implementation truth:** The M0 local delivery foundation is implemented and accepted: reproducible monorepo, Docker Compose/PostgreSQL/BlobStore, Chinese-default bilingual Web shell, isolated AgentTeams adapter smoke, and quality gates. M1 business domains, live AgentTeams missions, providers, connectors and external actions remain unimplemented.
 
 ## Progress contract
 
@@ -25,18 +25,18 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | Metric | Current value |
 |---|---|
-| Accepted modules | `2 / 39` (`5.1%`) |
+| Accepted modules | `7 / 39` (`17.9%`) |
 | Evidence ready | `0 / 39` |
 | Blocked | `0 / 39` |
-| Active implementation SDD | `SDD-000 Delivery Foundation` — Executor task `019fc3ce-a7e5-7133-b035-a9be3245b4b3` active |
-| Earliest owner blocker | None for M0 implementation; provider credentials are deferred to their SDDs |
-| Next executable module | `M0-03` Monorepo and package baseline; coordinator-assigned `IN_PROGRESS` |
+| Active implementation SDD | None; `SDD-000 Delivery Foundation` accepted locally |
+| Earliest owner blocker | None for the next local M1 slice; provider credentials remain deferred to their SDDs |
+| Next executable module | `M1-01` Organization, identity, brand, product, market and account graph |
 
 ## Milestone progress
 
 | Milestone | State | Accepted | Current module mix | Exit evidence |
 |---|---|---:|---|---|
-| M0 — Delivery foundation | `IN_PROGRESS` | `2 / 7` | 2 accepted, 1 in progress, 4 not started | Fresh Compose shell, migrations, CI, isolated AgentTeams smoke, design/i18n foundation |
+| M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 accepted | [SDD-000 acceptance](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) plus fresh Compose, migrations, CI mapping, isolated AgentTeams smoke and design/i18n evidence |
 | M1 — Campaign walking skeleton | `NOT_STARTED` | `0 / 6` | 6 not started | Persisted campaign, four editable previews, schedule editor, shared control-plane state |
 | M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 not started | Six-member AgentTeams run, DeepSeek gateway, revision/audit, fault denial, trace |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 not started | Exact grants, persistent scheduler, Bluesky Direct, honest Handoffs, receipts/reconciliation |
@@ -52,11 +52,11 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 |---|---|---|---|---|
 | M0-01 | Product, platform and technical architecture documentation | `ACCEPTED` | Complete | [Accepted baseline report](docs/reports/acceptance/M0-01-ARCHITECTURE-BASELINE-ACCEPTANCE.md) |
 | M0-02 | Root license and contribution policy | `ACCEPTED` | Complete | [Accepted Apache-2.0 and dependency-policy report](docs/reports/acceptance/M0-02-LICENSE-AND-DEPENDENCY-POLICY-ACCEPTANCE.md) |
-| M0-03 | Node/TypeScript monorepo and locked package baseline | `IN_PROGRESS` | SDD-000 | Reproducible install, lockfile, version manifest, license inventory |
-| M0-04 | Docker Compose, PostgreSQL migrations and local BlobStore | `NOT_STARTED` | M0-03 | Fresh volumes boot, migration success/failure tests, health checks and persistence test |
-| M0-05 | Next.js shell, `next-intl`, design tokens and five-screen routes | `NOT_STARTED` | M0-03 | Chinese-default/English switch, typed message parity, route smoke, Pencil/Storybook baseline |
-| M0-06 | Isolated AgentTeams runtime profile and adapter smoke | `NOT_STARTED` | M0-04 | No shared secrets/host ports, pinned digest, health/capability report, team smoke |
-| M0-07 | CI, secret scan, SBOM and status/report checks | `NOT_STARTED` | M0-03 | CI verifies tests, message parity, status IDs, reports, licenses and secret hygiene |
+| M0-03 | Node/TypeScript monorepo and locked package baseline | `ACCEPTED` | SDD-000 | [Reproducible install, lockfile, version and license evidence](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) |
+| M0-04 | Docker Compose, PostgreSQL migrations and local BlobStore | `ACCEPTED` | M0-03 | [Fresh/failure/recovery/persistence evidence](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) |
+| M0-05 | Next.js shell, `next-intl`, design tokens and five-screen routes | `ACCEPTED` | M0-03 | [Bilingual route, browser, Storybook and committed Pencil evidence](docs/reports/acceptance/SDD-000-ACCEPTANCE.md); mobile/visual refinement deferred |
+| M0-06 | Isolated AgentTeams runtime profile and adapter smoke | `ACCEPTED` | M0-04 | [Pinned image and controlled adapter evidence](docs/reports/acceptance/SDD-000-ACCEPTANCE.md); no live mission claim |
+| M0-07 | CI, secret scan, SBOM and status/report checks | `ACCEPTED` | M0-03 | [Local full-gate evidence](docs/reports/acceptance/SDD-000-ACCEPTANCE.md); remote CI not claimed |
 
 ### M1 — Campaign walking skeleton
 

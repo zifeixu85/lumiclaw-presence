@@ -4,8 +4,8 @@
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
 > **快照日期：** 2026-08-03
-> **当前阶段：** M0 — Delivery foundation
-> **当前实现真相：** 公开仓目前只有文档，尚未实现产品 Runtime。
+> **当前阶段：** M0 已验收；M1 — Campaign walking skeleton 待调度
+> **当前实现真相：** M0 本地交付基础已经实现并验收，包括可复现 Monorepo、Docker Compose/PostgreSQL/BlobStore、默认中文的双语 Web Shell、隔离 AgentTeams Adapter Smoke 与质量门禁。M1 业务领域、真实 AgentTeams Mission、Provider、Connector 和外部动作仍未实现。
 
 ## 进度状态合同
 
@@ -25,18 +25,18 @@
 
 | 指标 | 当前值 |
 |---|---|
-| 已验收模块 | `2 / 39`（`5.1%`） |
+| 已验收模块 | `7 / 39`（`17.9%`） |
 | 证据已就绪 | `0 / 39` |
 | 被阻塞 | `0 / 39` |
-| 当前实现 SDD | `SDD-000 Delivery Foundation` — Executor 任务 `019fc3ce-a7e5-7133-b035-a9be3245b4b3` 已启动 |
-| 最早 Owner 阻塞项 | M0 实现无；Provider Credential 延后到各自 SDD |
-| 下一个可执行模块 | `M0-03` Monorepo 与依赖基线，Coordinator 已标记 `IN_PROGRESS` |
+| 当前实现 SDD | 无；`SDD-000 Delivery Foundation` 已在本地验收 |
+| 最早 Owner 阻塞项 | 下一个本地 M1 切片无；Provider Credential 继续延后到各自 SDD |
+| 下一个可执行模块 | `M1-01` Organization、Identity、Brand、Product、Market 与 Account Graph |
 
 ## 里程碑总进度
 
 | 里程碑 | 状态 | 已验收 | 当前模块分布 | Exit Evidence |
 |---|---|---:|---|---|
-| M0 — Delivery foundation | `IN_PROGRESS` | `2 / 7` | 2 个已验收、1 个进行中、4 个未开始 | Compose 产品壳、Migration、CI、隔离 AgentTeams Smoke、设计与 i18n 基线 |
+| M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 个已验收 | [SDD-000 验收报告](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)，以及 Compose、Migration、CI 映射、隔离 AgentTeams Smoke、设计与 i18n 证据 |
 | M1 — Campaign walking skeleton | `NOT_STARTED` | `0 / 6` | 6 个未开始 | 持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State |
 | M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 个未开始 | 六成员 AgentTeams、DeepSeek Gateway、Revision/Audit、故障拒绝与 Trace |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
@@ -52,11 +52,11 @@
 |---|---|---|---|---|
 | M0-01 | 产品、平台与技术架构文档 | `ACCEPTED` | 已完成 | [已验收架构基线报告](docs/reports/acceptance/M0-01-ARCHITECTURE-BASELINE-ACCEPTANCE.md) |
 | M0-02 | 根 License 与贡献政策 | `ACCEPTED` | 已完成 | [已验收 Apache-2.0 与依赖政策报告](docs/reports/acceptance/M0-02-LICENSE-AND-DEPENDENCY-POLICY-ACCEPTANCE.md) |
-| M0-03 | Node/TypeScript Monorepo 与锁定依赖基线 | `IN_PROGRESS` | SDD-000 | 可复现安装、Lockfile、版本 Manifest 与许可证清单 |
-| M0-04 | Docker Compose、PostgreSQL Migration 与 Local BlobStore | `NOT_STARTED` | M0-03 | Fresh Volume 启动、Migration 成败测试、Healthcheck 与持久化测试 |
-| M0-05 | Next.js Shell、`next-intl`、设计 Token 与五主屏 Route | `NOT_STARTED` | M0-03 | 默认中文/英文切换、类型化文案一致性、Route Smoke、Pencil/Storybook 基线 |
-| M0-06 | 隔离 AgentTeams Runtime Profile 与 Adapter Smoke | `NOT_STARTED` | M0-04 | 无共享 Secret/HostPort、锁定 Digest、Health/Capability Report 与 Team Smoke |
-| M0-07 | CI、Secret Scan、SBOM 与进度/报告检查 | `NOT_STARTED` | M0-03 | CI 校验测试、文案一致性、进度 ID、报告、许可证与 Secret Hygiene |
+| M0-03 | Node/TypeScript Monorepo 与锁定依赖基线 | `ACCEPTED` | SDD-000 | [可复现安装、Lockfile、版本与许可证证据](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) |
+| M0-04 | Docker Compose、PostgreSQL Migration 与 Local BlobStore | `ACCEPTED` | M0-03 | [Fresh、故障、恢复与持久化证据](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) |
+| M0-05 | Next.js Shell、`next-intl`、设计 Token 与五主屏 Route | `ACCEPTED` | M0-03 | [双语 Route、浏览器、Storybook 与已提交 Pencil 证据](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)；移动端与统一视觉延期 |
+| M0-06 | 隔离 AgentTeams Runtime Profile 与 Adapter Smoke | `ACCEPTED` | M0-04 | [锁定镜像与受控 Adapter 证据](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)；不声明 Live Mission |
+| M0-07 | CI、Secret Scan、SBOM 与进度/报告检查 | `ACCEPTED` | M0-03 | [本地完整门禁证据](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)；不声明远端 CI |
 
 ### M1 — Campaign walking skeleton
 
