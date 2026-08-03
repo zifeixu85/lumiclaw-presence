@@ -41,6 +41,14 @@ describe('organization graph v1', () => {
     }
   });
 
+  it('rejects malformed mandate timestamps at the schema boundary', () => {
+    const graph = createDemoOrganizationGraph();
+    graph.accountMandates[0]!.validFrom = 'not-a-date';
+    const result = validateOrganizationGraph(graph, now);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.issues.map((item) => item.code)).toContain('SCHEMA_INVALID');
+  });
+
   it('creates RFC 9562 version/variant-shaped UUIDv7 values deterministically with injected entropy', () => {
     const value = createUuidV7(1_788_000_000_000, Buffer.from('00112233445566778899', 'hex'));
     expect(value).toBe('01a04d1a-d800-7011-a233-445566778899');

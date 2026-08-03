@@ -13,17 +13,20 @@ const capabilitySnapshot = {
   required: ['id', 'organizationId', 'schemaVersion', 'channelAccountId', 'platform', 'capturedAt', 'expiresAt', 'source', 'executionMode', 'constraints', 'disclaimer'],
   properties: {id, organizationId: id, schemaVersion: {const: 1}, channelAccountId: id, platform, capturedAt: dateTime, expiresAt: dateTime, source: {const: 'M1_PUBLIC_SAFE_FIXTURE'}, executionMode: {enum: ['PREPARE_ONLY', 'DIRECT_PLANNED_NOT_CONNECTED', 'NATIVE_HANDOFF_PLANNED']}, constraints: {type: 'object', minProperties: 1, additionalProperties: fieldConstraint}, disclaimer: {type: 'string', minLength: 1}}
 } as const;
-const platformArtifact = {oneOf: [
-  {type: 'object', additionalProperties: false, required: ['kind', 'posts', 'altText'], properties: {kind: {const: 'X'}, posts: stringArray, altText: {type: 'string'}}},
-  {type: 'object', additionalProperties: false, required: ['kind', 'posts', 'embedUrl', 'altText'], properties: {kind: {const: 'BLUESKY'}, posts: stringArray, embedUrl: {type: 'string'}, altText: {type: 'string'}}},
-  {type: 'object', additionalProperties: false, required: ['kind', 'commentary', 'authorKind', 'linkTitle', 'linkUrl'], properties: {kind: {const: 'LINKEDIN'}, commentary: {type: 'string'}, authorKind: {enum: ['PERSON', 'COMPANY']}, linkTitle: {type: 'string'}, linkUrl: {type: 'string'}}},
-  {type: 'object', additionalProperties: false, required: ['kind', 'title', 'body', 'topics', 'coverLabel'], properties: {kind: {const: 'XIAOHONGSHU'}, title: {type: 'string'}, body: {type: 'string'}, topics: stringArray, coverLabel: {type: 'string'}}}
-]} as const;
+const xArtifact = {type: 'object', additionalProperties: false, required: ['kind', 'posts', 'altText'], properties: {kind: {const: 'X'}, posts: stringArray, altText: {type: 'string'}}} as const;
+const blueskyArtifact = {type: 'object', additionalProperties: false, required: ['kind', 'posts', 'embedUrl', 'altText'], properties: {kind: {const: 'BLUESKY'}, posts: stringArray, embedUrl: {type: 'string'}, altText: {type: 'string'}}} as const;
+const linkedinArtifact = {type: 'object', additionalProperties: false, required: ['kind', 'commentary', 'authorKind', 'linkTitle', 'linkUrl'], properties: {kind: {const: 'LINKEDIN'}, commentary: {type: 'string'}, authorKind: {enum: ['PERSON', 'COMPANY']}, linkTitle: {type: 'string'}, linkUrl: {type: 'string'}}} as const;
+const xiaohongshuArtifact = {type: 'object', additionalProperties: false, required: ['kind', 'title', 'body', 'topics', 'coverLabel'], properties: {kind: {const: 'XIAOHONGSHU'}, title: {type: 'string'}, body: {type: 'string'}, topics: stringArray, coverLabel: {type: 'string'}}} as const;
 const missionRoleIds = ['presence-mission-leader', 'evidence-claim-steward', 'campaign-planner', 'founder-identity-producer', 'product-account-producer', 'independent-auditor'] as const;
+const artifactRequired = ['id', 'organizationId', 'campaignId', 'activationUnitId', 'schemaVersion', 'revision', 'platform', 'capabilitySnapshotId', 'claimIds', 'content', 'createdAt'] as const;
+const artifactBase = {id, organizationId: id, campaignId: id, activationUnitId: id, schemaVersion: {const: 1}, revision: {type: 'integer', minimum: 1}, capabilitySnapshotId: id, claimIds: {type: 'array', minItems: 1, uniqueItems: true, items: id}, createdAt: dateTime} as const;
 const artifactRevision = {
-  type: 'object', additionalProperties: false,
-  required: ['id', 'organizationId', 'campaignId', 'activationUnitId', 'schemaVersion', 'revision', 'platform', 'capabilitySnapshotId', 'claimIds', 'content', 'createdAt'],
-  properties: {id, organizationId: id, campaignId: id, activationUnitId: id, schemaVersion: {const: 1}, revision: {type: 'integer', minimum: 1}, platform, capabilitySnapshotId: id, claimIds: {type: 'array', minItems: 1, uniqueItems: true, items: id}, content: platformArtifact, createdAt: dateTime}
+  oneOf: [
+    {type: 'object', additionalProperties: false, required: artifactRequired, properties: {...artifactBase, platform: {const: 'X'}, content: xArtifact}},
+    {type: 'object', additionalProperties: false, required: artifactRequired, properties: {...artifactBase, platform: {const: 'BLUESKY'}, content: blueskyArtifact}},
+    {type: 'object', additionalProperties: false, required: artifactRequired, properties: {...artifactBase, platform: {const: 'LINKEDIN'}, content: linkedinArtifact}},
+    {type: 'object', additionalProperties: false, required: artifactRequired, properties: {...artifactBase, platform: {const: 'XIAOHONGSHU'}, content: xiaohongshuArtifact}}
+  ]
 } as const;
 
 export const campaignDocumentSchema = {
@@ -46,7 +49,8 @@ export const campaignDocumentSchema = {
   }
 } as const;
 
-const ajv = new Ajv({allErrors: true, strict: false, formats: {'date-time': true}});
+const rfc3339DateTime = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/u;
+const ajv = new Ajv({allErrors: true, strict: false, formats: {'date-time': (value: string) => rfc3339DateTime.test(value) && Number.isFinite(Date.parse(value))}});
 const validate = ajv.compile<CampaignDocument>(campaignDocumentSchema);
 
 export function validateCampaignShape(value: unknown): {valid: true; value: CampaignDocument} | {valid: false; issues: ValidationIssue[]} {

@@ -3,11 +3,13 @@
 import type {AppLocale, RouteId} from '@lumiclaw/i18n';
 import type {ArtifactRevision, CampaignDocument, CampaignEnvelope, PlatformArtifact} from '@lumiclaw/domain';
 import {useCallback, useEffect, useRef, useState} from 'react';
+import {rebaseCampaignDraft} from '@/lib/campaign-rebase';
 import {platformPreviewModel} from '@/lib/platform-preview-model';
 
 export type WorkspaceFixtureState = 'loading' | 'empty' | 'blocked' | 'needs-owner' | 'recovery';
 type Phase = WorkspaceFixtureState | 'ready' | 'saving' | 'saved';
 type ApiFailure = Error & {status?: number; code?: string; current?: {version: number; digest: string; etag: string}};
+type ConflictRecovery = {server: CampaignEnvelope; merged: CampaignDocument; conflictPaths: string[]};
 
 export const copy = {
   'zh-CN': {
@@ -19,7 +21,7 @@ export const copy = {
     ready: ['已从数据库重新打开', 'Web、API 与未来 AgentTeams Adapter 读取同一版本化 Campaign。'],
     saving: ['正在保存新版本…', '使用 Idempotency-Key 与 If-Match 防止重复写入和覆盖。'],
     saved: ['新版本已持久化', '摘要、ETag、ArtifactRevision 与排程状态均由服务端确认。'],
-    retry: '重试安全操作', create: '创建并保存', save: '保存新版本', unsaved: '有未保存修改', savedLabel: '数据库版本', digest: '稳定摘要', noLive: '只保存与预览 · 不发布', schedule: '排程合同', addSchedule: '生成排程预览', scheduleHint: 'IANA 时区；DST gap 会拒绝，fold 必须明确选择。', scheduleSaveFirst: '请先保存内容修改，再把排程绑定到准确版本。', once: '一次性', recurring: '受约束重复', brandMatrix: '品牌与市场矩阵', claimEvidence: 'Claim / Evidence', content: '可编辑内容', preview: '原生风格预览', constraints: '公开安全约束', required: '必填', optional: '可选', maximum: '上限', items: '项', noSignals: '尚无真实互动信号。M1 不抓取评论、回复、私信或平台数据。', reviewHint: '这里只展示版本与风险。M1 不创建 OwnerDecision、ActionGrant 或 Receipt。', campaignName: '推广任务名称', objective: '目标', callToAction: '行动引导', contentLanguage: '内容语言', targetMarket: '目标市场', organization: '组织', brand: '品牌', product: '产品', editableDraft: '可编辑草稿', evidenceBound: '证据绑定，只读', localWallTime: '当地时间', timeZone: 'IANA 时区', pattern: '重复方式', dstFold: 'DST 重叠选择', occurrenceCount: '次预览', threadPost: '串文内容', post: '正文', altText: '替代文本', embedUrl: '嵌入链接', commentary: '配文', authorKind: '作者类型', linkTitle: '链接标题', linkUrl: '链接地址', title: '标题', body: '正文', topics: '话题（逗号分隔）', coverLabel: '封面文字', previewAccount: '目标账号', previewIdentity: '表达身份', capabilityAt: '能力快照', executionMode: '执行模式', violations: '约束违规', noViolations: '无', characters: '字符', stalePreview: '排程预览期间内容已变化，请重新生成。'
+    retry: '重试安全操作', rebase: '合并服务器版本并保留本地选择', create: '创建并保存', save: '保存新版本', unsaved: '有未保存修改', savedLabel: '数据库版本', digest: '稳定摘要', noLive: '只保存与预览 · 不发布', schedule: '排程合同', addSchedule: '生成排程预览', scheduleHint: 'IANA 时区；DST gap 会拒绝，fold 必须明确选择。', scheduleSaveFirst: '请先保存内容修改，再把排程绑定到准确版本。', once: '一次性', recurring: '受约束重复', chooseFold: '请选择', misfire: '错过时间时', brandMatrix: '品牌与市场矩阵', claimEvidence: 'Claim / Evidence', content: '可编辑内容', preview: '原生风格预览', constraints: '公开安全约束', required: '必填', optional: '可选', maximum: '上限', items: '项', noSignals: '尚无真实互动信号。M1 不抓取评论、回复、私信或平台数据。', reviewHint: '这里只展示版本与风险。M1 不创建 OwnerDecision、ActionGrant 或 Receipt。', campaignName: '推广任务名称', objective: '目标', callToAction: '行动引导', contentLanguage: '内容语言', targetMarket: '目标市场', organization: '组织', brand: '品牌', product: '产品', editableDraft: '可编辑草稿', evidenceBound: '证据绑定，只读', localWallTime: '当地时间', timeZone: 'IANA 时区', pattern: '重复方式', dstFold: 'DST 重叠选择', occurrenceCount: '次预览', threadPost: '串文内容', post: '正文', altText: '替代文本', embedUrl: '嵌入链接', commentary: '配文', authorKind: '作者类型', linkTitle: '链接标题', linkUrl: '链接地址', title: '标题', body: '正文', topics: '话题（逗号分隔）', coverLabel: '封面文字', previewAccount: '目标账号', previewIdentity: '表达身份', capabilityAt: '能力快照', executionMode: '执行模式', violations: '约束违规', noViolations: '无', characters: '字符', stalePreview: '排程预览期间内容已变化，请重新生成。'
   },
   en: {
     loading: ['Loading campaign…', 'Reading the shared control plane, never a browser-local business copy.'],
@@ -30,7 +32,7 @@ export const copy = {
     ready: ['Reopened from the database', 'Web, API, and the future AgentTeams adapter read the same versioned Campaign.'],
     saving: ['Saving a new version…', 'Idempotency-Key and If-Match prevent duplicate writes and lost updates.'],
     saved: ['New version persisted', 'The server confirmed the digest, ETag, ArtifactRevision, and schedule state.'],
-    retry: 'Retry safe operation', create: 'Create and save', save: 'Save new version', unsaved: 'Unsaved changes', savedLabel: 'Database version', digest: 'Stable digest', noLive: 'Save and preview only · no publishing', schedule: 'Schedule contract', addSchedule: 'Build schedule preview', scheduleHint: 'IANA time zone; DST gaps fail closed and folds require an explicit choice.', scheduleSaveFirst: 'Save content edits first, then bind the schedule to that exact revision.', once: 'One-time', recurring: 'Constrained recurring', brandMatrix: 'Brand and market matrix', claimEvidence: 'Claim / Evidence', content: 'Editable content', preview: 'Native-like preview', constraints: 'Public-safe constraints', required: 'required', optional: 'optional', maximum: 'max', items: 'items', noSignals: 'No real interaction signals exist. M1 does not collect comments, replies, DMs, or platform data.', reviewHint: 'This view shows versions and risk only. M1 creates no OwnerDecision, ActionGrant, or Receipt.', campaignName: 'Campaign name', objective: 'Objective', callToAction: 'Call to action', contentLanguage: 'Content language', targetMarket: 'Target market', organization: 'Organization', brand: 'Brand', product: 'Product', editableDraft: 'editable draft', evidenceBound: 'evidence-bound read only', localWallTime: 'Local wall time', timeZone: 'IANA time zone', pattern: 'Pattern', dstFold: 'DST fold choice', occurrenceCount: 'occurrence(s)', threadPost: 'Thread post', post: 'Post', altText: 'Alt text', embedUrl: 'Embed URL', commentary: 'Commentary', authorKind: 'Author kind', linkTitle: 'Link title', linkUrl: 'Link URL', title: 'Title', body: 'Body', topics: 'Topics (comma separated)', coverLabel: 'Cover label', previewAccount: 'Target account', previewIdentity: 'Speaking identity', capabilityAt: 'Capability snapshot', executionMode: 'Execution mode', violations: 'Constraint violations', noViolations: 'none', characters: 'characters', stalePreview: 'Content changed while the schedule preview was loading. Build it again.'
+    retry: 'Retry safe operation', rebase: 'Merge server version and keep local choices', create: 'Create and save', save: 'Save new version', unsaved: 'Unsaved changes', savedLabel: 'Database version', digest: 'Stable digest', noLive: 'Save and preview only · no publishing', schedule: 'Schedule contract', addSchedule: 'Build schedule preview', scheduleHint: 'IANA time zone; DST gaps fail closed and folds require an explicit choice.', scheduleSaveFirst: 'Save content edits first, then bind the schedule to that exact revision.', once: 'One-time', recurring: 'Constrained recurring', chooseFold: 'Choose', misfire: 'When time is missed', brandMatrix: 'Brand and market matrix', claimEvidence: 'Claim / Evidence', content: 'Editable content', preview: 'Native-like preview', constraints: 'Public-safe constraints', required: 'required', optional: 'optional', maximum: 'max', items: 'items', noSignals: 'No real interaction signals exist. M1 does not collect comments, replies, DMs, or platform data.', reviewHint: 'This view shows versions and risk only. M1 creates no OwnerDecision, ActionGrant, or Receipt.', campaignName: 'Campaign name', objective: 'Objective', callToAction: 'Call to action', contentLanguage: 'Content language', targetMarket: 'Target market', organization: 'Organization', brand: 'Brand', product: 'Product', editableDraft: 'editable draft', evidenceBound: 'evidence-bound read only', localWallTime: 'Local wall time', timeZone: 'IANA time zone', pattern: 'Pattern', dstFold: 'DST fold choice', occurrenceCount: 'occurrence(s)', threadPost: 'Thread post', post: 'Post', altText: 'Alt text', embedUrl: 'Embed URL', commentary: 'Commentary', authorKind: 'Author kind', linkTitle: 'Link title', linkUrl: 'Link URL', title: 'Title', body: 'Body', topics: 'Topics (comma separated)', coverLabel: 'Cover label', previewAccount: 'Target account', previewIdentity: 'Speaking identity', capabilityAt: 'Capability snapshot', executionMode: 'Execution mode', violations: 'Constraint violations', noViolations: 'none', characters: 'characters', stalePreview: 'Content changed while the schedule preview was loading. Build it again.'
   }
 } as const;
 
@@ -41,6 +43,7 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
   const [envelope, setEnvelope] = useState<CampaignEnvelope>();
   const [dirty, setDirty] = useState(false);
   const [errorCode, setErrorCode] = useState<string>();
+  const [conflictRecovery, setConflictRecovery] = useState<ConflictRecovery>();
   const savingRef = useRef(false);
   const pendingMutationRef = useRef<{fingerprint: string; key: string} | undefined>(undefined);
 
@@ -51,9 +54,9 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
       const template = await api<{document: CampaignDocument}>('/api/v1/campaigns/demo-template');
       const organizationId = template.document.organizationId;
       const list = await api<{campaigns: {id: string}[]}>('/api/v1/campaigns', {headers: organizationHeaders(organizationId)});
-      if (list.campaigns.length === 0) { setDocument(template.document); setEnvelope(undefined); setDirty(false); pendingMutationRef.current = undefined; setPhase('empty'); return; }
+      if (list.campaigns.length === 0) { setDocument(template.document); setEnvelope(undefined); setDirty(false); setConflictRecovery(undefined); pendingMutationRef.current = undefined; setPhase('empty'); return; }
       const reopened = await api<CampaignEnvelope>(`/api/v1/campaigns/${list.campaigns[0]!.id}`, {headers: organizationHeaders(organizationId)});
-      setEnvelope(reopened); setDocument(reopened.document); setDirty(false); pendingMutationRef.current = undefined; setPhase(reopened.readiness === 'BLOCKED' ? 'blocked' : reopened.readiness === 'NEEDS_OWNER' ? 'needs-owner' : 'ready');
+      setEnvelope(reopened); setDocument(reopened.document); setDirty(false); setConflictRecovery(undefined); pendingMutationRef.current = undefined; setPhase(reopened.readiness === 'BLOCKED' ? 'blocked' : reopened.readiness === 'NEEDS_OWNER' ? 'needs-owner' : 'ready');
     } catch (error) { const failure = error as ApiFailure; setErrorCode(failure.code); setPhase('recovery'); }
   }, [fixtureState]);
 
@@ -75,13 +78,43 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
         headers: {...organizationHeaders(document.organizationId), 'content-type': 'application/json', 'idempotency-key': idempotencyKey, ...(isCreate ? {} : {'if-match': envelope.etag})},
         body: JSON.stringify(document)
       });
-      setEnvelope(next); setDocument(next.document); setDirty(false); setPhase('saved');
+      setEnvelope(next); setDocument(next.document); setDirty(false); setConflictRecovery(undefined); setPhase('saved');
       pendingMutationRef.current = undefined;
-    } catch (error) { const failure = error as ApiFailure; const conflict = failure.current; if (failure.status === 412) pendingMutationRef.current = undefined; setErrorCode(conflict === undefined ? failure.code : `${failure.code} · v${conflict.version} · ${conflict.digest.slice(0, 12)}…`); setPhase(failure.status === 412 ? 'blocked' : 'recovery'); }
+    } catch (error) {
+      const failure = error as ApiFailure;
+      const conflict = failure.current;
+      if (failure.status === 412 && envelope !== undefined) {
+        pendingMutationRef.current = undefined;
+        try {
+          const server = await api<CampaignEnvelope>(`/api/v1/campaigns/${document.id}`, {headers: organizationHeaders(document.organizationId)});
+          const rebased = rebaseCampaignDraft(envelope.document, document, server.document);
+          setConflictRecovery({server, merged: rebased.document, conflictPaths: rebased.conflictPaths});
+          setErrorCode(`${failure.code ?? 'CAMPAIGN_VERSION_CONFLICT'} · v${server.version} · ${server.digest.slice(0, 12)}… · ${rebased.conflictPaths.length} conflict(s)`);
+          setPhase('blocked');
+        } catch (refreshError) {
+          setErrorCode((refreshError as ApiFailure).code ?? 'CONFLICT_REFRESH_FAILED');
+          setPhase('recovery');
+        }
+      } else {
+        if (failure.status === 422) pendingMutationRef.current = undefined;
+        setErrorCode(conflict === undefined ? failure.code : `${failure.code} · v${conflict.version} · ${conflict.digest.slice(0, 12)}…`);
+        setPhase(failure.status === 422 ? 'blocked' : 'recovery');
+      }
+    }
     finally { savingRef.current = false; }
   }, [document, envelope]);
 
-  const recover = useCallback(() => { if (pendingMutationRef.current !== undefined && document !== undefined) void persist(); else void load(); }, [document, load, persist]);
+  const recover = useCallback(() => {
+    if (conflictRecovery !== undefined) {
+      setEnvelope(conflictRecovery.server);
+      setDocument(conflictRecovery.merged);
+      setDirty(true);
+      setConflictRecovery(undefined);
+      setErrorCode(undefined);
+      setPhase('ready');
+    } else if (pendingMutationRef.current !== undefined && document !== undefined) void persist();
+    else void load();
+  }, [conflictRecovery, document, load, persist]);
 
   if (fixtureState !== undefined) return <StatePanel phase={fixtureState} t={t} errorCode={undefined} onRetry={() => undefined} />;
   if (phase === 'loading' || phase === 'recovery') return <StatePanel phase={phase} t={t} errorCode={errorCode} onRetry={recover} />;
@@ -89,7 +122,7 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
 
   return (
     <section className="campaign-control" aria-label="Campaign control plane">
-      <StatePanel phase={phase} t={t} errorCode={errorCode} onRetry={recover} compact />
+      <StatePanel phase={phase} t={t} errorCode={errorCode} onRetry={recover} retryLabel={conflictRecovery === undefined ? undefined : t.rebase} retryable={conflictRecovery !== undefined} compact />
       <div className="campaign-meta">
         <span>{t.noLive}</span>
         {envelope !== undefined && <><span>{t.savedLabel} <strong>v{envelope.version}</strong></span><span className="digest-label">{t.digest} <code>{envelope.digest.slice(0, 12)}…</code></span></>}
@@ -105,9 +138,9 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
   );
 }
 
-function StatePanel({phase, t, errorCode, onRetry, compact = false}: {phase: Phase; t: typeof copy[AppLocale]; errorCode: string | undefined; onRetry: () => void; compact?: boolean}) {
+function StatePanel({phase, t, errorCode, onRetry, compact = false, retryable = true, retryLabel}: {phase: Phase; t: typeof copy[AppLocale]; errorCode: string | undefined; onRetry: () => void; compact?: boolean; retryable?: boolean; retryLabel?: string | undefined}) {
   const [title, description] = t[phase];
-  return <div className={`control-state state-${phase}${compact ? ' compact' : ''}`} role={phase === 'recovery' || phase === 'blocked' ? 'alert' : 'status'}><span className="state-pulse" aria-hidden="true"/><div><strong>{title}</strong><p>{description}</p>{errorCode !== undefined && <code>{errorCode}</code>}</div>{(phase === 'recovery' || (phase === 'blocked' && errorCode !== undefined)) && <button type="button" onClick={onRetry}>{t.retry}</button>}</div>;
+  return <div className={`control-state state-${phase}${compact ? ' compact' : ''}`} role={phase === 'recovery' || phase === 'blocked' ? 'alert' : 'status'}><span className="state-pulse" aria-hidden="true"/><div><strong>{title}</strong><p>{description}</p>{errorCode !== undefined && <code>{errorCode}</code>}</div>{retryable && (phase === 'recovery' || (phase === 'blocked' && errorCode !== undefined)) && <button type="button" onClick={onRetry}>{retryLabel ?? t.retry}</button>}</div>;
 }
 
 function CampaignForm({document, onChange, t}: {document: CampaignDocument; onChange: (value: CampaignDocument) => void; t: typeof copy[AppLocale]}) {
@@ -121,7 +154,7 @@ function SetupEditor({document, onChange, t}: {document: CampaignDocument; onCha
 
 function Composer({document, dirty, onChange, t}: {document: CampaignDocument; dirty: boolean; onChange: (value: CampaignDocument) => void; t: typeof copy[AppLocale]}) {
   const [selected, setSelected] = useState<ArtifactRevision['platform']>('X');
-  const [schedule, setSchedule] = useState<{localStart: string; timeZone: string; recurring: boolean; rrule: string; foldPreference: 'EARLIER' | 'LATER'; misfirePolicy: 'SKIP' | 'HOLD_FOR_OWNER'}>({localStart: '2026-11-01T01:30', timeZone: 'America/New_York', recurring: false, rrule: 'FREQ=WEEKLY;INTERVAL=1;COUNT=3', foldPreference: 'LATER', misfirePolicy: 'HOLD_FOR_OWNER'});
+  const [schedule, setSchedule] = useState<{localStart: string; timeZone: string; recurring: boolean; rrule: string; foldPreference: '' | 'EARLIER' | 'LATER'; misfirePolicy: 'SKIP' | 'HOLD_FOR_OWNER'}>({localStart: '2026-11-01T01:30', timeZone: 'America/New_York', recurring: false, rrule: 'FREQ=WEEKLY;INTERVAL=1;COUNT=3', foldPreference: '', misfirePolicy: 'HOLD_FOR_OWNER'});
   const [scheduleError, setScheduleError] = useState<string>();
   const [previewing, setPreviewing] = useState(false);
   const currentDocumentRef = useRef(document);
@@ -134,6 +167,7 @@ function Composer({document, dirty, onChange, t}: {document: CampaignDocument; d
   const previewContext: PreviewContext = {accountHandle: account.displayHandle, identityName: identity.displayName, capturedAt: capability.capturedAt, executionMode: capability.executionMode, violations: constraintViolations(revision.content, capability.constraints)};
   const edit = (content: PlatformArtifact) => { const next = structuredClone(document); const target = next.artifactRevisions.find((item) => item.id === revision.id)!; target.content = content; onChange(next); };
   const previewSchedule = async () => {
+    if (schedule.foldPreference === '') { setScheduleError('FOLD_PREFERENCE_REQUIRED'); return; }
     const requestedDocument = document;
     setPreviewing(true);
     try {
@@ -144,7 +178,7 @@ function Composer({document, dirty, onChange, t}: {document: CampaignDocument; d
     } catch (error) { setScheduleError((error as ApiFailure).code ?? 'SCHEDULE_PREVIEW_FAILED'); }
     finally { setPreviewing(false); }
   };
-  return <><div className="platform-tabs" role="tablist" aria-label={t.content}>{(['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU'] as const).map((platform) => <button key={platform} type="button" role="tab" aria-selected={selected === platform} onClick={() => setSelected(platform)}>{platform === 'XIAOHONGSHU' ? '小红书' : platform === 'BLUESKY' ? 'Bluesky' : platform === 'LINKEDIN' ? 'LinkedIn' : 'X'}</button>)}</div><div className="composer-live"><section className="editor-surface"><h2>{t.content}</h2><PlatformFields content={revision.content} onChange={edit} constraints={capability.constraints} t={t} /></section><section className="preview-surface"><h2>{t.preview}</h2><PlatformPreview content={revision.content} context={previewContext} t={t} /><p>{capability.disclaimer}</p><div className="constraint-list"><strong>{t.constraints}</strong>{Object.entries(capability.constraints).map(([name, rule]) => <code key={name}>{name}: {rule.required ? t.required : t.optional}{rule.maxLength === undefined ? '' : ` · ${t.maximum} ${rule.maxLength}`}{rule.maxItems === undefined ? '' : ` · ${t.items} ${rule.maxItems}`}</code>)}</div></section></div><section className="schedule-editor"><h2>{t.schedule}</h2><p>{t.scheduleHint}</p><div className="schedule-grid"><label><span>{t.localWallTime}</span><input type="datetime-local" value={schedule.localStart} onChange={(event) => setSchedule({...schedule, localStart: event.target.value})} /></label><label><span>{t.timeZone}</span><input value={schedule.timeZone} onChange={(event) => setSchedule({...schedule, timeZone: event.target.value})} /></label><label><span>{t.pattern}</span><select value={schedule.recurring ? 'rrule' : 'once'} onChange={(event) => setSchedule({...schedule, recurring: event.target.value === 'rrule'})}><option value="once">{t.once}</option><option value="rrule">{t.recurring}</option></select></label><label><span>{t.dstFold}</span><select value={schedule.foldPreference} onChange={(event) => setSchedule({...schedule, foldPreference: event.target.value as 'EARLIER' | 'LATER'})}><option value="EARLIER">EARLIER</option><option value="LATER">LATER</option></select></label>{schedule.recurring && <label className="wide"><span>RRULE</span><input value={schedule.rrule} onChange={(event) => setSchedule({...schedule, rrule: event.target.value})} /></label>}</div><button type="button" className="secondary-action" disabled={dirty || previewing} onClick={() => void previewSchedule()}>{t.addSchedule}</button>{dirty && <small className="schedule-save-first">{t.scheduleSaveFirst}</small>}{scheduleError !== undefined && <code className="error-code">{scheduleError}</code>}{document.publishingSchedules.map((item) => { const occurrences = document.scheduleOccurrences.filter((occurrence) => occurrence.scheduleId === item.id).sort((left, right) => left.ordinal - right.ordinal); const first = occurrences[0]; return <div className="schedule-row" key={item.id}><strong>{item.kind}</strong><span>{item.localStart} · {item.timeZone} → {first?.scheduledForUtc ?? '—'}</span><small>{item.foldPreference} · UTC{formatOffset(first?.utcOffsetMinutes)} · {item.misfirePolicy} · {occurrences.length} {t.occurrenceCount}</small><code>{item.status}</code></div>; })}</section></>;
+  return <><div className="platform-tabs" role="tablist" aria-label={t.content}>{(['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU'] as const).map((platform) => <button key={platform} type="button" role="tab" aria-selected={selected === platform} onClick={() => setSelected(platform)}>{platform === 'XIAOHONGSHU' ? '小红书' : platform === 'BLUESKY' ? 'Bluesky' : platform === 'LINKEDIN' ? 'LinkedIn' : 'X'}</button>)}</div><div className="composer-live"><section className="editor-surface"><h2>{t.content}</h2><PlatformFields content={revision.content} onChange={edit} constraints={capability.constraints} t={t} /></section><section className="preview-surface"><h2>{t.preview}</h2><PlatformPreview content={revision.content} context={previewContext} t={t} /><p>{capability.disclaimer}</p><div className="constraint-list"><strong>{t.constraints}</strong>{Object.entries(capability.constraints).map(([name, rule]) => <code key={name}>{name}: {rule.required ? t.required : t.optional}{rule.maxLength === undefined ? '' : ` · ${t.maximum} ${rule.maxLength}`}{rule.maxItems === undefined ? '' : ` · ${t.items} ${rule.maxItems}`}</code>)}</div></section></div><section className="schedule-editor"><h2>{t.schedule}</h2><p>{t.scheduleHint}</p><div className="schedule-grid"><label><span>{t.localWallTime}</span><input type="datetime-local" value={schedule.localStart} onChange={(event) => setSchedule({...schedule, localStart: event.target.value})} /></label><label><span>{t.timeZone}</span><input value={schedule.timeZone} onChange={(event) => setSchedule({...schedule, timeZone: event.target.value})} /></label><label><span>{t.pattern}</span><select value={schedule.recurring ? 'rrule' : 'once'} onChange={(event) => setSchedule({...schedule, recurring: event.target.value === 'rrule'})}><option value="once">{t.once}</option><option value="rrule">{t.recurring}</option></select></label><label><span>{t.dstFold}</span><select value={schedule.foldPreference} onChange={(event) => setSchedule({...schedule, foldPreference: event.target.value as '' | 'EARLIER' | 'LATER'})}><option value="">{t.chooseFold}</option><option value="EARLIER">EARLIER</option><option value="LATER">LATER</option></select></label><label><span>{t.misfire}</span><select value={schedule.misfirePolicy} onChange={(event) => setSchedule({...schedule, misfirePolicy: event.target.value as 'SKIP' | 'HOLD_FOR_OWNER'})}><option value="SKIP">SKIP</option><option value="HOLD_FOR_OWNER">HOLD_FOR_OWNER</option></select></label>{schedule.recurring && <label className="wide"><span>RRULE</span><input value={schedule.rrule} onChange={(event) => setSchedule({...schedule, rrule: event.target.value})} /></label>}</div><button type="button" className="secondary-action" disabled={dirty || previewing || schedule.foldPreference === ''} onClick={() => void previewSchedule()}>{t.addSchedule}</button>{dirty && <small className="schedule-save-first">{t.scheduleSaveFirst}</small>}{scheduleError !== undefined && <code className="error-code">{scheduleError}</code>}{document.publishingSchedules.map((item) => { const occurrences = document.scheduleOccurrences.filter((occurrence) => occurrence.scheduleId === item.id).sort((left, right) => left.ordinal - right.ordinal); const first = occurrences[0]; return <div className="schedule-row" key={item.id}><strong>{item.kind}</strong><span>{item.localStart} · {item.timeZone} → {first?.scheduledForUtc ?? '—'}</span><small>{item.foldPreference} · UTC{formatOffset(first?.utcOffsetMinutes)} · {item.misfirePolicy} · {occurrences.length} {t.occurrenceCount}</small><code>{item.status}</code></div>; })}</section></>;
 }
 
 function PlatformFields({content, onChange, constraints, t}: {content: PlatformArtifact; onChange: (value: PlatformArtifact) => void; constraints: Record<string, {maxLength?: number; maxItems?: number; required: boolean}>; t: typeof copy[AppLocale]}) {

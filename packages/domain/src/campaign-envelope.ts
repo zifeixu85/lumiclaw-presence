@@ -1,4 +1,5 @@
 import {digestCampaign, validateCampaignDocument} from './campaign.js';
+import {createDemoCampaignDocument} from './campaign-fixture.js';
 import {validateCampaignShape} from './campaign-schema.js';
 import type {ArtifactRevision, CampaignDocument, CampaignEnvelope, Claim} from './campaign-types.js';
 import {canonicalize} from './canonical.js';
@@ -11,6 +12,7 @@ export function campaignEtag(id: string, version: number, digest: string): strin
 
 export function createCampaignEnvelope(document: CampaignDocument, now = new Date()): CampaignEnvelope {
   assertCampaignShape(document);
+  assertInitialAuthorityFields(document);
   const prepared = structuredClone(document);
   prepared.missionContract.sourceDigest = digestCampaign(prepared);
   assertValidCampaign(prepared, now);
@@ -138,13 +140,16 @@ function reviseArtifact(current: ArtifactRevision | undefined, incoming: Artifac
 
 function artifactGovernedContent(revision: ArtifactRevision, document: CampaignDocument): string {
   const unit = document.activationPlan.units.find((item) => item.id === revision.activationUnitId);
+  const product = document.graph.products.find((item) => item.id === unit?.productId);
   const claimIds = new Set(revision.claimIds);
   const claims = document.claims.filter((item) => claimIds.has(item.id));
   const evidenceIds = new Set(claims.flatMap((item) => item.evidenceRefIds));
   return canonicalize({
+    organization: document.graph.organization,
     activationUnit: unit,
     identity: document.graph.identities.find((item) => item.id === unit?.identityId),
-    product: document.graph.products.find((item) => item.id === unit?.productId),
+    brand: document.graph.brands.find((item) => item.id === product?.brandId),
+    product,
     market: document.graph.markets.find((item) => item.id === unit?.marketId),
     channelAccount: document.graph.channelAccounts.find((item) => item.id === unit?.channelAccountId),
     accountMandate: document.graph.accountMandates.find((item) => item.id === unit?.accountMandateId),
@@ -154,6 +159,29 @@ function artifactGovernedContent(revision: ArtifactRevision, document: CampaignD
     platform: revision.platform,
     content: revision.content
   });
+}
+
+function assertInitialAuthorityFields(incoming: CampaignDocument): void {
+  const fixture = createDemoCampaignDocument();
+  const authorityView = (document: CampaignDocument) => ({
+    evidenceRefs: document.evidenceRefs,
+    claims: document.claims.map((item) => item.status === 'DRAFT' ? {...item, statement: ''} : item),
+    capabilitySnapshots: document.capabilitySnapshots,
+    activationUnits: document.activationPlan.units,
+    organization: {...document.graph.organization, displayName: ''},
+    identities: document.graph.identities.map((item) => ({...item, displayName: '', publicBio: ''})),
+    brands: document.graph.brands.map((item) => ({...item, name: '', positioning: ''})),
+    products: document.graph.products.map((item) => ({...item, name: '', description: ''})),
+    markets: document.graph.markets.map((item) => ({...item, displayName: '', primaryLanguage: ''})),
+    channelAccounts: document.graph.channelAccounts.map((item) => ({...item, displayHandle: ''})),
+    accountMandates: document.graph.accountMandates,
+    artifacts: document.artifactRevisions.map((item) => ({...item, content: null})),
+    missionContract: {...document.missionContract, sourceDigest: ''},
+    schedules: document.publishingSchedules,
+    occurrences: document.scheduleOccurrences
+  });
+  const expected = authorityView({...fixture, id: incoming.id, organizationId: incoming.organizationId, artifactRevisions: fixture.artifactRevisions.map((item) => ({...item, campaignId: incoming.id}))});
+  if (canonicalize(authorityView(incoming)) !== canonicalize(expected)) throw new CampaignPreparationError('CAMPAIGN_AUTHORITY_FIELD_CHANGED', 'Initial Campaign evidence, Claim approval, capability, artifact revision metadata, graph edges, Mission contract, and schedule state must match the server-issued M1 template.');
 }
 
 function readinessGaps(document: CampaignDocument): string[] {

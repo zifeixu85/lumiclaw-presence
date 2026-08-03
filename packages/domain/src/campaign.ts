@@ -55,6 +55,16 @@ export function validateCampaignDocument(value: unknown, now = new Date()): Vali
 
   const claims = new Map(document.claims.map((claim) => [claim.id, claim]));
   const evidence = new Set(document.evidenceRefs.map((item) => item.id));
+  document.claims.forEach((claim, index) => {
+    if (claim.status === 'DRAFT') return;
+    const path = `/claims/${index}`;
+    if (!products.has(claim.subjectId)) issues.push(issue('CLAIM_PRODUCT_SCOPE_INVALID', `${path}/subjectId`, 'Governed Claim subject is not a Campaign Product.'));
+    if (claim.marketIds.some((marketId) => !markets.has(marketId))) issues.push(issue('CLAIM_MARKET_SCOPE_INVALID', `${path}/marketIds`, 'Governed Claim contains a Market outside the Campaign graph.'));
+    const effectiveFrom = Date.parse(claim.effectiveFrom);
+    const effectiveUntil = Date.parse(claim.effectiveUntil);
+    if (!Number.isFinite(effectiveFrom) || !Number.isFinite(effectiveUntil) || effectiveFrom > now.getTime() || effectiveUntil <= now.getTime() || effectiveUntil <= effectiveFrom) issues.push(issue('CLAIM_EXPIRED', path, 'Governed Claim effective window is invalid or does not include validation time.'));
+    if (claim.evidenceRefIds.length === 0 || claim.evidenceRefIds.some((id) => !evidence.has(id))) issues.push(issue('CLAIM_EVIDENCE_MISSING', `${path}/evidenceRefIds`, 'Governed Claim does not have a complete Campaign EvidenceRef set.'));
+  });
   const capabilities = new Map(document.capabilitySnapshots.map((snapshot) => [snapshot.id, snapshot]));
   const units = new Map(document.activationPlan.units.map((unit) => [unit.id, unit]));
   const capabilityPlatforms = new Set(document.capabilitySnapshots.map((snapshot) => snapshot.platform));
@@ -68,7 +78,12 @@ export function validateCampaignDocument(value: unknown, now = new Date()): Vali
     if (unit === undefined || revision.campaignId !== document.id || revision.platform !== unit.platform) issues.push(issue('ARTIFACT_ACTIVATION_SCOPE_INVALID', `/artifactRevisions/${index}`, 'Artifact revision does not match the Campaign/ActivationUnit/platform.'));
     const capability = capabilities.get(revision.capabilitySnapshotId);
     if (capability === undefined || capability.platform !== revision.platform || capability.channelAccountId !== unit?.channelAccountId) issues.push(issue('ARTIFACT_CAPABILITY_SCOPE_INVALID', `/artifactRevisions/${index}/capabilitySnapshotId`, 'Artifact capability snapshot does not match its platform/account.'));
-    if (capability !== undefined && Date.parse(capability.expiresAt) <= now.getTime()) issues.push(issue('CAPABILITY_EXPIRED', `/artifactRevisions/${index}/capabilitySnapshotId`, 'Capability snapshot has expired.'));
+    if (capability !== undefined) {
+      const capturedAt = Date.parse(capability.capturedAt);
+      const expiresAt = Date.parse(capability.expiresAt);
+      if (!Number.isFinite(capturedAt) || !Number.isFinite(expiresAt) || expiresAt <= now.getTime() || expiresAt <= capturedAt) issues.push(issue('CAPABILITY_EXPIRED', `/artifactRevisions/${index}/capabilitySnapshotId`, 'Capability snapshot time window is invalid or expired.'));
+    }
+    if (revision.content.kind !== revision.platform) issues.push(issue('ARTIFACT_ACTIVATION_SCOPE_INVALID', `/artifactRevisions/${index}/content/kind`, 'Artifact platform and content kind must match.'));
     for (const claimId of revision.claimIds) {
       const claim = claims.get(claimId);
       if (claim === undefined) {
@@ -97,7 +112,9 @@ export function validateCampaignDocument(value: unknown, now = new Date()): Vali
 
   const calculated = digestCampaign(document);
   if (document.missionContract.sourceDigest !== calculated) issues.push(issue('MISSION_SOURCE_DIGEST_MISMATCH', '/missionContract/sourceDigest', 'MissionContract source digest does not match canonical Campaign content.'));
-  if (Date.parse(document.brief.targetWindowEnd) <= Date.parse(document.brief.targetWindowStart)) issues.push(issue('CAMPAIGN_WINDOW_INVALID', '/brief', 'Campaign target window end must be after start.'));
+  const targetWindowStart = Date.parse(document.brief.targetWindowStart);
+  const targetWindowEnd = Date.parse(document.brief.targetWindowEnd);
+  if (!Number.isFinite(targetWindowStart) || !Number.isFinite(targetWindowEnd) || targetWindowEnd <= targetWindowStart) issues.push(issue('CAMPAIGN_WINDOW_INVALID', '/brief', 'Campaign target window must contain valid timestamps with end after start.'));
   return issues.length === 0 ? {ok: true} : {ok: false, issues};
 }
 
@@ -108,7 +125,7 @@ function validateClaimForUnit(claim: Claim, productId: string, marketId: string,
   if (!claim.marketIds.includes(marketId)) issues.push(issue('CLAIM_MARKET_SCOPE_INVALID', path, 'Claim market does not include the ActivationUnit market.'));
   const effectiveFrom = Date.parse(claim.effectiveFrom);
   const effectiveUntil = Date.parse(claim.effectiveUntil);
-  if (effectiveFrom > now.getTime() || effectiveUntil <= now.getTime()) issues.push(issue('CLAIM_EXPIRED', path, 'Claim effective window does not include validation time.'));
+  if (!Number.isFinite(effectiveFrom) || !Number.isFinite(effectiveUntil) || effectiveFrom > now.getTime() || effectiveUntil <= now.getTime() || effectiveUntil <= effectiveFrom) issues.push(issue('CLAIM_EXPIRED', path, 'Claim effective window is invalid or does not include validation time.'));
   if (claim.evidenceRefIds.length === 0 || claim.evidenceRefIds.some((id) => !evidence.has(id))) issues.push(issue('CLAIM_EVIDENCE_MISSING', path, 'Claim does not have a complete EvidenceRef set.'));
   return issues;
 }

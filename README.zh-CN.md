@@ -140,7 +140,7 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 ## 当前实现真相
 
-**当前分支已经实现：**
+**当前分支的工程验证候选（等待 Coordinator 复核与 Owner 验收）：**
 
 - 已验收的 M0 Node/npm Workspace、Docker Compose/PostgreSQL/BlobStore 基础、双语 Next.js Shell、质量门禁与隔离 AgentTeams v1.2.0 Adapter Smoke；
 - 租户约束的 Organization、Identity、Brand、Product、Market、ChannelAccount、AccountMandate 合同与 Migration；

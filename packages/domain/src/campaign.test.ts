@@ -29,6 +29,9 @@ describe('campaign contracts v1', () => {
     ['ACTIVATION_MANDATE_SCOPE_INVALID', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.activationPlan.units[0].accountMandateId = document.activationPlan.units[1].accountMandateId; }],
     ['CAMPAIGN_DUPLICATE_ID', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.claims[1]!.id = document.claims[0]!.id; }],
     ['SCHEMA_INVALID', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.artifactRevisions[0]!.claimIds = []; }],
+    ['SCHEMA_INVALID', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.brief.targetWindowStart = 'not-a-date'; }],
+    ['SCHEMA_INVALID', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.evidenceRefs[0]!.capturedAt = '2026-99-99T00:00:00Z'; }],
+    ['SCHEMA_INVALID', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.artifactRevisions[0]!.content = structuredClone(document.artifactRevisions[1]!.content); }],
     ['ARTIFACT_ACTIVATION_SCOPE_INVALID', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.artifactRevisions[0]!.activationUnitId = document.artifactRevisions[1]!.activationUnitId; document.artifactRevisions[0]!.platform = document.artifactRevisions[1]!.platform; document.artifactRevisions[0]!.content = structuredClone(document.artifactRevisions[1]!.content); document.artifactRevisions[0]!.capabilitySnapshotId = document.artifactRevisions[1]!.capabilitySnapshotId; }],
     ['ARTIFACT_TEXT_LIMIT_EXCEEDED', (document: ReturnType<typeof createDemoCampaignDocument>) => { const x = document.artifactRevisions.find((item) => item.platform === 'X')!; if (x.content.kind === 'X') x.content.posts = ['x'.repeat(281)]; }]
   ])('rejects %s', (code, mutate) => {
@@ -38,6 +41,20 @@ describe('campaign contracts v1', () => {
     const result = validateCampaignDocument(document, now);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.issues.map((item) => item.code)).toContain(code);
+  });
+
+  it('rejects an invalid unreferenced governed Claim', () => {
+    const document = createDemoCampaignDocument();
+    const claim = document.claims[1]!;
+    claim.status = 'APPROVED';
+    claim.subjectId = document.graph.identities[0]!.id;
+    claim.marketIds = [document.graph.identities[0]!.id];
+    claim.effectiveUntil = '2026-01-01T00:00:00.000Z';
+    claim.evidenceRefIds = [document.graph.identities[0]!.id];
+    document.missionContract.sourceDigest = digestCampaign(document);
+    const result = validateCampaignDocument(document, now);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.issues.map((item) => item.code)).toEqual(expect.arrayContaining(['CLAIM_PRODUCT_SCOPE_INVALID', 'CLAIM_MARKET_SCOPE_INVALID', 'CLAIM_EXPIRED', 'CLAIM_EVIDENCE_MISSING']));
   });
 
   it('rejects source digest tampering independently of schema shape', () => {

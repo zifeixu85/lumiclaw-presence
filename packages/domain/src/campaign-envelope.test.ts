@@ -10,6 +10,23 @@ describe('campaign envelope versioning', () => {
     expect(envelope.gapCodes[0]).toMatch(/^CLAIM_EVIDENCE_REQUIRED:/u);
   });
 
+  it('rejects forged authority fields on initial create', () => {
+    const approved = createDemoCampaignDocument();
+    approved.claims[1]!.status = 'APPROVED';
+    approved.claims[1]!.version = 99;
+    approved.claims[1]!.evidenceRefIds = [approved.evidenceRefs[0]!.id];
+    expect(() => createCampaignEnvelope(approved, new Date('2026-08-03T12:00:00.000Z'))).toThrow(/server-issued M1 template/u);
+
+    const capability = createDemoCampaignDocument();
+    capability.capabilitySnapshots[0]!.constraints.posts!.maxLength = 99_999;
+    expect(() => createCampaignEnvelope(capability, new Date('2026-08-03T12:00:00.000Z'))).toThrow(/server-issued M1 template/u);
+
+    const artifact = createDemoCampaignDocument();
+    artifact.artifactRevisions[0]!.revision = 42;
+    artifact.artifactRevisions[0]!.createdAt = '2026-08-03T01:00:00.000Z';
+    expect(() => createCampaignEnvelope(artifact, new Date('2026-08-03T12:00:00.000Z'))).toThrow(/server-issued M1 template/u);
+  });
+
   it('increments only a changed platform ArtifactRevision', () => {
     const current = createCampaignEnvelope(createDemoCampaignDocument(), new Date('2026-08-03T12:00:00.000Z'));
     const incoming = structuredClone(current.document);
@@ -41,6 +58,24 @@ describe('campaign envelope versioning', () => {
     expect(next.document.artifactRevisions.find((item) => item.platform === 'BLUESKY')?.revision).toBe(1);
     expect(next.document.publishingSchedules[0]?.status).toBe('INVALIDATED');
     expect(next.document.scheduleOccurrences[0]?.state).toBe('INVALIDATED');
+  });
+
+  it.each([
+    ['Organization display name', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.graph.organization.displayName = 'Changed demo organization'; }],
+    ['Brand positioning', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.graph.brands[0]!.positioning = 'Changed public-safe positioning'; }]
+  ])('versions governed artifacts and invalidates schedules after a %s edit', async (_label, mutate) => {
+    const {createPublishingSchedule} = await import('./schedule.js');
+    const current = createCampaignEnvelope(createDemoCampaignDocument(), new Date('2026-08-03T12:00:00.000Z'));
+    const scheduled = structuredClone(current.document);
+    const preview = createPublishingSchedule({organizationId: scheduled.organizationId, campaignId: scheduled.id, artifactRevisions: scheduled.artifactRevisions, localStart: '2026-09-01T09:00', timeZone: 'UTC', foldPreference: 'EARLIER', misfirePolicy: 'SKIP'}, new Date('2026-08-03T12:10:00.000Z'));
+    scheduled.publishingSchedules.push(preview.schedule);
+    scheduled.scheduleOccurrences.push(...preview.occurrences);
+    const withSchedule = advanceCampaignEnvelope(current, scheduled, new Date('2026-08-03T12:10:00.000Z'));
+    const edited = structuredClone(withSchedule.document);
+    mutate(edited);
+    const next = advanceCampaignEnvelope(withSchedule, edited, new Date('2026-08-03T13:00:00.000Z'));
+    expect(next.document.artifactRevisions.every((item) => item.revision === 2)).toBe(true);
+    expect(next.document.publishingSchedules[0]?.status).toBe('INVALIDATED');
   });
 
   it('versions only an editable DRAFT Claim without rewriting approved artifact authority', () => {
@@ -86,6 +121,19 @@ describe('campaign envelope versioning', () => {
     const x = mixed.artifactRevisions.find((item) => item.platform === 'X')!;
     if (x.content.kind === 'X') x.content.posts[0] = 'A content edit cannot be scheduled in the same mutation.';
     expect(() => advanceCampaignEnvelope(current, mixed, new Date('2026-08-03T12:20:00.000Z'))).toThrow(/Save Campaign content first/u);
+  });
+
+  it('recomputes misfire state at save time rather than trusting preview time', async () => {
+    const {createPublishingSchedule} = await import('./schedule.js');
+    const current = createCampaignEnvelope(createDemoCampaignDocument(), new Date('2026-08-03T12:00:00.000Z'));
+    const previewed = structuredClone(current.document);
+    const preview = createPublishingSchedule({organizationId: previewed.organizationId, campaignId: previewed.id, artifactRevisions: previewed.artifactRevisions, localStart: '2026-08-03T12:30', timeZone: 'UTC', foldPreference: 'EARLIER', misfirePolicy: 'HOLD_FOR_OWNER'}, new Date('2026-08-03T12:00:00.000Z'));
+    expect(preview.occurrences[0]?.state).toBe('PENDING');
+    previewed.publishingSchedules.push(preview.schedule);
+    previewed.scheduleOccurrences.push(...preview.occurrences);
+    const saved = advanceCampaignEnvelope(current, previewed, new Date('2026-08-03T13:00:00.000Z'));
+    expect(saved.document.scheduleOccurrences[0]?.state).toBe('NEEDS_OWNER');
+    expect(saved.document.scheduleOccurrences[0]?.misfireReason).toBe('PAST_DUE');
   });
 
   it('rejects browser attempts to self-approve a Claim or rewrite capability constraints', () => {
