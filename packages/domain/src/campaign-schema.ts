@@ -1,5 +1,6 @@
 import {Ajv, type ErrorObject} from 'ajv';
 import type {CampaignDocument} from './campaign-types.js';
+import {organizationGraphSchema} from './graph-schema.js';
 import type {ValidationIssue} from './types.js';
 
 const id = {type: 'string', pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'} as const;
@@ -31,7 +32,7 @@ export const campaignDocumentSchema = {
   required: ['schemaVersion', 'id', 'organizationId', 'dataMode', 'live', 'graph', 'brief', 'goalProfile', 'evidenceRefs', 'claims', 'activationPlan', 'capabilitySnapshots', 'artifactRevisions', 'publishingSchedules', 'scheduleOccurrences', 'missionContract'],
   properties: {
     schemaVersion: {const: 1}, id, organizationId: id, dataMode: {const: 'DEMO_SEED'}, live: {const: false},
-    graph: {type: 'object'},
+    graph: organizationGraphSchema,
     brief: {type: 'object', additionalProperties: false, required: ['schemaVersion', 'name', 'objective', 'callToAction', 'contentLanguage', 'targetWindowStart', 'targetWindowEnd'], properties: {schemaVersion: {const: 1}, name: {type: 'string', minLength: 1, maxLength: 120}, objective: {type: 'string', minLength: 1, maxLength: 2000}, callToAction: {type: 'string', minLength: 1, maxLength: 500}, contentLanguage: {enum: ['en', 'zh-CN']}, targetWindowStart: dateTime, targetWindowEnd: dateTime}},
     goalProfile: {type: 'object', additionalProperties: false, required: ['schemaVersion', 'primaryGoal', 'supportingSignal', 'measurementNotes'], properties: {schemaVersion: {const: 1}, primaryGoal: {const: 'LAUNCH_MOMENTUM'}, supportingSignal: {const: 'MARKET_LEARNING'}, measurementNotes: {type: 'string', minLength: 1, maxLength: 1000}}},
     evidenceRefs: {type: 'array', minItems: 1, items: {type: 'object', additionalProperties: false, required: ['id', 'organizationId', 'schemaVersion', 'label', 'sourceUrl', 'capturedAt', 'contentDigest', 'publicSafe'], properties: {id, organizationId: id, schemaVersion: {const: 1}, label: {type: 'string'}, sourceUrl: {type: 'string'}, capturedAt: dateTime, contentDigest: {type: 'string', pattern: '^[0-9a-f]{64}$'}, publicSafe: {const: true}}}},

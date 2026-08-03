@@ -14,6 +14,7 @@ describe('M1 Campaign API contract', () => {
     const openapi = await app.inject({method: 'GET', url: '/api/v1/openapi.json'});
     expect(openapi.json().openapi).toBe('3.1.0');
     expect(openapi.json().paths['/api/v1/campaigns']).toBeDefined();
+    expect(openapi.json().components.schemas.CampaignDocument.properties.graph.additionalProperties).toBe(false);
   });
 
   it('creates, replays, reopens, saves, and returns the same mission source digest', async () => {
