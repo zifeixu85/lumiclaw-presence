@@ -1,5 +1,6 @@
 import {
   advanceCampaignEnvelope,
+  CampaignPreparationError,
   createCampaignEnvelope,
   validateCampaignDocument,
   type CampaignDocument,
@@ -38,6 +39,7 @@ export class MemoryCampaignRepository implements CampaignRepository {
     if (idempotency !== undefined) return idempotency.requestDigest === requestDigest ? {ok: true, envelope: structuredClone(idempotency.envelope), replayed: true} : {ok: false, code: 'IDEMPOTENCY_KEY_REUSED'};
     if (document.organizationId !== organizationId) return {ok: false, code: 'CAMPAIGN_NOT_FOUND'};
     const envelope = createCampaignEnvelope(document, now);
+    this.#assertCampaignChildIdsAvailable(envelope.document);
     this.#campaigns.set(document.id, structuredClone(envelope));
     this.#idempotency.set(`POST:${organizationId}:${key}`, {requestDigest, envelope: structuredClone(envelope)});
     return {ok: true, envelope, replayed: false};
@@ -51,12 +53,33 @@ export class MemoryCampaignRepository implements CampaignRepository {
     if (current === undefined) return {ok: false, code: 'CAMPAIGN_NOT_FOUND'};
     if (current.etag !== expectedEtag) return {ok: false, code: 'CAMPAIGN_VERSION_CONFLICT', current};
     const envelope = advanceCampaignEnvelope(current, document, now);
+    this.#assertCampaignChildIdsAvailable(envelope.document);
     this.#campaigns.set(campaignId, structuredClone(envelope));
     this.#idempotency.set(idempotencyKey, {requestDigest, envelope: structuredClone(envelope)});
     return {ok: true, envelope, replayed: false};
   }
 
   async close(): Promise<void> {}
+
+  #assertCampaignChildIdsAvailable(document: CampaignDocument): void {
+    const incoming = campaignChildIds(document);
+    for (const envelope of this.#campaigns.values()) {
+      if (envelope.document.organizationId !== document.organizationId || envelope.document.id === document.id) continue;
+      const conflict = [...campaignChildIds(envelope.document)].find((id) => incoming.has(id));
+      if (conflict !== undefined) throw new CampaignPreparationError('CAMPAIGN_CHILD_ID_CONFLICT', 'A campaign-scoped child ID is already owned by another Campaign.', {id: conflict});
+    }
+  }
+}
+
+function campaignChildIds(document: CampaignDocument): Set<string> {
+  return new Set([
+    ...document.evidenceRefs.map((item) => item.id),
+    ...document.claims.map((item) => item.id),
+    ...document.capabilitySnapshots.map((item) => item.id),
+    ...document.artifactRevisions.map((item) => item.id),
+    ...document.publishingSchedules.map((item) => item.id),
+    ...document.scheduleOccurrences.map((item) => item.id)
+  ]);
 }
 
 function currentReadiness(envelope: CampaignEnvelope, now: Date): CampaignEnvelope {

@@ -31,6 +31,8 @@ describe('campaign envelope versioning', () => {
     scheduled.scheduleOccurrences.push(...preview.occurrences);
     const withSchedule = advanceCampaignEnvelope(current, scheduled, new Date('2026-08-03T12:30:00.000Z'));
     expect(withSchedule.document.publishingSchedules[0]?.status).toBe('ACTIVE');
+    expect(withSchedule.document.publishingSchedules[0]?.id).not.toBe(preview.schedule.id);
+    expect(withSchedule.document.publishingSchedules[0]?.createdAt).toBe('2026-08-03T12:30:00.000Z');
 
     const accountEdit = structuredClone(withSchedule.document);
     accountEdit.graph.channelAccounts[0]!.displayHandle = '@lumiclaw-updated';
@@ -62,9 +64,28 @@ describe('campaign envelope versioning', () => {
     replacementDocument.publishingSchedules = [replacement.schedule]; replacementDocument.scheduleOccurrences = [...replacement.occurrences];
     const next = advanceCampaignEnvelope(withFirst, replacementDocument, new Date('2026-08-03T12:20:00.000Z'));
     expect(next.document.publishingSchedules).toHaveLength(2);
-    expect(next.document.publishingSchedules.find((item) => item.id === first.schedule.id)?.invalidationReason).toBe('SCHEDULE_EDIT');
-    expect(next.document.publishingSchedules.find((item) => item.id === replacement.schedule.id)?.status).toBe('ACTIVE');
-    expect(next.document.scheduleOccurrences.find((item) => item.scheduleId === first.schedule.id)?.state).toBe('INVALIDATED');
+    expect(next.document.publishingSchedules.find((item) => item.id === withFirst.document.publishingSchedules[0]!.id)?.invalidationReason).toBe('SCHEDULE_EDIT');
+    expect(next.document.publishingSchedules.filter((item) => item.status === 'ACTIVE')).toHaveLength(1);
+    expect(next.document.publishingSchedules.some((item) => item.id === replacement.schedule.id)).toBe(false);
+    expect(next.document.scheduleOccurrences.find((item) => item.scheduleId === withFirst.document.publishingSchedules[0]!.id)?.state).toBe('INVALIDATED');
+  });
+
+  it('rejects forged preview occurrences and content-plus-schedule mutations', async () => {
+    const {createPublishingSchedule} = await import('./schedule.js');
+    const current = createCampaignEnvelope(createDemoCampaignDocument(), new Date('2026-08-03T12:00:00.000Z'));
+    const preview = createPublishingSchedule({organizationId: current.document.organizationId, campaignId: current.document.id, artifactRevisions: current.document.artifactRevisions, localStart: '2026-09-01T09:00', timeZone: 'UTC', foldPreference: 'EARLIER', misfirePolicy: 'SKIP'}, new Date('2026-08-03T12:10:00.000Z'));
+    const forged = structuredClone(current.document);
+    forged.publishingSchedules.push(preview.schedule);
+    forged.scheduleOccurrences.push(...preview.occurrences);
+    forged.scheduleOccurrences[0]!.scheduledForUtc = '2026-09-01T10:00:00.000Z';
+    expect(() => advanceCampaignEnvelope(current, forged, new Date('2026-08-03T12:20:00.000Z'))).toThrow(/not a valid deterministic server preview/u);
+
+    const mixed = structuredClone(current.document);
+    mixed.publishingSchedules.push(preview.schedule);
+    mixed.scheduleOccurrences.push(...preview.occurrences);
+    const x = mixed.artifactRevisions.find((item) => item.platform === 'X')!;
+    if (x.content.kind === 'X') x.content.posts[0] = 'A content edit cannot be scheduled in the same mutation.';
+    expect(() => advanceCampaignEnvelope(current, mixed, new Date('2026-08-03T12:20:00.000Z'))).toThrow(/Save Campaign content first/u);
   });
 
   it('rejects browser attempts to self-approve a Claim or rewrite capability constraints', () => {

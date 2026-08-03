@@ -1,5 +1,6 @@
 import {
   advanceCampaignEnvelope,
+  CampaignPreparationError,
   campaignEtag,
   createCampaignEnvelope,
   digestCampaign,
@@ -60,6 +61,7 @@ export class PostgresCampaignRepository implements CampaignRepository {
       if (replay !== undefined) return replay;
       if (document.organizationId !== organizationId) return {ok: false, code: 'CAMPAIGN_NOT_FOUND'};
       const envelope = createCampaignEnvelope(document, now);
+      await assertCampaignChildIdsAvailable(trx, envelope.document);
       await insertGraph(trx, document);
       await trx.insertInto('campaigns').values(headValues(envelope)).execute();
       await insertSnapshot(trx, envelope);
@@ -80,6 +82,7 @@ export class PostgresCampaignRepository implements CampaignRepository {
       const current = envelopeFromRow(row);
       if (current.etag !== expectedEtag) return {ok: false, code: 'CAMPAIGN_VERSION_CONFLICT', current};
       const envelope = advanceCampaignEnvelope(current, document, now);
+      await assertCampaignChildIdsAvailable(trx, envelope.document);
       await insertGraph(trx, envelope.document);
       await trx.updateTable('campaigns').set({version: envelope.version, digest: envelope.digest, etag: envelope.etag, readiness: envelope.readiness, gap_codes: json(envelope.gapCodes), document: json(envelope.document), updated_at: envelope.updatedAt}).where('organization_id', '=', organizationId).where('id', '=', campaignId).executeTakeFirstOrThrow();
       await insertSnapshot(trx, envelope);
@@ -90,6 +93,30 @@ export class PostgresCampaignRepository implements CampaignRepository {
   }
 
   async close(): Promise<void> { await this.#database.destroy(); }
+}
+
+async function assertCampaignChildIdsAvailable(trx: Transaction<Database>, document: CampaignDocument): Promise<void> {
+  const expected = {
+    evidence_refs: new Set(document.evidenceRefs.map((item) => item.id)),
+    claims: new Set(document.claims.map((item) => item.id)),
+    capability_snapshots: new Set(document.capabilitySnapshots.map((item) => item.id)),
+    artifact_revisions: new Set(document.artifactRevisions.map((item) => item.id)),
+    publishing_schedules: new Set(document.publishingSchedules.map((item) => item.id)),
+    schedule_occurrences: new Set(document.scheduleOccurrences.map((item) => item.id))
+  };
+  const allIds = [...new Set(Object.values(expected).flatMap((ids) => [...ids]))].sort();
+  for (const id of allIds) await sql`select pg_advisory_xact_lock(hashtextextended(${`${document.organizationId}:campaign-child:${id}`}, 0))`.execute(trx);
+  if (allIds.length === 0) return;
+  const rows = [
+    ...(await trx.selectFrom('evidence_refs').select(['id', 'campaign_id']).where('organization_id', '=', document.organizationId).where('id', 'in', allIds).execute()).map((row) => ({...row, table: 'evidence_refs' as const})),
+    ...(await trx.selectFrom('claims').select(['id', 'campaign_id']).where('organization_id', '=', document.organizationId).where('id', 'in', allIds).execute()).map((row) => ({...row, table: 'claims' as const})),
+    ...(await trx.selectFrom('capability_snapshots').select(['id', 'campaign_id']).where('organization_id', '=', document.organizationId).where('id', 'in', allIds).execute()).map((row) => ({...row, table: 'capability_snapshots' as const})),
+    ...(await trx.selectFrom('artifact_revisions').select(['id', 'campaign_id']).where('organization_id', '=', document.organizationId).where('id', 'in', allIds).execute()).map((row) => ({...row, table: 'artifact_revisions' as const})),
+    ...(await trx.selectFrom('publishing_schedules').select(['id', 'campaign_id']).where('organization_id', '=', document.organizationId).where('id', 'in', allIds).execute()).map((row) => ({...row, table: 'publishing_schedules' as const})),
+    ...(await trx.selectFrom('schedule_occurrences').select(['id', 'campaign_id']).where('organization_id', '=', document.organizationId).where('id', 'in', allIds).execute()).map((row) => ({...row, table: 'schedule_occurrences' as const}))
+  ];
+  const conflict = rows.find((row) => row.campaign_id !== document.id || !expected[row.table].has(row.id));
+  if (conflict !== undefined) throw new CampaignPreparationError('CAMPAIGN_CHILD_ID_CONFLICT', 'A campaign-scoped child ID is already owned by another Campaign or child type.', {id: conflict.id, table: conflict.table});
 }
 
 async function lockIdempotency(database: DatabaseExecutor, organizationId: string, method: string, route: string, key: string): Promise<void> {

@@ -1,4 +1,4 @@
-import {createDemoCampaignDocument} from '@lumiclaw/domain';
+import {createDemoCampaignDocument, createUuidV7} from '@lumiclaw/domain';
 import {afterEach, describe, expect, it} from 'vitest';
 import {buildApi} from './server.js';
 
@@ -62,6 +62,19 @@ describe('M1 Campaign API contract', () => {
     const response = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers: {'x-lumiclaw-organization-id': document.organizationId, 'idempotency-key': 'malformed-campaign'}, payload: document});
     expect(response.statusCode).toBe(422);
     expect(response.json().code).toBe('CAMPAIGN_VALIDATION_FAILED');
+  });
+
+  it('rejects campaign-scoped child IDs already owned by another Campaign in the tenant', async () => {
+    const app = buildApi({now}); apps.push(app);
+    const first = createDemoCampaignDocument();
+    const headers = {'x-lumiclaw-organization-id': first.organizationId, 'idempotency-key': 'first-child-owner'};
+    expect((await app.inject({method: 'POST', url: '/api/v1/campaigns', headers, payload: first})).statusCode).toBe(201);
+    const second = structuredClone(first);
+    second.id = createUuidV7(1_788_100_100_000, new Uint8Array(10).fill(77));
+    second.artifactRevisions.forEach((item) => { item.campaignId = second.id; });
+    const response = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers: {...headers, 'idempotency-key': 'second-child-owner'}, payload: second});
+    expect(response.statusCode).toBe(422);
+    expect(response.json().code).toBe('CAMPAIGN_CHILD_ID_CONFLICT');
   });
 
   it('previews persistent schedule rows while rejecting DST gaps and never enabling execution', async () => {

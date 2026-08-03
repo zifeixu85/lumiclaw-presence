@@ -3,7 +3,7 @@ import {validateCampaignShape} from './campaign-schema.js';
 import type {ArtifactRevision, CampaignDocument, CampaignEnvelope, Claim} from './campaign-types.js';
 import {canonicalize} from './canonical.js';
 import {createUuidV7} from './id.js';
-import {invalidateStaleSchedules} from './schedule.js';
+import {createPublishingSchedule, invalidateStaleSchedules, isStoredScheduleContractValid} from './schedule.js';
 
 export function campaignEtag(id: string, version: number, digest: string): string {
   return `"campaign-${id}-v${version}-${digest}"`;
@@ -35,6 +35,7 @@ export function advanceCampaignEnvelope(current: CampaignEnvelope, incoming: Cam
   prepared.claims = prepared.claims.map((item) => reviseClaim(currentClaims.get(item.id), item));
   const currentByUnit = new Map(current.document.artifactRevisions.map((item) => [item.activationUnitId, item]));
   prepared.artifactRevisions = prepared.artifactRevisions.map((item) => reviseArtifact(currentByUnit.get(item.activationUnitId), item, current.document, prepared, now));
+  normalizeNewSchedule(current.document, prepared, now);
   retainAndInvalidateReplacedSchedule(current.document, prepared, now);
   const scheduleState = invalidateStaleSchedules(prepared.publishingSchedules, prepared.scheduleOccurrences, prepared.artifactRevisions, now);
   prepared.publishingSchedules = scheduleState.schedules;
@@ -49,6 +50,35 @@ export function advanceCampaignEnvelope(current: CampaignEnvelope, incoming: Cam
     readiness: gaps.length === 0 ? 'SAVED' : 'NEEDS_OWNER', gapCodes: gaps,
     createdAt: current.createdAt, updatedAt: now.toISOString(), mode: 'DEMO_SEED', live: false
   };
+}
+
+function normalizeNewSchedule(current: CampaignDocument, prepared: CampaignDocument, now: Date): void {
+  const currentScheduleIds = new Set(current.publishingSchedules.map((item) => item.id));
+  const currentOccurrenceIds = new Set(current.scheduleOccurrences.map((item) => item.id));
+  const added = prepared.publishingSchedules.filter((item) => !currentScheduleIds.has(item.id));
+  if (added.length === 0) return;
+  if (added.length !== 1) throw new CampaignPreparationError('CAMPAIGN_AUTHORITY_FIELD_CHANGED', 'M1 accepts one server-derived schedule append per Campaign mutation.');
+  if (canonicalize(current.artifactRevisions) !== canonicalize(prepared.artifactRevisions)) throw new CampaignPreparationError('CAMPAIGN_AUTHORITY_FIELD_CHANGED', 'Save Campaign content first, then append a schedule against the exact saved ArtifactRevision set.');
+
+  const requested = added[0]!;
+  const requestedOccurrences = prepared.scheduleOccurrences.filter((item) => item.scheduleId === requested.id);
+  if (requested.status !== 'ACTIVE' || requested.invalidationReason !== null || requested.version !== 1 || !isStoredScheduleContractValid(requested, requestedOccurrences, current.artifactRevisions)) {
+    throw new CampaignPreparationError('CAMPAIGN_VALIDATION_FAILED', 'New schedule preview or occurrence metadata is not a valid deterministic server preview.');
+  }
+  const generated = createPublishingSchedule({
+    organizationId: current.organizationId,
+    campaignId: current.id,
+    artifactRevisions: prepared.artifactRevisions,
+    localStart: requested.localStart,
+    timeZone: requested.timeZone,
+    rrule: requested.rrule,
+    foldPreference: requested.foldPreference,
+    misfirePolicy: requested.misfirePolicy
+  }, now);
+  prepared.publishingSchedules = prepared.publishingSchedules.filter((item) => currentScheduleIds.has(item.id));
+  prepared.scheduleOccurrences = prepared.scheduleOccurrences.filter((item) => currentOccurrenceIds.has(item.id));
+  prepared.publishingSchedules.push(generated.schedule);
+  prepared.scheduleOccurrences.push(...generated.occurrences);
 }
 
 function assertCampaignShape(document: unknown): asserts document is CampaignDocument {
@@ -136,7 +166,7 @@ function assertValidCampaign(document: CampaignDocument, now: Date): void {
 }
 
 export class CampaignPreparationError extends Error {
-  constructor(public readonly code: 'CAMPAIGN_IDENTITY_IMMUTABLE' | 'CAMPAIGN_AUTHORITY_FIELD_CHANGED' | 'CAMPAIGN_VALIDATION_FAILED', message: string, public readonly details?: unknown) {
+  constructor(public readonly code: 'CAMPAIGN_IDENTITY_IMMUTABLE' | 'CAMPAIGN_AUTHORITY_FIELD_CHANGED' | 'CAMPAIGN_CHILD_ID_CONFLICT' | 'CAMPAIGN_VALIDATION_FAILED', message: string, public readonly details?: unknown) {
     super(message);
     this.name = 'CampaignPreparationError';
   }
