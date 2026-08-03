@@ -3,11 +3,11 @@
 > SDD：`docs/specs/SDD-000-DELIVERY-FOUNDATION.md`
 > 进度模块 ID：`M0-03`、`M0-04`、`M0-05`、`M0-06`、`M0-07`
 > Goal Objective：完成 SDD-000 Delivery Foundation（M0-03 至 M0-07）的规范、实现、测试、中文验收报告与状态交接。
-> Executor Task：`019fbe95-9577-7d02-900f-948d3861369c` 派生的 SDD-000 Executor 任务
+> Executor Task：`019fc3ce-a7e5-7133-b035-a9be3245b4b3`
 > Worktree：`/Users/ameng/Documents/Projects/GOAI-hangzhou/worktrees/lumiclaw-presence/sdd-000-delivery-foundation`
 > Branch / Base：`codex/sdd-000-delivery-foundation` / `5acc7cd508f07fdeabe74e39e366158bf58463f6`
-> Delivery Commits：实现提交 `14ab5fbdb636f4b934179e16f13e1a8da23bf5cb`；验收收尾提交 `bbabf3a56b71677fc42de9e893b4647881b4dc38`；本次客户语言修正提交的绝对 hash 见 Executor 最终 `STATUS_HANDOFF`，避免同一提交自引用
-> 报告状态：`EVIDENCE_READY`
+> Delivery Commits：`14ab5fbdb636f4b934179e16f13e1a8da23bf5cb`、`bbabf3a56b71677fc42de9e893b4647881b4dc38`、`90d86e89e909c51bef06ebc027252bcab8692c11`、`f090bb96399e3810002ba6a77e00538f4798554c`
+> 报告状态：`ACCEPTED`
 > 证据成熟度：`ENGINEERING_VERIFIED`
 > 生成日期：`2026-08-03`
 
@@ -15,7 +15,7 @@
 
 SDD-000 已把公开仓库从 documentation-only 基线扩展为可安装、可构建、可在本机 Compose 复验的 M0 Delivery Foundation：Node.js 24/npm workspaces Monorepo、PostgreSQL 17 Migration、内容寻址 Local BlobStore、中文默认且支持英文的五屏 Next.js 产品 Shell、Storybook/Pencil 审阅面、隔离的 AgentTeams v1.2.0 Runtime Profile/Adapter Contract，以及本地与 CI 质量门禁。Owner 首轮查看后指出主界面语言过度工程化；本次已把五步导航、状态、依据与下一步改成客户语言，并将稳定状态码和工程依据收进默认折叠的技术详情。
 
-所有业务数据均为 `DEMO_SEED / NOT_LIVE`。本次没有连接 API Key、真实账号、外部平台或真实数据库，没有迁移旧私有资料，也没有实现 M1 业务。自动化结果支持 `ENGINEERING_VERIFIED` 与建议模块状态 `EVIDENCE_READY`；Owner 已通过 UAT-01 的修正版客户语言与信息层级，具体视觉 UI 留待后续统一设计，UAT-02 与 Coordinator 独立复验仍为 `PENDING`，因此不声明规范 `ACCEPTED`。
+所有业务数据均为 `DEMO_SEED / NOT_LIVE`。本次没有连接 API Key、真实账号、外部平台或真实数据库，没有迁移旧私有资料，也没有实现 M1 业务。Coordinator 已独立复验安装、完整门禁、Compose、AgentTeams 受控边界、Evidence manifest、源码 ZIP 与浏览器可见行为；Owner 已通过 UAT-01 和 UAT-02，并明确接受移动端响应式和统一视觉延期。因此 `M0-03`～`M0-07` 满足 `ACCEPTED` 条件，但证据成熟度仍只到 `ENGINEERING_VERIFIED`，不升级为生产验证或业务结果。
 
 ## 二、交付范围
 
@@ -98,7 +98,7 @@ GitHub Actions 未 Push，故只声明工作流配置已由本地等价命令验
 | AC-15 | `PASS` | `secret-scan.test.ts`、secret-scan report | API key/private key/cookie fixture 可检测；公开仓库 scan 通过。 |
 | AC-16 | `PASS` | status/report 正反测试与 gate | 双语 39 个 Module ID/state 一致；规范状态未改；报告缺节/AC/UAT/限制/回滚/交接即失败。 |
 | AC-17 | `PASS` | 本报告与 `check:report` | 18 条 AC、命令/环境、Pro URL/ZIP、修正、Rollback、non-claim、UAT 与 handoff 齐全。 |
-| AC-18 | `PASS` | UAT-01/UAT-02 协议 + Executor browser rehearsal + Owner 决定 | 协议可用纯 synthetic/local 数据独立执行；Owner 已通过 UAT-01 修正版，UAT-02 与 Coordinator 复验仍待办，所以模块只建议 `EVIDENCE_READY`。 |
+| AC-18 | `PASS` | UAT-01/UAT-02 协议 + Executor browser rehearsal + Coordinator 独立复验 + Owner 决定 | 协议可用纯 synthetic/local 数据独立执行；Owner 已通过 UAT-01 和 UAT-02，并接受移动端和统一视觉延期。 |
 
 ## 六、Owner 参与验收
 
@@ -139,7 +139,7 @@ GitHub Actions 未 Push，故只声明工作流配置已由本地等价命令验
 - **失败信号：**`liveAgentTeamRun=true`、缺失 digest、公开 HostPort/host share/socket、真实 Secret、外部数据库、canonical status diff、缺少 expected failure 或 cleanup failure。
 - **需要返回的证据：**书面 `UAT-02 PASS`，或列出失败的 AC/JSON 字段。
 - **清理 / 回滚：**只读复核无需清理；验证脚本已经 project-scoped `down --volumes --remove-orphans`，不得手工 prune 全局 Docker 资源。
-- **Owner 结果：**`PENDING`
+- **Owner 结果（2026-08-03）：**`PASS`。Owner 明确接受已记录的限制，并将移动端响应式与统一视觉放入后续设计阶段。
 
 ## 七、ChatGPT Pro 双代理记录
 
@@ -158,6 +158,8 @@ GitHub Actions 未 Push，故只声明工作流配置已由本地等价命令验
 - **Known limitations：**`npm audit` 仍报告 3 个 high，来自 Next `16.2.12` 内置 `postcss@8.4.31` 与可选 `sharp@0.34.5`；当前没有安全的同主版本自动修复，npm 的 `--force` 建议会错误降级到 Next 9。M0 只允许本地非实时 fixture，生产发布保持阻断。
 - **Known limitations：**安装闭包仍有 `prebuild-install`、`glob@10`、`tsconfck` transitive deprecation；Next Docker runtime 仍含较多构建依赖；完整生产镜像瘦身、漏洞治理、无障碍认证和跨浏览器矩阵均延期。
 - **Known limitations：**Pencil 只交付一张完整 Mission desktop overview；其他四屏与完整状态矩阵由 Web/Storybook 表达，不声明五张 Pencil frame。
+- **Known limitations：**Coordinator 在 `390 × 844` 浏览器视口复现 `documentElement.scrollWidth=912` 的横向溢出；本轮只验收桌面 M0 信息层级，不能声明移动端响应式通过。Owner 已明确将修复和统一视觉延期到后续设计 SDD。
+- **Known limitations：**Executor Worktree 中仍保留一次未提交的 Pencil 延迟自动保存；Pencil Desktop 当前无法连接，Coordinator 没有读取、覆盖、暂存或提交该变化。集成采用已提交、已导出并完成 snapshot 验证的 Pencil 版本；Owner 接受把延迟保存确认延期。
 - **仍为 `PLANNED`：**M1 领域/业务、live 六成员 AgentTeam、LLM/Provider、Connector、ActionGrant/Receipt、真实审批/发布/回应/学习、生产部署。
 - **明确 `NOT_CLAIMED`：**客户 UAT、production readiness、enterprise security、法律/合规保证、平台可用性、真实外部动作、增长/线索/收入；controlled fixture 不是 live AgentTeam，真实镜像 CLI 启动也不是 Mission。
 - **CI 限制：**没有 Push，所以没有远端 GitHub Actions run；仅验证工作流语法/策略与本地等价命令。
@@ -174,15 +176,15 @@ GitHub Actions 未 Push，故只声明工作流配置已由本地等价命令验
 
 ## 十、执行任务状态交接
 
-Executor 未修改双语 `IMPLEMENTATION-STATUS` 的规范状态。建议由 Coordinator 独立复验后决定：
+Executor 未修改双语 `IMPLEMENTATION-STATUS` 的规范状态。Coordinator 已独立复验，Owner 已完成两项 UAT；集成后由 Coordinator 在同一提交中把以下模块更新为 `ACCEPTED`：
 
-| Module ID | 当前规范状态 | 建议新状态 | 原因 / Evidence |
+| Module ID | 交接时规范状态 | 最终状态 | 原因 / Evidence |
 |---|---|---|---|
-| M0-03 | `IN_PROGRESS` | `EVIDENCE_READY` | 精确 Node/npm/TS/ESM workspaces、lockfile、manifest/license/SBOM 与 clean `npm ci`。 |
-| M0-04 | `NOT_STARTED` | `EVIDENCE_READY` | Compose/Postgres migration/blob fresh/failure/persistence/recovery 全部本地通过。 |
-| M0-05 | `NOT_STARTED` | `EVIDENCE_READY` | 双语五屏、route contract、tokens、Storybook、Pencil 与 browser visible smoke 通过；Owner UAT-01 修正版已通过，视觉 UI 统一优化延期。 |
-| M0-06 | `NOT_STARTED` | `EVIDENCE_READY` | v1.2.0 digest、隔离 profile、真实镜像 CLI + controlled adapter 与负向合同通过；不声明 live team。 |
-| M0-07 | `NOT_STARTED` | `EVIDENCE_READY` | 本地完整门禁与 CI 映射完成；远端 CI 未运行。 |
+| M0-03 | `IN_PROGRESS` | `ACCEPTED` | 精确 Node/npm/TS/ESM workspaces、lockfile、manifest/license/SBOM 与 clean `npm ci`。 |
+| M0-04 | `NOT_STARTED` | `ACCEPTED` | Compose/Postgres migration/blob fresh/failure/persistence/recovery 全部本地通过。 |
+| M0-05 | `NOT_STARTED` | `ACCEPTED` | 双语五屏、route contract、tokens、Storybook、已提交 Pencil 与 browser visible smoke 通过；Owner 接受移动端和统一视觉延期。 |
+| M0-06 | `NOT_STARTED` | `ACCEPTED` | v1.2.0 digest、隔离 profile、真实镜像 CLI + controlled adapter 与负向合同通过；不声明 live team。 |
+| M0-07 | `NOT_STARTED` | `ACCEPTED` | 本地完整门禁与 CI 映射完成；远端 CI 未运行且保持 `NOT_CLAIMED`。 |
 
 状态交接摘要：
 
@@ -190,15 +192,16 @@ Executor 未修改双语 `IMPLEMENTATION-STATUS` 的规范状态。建议由 Coo
 - Changed Files：`.gitignore` 及 100+ 个 SDD-000 文件，集中于 `.github/`、`apps/`、`packages/`、`infra/`、`scripts/`、`docs/specs/`、`docs/dependencies/`、`docs/design/` 与本报告；本轮额外修改双语文案、产品壳、Storybook、Pencil/PNG/PDF、客户语言测试、Compose 文案 smoke 与源码包 provenance；两份规范 Implementation Status 无改动。
 - Commits：实现提交 `14ab5fbdb636f4b934179e16f13e1a8da23bf5cb`；验收收尾提交 `bbabf3a56b71677fc42de9e893b4647881b4dc38`；客户语言修正提交 hash 由最终 `STATUS_HANDOFF` 给出。
 - Push / PR / Deploy：全部 `NO`。
-- 未提交状态：全量验证后已创建本地提交；最终交接时 `git status --short` 为空。
-- Blocker：无实现 blocker；Owner UAT-02、Coordinator 独立复验和远端 CI 为待办，不阻止建议 `EVIDENCE_READY`。
-- 下一候选步骤：Coordinator 验收 SDD-000 并更新双语进度真源；之后才选择 `SDD-001 Campaign Walking Skeleton`，不得由本 Executor 自动开始 M1。
+- 未提交状态：当前仅保留 `docs/design/lumiclaw-presence-m0.pen` 的 Pencil 延迟自动保存；它不属于已验收提交或最终源码 ZIP，且未被覆盖、暂存或提交。
+- Blocker：无 SDD-000 验收 blocker。移动端、统一视觉、Pencil 延迟保存确认、远端 CI 均已作为后续限制记录。
+- 下一候选步骤：Coordinator 更新双语进度真源并完成本地集成；之后单独创建 `SDD-001 Campaign Walking Skeleton` Executor 任务。
 
 ## 十一、Coordinator 验收决定
 
 - Executor 自动化验证：`PASS`
-- Coordinator 独立复验：`PENDING`
+- Coordinator 独立复验：`PASS_WITH_RECORDED_LIMITATIONS`
 - 是否需要 Owner 验收：`YES`
-- Owner 决定：`UAT-01 PASS`；当前客户语言与信息层级通过，具体视觉 UI 延期统一修改；`UAT-02 PENDING`
-- 最终模块状态：`EVIDENCE_READY`（建议；规范真源仍由 Coordinator 决定）
-- 下一 Module / SDD：`PENDING Coordinator decision`；候选 `SDD-001 Campaign Walking Skeleton`
+- Owner 决定：`UAT-01 PASS`；`UAT-02 PASS`；当前客户语言与信息层级通过，移动端和统一视觉延期。
+- 最终模块状态：`M0-03`～`M0-07 ACCEPTED`
+- 验收待办：`PENDING = NONE`；已记录的限制转入后续 SDD，不再阻断 SDD-000。
+- 下一 Module / SDD：`M1-01`；由独立 `SDD-001 Campaign Walking Skeleton` Executor 任务启动。
