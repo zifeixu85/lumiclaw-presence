@@ -44,6 +44,7 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
   const [dirty, setDirty] = useState(false);
   const [errorCode, setErrorCode] = useState<string>();
   const [conflictRecovery, setConflictRecovery] = useState<ConflictRecovery>();
+  const [conflictRefreshNeeded, setConflictRefreshNeeded] = useState(false);
   const savingRef = useRef(false);
   const pendingMutationRef = useRef<{fingerprint: string; key: string} | undefined>(undefined);
 
@@ -54,9 +55,9 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
       const template = await api<{document: CampaignDocument}>('/api/v1/campaigns/demo-template');
       const organizationId = template.document.organizationId;
       const list = await api<{campaigns: {id: string}[]}>('/api/v1/campaigns', {headers: organizationHeaders(organizationId)});
-      if (list.campaigns.length === 0) { setDocument(template.document); setEnvelope(undefined); setDirty(false); setConflictRecovery(undefined); pendingMutationRef.current = undefined; setPhase('empty'); return; }
+      if (list.campaigns.length === 0) { setDocument(template.document); setEnvelope(undefined); setDirty(false); setConflictRecovery(undefined); setConflictRefreshNeeded(false); pendingMutationRef.current = undefined; setPhase('empty'); return; }
       const reopened = await api<CampaignEnvelope>(`/api/v1/campaigns/${list.campaigns[0]!.id}`, {headers: organizationHeaders(organizationId)});
-      setEnvelope(reopened); setDocument(reopened.document); setDirty(false); setConflictRecovery(undefined); pendingMutationRef.current = undefined; setPhase(reopened.readiness === 'BLOCKED' ? 'blocked' : reopened.readiness === 'NEEDS_OWNER' ? 'needs-owner' : 'ready');
+      setEnvelope(reopened); setDocument(reopened.document); setDirty(false); setConflictRecovery(undefined); setConflictRefreshNeeded(false); pendingMutationRef.current = undefined; setPhase(reopened.readiness === 'BLOCKED' ? 'blocked' : reopened.readiness === 'NEEDS_OWNER' ? 'needs-owner' : 'ready');
     } catch (error) { const failure = error as ApiFailure; setErrorCode(failure.code); setPhase('recovery'); }
   }, [fixtureState]);
 
@@ -78,22 +79,24 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
         headers: {...organizationHeaders(document.organizationId), 'content-type': 'application/json', 'idempotency-key': idempotencyKey, ...(isCreate ? {} : {'if-match': envelope.etag})},
         body: JSON.stringify(document)
       });
-      setEnvelope(next); setDocument(next.document); setDirty(false); setConflictRecovery(undefined); setPhase('saved');
+      setEnvelope(next); setDocument(next.document); setDirty(false); setConflictRecovery(undefined); setConflictRefreshNeeded(false); setPhase('saved');
       pendingMutationRef.current = undefined;
     } catch (error) {
       const failure = error as ApiFailure;
       const conflict = failure.current;
       if (failure.status === 412 && envelope !== undefined) {
         pendingMutationRef.current = undefined;
+        setConflictRefreshNeeded(true);
         try {
           const server = await api<CampaignEnvelope>(`/api/v1/campaigns/${document.id}`, {headers: organizationHeaders(document.organizationId)});
           const rebased = rebaseCampaignDraft(envelope.document, document, server.document);
           setConflictRecovery({server, merged: rebased.document, conflictPaths: rebased.conflictPaths});
+          setConflictRefreshNeeded(false);
           setErrorCode(`${failure.code ?? 'CAMPAIGN_VERSION_CONFLICT'} · v${server.version} · ${server.digest.slice(0, 12)}… · ${rebased.conflictPaths.length} conflict(s)`);
           setPhase('blocked');
         } catch (refreshError) {
           setErrorCode((refreshError as ApiFailure).code ?? 'CONFLICT_REFRESH_FAILED');
-          setPhase('recovery');
+          setPhase('blocked');
         }
       } else {
         if (failure.status === 422) pendingMutationRef.current = undefined;
@@ -112,9 +115,19 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
       setConflictRecovery(undefined);
       setErrorCode(undefined);
       setPhase('ready');
+    } else if (conflictRefreshNeeded && envelope !== undefined && document !== undefined) {
+      void (async () => {
+        try {
+          const server = await api<CampaignEnvelope>(`/api/v1/campaigns/${document.id}`, {headers: organizationHeaders(document.organizationId)});
+          const rebased = rebaseCampaignDraft(envelope.document, document, server.document);
+          setConflictRecovery({server, merged: rebased.document, conflictPaths: rebased.conflictPaths});
+          setConflictRefreshNeeded(false);
+          setErrorCode(`CAMPAIGN_VERSION_CONFLICT · v${server.version} · ${server.digest.slice(0, 12)}… · ${rebased.conflictPaths.length} conflict(s)`);
+        } catch (refreshError) { setErrorCode((refreshError as ApiFailure).code ?? 'CONFLICT_REFRESH_FAILED'); }
+      })();
     } else if (pendingMutationRef.current !== undefined && document !== undefined) void persist();
     else void load();
-  }, [conflictRecovery, document, load, persist]);
+  }, [conflictRecovery, conflictRefreshNeeded, document, envelope, load, persist]);
 
   if (fixtureState !== undefined) return <StatePanel phase={fixtureState} t={t} errorCode={undefined} onRetry={() => undefined} />;
   if (phase === 'loading' || phase === 'recovery') return <StatePanel phase={phase} t={t} errorCode={errorCode} onRetry={recover} />;
@@ -122,7 +135,7 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
 
   return (
     <section className="campaign-control" aria-label="Campaign control plane">
-      <StatePanel phase={phase} t={t} errorCode={errorCode} onRetry={recover} retryLabel={conflictRecovery === undefined ? undefined : t.rebase} retryable={conflictRecovery !== undefined} compact />
+      <StatePanel phase={phase} t={t} errorCode={errorCode} onRetry={recover} retryLabel={conflictRecovery === undefined ? undefined : t.rebase} retryable={conflictRecovery !== undefined || conflictRefreshNeeded} compact />
       <div className="campaign-meta">
         <span>{t.noLive}</span>
         {envelope !== undefined && <><span>{t.savedLabel} <strong>v{envelope.version}</strong></span><span className="digest-label">{t.digest} <code>{envelope.digest.slice(0, 12)}…</code></span></>}
@@ -133,7 +146,7 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
       {routeId === 'mission' && <Composer document={document} dirty={dirty} onChange={update} t={t} />}
       {routeId === 'review' && <ReviewPanel document={document} envelope={envelope} t={t} />}
       {routeId === 'learn' && <BlockedPanel text={t.noSignals} />}
-      {(routeId === 'campaigns' || routeId === 'setup' || routeId === 'mission') && <button className="primary-action" type="button" onClick={() => void persist()} disabled={phase === 'saving' || (envelope !== undefined && !dirty)}>{envelope === undefined ? t.create : t.save}</button>}
+      {(routeId === 'campaigns' || routeId === 'setup' || routeId === 'mission') && <button className="primary-action" type="button" onClick={() => void persist()} disabled={phase === 'saving' || conflictRefreshNeeded || (envelope !== undefined && !dirty)}>{envelope === undefined ? t.create : t.save}</button>}
     </section>
   );
 }

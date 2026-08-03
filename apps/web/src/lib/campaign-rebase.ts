@@ -3,6 +3,12 @@ import type {CampaignDocument} from '@lumiclaw/domain';
 export function rebaseCampaignDraft(base: CampaignDocument, local: CampaignDocument, server: CampaignDocument): {document: CampaignDocument; conflictPaths: string[]} {
   const conflictPaths: string[] = [];
   const merged = mergeThreeWay(base, local, server, '', conflictPaths) as CampaignDocument;
+  const baseScheduleIds = new Set(base.publishingSchedules.map((item) => item.id));
+  if (local.publishingSchedules.some((item) => !baseScheduleIds.has(item.id))) {
+    merged.publishingSchedules = structuredClone(server.publishingSchedules);
+    merged.scheduleOccurrences = structuredClone(server.scheduleOccurrences);
+    conflictPaths.push('/publishingSchedules/stale-preview');
+  }
   return {document: merged, conflictPaths};
 }
 

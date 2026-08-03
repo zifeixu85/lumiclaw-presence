@@ -1,4 +1,4 @@
-import {createDemoCampaignDocument} from '@lumiclaw/domain';
+import {createDemoCampaignDocument, createPublishingSchedule} from '@lumiclaw/domain';
 import {describe, expect, it} from 'vitest';
 import {rebaseCampaignDraft} from '../lib/campaign-rebase';
 import {platformPreviewModel} from '../lib/platform-preview-model';
@@ -27,5 +27,19 @@ describe('four-platform native-like preview contract', () => {
     const conflicted = rebaseCampaignDraft(base, local, server);
     expect(conflicted.document.brief.objective).toBe('Local owner objective');
     expect(conflicted.conflictPaths).toContain('/brief/objective');
+  });
+
+  it('drops a local schedule proposal after a 412 so it cannot bind stale revisions', () => {
+    const base = createDemoCampaignDocument();
+    const local = structuredClone(base);
+    const proposal = createPublishingSchedule({organizationId: local.organizationId, campaignId: local.id, artifactRevisions: local.artifactRevisions, localStart: '2026-11-01T01:30', timeZone: 'America/New_York', foldPreference: 'LATER', misfirePolicy: 'HOLD_FOR_OWNER'}, new Date('2026-08-03T12:00:00.000Z'));
+    local.publishingSchedules.push(proposal.schedule);
+    local.scheduleOccurrences.push(...proposal.occurrences);
+    const server = structuredClone(base);
+    server.brief.callToAction = 'Concurrent server edit';
+    const rebased = rebaseCampaignDraft(base, local, server);
+    expect(rebased.document.publishingSchedules).toEqual(server.publishingSchedules);
+    expect(rebased.document.scheduleOccurrences).toEqual(server.scheduleOccurrences);
+    expect(rebased.conflictPaths).toContain('/publishingSchedules/stale-preview');
   });
 });
