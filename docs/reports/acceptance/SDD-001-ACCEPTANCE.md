@@ -119,7 +119,7 @@ GitHub Actions 未 Push，故只声明工作流与本地等价门禁，远端 CI
 - **失败信号：**Campaign 丢失、无编辑却 digest 改变、旧 ETag 覆盖新版本、身份/账号关系不清、Claim gap 被隐藏、raw error/key、外部网络动作或 live 状态。
 - **需要返回的证据：**创建页与重开页截图、Campaign ID/version/digest、书面 `UAT-01 PASS` 或失败的 AC ID。
 - **清理 / 回滚：**`docker compose --project-name lumiclaw-sdd001-owner down` 保留本地 volume；若 Owner 明确不要保留 fixture，才加 `--volumes --remove-orphans`。不得全局 prune。
-- **Owner 结果：**`PENDING`
+- **Owner 结果：**`PASS`（2026-08-04）。Owner 接受本阶段是可持久化的功能骨架，不把当前视觉、布局或操作流程视为最终产品设计；创建/重开、事实边界与 non-live 语义的工程项由 Coordinator 独立浏览器与数据库复验覆盖。
 
 ### UAT-02｜四平台预览、排程、移动端与英文深链
 
@@ -138,7 +138,7 @@ GitHub Actions 未 Push，故只声明工作流与本地等价门禁，远端 CI
 - **失败信号：**四个平台只是同一 generic preview、保存丢失、约束被前端绕过、schedule 显示 Running/Published、silent fold、document width 大于 viewport、locale 切换丢 Campaign 或 console application error。
 - **需要返回的证据：**四平台 desktop、ACTIVE/INVALIDATED schedule、390px、`/en/mission` 四张截图，console 摘要，以及书面 `UAT-02 PASS` 或失败 AC ID。
 - **清理 / 回滚：**同 UAT-01；普通 `down` 保留数据，只有明确重置此 project fixture 时才删除它的 named volumes。
-- **Owner 结果：**`PENDING`
+- **Owner 结果：**`PASS`（2026-08-04，带已接受限制）。Owner 认可四平台与排程能力作为功能预演，但指出当前界面视觉和流程不符合最终用户体验；尤其顶部“需要你补全依据”与排程按钮禁用同时出现，会让用户误以为 Claim/Evidence 阻止排程预览。源码复核确认 readiness 只阻止未来执行，排程预览实际仅在存在未保存内容或 `foldPreference` 未选择时禁用。该问题记为 `UX-M1-001`：后续高保真与交互收敛必须分离“执行资格”和“排程草稿”，并在禁用按钮旁显示准确、可操作的原因。
 
 ## 七、ChatGPT Pro 双代理记录
 
@@ -197,14 +197,14 @@ Executor 未修改 `IMPLEMENTATION-STATUS.md` 或 `IMPLEMENTATION-STATUS.zh-CN.m
 - Commits：规范与实现小步提交从 `04a73a1` 到最终本地 Head；精确列表和 Head 由最终 `STATUS_HANDOFF` 原样给出。
 - Push / PR / Deploy / external action：全部 `NO`。
 - 未提交状态：最终 handoff 前必须为 clean；源码 ZIP 与 raw evidence 位于 gitignored `.evidence/sdd-001/`。
-- Blocker：机器验证无 blocker；Owner UAT 与 Coordinator 独立复验是从 `EVIDENCE_READY` 进入 canonical `ACCEPTED` 的待办。
+- Blocker：无。Owner 已接受本阶段功能骨架边界；`UX-M1-001` 是后续必须收口的可用性债务，不是 M1 持久化功能合同的阻断项。
 - 下一候选步骤：Coordinator 验收 M1 后，独立任务实现已 `SPEC_READY` 的 `SDD-002 Governed SHADOW Campaign`；本任务不开始 M2 实现。
 
 ## 十一、Coordinator 验收决定
 
 - Executor 自动化验证：`PASS`
-- Coordinator 独立复验：`PENDING`
+- Coordinator 独立复验：`PASS`（Git/ZIP、源码边界、`npm run verify`、PostgreSQL/API、Compose、390px、双语、排程、四平台静态 Storybook 浏览器运行时）
 - 是否需要 Owner 验收：`YES`
-- Owner 决定：`PENDING`
-- 最终模块状态：建议 `M1-01`～`M1-06 EVIDENCE_READY`
-- 下一 Module / SDD：Coordinator 验收后选择 `SDD-002`；验收前不得实现 M2。
+- Owner 决定：`PASS`（2026-08-04；接受当前仅为功能骨架，并记录 `UX-M1-001`）
+- 最终模块状态：`M1-01`～`M1-06 ACCEPTED`
+- 下一 Module / SDD：`SDD-002 Governed SHADOW Campaign`；由 Coordinator 创建独立 Worktree 与 Executor 任务。

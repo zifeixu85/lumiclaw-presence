@@ -3,9 +3,9 @@
 [English](IMPLEMENTATION-STATUS.md) | [简体中文](IMPLEMENTATION-STATUS.zh-CN.md) | [Architecture](ARCHITECTURE.md) | [Roadmap](ROADMAP.md)
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
-> **Snapshot:** 2026-08-03
-> **Current phase:** M1 — Campaign walking skeleton
-> **Current implementation truth:** The M0 local delivery foundation is implemented and accepted: reproducible monorepo, Docker Compose/PostgreSQL/BlobStore, Chinese-default bilingual Web shell, isolated AgentTeams adapter smoke, and quality gates. M1 business domains, live AgentTeams missions, providers, connectors and external actions remain unimplemented.
+> **Snapshot:** 2026-08-04
+> **Current phase:** M1 accepted; M2 — Governed shadow campaign is next
+> **Current implementation truth:** M0 and M1 are implemented and accepted. The product now has a tenant-aware brand graph, governed Campaign/Claim/Evidence contracts, PostgreSQL/API persistence, Chinese-default bilingual five-screen flow, four editable native-like previews, and a persistent non-executing schedule model. Live AgentTeams missions, model/provider calls, connectors and external actions remain unimplemented. The current visual shell is a functional skeleton, not the final product design; `UX-M1-001` records the need to separate execution readiness from schedule-draft guidance.
 
 ## Progress contract
 
@@ -25,19 +25,19 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | Metric | Current value |
 |---|---|
-| Accepted modules | `7 / 39` (`17.9%`) |
+| Accepted modules | `13 / 39` (`33.3%`) |
 | Evidence ready | `0 / 39` |
 | Blocked | `0 / 39` |
-| Active implementation SDD | `SDD-001 Campaign Walking Skeleton` — Executor task `019fc6d8-2c5a-76d3-b3ad-ddb96b56f62e` active |
-| Earliest owner blocker | None for the next local M1 slice; provider credentials remain deferred to their SDDs |
-| Next executable module | `M1-01` Organization, identity, brand, product, market and account graph — `IN_PROGRESS` |
+| Active implementation SDD | None; SDD-001 is accepted and SDD-002 is ready for Coordinator dispatch |
+| Earliest owner blocker | None for local M2 SHADOW work; provider credentials remain deferred to their SDDs |
+| Next executable module | `M2-01` Six-member AgentTeams Mission runtime — `NOT_STARTED` |
 
 ## Milestone progress
 
 | Milestone | State | Accepted | Current module mix | Exit evidence |
 |---|---|---:|---|---|
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 accepted | [SDD-000 acceptance](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) plus fresh Compose, migrations, CI mapping, isolated AgentTeams smoke and design/i18n evidence |
-| M1 — Campaign walking skeleton | `IN_PROGRESS` | `0 / 6` | 1 in progress, 5 not started | Persisted campaign, four editable previews, schedule editor, shared control-plane state |
+| M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 accepted | [SDD-001 acceptance](docs/reports/acceptance/SDD-001-ACCEPTANCE.md): persisted campaign, four editable previews, schedule editor, shared control-plane state; final visual/interaction refinement remains planned |
 | M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 not started | Six-member AgentTeams run, DeepSeek gateway, revision/audit, fault denial, trace |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 not started | Exact grants, persistent scheduler, Bluesky Direct, honest Handoffs, receipts/reconciliation |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 not started | Interaction → outcome → scoped learning → next mission, isolated SignalProvider PoC |
@@ -62,12 +62,12 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
-| M1-01 | Organization, identity, brand, product, market and account graph | `IN_PROGRESS` | M0 accepted; SDD-001 | Schema, migrations, tenant-aware constraints and negative fixtures |
-| M1-02 | Campaign, activation, claim and evidence contracts | `NOT_STARTED` | M1-01 | Versioned JSON Schemas, canonical digests and invalid-scope rejection |
-| M1-03 | Campaign API, persistence and reopen flow | `NOT_STARTED` | M1-01, M1-02 | REST/OpenAPI, idempotency, ETag/version conflict and database integration tests |
-| M1-04 | Five-screen Web shell and readiness journey | `NOT_STARTED` | M0-05, M1-03 | Empty/loading/blocked/owner/recovery states in English and Chinese |
-| M1-05 | Four-platform editable composer and native-like previews | `NOT_STARTED` | M1-02, M1-04 | X, Bluesky, LinkedIn and Xiaohongshu fixtures, constraints and visual tests |
-| M1-06 | Schedule editor and persistent schedule model | `NOT_STARTED` | M1-03, M1-04 | One-time/RRULE input, IANA time zone, DST and misfire validation; no external action |
+| M1-01 | Organization, identity, brand, product, market and account graph | `ACCEPTED` | M0 accepted; SDD-001 | [Schema, migrations, tenant-aware constraints and negative fixtures](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-02 | Campaign, activation, claim and evidence contracts | `ACCEPTED` | M1-01 | [Versioned schemas, canonical digests and invalid-scope rejection](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-03 | Campaign API, persistence and reopen flow | `ACCEPTED` | M1-01, M1-02 | [REST/OpenAPI, idempotency, ETag/version conflict and database integration](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-04 | Five-screen Web shell and readiness journey | `ACCEPTED` | M0-05, M1-03 | [English/Chinese real-state journey and Owner-accepted functional-shell boundary](docs/reports/acceptance/SDD-001-ACCEPTANCE.md); `UX-M1-001` deferred to interaction convergence |
+| M1-05 | Four-platform editable composer and native-like previews | `ACCEPTED` | M1-02, M1-04 | [X, Bluesky, LinkedIn and Xiaohongshu fixtures, constraints and real browser evidence](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-06 | Schedule editor and persistent schedule model | `ACCEPTED` | M1-03, M1-04 | [One-time/RRULE, IANA time zone, DST/misfire and invalidation evidence](docs/reports/acceptance/SDD-001-ACCEPTANCE.md); no external action |
 
 ### M2 — Governed shadow campaign
 

@@ -3,9 +3,9 @@
 [English](IMPLEMENTATION-STATUS.md) | [简体中文](IMPLEMENTATION-STATUS.zh-CN.md) | [技术架构](ARCHITECTURE.zh-CN.md) | [路线图](ROADMAP.zh-CN.md)
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
-> **快照日期：** 2026-08-03
-> **当前阶段：** M1 — Campaign walking skeleton
-> **当前实现真相：** M0 本地交付基础已经实现并验收，包括可复现 Monorepo、Docker Compose/PostgreSQL/BlobStore、默认中文的双语 Web Shell、隔离 AgentTeams Adapter Smoke 与质量门禁。M1 业务领域、真实 AgentTeams Mission、Provider、Connector 和外部动作仍未实现。
+> **快照日期：** 2026-08-04
+> **当前阶段：** M1 已验收；下一阶段为 M2 — Governed shadow campaign
+> **当前实现真相：** M0 与 M1 已实现并验收。产品现在具备租户感知的品牌图、受治理的 Campaign/Claim/Evidence 合同、PostgreSQL/API 持久化、默认中文的双语五屏流程、四平台可编辑原生近似预览，以及不执行外部动作的持久排程模型。真实 AgentTeams Mission、模型/Provider 调用、Connector 与外部动作仍未实现。当前视觉壳只是功能骨架，不是最终产品设计；`UX-M1-001` 记录了需要把执行资格提示与排程草稿指引分离。
 
 ## 进度状态合同
 
@@ -25,19 +25,19 @@
 
 | 指标 | 当前值 |
 |---|---|
-| 已验收模块 | `7 / 39`（`17.9%`） |
+| 已验收模块 | `13 / 39`（`33.3%`） |
 | 证据已就绪 | `0 / 39` |
 | 被阻塞 | `0 / 39` |
-| 当前实现 SDD | `SDD-001 Campaign Walking Skeleton` — Executor 任务 `019fc6d8-2c5a-76d3-b3ad-ddb96b56f62e` 已启动 |
-| 最早 Owner 阻塞项 | 下一个本地 M1 切片无；Provider Credential 继续延后到各自 SDD |
-| 下一个可执行模块 | `M1-01` Organization、Identity、Brand、Product、Market 与 Account Graph — `IN_PROGRESS` |
+| 当前实现 SDD | 无；SDD-001 已验收，SDD-002 等待 Coordinator 派发 |
+| 最早 Owner 阻塞项 | 本地 M2 SHADOW 工作无；Provider Credential 继续延后到各自 SDD |
+| 下一个可执行模块 | `M2-01` 六成员 AgentTeams Mission Runtime — `NOT_STARTED` |
 
 ## 里程碑总进度
 
 | 里程碑 | 状态 | 已验收 | 当前模块分布 | Exit Evidence |
 |---|---|---:|---|---|
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 个已验收 | [SDD-000 验收报告](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)，以及 Compose、Migration、CI 映射、隔离 AgentTeams Smoke、设计与 i18n 证据 |
-| M1 — Campaign walking skeleton | `IN_PROGRESS` | `0 / 6` | 1 个进行中、5 个未开始 | 持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State |
+| M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 个已验收 | [SDD-001 验收报告](docs/reports/acceptance/SDD-001-ACCEPTANCE.md)：持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State；最终视觉与交互收敛仍在规划中 |
 | M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 个未开始 | 六成员 AgentTeams、DeepSeek Gateway、Revision/Audit、故障拒绝与 Trace |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 个未开始 | Interaction → Outcome → Scoped Learning → 下一 Mission，隔离 SignalProvider PoC |
@@ -62,12 +62,12 @@
 
 | ID | 模块 | 状态 | 依赖 | 必须提交的证据 / 验收 |
 |---|---|---|---|---|
-| M1-01 | Organization、Identity、Brand、Product、Market 与 Account Graph | `IN_PROGRESS` | M0 验收；SDD-001 | Schema、Migration、租户约束与负向 Fixture |
-| M1-02 | Campaign、Activation、Claim 与 Evidence 合同 | `NOT_STARTED` | M1-01 | 版本化 JSON Schema、Canonical Digest 与错误 Scope 拒绝 |
-| M1-03 | Campaign API、持久化与重新打开 | `NOT_STARTED` | M1-01、M1-02 | REST/OpenAPI、幂等、ETag/版本冲突与数据库集成测试 |
-| M1-04 | 五主屏 Web Shell 与 Readiness Journey | `NOT_STARTED` | M0-05、M1-03 | 中英文 Empty/Loading/Blocked/Owner/Recovery 状态 |
-| M1-05 | 四平台可编辑 Composer 与原生近似 Preview | `NOT_STARTED` | M1-02、M1-04 | X、Bluesky、LinkedIn、小红书 Fixture、约束与视觉测试 |
-| M1-06 | 排程编辑器与持久化 Schedule Model | `NOT_STARTED` | M1-03、M1-04 | 一次性/RRULE、IANA 时区、DST 与 Misfire 校验；不执行外部动作 |
+| M1-01 | Organization、Identity、Brand、Product、Market 与 Account Graph | `ACCEPTED` | M0 验收；SDD-001 | [Schema、Migration、租户约束与负向 Fixture](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-02 | Campaign、Activation、Claim 与 Evidence 合同 | `ACCEPTED` | M1-01 | [版本化 Schema、Canonical Digest 与错误 Scope 拒绝](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-03 | Campaign API、持久化与重新打开 | `ACCEPTED` | M1-01、M1-02 | [REST/OpenAPI、幂等、ETag/版本冲突与数据库集成测试](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-04 | 五主屏 Web Shell 与 Readiness Journey | `ACCEPTED` | M0-05、M1-03 | [中英文真实状态流程与 Owner 接受的功能壳边界](docs/reports/acceptance/SDD-001-ACCEPTANCE.md)；`UX-M1-001` 延后到交互收敛 |
+| M1-05 | 四平台可编辑 Composer 与原生近似 Preview | `ACCEPTED` | M1-02、M1-04 | [X、Bluesky、LinkedIn、小红书 Fixture、约束与真实浏览器证据](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-06 | 排程编辑器与持久化 Schedule Model | `ACCEPTED` | M1-03、M1-04 | [一次性/RRULE、IANA 时区、DST/Misfire 与失效证据](docs/reports/acceptance/SDD-001-ACCEPTANCE.md)；不执行外部动作 |
 
 ### M2 — Governed shadow campaign
 
