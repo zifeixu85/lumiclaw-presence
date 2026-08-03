@@ -13,6 +13,8 @@ export type ClaimsTable = {organization_id: string; id: string; campaign_id: str
 export type CapabilitySnapshotsTable = {organization_id: string; id: string; campaign_id: string; channel_account_id: string; platform: string; captured_at: Timestamp; expires_at: Timestamp; payload: Json};
 export type ArtifactRevisionsTable = {organization_id: string; id: string; campaign_id: string; activation_unit_id: string; platform: string; revision: number; digest: string; payload: Json; created_at: Timestamp};
 export type IdempotencyRecordsTable = {organization_id: string; method: string; route: string; idempotency_key: string; request_digest: string; status_code: number; response_body: Json; response_etag: string | null; created_at: Generated<Timestamp>; expires_at: Timestamp};
+export type PublishingSchedulesTable = {organization_id: string; id: string; campaign_id: string; version: number; kind: string; time_zone: string; local_start: string; rrule: string | null; status: string; payload: Json; created_at: Timestamp; updated_at: Timestamp};
+export type ScheduleOccurrencesTable = {organization_id: string; id: string; campaign_id: string; schedule_id: string; schedule_version: number; ordinal: number; scheduled_for: Timestamp; state: string; payload: Json};
 
 export type OrganizationsTable = {id: string; schema_version: number; slug: string; display_name: string; data_mode: 'DEMO_SEED'; live: false; created_at: Generated<Timestamp>};
 export type IdentitiesTable = {organization_id: string; id: string; schema_version: number; kind: string; display_name: string; public_bio: string; created_at: Generated<Timestamp>};
@@ -28,4 +30,5 @@ export type Database = {
   channel_accounts: ChannelAccountsTable; account_mandates: AccountMandatesTable;
   campaigns: CampaignsTable; campaign_snapshots: CampaignSnapshotsTable; evidence_refs: EvidenceRefsTable; claims: ClaimsTable;
   capability_snapshots: CapabilitySnapshotsTable; artifact_revisions: ArtifactRevisionsTable; idempotency_records: IdempotencyRecordsTable;
+  publishing_schedules: PublishingSchedulesTable; schedule_occurrences: ScheduleOccurrencesTable;
 };

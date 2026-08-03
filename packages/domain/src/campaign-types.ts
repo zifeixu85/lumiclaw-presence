@@ -120,6 +120,43 @@ export type MissionContract = {
   externalActionAllowed: false;
 };
 
+export type ScheduleMisfirePolicy = 'SKIP' | 'HOLD_FOR_OWNER';
+export type ScheduleFoldPreference = 'EARLIER' | 'LATER';
+
+export type PublishingSchedule = {
+  id: DomainId;
+  organizationId: DomainId;
+  campaignId: DomainId;
+  schemaVersion: 1;
+  version: number;
+  kind: 'ONCE' | 'RRULE';
+  localStart: string;
+  timeZone: string;
+  rrule: string | null;
+  foldPreference: ScheduleFoldPreference;
+  misfirePolicy: ScheduleMisfirePolicy;
+  sourceArtifactRevisionIds: DomainId[];
+  status: 'ACTIVE' | 'INVALIDATED';
+  invalidationReason: 'CONTENT_OR_ACCOUNT_EDIT' | 'SCHEDULE_EDIT' | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type ScheduleOccurrence = {
+  id: DomainId;
+  organizationId: DomainId;
+  campaignId: DomainId;
+  scheduleId: DomainId;
+  scheduleVersion: number;
+  schemaVersion: 1;
+  ordinal: number;
+  localWallTime: string;
+  scheduledForUtc: string;
+  utcOffsetMinutes: number;
+  state: 'PENDING' | 'MISSED' | 'NEEDS_OWNER' | 'INVALIDATED';
+  misfireReason: 'PAST_DUE' | null;
+};
+
 export type CampaignDocument = {
   schemaVersion: 1;
   id: DomainId;
@@ -134,6 +171,8 @@ export type CampaignDocument = {
   activationPlan: ActivationPlan;
   capabilitySnapshots: CapabilitySnapshot[];
   artifactRevisions: ArtifactRevision[];
+  publishingSchedules: PublishingSchedule[];
+  scheduleOccurrences: ScheduleOccurrence[];
   missionContract: MissionContract;
 };
 

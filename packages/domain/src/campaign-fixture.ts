@@ -41,7 +41,7 @@ export function createDemoCampaignDocument(): CampaignDocument {
       {id: draftClaimId, organizationId, schemaVersion: 1, version: 1, subjectType: 'PRODUCT', subjectId: product.id, marketIds, statement: 'A synthetic candidate Claim intentionally remains unapproved to demonstrate a readiness gap.', effectiveFrom: '2026-08-01T00:00:00.000Z', effectiveUntil: '2027-01-01T00:00:00.000Z', status: 'DRAFT', evidenceRefIds: []}
     ],
     activationPlan: {schemaVersion: 1, summary: 'Founder voice prepares X and Xiaohongshu; product voice prepares Bluesky and LinkedIn.', units},
-    capabilitySnapshots: capabilities, artifactRevisions: artifacts, missionContract
+    capabilitySnapshots: capabilities, artifactRevisions: artifacts, publishingSchedules: [], scheduleOccurrences: [], missionContract
   };
   document.missionContract.sourceDigest = digestCampaign(document);
   return document;

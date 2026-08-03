@@ -2,6 +2,7 @@ import {digestCampaign, validateCampaignDocument} from './campaign.js';
 import type {ArtifactRevision, CampaignDocument, CampaignEnvelope} from './campaign-types.js';
 import {canonicalize} from './canonical.js';
 import {createUuidV7} from './id.js';
+import {invalidateStaleSchedules} from './schedule.js';
 
 export function campaignEtag(id: string, version: number, digest: string): string {
   return `"campaign-${id}-v${version}-${digest}"`;
@@ -28,6 +29,9 @@ export function advanceCampaignEnvelope(current: CampaignEnvelope, incoming: Cam
   const prepared = structuredClone(incoming);
   const currentByUnit = new Map(current.document.artifactRevisions.map((item) => [item.activationUnitId, item]));
   prepared.artifactRevisions = prepared.artifactRevisions.map((item) => reviseArtifact(currentByUnit.get(item.activationUnitId), item, now));
+  const scheduleState = invalidateStaleSchedules(prepared.publishingSchedules, prepared.scheduleOccurrences, prepared.artifactRevisions, now);
+  prepared.publishingSchedules = scheduleState.schedules;
+  prepared.scheduleOccurrences = scheduleState.occurrences;
   prepared.missionContract.sourceDigest = digestCampaign(prepared);
   assertValidCampaign(prepared, now);
   const version = current.version + 1;

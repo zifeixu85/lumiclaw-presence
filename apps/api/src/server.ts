@@ -1,7 +1,9 @@
 import {
   CampaignPreparationError,
+  createPublishingSchedule,
   createDemoCampaignDocument,
   isUuidV7,
+  ScheduleContractError,
   sha256Digest,
   type CampaignDocument,
   type CampaignRepository,
@@ -14,6 +16,7 @@ import {openApiDocument} from './openapi.js';
 
 type BuildOptions = {repository?: CampaignRepository; now?: () => Date};
 type CampaignParams = {campaignId: string};
+type SchedulePreviewBody = {localStart: string; timeZone: string; rrule?: string | null; foldPreference: 'EARLIER' | 'LATER'; misfirePolicy: 'SKIP' | 'HOLD_FOR_OWNER'};
 
 export function buildApi(options: BuildOptions = {}): FastifyInstance {
   const app = Fastify({logger: false});
@@ -82,6 +85,17 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     return {code: 'MISSION_CONTRACT_READY', mode: 'DEMO_SEED', live: false, ...value};
   });
 
+  app.post<{Params: CampaignParams; Body: SchedulePreviewBody}>('/api/v1/campaigns/:campaignId/schedule-preview', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    const envelope = await repository.get(organizationId, request.params.campaignId);
+    if (envelope === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+    try {
+      const value = createPublishingSchedule({organizationId, campaignId: request.params.campaignId, artifactRevisions: envelope.document.artifactRevisions, ...request.body}, now());
+      return {code: 'SCHEDULE_PREVIEW_READY', mode: 'DEMO_SEED', live: false, executionAllowed: false, ...value};
+    } catch (error) { return sendDomainOrUnavailable(reply, error); }
+  });
+
   app.setNotFoundHandler(async (_request, reply) => reply.status(404).send({code: 'CONTROL_ROUTE_NOT_FOUND', mode: 'DEMO_SEED', live: false}));
   app.setErrorHandler(async (error, _request, reply) => sendDomainOrUnavailable(reply, error));
   return app;
@@ -113,6 +127,7 @@ function sendMutation(reply: FastifyReply, result: MutationResult, status: 200 |
 
 function sendDomainOrUnavailable(reply: FastifyReply, error: unknown) {
   if (error instanceof CampaignPreparationError) return reply.status(422).send({...errorBody(error.code), details: error.details});
+  if (error instanceof ScheduleContractError) return reply.status(422).send({...errorBody(error.code), details: error.message});
   console.error(error);
   return reply.status(503).send(errorBody('CONTROL_PLANE_UNAVAILABLE'));
 }

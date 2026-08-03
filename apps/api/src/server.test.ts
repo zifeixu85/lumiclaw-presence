@@ -54,4 +54,18 @@ describe('M1 Campaign API contract', () => {
     expect((await app.inject({method: 'GET', url: `/api/v1/campaigns/${document.id}`, headers: {'x-lumiclaw-organization-id': document.graph.identities[0]!.id}})).statusCode).toBe(404);
     expect(created.headers.etag).toMatch(/^"campaign-/u);
   });
+
+  it('previews persistent schedule rows while rejecting DST gaps and never enabling execution', async () => {
+    const app = buildApi({now}); apps.push(app);
+    const document = createDemoCampaignDocument();
+    const headers = {'x-lumiclaw-organization-id': document.organizationId, 'idempotency-key': 'create-for-schedule'};
+    await app.inject({method: 'POST', url: '/api/v1/campaigns', headers, payload: document});
+    const preview = await app.inject({method: 'POST', url: `/api/v1/campaigns/${document.id}/schedule-preview`, headers, payload: {localStart: '2026-11-01T01:30', timeZone: 'America/New_York', rrule: 'FREQ=WEEKLY;INTERVAL=1;COUNT=2', foldPreference: 'LATER', misfirePolicy: 'SKIP'}});
+    expect(preview.statusCode).toBe(200);
+    expect(preview.json().executionAllowed).toBe(false);
+    expect(preview.json().occurrences).toHaveLength(2);
+    const gap = await app.inject({method: 'POST', url: `/api/v1/campaigns/${document.id}/schedule-preview`, headers, payload: {localStart: '2026-03-08T02:30', timeZone: 'America/New_York', foldPreference: 'EARLIER', misfirePolicy: 'SKIP'}});
+    expect(gap.statusCode).toBe(422);
+    expect(gap.json().code).toBe('DST_GAP');
+  });
 });

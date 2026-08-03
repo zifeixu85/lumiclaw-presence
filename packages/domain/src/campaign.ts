@@ -21,7 +21,7 @@ export function validateCampaignDocument(value: unknown, now = new Date()): Vali
   if (!graphResult.ok) issues.push(...graphResult.issues);
 
   if (document.organizationId !== document.graph.organization.id) issues.push(issue('CAMPAIGN_ORGANIZATION_SCOPE_MISMATCH', '/organizationId', 'Campaign and graph organization scopes differ.'));
-  const scoped = [...document.evidenceRefs, ...document.claims, ...document.activationPlan.units, ...document.capabilitySnapshots, ...document.artifactRevisions];
+  const scoped = [...document.evidenceRefs, ...document.claims, ...document.activationPlan.units, ...document.capabilitySnapshots, ...document.artifactRevisions, ...document.publishingSchedules, ...document.scheduleOccurrences];
   scoped.forEach((item, index) => {
     if (item.organizationId !== document.organizationId) issues.push(issue('CAMPAIGN_ORGANIZATION_SCOPE_MISMATCH', `/scoped/${index}/organizationId`, 'Campaign child organization scope differs.'));
   });
@@ -60,6 +60,17 @@ export function validateCampaignDocument(value: unknown, now = new Date()): Vali
     }
     if (capability !== undefined) issues.push(...validateArtifactConstraints(revision, capability.constraints, `/artifactRevisions/${index}/content`));
   }
+
+  const revisionIds = new Set(document.artifactRevisions.map((revision) => revision.id));
+  const schedules = new Map(document.publishingSchedules.map((schedule) => [schedule.id, schedule]));
+  document.publishingSchedules.forEach((schedule, index) => {
+    if (schedule.campaignId !== document.id) issues.push(issue('SCHEDULE_SCOPE_INVALID', `/publishingSchedules/${index}/campaignId`, 'Schedule does not belong to this Campaign.'));
+    if (schedule.status === 'ACTIVE' && schedule.sourceArtifactRevisionIds.some((id) => !revisionIds.has(id))) issues.push(issue('SCHEDULE_SOURCE_REVISION_STALE', `/publishingSchedules/${index}/sourceArtifactRevisionIds`, 'Active schedule references a stale ArtifactRevision.'));
+  });
+  document.scheduleOccurrences.forEach((occurrence, index) => {
+    const schedule = schedules.get(occurrence.scheduleId);
+    if (occurrence.campaignId !== document.id || schedule === undefined || occurrence.scheduleVersion !== schedule.version) issues.push(issue('SCHEDULE_OCCURRENCE_SCOPE_INVALID', `/scheduleOccurrences/${index}`, 'Occurrence does not match its schedule version and Campaign.'));
+  });
 
   const calculated = digestCampaign(document);
   if (document.missionContract.sourceDigest !== calculated) issues.push(issue('MISSION_SOURCE_DIGEST_MISMATCH', '/missionContract/sourceDigest', 'MissionContract source digest does not match canonical Campaign content.'));
