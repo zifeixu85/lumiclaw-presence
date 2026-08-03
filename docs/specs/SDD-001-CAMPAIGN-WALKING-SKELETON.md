@@ -61,7 +61,7 @@ No M1 business table, JSON Schema, Campaign repository, OpenAPI resource, Schedu
 - CampaignBrief, GoalProfile, Claim/Evidence, ActivationPlan/ActivationUnit, MissionContract, ArtifactRevision, CapabilitySnapshot, PublishingSchedule, and ScheduleOccurrence minimum contracts;
 - RFC 8785-style project canonical serialization (lexicographically sorted object keys, JSON array order preserved, JSON scalar encoding) and SHA-256 digest;
 - PostgreSQL migration and tenant-aware repository for the complete aggregate, immutable snapshot/revision history, idempotency records, schedules, and occurrences;
-- `/api/v1` REST plus OpenAPI for create/list/get/update Campaign and schedule-as-part-of-Campaign persistence;
+- `/api/v1` REST plus OpenAPI for create/list/get/update Campaign and schedule-as-part-of-Campaign persistence; POST validates all authority-bearing fields against the server-issued M1 template, while a schedule preview is only a proposal and PUT re-derives authoritative schedule/occurrence IDs, timestamps, states, scope, and exact ArtifactRevision bindings;
 - explicit organization scope header, POST/PUT idempotency, strong ETag, optimistic version conflict, invalid scope/Claim/Product/Market rejection;
 - five-screen Web data journey using the same API, Chinese default and English deep links;
 - four editable platform drafts and distinct, native-like, constrained previews;
@@ -112,7 +112,7 @@ No M1 business table, JSON Schema, Campaign repository, OpenAPI resource, Schedu
 | `CAMPAIGN_SAVED` | persisted aggregate loaded | version, shortened digest, gaps, and last save shown | continue setup/edit |
 | `CAMPAIGN_BLOCKED` | invalid/stale Claim or scope | exact blocking code and affected item | repair Claim/scope |
 | `CAMPAIGN_NEEDS_OWNER` | missing evidence, fold choice, or M2 action | what needs a human decision is named | provide the named decision |
-| `CAMPAIGN_CONFLICT` | `If-Match` mismatch | no overwrite; latest version/digest shown | reload, compare, and reapply |
+| `CAMPAIGN_CONFLICT` | `If-Match` mismatch | no overwrite or lost local draft; latest version/digest and merge conflicts shown | explicitly three-way rebase, then save with the latest ETag |
 | `CAMPAIGN_RECOVERY` | API unavailable/unknown result | no success claim and no blind duplicate create/save | reconnect and reopen by ID/idempotency key |
 | `CAMPAIGN_NOT_LIVE` | Review/Learn before M2+ | no approval/publish/response state is invented | continue only within M1 edit/save |
 
@@ -138,11 +138,11 @@ Organization
 └─ AccountMandate → ChannelAccount + Identity + Product + Market
 ```
 
-An ActivationUnit is valid only when its Identity, Product, Market, ChannelAccount, and AccountMandate belong to one Organization and the Mandate binds those exact IDs. The M1 fixture contains four units for X, Bluesky, LinkedIn, and Xiaohongshu.
+An ActivationUnit is valid only when its Identity, Product, Market, ChannelAccount, and AccountMandate belong to one Organization and the Mandate binds those exact IDs. The M1 fixture contains four units for X, Bluesky, LinkedIn, and Xiaohongshu. Campaign-scoped child IDs are globally unique within an aggregate and may not be reused by a second Campaign in the same tenant; PostgreSQL serializes ownership checks with transaction advisory locks before projection writes.
 
 ### 5.2 Claim/Evidence
 
-A Claim contains version, subject type/id, Market IDs, stable statement, `effectiveFrom`, `effectiveUntil`, `DRAFT | APPROVED | STALE | REVOKED`, and EvidenceRef IDs. A public artifact may reference only a Claim whose organization, Product/Brand subject, Market, status, and effective window match the ActivationUnit at validation time. Invalid scope, stale/revoked/expired Claim, missing EvidenceRef, or Product/Market mismatch fails with stable codes.
+A Claim contains version, subject type/id, Market IDs, stable statement, `effectiveFrom`, `effectiveUntil`, `DRAFT | APPROVED | STALE | REVOKED`, and EvidenceRef IDs. Every non-DRAFT Claim is independently validated against the Campaign Product/Market/Evidence graph and current effective window even when no ArtifactRevision references it. A public artifact may reference only an APPROVED Claim whose scope matches its ActivationUnit. Invalid scope, stale/revoked/expired Claim, missing EvidenceRef, or Product/Market mismatch fails with stable codes.
 
 Committed fixtures use synthetic sources such as `https://example.invalid/evidence/...`; they do not represent customer evidence.
 
@@ -160,7 +160,7 @@ The versioned M1 aggregate contains:
 - PublishingSchedule/ScheduleOccurrence preview state;
 - server envelope: aggregate version, created/updated time, canonical digest, readiness/gap codes.
 
-Canonical payload excludes server envelope fields (`version`, `digest`, ETag, timestamps, request IDs) and sorts object keys recursively while preserving arrays. SHA-256 is lowercase hex. Reopening unchanged content returns the same digest. Any governed content, account, market, Claim, artifact, or schedule change changes the digest.
+Canonical payload excludes server envelope fields (`version`, `digest`, ETag, timestamps, request IDs) and sorts object keys recursively while preserving arrays. SHA-256 is lowercase hex. Reopening unchanged content returns the same digest. Artifact governed context includes Organization, resolved Brand/Product, Identity, Market, ChannelAccount, AccountMandate, CapabilitySnapshot, Claim/Evidence, platform, and content; any governed change creates a new ArtifactRevision and invalidates schedules bound to the replaced revision.
 
 ### 5.4 Platform artifacts and constraints
 
@@ -186,7 +186,7 @@ Constraints come from the referenced versioned CapabilitySnapshot, never React c
 - for recurrence, the deliberately narrow M1 subset is exactly canonical `FREQ=DAILY|WEEKLY;INTERVAL=1..30;COUNT=1..50`; `BYDAY`, `UNTIL`, monthly rules, and unbounded recurrence are rejected;
 - state `ACTIVE | INVALIDATED`, version, exact source ArtifactRevision IDs, and invalidation reason.
 
-Zero matching UTC instants is rejected as `DST_GAP`. For a fold, the required `EARLIER | LATER` choice resolves the selected UTC instant/offset; unit tests prove both candidates differ by the expected transition. Future previews are `PENDING`; a past instant becomes `MISSED` for `SKIP` or `NEEDS_OWNER` for `HOLD_FOR_OWNER`. M1 never claims due rows, leases them, grants action, or calls the Operator. Content/account edits create new ArtifactRevisions and invalidate the bound schedule; a time/recurrence replacement appends a new schedule, retains the prior history as `INVALIDATED`, and invalidates its pending occurrences.
+Zero matching UTC instants is rejected as `DST_GAP`. For a fold, the required `EARLIER | LATER` choice resolves the selected UTC instant/offset; unit tests prove both candidates differ by the expected transition. Future previews are `PENDING`; a past instant becomes `MISSED` for `SKIP` or `NEEDS_OWNER` for `HOLD_FOR_OWNER`. Campaign PUT first verifies the preview and then regenerates every derived Schedule/Occurrence field from the server clock and exact saved revisions; a content-plus-schedule mutation is rejected so the user must save content first. M1 never claims due rows, leases them, grants action, or calls the Operator. Content/account edits create new ArtifactRevisions and invalidate the bound schedule; a time/recurrence replacement appends a new schedule, retains the prior history as `INVALIDATED`, and invalidates its pending occurrences.
 
 ### 5.6 REST and OpenAPI
 
@@ -196,12 +196,12 @@ All responses include `mode=DEMO_SEED`, `live=false`, and a stable `code` where 
 |---|---|---|
 | `GET /api/v1/openapi.json` | none | OpenAPI 3.1 document generated from the M1 schema registry |
 | `GET /api/v1/campaigns` | organization header | summaries from PostgreSQL only |
-| `POST /api/v1/campaigns` | organization header + `Idempotency-Key` | validate/create aggregate, `201`, `Location`, strong ETag |
+| `POST /api/v1/campaigns` | organization header + `Idempotency-Key` | validate editable fields and exact server-issued M1 authority template; reject forged Claim approval/version, Evidence, Capability, Artifact metadata, Mission or Schedule state; create aggregate with `201`, `Location`, strong ETag |
 | `GET /api/v1/campaigns/{id}` | organization header | exact aggregate, strong ETag; cross-tenant looks not found |
 | `PUT /api/v1/campaigns/{id}` | organization header + idempotency + strong `If-Match` | validate/save new snapshot/revisions/schedules, `200`, new ETag |
 | `GET /api/v1/campaigns/{id}/mission-contract` | organization header | same persisted source digest for future CLI/AgentTeams adapter |
 
-Idempotency records bind organization, method, route, key, request digest, status, response body, and expiry. Same key/same digest replays the stored response. Same key/different digest returns `409 IDEMPOTENCY_KEY_REUSED`. Missing key returns `428 IDEMPOTENCY_KEY_REQUIRED`. Missing/stale If-Match returns `428 ETAG_REQUIRED` or `412 CAMPAIGN_VERSION_CONFLICT` with current ETag/version/digest. Database and unknown errors do not return success.
+Idempotency records bind organization, method, route, key, request digest, status, response body, and expiry. Same key/same digest replays the stored response. Same key/different digest returns `409 IDEMPOTENCY_KEY_REUSED`. Missing key returns `428 IDEMPOTENCY_KEY_REQUIRED`. Missing/stale If-Match returns `428 ETAG_REQUIRED` or `412 CAMPAIGN_VERSION_CONFLICT` with current ETag/version/digest. Web keeps the local draft separate, GETs the server head, performs an explicit three-way rebase, and saves with a fresh key/latest ETag; deterministic 422 errors remain editable, while only unknown network results replay the same key. Database and unknown errors do not return success.
 
 ### 5.7 PostgreSQL tables and history
 
@@ -255,14 +255,14 @@ No M1 failure invokes a provider, platform, scheduler execution, AgentTeams Miss
 
 | ID | Pass/fail statement |
 |---|---|
-| AC-01 | Versioned schemas and TypeScript contracts exist for the required graph and Campaign objects; valid fixtures pass and missing, malformed, tampered, cross-tenant, expired/revoked Claim, Product mismatch, and Market mismatch fixtures fail with stable codes. |
+| AC-01 | Versioned schemas and TypeScript contracts exist for the required graph and Campaign objects; valid fixtures and a legal leap day pass, while missing, malformed or calendar-invalid RFC 3339, platform/content mismatch, tampered/forged initial authority, cross-tenant, unreferenced or referenced expired/revoked Claim, Product mismatch, and Market mismatch fixtures fail with stable codes. |
 | AC-02 | Canonical serialization is deterministic across object-key order; any governed field change changes the SHA-256 digest; create → save → restart/reopen unchanged content preserves the digest. |
-| AC-03 | PostgreSQL migration creates tenant-aware M1 tables with composite scope constraints, append-only snapshot/revision history, idempotency, Schedule/Occurrence uniqueness, and a project-scoped down path. |
+| AC-03 | PostgreSQL migration creates tenant-aware M1 tables with composite scope constraints, append-only snapshot/revision history, idempotency, Schedule/Occurrence uniqueness, serialized campaign-child ownership checks, and a project-scoped down path. |
 | AC-04 | REST/OpenAPI create/list/get/update/mission-contract paths operate only through the PostgreSQL store and require the specified organization/idempotency/ETag controls. |
-| AC-05 | Same idempotency key/body replays the same create/update result; reused key/different body, missing key, stale/missing ETag, and cross-tenant access fail without duplicate or overwrite. |
+| AC-05 | Same idempotency key/body replays the same create/update result; reused key/different body, missing key, stale/missing ETag, and cross-tenant access fail without duplicate or overwrite; a real two-client 412 rehearsal preserves local and non-conflicting server edits through explicit rebase. |
 | AC-06 | Five Web screens consume the same API state and visibly cover empty, loading, blocked, needs-owner, saved, conflict, and recovery/non-live states in both locales without raw message keys or live claims. |
 | AC-07 | X, Bluesky, LinkedIn, and Xiaohongshu each have editable models, distinct native-like previews, server-validated versioned constraint fixtures, account/identity/mode/snapshot/disclaimer display, and saved revisions that reopen unchanged. |
-| AC-08 | One-time and constrained RRULE schedules persist IANA zone, local wall time, UTC resolution, misfire and version; invalid IANA/RRULE, DST gap, both fold choices, forged occurrence, schedule replacement, account/content invalidation tests pass; occurrences remain only `PENDING | MISSED | NEEDS_OWNER | INVALIDATED` and no due action is executed. |
+| AC-08 | One-time and constrained RRULE schedules persist IANA zone, local wall time, UTC resolution, misfire and version; fold has no UI default; invalid IANA/RRULE, DST gap, both explicit fold choices, preview-to-save misfire transition, forged occurrence, content-plus-schedule rejection, server re-derivation, schedule replacement, account/content invalidation tests pass; occurrences remain only `PENDING | MISSED | NEEDS_OWNER | INVALIDATED` and no due action is executed. |
 | AC-09 | The deterministic compiler smoke imports the persisted Campaign/source digest into an adapter input with six separated role IDs and no action permission while `live=false`; no AgentTeams Project/model/provider call occurs. |
 | AC-10 | At a real `390 × 844` browser viewport, document width is at most viewport width for create, reopen, composer, constraint error, and schedule states; desktop remains usable and browser console has no application warning/error. |
 | AC-11 | `npm ci` leaves the lockfile unchanged; lint, typecheck, unit/contract, messages/status/report/secret/license/SBOM, production build, Storybook, PostgreSQL integration, and Compose fresh/failure/recovery/persistence gates pass. |

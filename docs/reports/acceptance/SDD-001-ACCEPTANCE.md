@@ -24,11 +24,11 @@ Executor 已完成机器验证和真实本地浏览器 rehearsal；Owner UAT 与
 
 - tenant-aware 的 Organization、Identity、Brand、Product、Market、ChannelAccount、AccountMandate 图与复合外键、负向 fixture。
 - CampaignBrief、GoalProfile、Claim/Evidence、ActivationPlan/Unit、MissionContract、ArtifactRevision、CapabilitySnapshot、PublishingSchedule、ScheduleOccurrence 的最小版本合同。
-- canonical serialization、SHA-256 stable digest、Claim/产品/市场/tenant scope 校验、受控修订与 immutable 历史。
+- canonical serialization、SHA-256 stable digest、首次创建 authority template、全部 governed Claim/产品/市场/tenant scope 校验、跨 Campaign 子对象 ID 归属锁、受控修订与 immutable 历史。
 - PostgreSQL migration、repository、REST/OpenAPI create/list/get/update/reopen/mission-contract、并发幂等、ETag/lost-update 与 restart/down-up recovery。
-- 默认 `zh-CN`、第二语言 `en` 的五主屏持久化状态，以及 empty/loading/blocked/needs-owner/saved/conflict/recovery/non-live 可见状态。
+- 默认 `zh-CN`、第二语言 `en` 的五主屏持久化状态，以及 empty/loading/blocked/needs-owner/saved/conflict/recovery/non-live 可见状态；412 使用显式三方 rebase，422 保持编辑器可修正。
 - X、Bluesky、LinkedIn、小红书四套可编辑草稿、约束与 distinct preview；保存/重开一致。
-- `ONCE` 与 `FREQ=DAILY|WEEKLY;INTERVAL=1..30;COUNT=1..50` 排程子集、IANA/DST/misfire/失效合同；PostgreSQL 是唯一真源。
+- `ONCE` 与 `FREQ=DAILY|WEEKLY;INTERVAL=1..30;COUNT=1..50` 排程子集、IANA/DST/misfire/失效合同；preview 仅为 proposal，PUT 拒绝同次内容编辑并由服务端重派生全部 Schedule/Occurrence 字段；PostgreSQL 是唯一真源。
 - 六成员 MissionContract compiler/adapter-input smoke；M2 Governed SHADOW Campaign SDD 生命周期文件已达 `SPEC_READY`，没有 M2 实现。
 
 ### 未包含或延期
@@ -45,7 +45,7 @@ Executor 已完成机器验证和真实本地浏览器 rehearsal；Owner UAT 与
 |---|---|---|
 | SDD 生命周期 | `docs/specs/SDD-001-CAMPAIGN-WALKING-SKELETON.md`、`docs/specs/sdd-001/` | Constitution → Specify → Clarify → Plan → Checklist → Tasks → Analyze 在实现前达 `SPEC_READY`；Spec Kit 仅作为方法，未安装 CLI。 |
 | Domain / Graph | `packages/domain/src/graph-*`、`campaign-*`、`schedule.ts` | 版本化 schema/types、positive/negative fixtures、stable error codes、canonical digest、authority/revision/schedule invalidation 单元合同。 |
-| Database | `packages/db/migrations/000002_*`～`000004_*`、`campaign-repository.ts` | tenant composite FK、append-only CampaignSnapshot/ArtifactRevision、transaction advisory-lock idempotency、Schedule/Occurrence 唯一性与 project-scoped down。 |
+| Database | `packages/db/migrations/000002_*`～`000004_*`、`campaign-repository.ts` | tenant composite FK、append-only CampaignSnapshot/ArtifactRevision、transaction advisory-lock idempotency/child ownership、Schedule/Occurrence 唯一性与 project-scoped down。 |
 | API / OpenAPI | `apps/api/src/server.ts`、`openapi.ts`、`.evidence/sdd-001/api-integration.json` | create/list/get/update/mission-contract、organization header、Idempotency-Key、ETag、422/409/412/428/503 与 PostgreSQL 重开。 |
 | UI / i18n | `apps/web/src/components/campaign-workspace.tsx`、`globals.css`、`packages/i18n/` | 五屏共享 API 状态、四平台 editor/preview、排程展示、中文默认/英文深链；真实浏览器 desktop 与 390px rehearsal。 |
 | AgentTeams boundary | `packages/mission-compiler/`、`packages/runtime-agentteams/` | 六角色、Leader orchestration-only、Producer/Auditor 分离、exact persisted digest、`live=false`、无 action permission；仅 compiler/adapter smoke。 |
@@ -59,13 +59,13 @@ Executor 已完成机器验证和真实本地浏览器 rehearsal；Owner UAT 与
 | 检查 | 命令或协议 | 期望 | 实际 | 结果 |
 |---|---|---|---|---|
 | Reproducible install | `npm ci`；前后 `shasum -a 256 package-lock.json` | 安装成功且 lockfile 不变 | 前后均为 `de71bb2b075a766c80a703216d0bd1db71f98414031ea7cef0a327e0c8f482c5`；800 packages installed | `PASS` |
-| Unit / Contract | `npm test` | 所有领域/API/UI/脚本正反合同通过 | 17 个 test file / 65 个 test；含 malformed schema、tenant/scope、digest、Claim version、temporal readiness、authority lock、artifact/schedule、DST、ETag/幂等负向 | `PASS` |
+| Unit / Contract | `npm test` | 所有领域/API/UI/脚本正反合同通过 | 17 个 test file / 88 个 test；含 malformed/calendar-aware RFC 3339/platform discriminator、tenant/scope、跨 Campaign child ID、digest、首次创建 authority、Claim version/temporal readiness、server-derived schedule/misfire、三方 rebase/旧排程 preview 丢弃、DST、ETag/幂等负向 | `PASS` |
 | Lint / Type | `npm run lint && npm run typecheck` | 无 lint/type error | 所有 workspace 通过 | `PASS` |
-| PostgreSQL/API | `npm run verify:campaign-api` | create/replay/conflict/scope/schedule/restart/down-up/cleanup 通过 | `result=PASS`、`cleanup=PASS`；4 snapshots、6 artifact revisions、4 idempotency records、1 schedule、2 occurrences | `PASS` |
+| PostgreSQL/API | `npm run verify:campaign-api` | create/replay/conflict/scope/schedule/restart/down-up/cleanup 通过 | `result=PASS`、`cleanup=PASS`；跨 Campaign child ID 与 forged occurrence 均 422；排程保存由服务端重派生；4 snapshots、6 artifact revisions、4 idempotency records、1 schedule、2 occurrences | `PASS` |
 | Compose failure/recovery | `npm run verify:compose` | fresh、broken SQL、DB unavailable、health、restart/down-up Campaign+blob persistence、精确清理 | `.evidence/sdd-001/compose-verification.json` 记录 `result=PASS`、`cleanup=PASS` | `PASS` |
 | Build / Storybook / static gates | `npm run verify` | lint/type/test/message/status/report/secret/license/SBOM/build/Storybook 全通过 | CI-equivalent 本地完整门禁通过；Next production 与 Storybook static build 成功 | `PASS` |
 | AgentTeams image boundary | `npm run verify:agentteams-images` 与 `npm run check:runtime-profile` | 固定 v1.2.0 镜像/profile 合同，无 live Mission claim | 真实 image CLI/controlled adapter smoke 通过，`liveAgentTeamRun=false` | `PASS` |
-| Browser product flow | 真实 Compose Web/API/PostgreSQL；desktop、`390 × 844`、`/en/mission`、console | create/edit/save/schedule/reopen，四 preview distinct；document 不溢出；console 无应用错误 | v4 跨页面/英文深链重开保留编辑内容且 schedule history 为 `INVALIDATED`；390px 下 document/body/client scroll width 均 `390`；nav rail `358/840` 的滚动被局部容器收纳；console warning/error `0` | `PASS` |
+| Browser product flow | 真实 Compose Web/API/PostgreSQL；desktop、`390 × 844`、`/en/mission`、console | create/edit/save/schedule/reopen/conflict recovery，四 preview distinct；document 不溢出；console 无应用错误 | 原 rehearsal v4 跨页面/英文深链保持四平台与失效历史；最终 authority-fix rehearsal 证明 fold 默认未选/按钮禁用、显式 LATER + HOLD_FOR_OWNER 保存、真实 412 后 local draft 不丢、三方 rebase 同时保留 server CTA 与 local X 文本并保存 v4；390px html/body 为 `390`；console warning/error `0` | `PASS` |
 | Dependency / SBOM / secret | `npm run verify:dependencies && npm run check:secrets` | 无未知/禁用 license 或 Secret | 956 package entries，disallowed `[]`；tracked public source scan 通过 | `PASS` |
 | Evidence manifest | `npm run evidence:manifest` | ignored machine evidence有 byte/SHA-256 清单 | `.evidence/sdd-001/run-manifest.json` 生成 | `PASS` |
 
@@ -75,14 +75,14 @@ GitHub Actions 未 Push，故只声明工作流与本地等价门禁，远端 CI
 
 | Criterion ID | 结果 | Evidence | 说明 |
 |---|---|---|---|
-| AC-01 | `PASS` | `packages/domain/src/*test.ts`、graph/campaign schema | 完整对象合同与 malformed/tampered/cross-tenant/expired/revoked/Product/Market 负向均有 stable code。 |
+| AC-01 | `PASS` | `packages/domain/src/*test.ts`、graph/campaign schema | 完整对象合同与 malformed/calendar-invalid RFC 3339/platform-content mismatch/tampered/forged create/cross-tenant/cross-Campaign child ID/expired/revoked/Product/Market 负向均有 stable code；合法闰日通过。 |
 | AC-02 | `PASS` | canonical/digest 单元测试、API evidence | key order 稳定；受治理字段改变 digest；restart/down-up 未编辑重开保持 digest。 |
-| AC-03 | `PASS` | migrations `000002`～`000004`、Compose/API evidence | 复合 scope FK、append-only history、idempotency、schedule/occurrence uniqueness 和本地 down 均存在。 |
+| AC-03 | `PASS` | migrations `000002`～`000004`、Compose/API evidence | 复合 scope FK、append-only history、idempotency、transaction-serialized child ownership、schedule/occurrence uniqueness 和本地 down 均存在。 |
 | AC-04 | `PASS` | API/OpenAPI、repository、integration evidence | 所有 Campaign route 通过 PostgreSQL repository；Web 只经同源 proxy 调用。 |
-| AC-05 | `PASS` | API unit/integration | 相同请求 replay；并发同 key 序列化；reuse/missing key、missing/stale ETag、cross-tenant 均无重复或覆盖。 |
+| AC-05 | `PASS` | API unit/integration、real browser conflict rehearsal | 相同请求 replay；并发同 key 序列化；reuse/missing key、missing/stale ETag、cross-tenant 均无重复或覆盖；412 后本地草稿与 server 变更经显式三方 rebase 同时保留。 |
 | AC-06 | `PASS` | Web reducer/component/story、message parity、browser | 五屏和两种 locale 共用真实 aggregate；required states 与 non-live 文案可见，无 raw key。 |
 | AC-07 | `PASS` | platform adapters、Storybook stories、browser | 四个编辑模型/preview class 不同；server constraint/revision 保存后重开不变。 |
-| AC-08 | `PASS` | `schedule.test.ts`、migration、API evidence | ONCE/RRULE、IANA、gap/fold、misfire、forged UTC、replacement、edit invalidation 正反通过；没有执行态。 |
+| AC-08 | `PASS` | `schedule.test.ts`、migration、API/browser evidence | ONCE/RRULE、IANA、无默认 fold、gap/fold、preview 跨时 misfire、forged occurrence、同次 content+schedule 拒绝、服务端重派生、replacement、edit invalidation 正反通过；没有执行态。 |
 | AC-09 | `PASS` | mission-compiler 单元合同/runtime profile | exact digest、六角色、Leader/Producer/Auditor 分离、`live=false`、无 action 权限或 provider call。 |
 | AC-10 | `PASS` | 真实 browser rehearsal、CSS fix | 390px 下 document/body 均无横向溢出；四平台 rail 只在自身滚动；desktop 可用，console 清洁。 |
 | AC-11 | `PASS` | clean install、`npm run verify`、两项 integration | lock、static、unit/contract、report/status/message/secret/license/SBOM、build/Storybook、PostgreSQL/Compose 全通过。 |
@@ -103,10 +103,10 @@ GitHub Actions 未 Push，故只声明工作流与本地等价门禁，远端 CI
   1. 在 Worktree 运行 `npm ci`，再运行 `LUMICLAW_WEB_PORT=3122 LUMICLAW_API_PORT=4122 docker compose --project-name lumiclaw-sdd001-owner up --build --detach --wait`。
   2. 打开 `http://127.0.0.1:3122/`，确认默认中文及 `DEMO_SEED / NOT_LIVE`。
   3. 创建 Campaign，记录 ID、version 与 digest；打开“准备品牌资料”，核对 Organization/Identity/Brand/Product/Market/AccountMandate 与 Claim/Evidence gap。
-  4. 修改 objective 或 CTA 并保存，确认 version/digest 改变；复制旧 ETag 做一次只读 API 冲突演示（或查看报告中的 412 evidence），不要覆盖新内容。
+  4. 用两个浏览器标签打开同一 Campaign：A 修改 objective 但先不保存，B 修改 CTA 并保存；回到 A 保存，确认显示当前 server version/digest 且 A 的文本仍在。点击显式合并按钮，再保存并刷新，确认 A 的 objective 与 B 的 CTA 同时存在。
   5. 刷新页面；执行同一 Compose project 的 `restart postgres api web`，再重开同一 Campaign。
   6. 确认 Campaign ID、最后保存的 objective/CTA、四个 ActivationUnit、version/digest 均一致。
-- **期望可见结果：**Owner 能解释每个账号代表哪个 Identity/Product/Market、哪个 Claim 可用于预览、哪个 Evidence gap 仍需 Owner；刷新/重启不丢数据，也不出现 live/published/approved business claim。
+- **期望可见结果：**Owner 能解释每个账号代表哪个 Identity/Product/Market、哪个 Claim 可用于预览、哪个 Evidence gap 仍需 Owner；412 不丢本地或非冲突 server 编辑；刷新/重启不丢数据，也不出现 live/published/approved business claim。
 - **失败信号：**Campaign 丢失、无编辑却 digest 改变、旧 ETag 覆盖新版本、身份/账号关系不清、Claim gap 被隐藏、raw error/key、外部网络动作或 live 状态。
 - **需要返回的证据：**创建页与重开页截图、Campaign ID/version/digest、书面 `UAT-01 PASS` 或失败的 AC ID。
 - **清理 / 回滚：**`docker compose --project-name lumiclaw-sdd001-owner down` 保留本地 volume；若 Owner 明确不要保留 fixture，才加 `--volumes --remove-orphans`。不得全局 prune。
@@ -135,15 +135,18 @@ GitHub Actions 未 Push，故只声明工作流与本地等价门禁，远端 CI
 
 - 对话链接：<https://chatgpt.com/c/6a70683f-8a6c-83ea-bf6d-7f3a533645a6>。
 - 上传前快照：Base `4568277f9dc8e302141b93bb38ded20200fb31a9`，Head `7632175c0638729e3ddf10098e85292613f448e1`，178 files，`862,473` bytes，SHA-256 `166dcfcadc44e0cb5414f1d5e4c9cde83da48e6d8ffd504497e88384d9132afc`；filename/content secret scan `PASS`，排除 `.git`、`node_modules`、build/cache/database/runtime/browser state、`.env`、API Key、Token、私钥、Cookie、客户/私有资料。
+- 第二轮修正包：Head `e9ebeebd2f99958e99119b8017fdab644b415462`，180 files，`886,838` bytes，SHA-256 `968704a9e4c2ea8510536d1d96b36e26b48e9bf811db62ea5fc8fc77b8cecc39`，secret/path scan `PASS`。Pro 再次返回 `CHANGES_REQUIRED`、无 P0；确认 P1-5/P1-7 已关闭，指出 POST 首次 authority、Organization/Brand 修订上下文、保存时 misfire/fold 默认、跨 Campaign child owner、412/422 恢复、platform-content/date-time/OpenAPI graph 与双语成熟度仍需核对。
+- 第三轮源码包：Head `bc632fc5b0158840aff49e0b086ab2a613eb67a9`，181 files，`892,468` bytes，SHA-256 `7d6392ad4df8f8443d9d55aa3e667bd21902ba7f6837e74ef71db57fd19ef422`，secret/path scan `PASS`。Pro 独立确认 bytes/files/SHA/Head、CRC、无路径穿越/绝对路径/符号链接；结论 `CHANGES_REQUIRED`、无 P0，确认 P1-1/P1-2/P1-3/P1-5/P1-7/P1-8 已关闭，残余 P1-4 是 conflict-refresh 失败后的恢复与最新草稿合并，P1-6 是 `Date.parse` 会规范化不存在的日历日期。
 - Pro 是不受信任外部 reviewer，只能检查该公开安全 ZIP，无法访问本地仓、Docker、浏览器或私有真源；其输出没有被直接视为正确。
 - Pro 首轮结论为 `CHANGES_REQUIRED`、无 P0，共八项 P1：服务端治理权可被 aggregate body 绕过；schedule 合同/同次保存假阳性/伪造 occurrence；JSONB 与 projection 双真源；并发幂等与 Web 重试竞态；时间窗口 readiness 不在重开时复算；nested/exact schema 不够严格；preview 上下文、字段与视觉证据不足；CI/证据路径与成熟度清单过宽。另有一项 P2：依赖审计仍含 3 个 high。
-- Codex 修正：锁定 Evidence/CapabilitySnapshot/ActivationUnit/AccountMandate 与 approved Claim authority，Claim/ArtifactRevision 由服务端增版并绑定完整 context；strict body/schema、全局 ID 唯一、exact four capability/account/unit/artifact、exact six Mission roles、duplicate RRULE/伪造 occurrence 拒绝；transaction advisory lock + idempotency expiry/replay；repository 更新 graph projections 并在重开校验 persisted digest/ETag、实时复算时间 readiness；schedule 替换保留历史并失效未来 occurrence；Web 复用失败请求 key、防并发保存、显示冲突元数据、全部 thread、真实 account/identity/capability/mode/constraints，补齐 LinkedIn author kind、小红书 cover label 与四个平台 Storybook stories。
+- Codex 修正：锁定 Evidence/CapabilitySnapshot/ActivationUnit/AccountMandate 与 approved Claim authority，并对首次 POST 的 authority template、全部非草稿 Claim、Organization/Brand governed context 失败关闭；Claim/ArtifactRevision 由服务端增版；calendar-aware RFC 3339/discriminated schema、全局 ID 唯一、exact four capability/account/unit/artifact、exact six Mission roles、duplicate RRULE/伪造 occurrence 拒绝；transaction advisory lock + idempotency expiry/replay；repository 更新 graph projections 并在重开校验 persisted digest/ETag、实时复算 readiness；Schedule PUT 以保存时 clock 重派生、替换保留历史；Web fold 无默认、显式 misfire、未知结果复用 key、412 三方 rebase（refresh 失败只重试 GET，应用时以最新 local draft 重算）、422 原位修正，并补齐四平台上下文/字段/Storybook。
 - CI/证据修正：工作流改用 SDD-001 路径并执行 PostgreSQL/API integration；secret scan 生成结构化 evidence；run manifest 在缺失或 FAIL 的 API/Compose/AgentTeams/browser/license/secret/source-package/SBOM 时拒绝写入 `ENGINEERING_VERIFIED`。
-- 上述修正由本地 65 个单元/合同测试、真实 PostgreSQL/API integration、Compose failure/recovery、AgentTeams controlled image smoke 和真实浏览器 desktop/390px 独立复验；Pro 没有执行最终代码，也没有被授予任何 Secret 或外部动作权限。
+- 第三轮后的 P1-4 已由 `d4973d6` 与 `7e6c4ed` 收口：412 后当前版本 GET 失败保持 blocked/local draft，Retry 只重试 GET；应用 merge 时根据最新 local draft 重算。P1-6 由共享闰年/月天数校验收口，Memory 与真实 PostgreSQL API 对 `2026-02-31` 稳定返回 422。第四轮只对这两个修正做针对性终审。
+- 上述修正由本地 88 个单元/合同测试、真实 PostgreSQL/API integration、Compose failure/recovery、AgentTeams controlled image smoke 和真实浏览器 desktop/390px/412-rebase 独立复验；Pro 没有访问本地 Docker/浏览器，也没有被授予任何 Secret 或外部动作权限。
 
 ## 八、失败、限制与非声明
 
-- **已发现并修复：**M0 的 390px document overflow（曾为 `scrollWidth=872`）通过 grid `minmax(0,1fr)` 与移动布局约束修复；最终 document/body 为 `390/390`。Compose 重启 PostgreSQL 时，Pool idle client error 曾令 API 退出；增加 pool error handling 后 failure/recovery 门禁通过。Pro 指出的八项 P1 均已独立收敛并补正反测试/证据。
+- **已发现并修复：**M0 的 390px document overflow（曾为 `scrollWidth=872`）通过 grid `minmax(0,1fr)` 与移动布局约束修复；最终 document/body 为 `390/390`。Compose 重启 PostgreSQL 时，Pool idle client error 曾令 API 退出；增加 pool error handling 后 failure/recovery 门禁通过。外部复核后继续修复首次创建 authority、全部 governed Claim、Organization/Brand 修订上下文、跨 Campaign child ID、保存时排程重派生、无默认 fold、412/422 恢复、最新草稿 rebase、platform discriminator、calendar-aware RFC 3339 与严格 OpenAPI graph。
 - **Known limitations：**M1 的 tenant boundary 是显式 organization header + row/FK validation，不是生产 authentication/authorization/RLS；只适用于本地 engineering fixture。
 - **Known limitations：**RRULE 只支持有界 DAILY/WEEKLY 子集；时区解析依赖 Node `v24.16.0` / ICU `78.3` / tzdata `2026b`，跨 runtime conformance 与未来 tzdata 更新需重新验证。
 - **Known limitations：**390px 平台 tab rail 允许自己的 bounded horizontal scroll；验收通过的是 document 无严重横向溢出，不是所有内容绝不横向滚动。
@@ -160,7 +163,7 @@ GitHub Actions 未 Push，故只声明工作流与本地等价门禁，远端 CI
 - **本地测试数据 Rollback：**仅在确认不要保留 synthetic fixture 时，对该 SDD project 执行 `down --volumes --remove-orphans`；不得全局 Docker prune。
 - **Migration Rollback：**`000004` → `000003` → `000002` 仅允许对本项目 local test DB 逆序执行；它会删除 M1 Schedule/Campaign/graph 数据，必须先由 Owner 明确确认，无任何外部/生产 DB 授权。
 - **并发/未知结果恢复：**网络中断后使用原 Idempotency-Key replay，或按已知 Campaign ID GET 重开；不得盲目换 key 重复 create/save。
-- **冲突恢复：**412 时保留本地编辑，重新 GET 当前 version/digest，对比后以新 Idempotency-Key/If-Match 明确重试；服务端不会覆盖新版本。
+- **冲突恢复：**412 时原 local draft 不被 GET 覆盖；Web 对 base/local/server 做三方 rebase，显式按钮保留 local conflict choice 与非冲突 server 变更，再以新 Idempotency-Key/If-Match 保存；真实浏览器演练验证 server CTA 与 local X 文本同时保留。
 - **Schedule 恢复：**内容/account/time/rule 变更会保留旧 history 并将未来 occurrence 标记 `INVALIDATED`；M1 不存在需要 reconciliation 的 Connector 外部副作用。
 
 ## 十、执行任务状态交接

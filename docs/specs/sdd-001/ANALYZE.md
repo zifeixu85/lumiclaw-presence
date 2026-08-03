@@ -37,14 +37,16 @@ No unresolved product direction, credential, permission, dependency, or testabil
 | Check | Result | Evidence / convergence decision |
 |---|---|---|
 | Dependency order | PASS | M1-01 through M1-06 were implemented and locally committed in order; M2 remains spec-only. |
-| Server authority | PASS | Client aggregate writes use strict schemas; Evidence, Capability, Activation scope, approved Claim fields, artifact revisions, and schedule authority are validated or derived server-side. |
+| Server authority | PASS | POST authority is compared with the server-issued M1 template; every non-DRAFT Claim is validated; Evidence, Capability, Activation scope, artifact metadata, Mission, and schedule state fail closed. PUT versions Claim/Artifact context and re-derives Schedule proposals from the save clock. |
+| Child identity authority | PASS | Campaign-scoped IDs are unique across child types, tenant-bound to one Campaign, advisory-locked before PostgreSQL writes, and covered in Memory/PostgreSQL negative tests. |
 | Persistence integrity | PASS | PostgreSQL reopen verifies stored document/digest/ETag consistency and re-evaluates time-bound readiness; corrupt state fails closed. |
 | Concurrency and history | PASS | Transaction advisory locking serializes idempotency keys; stale ETags fail; artifact/schedule history is append-only and replaced occurrences are invalidated. |
-| Schedule truth | PASS | UTC candidates are deterministically recomputed from local time/IANA zone/fold; forged fields and duplicate RRULE keys fail; no due execution path exists. |
+| Schedule truth | PASS | UTC candidates are deterministically recomputed from local time/IANA zone/fold; the Web has no fold default; preview-to-save misfire transitions are recomputed; forged fields and duplicate RRULE keys fail; no due execution path exists. |
 | Product surface | PASS | Four distinct editors/previews expose persisted identity/account/capability/mode/constraints; approved Claims are visibly immutable; zh-CN/en share one Campaign. |
+| Conflict recovery | PASS | Real browser 412 rehearsal proves the local draft survives GET, explicit three-way rebase preserves non-conflicting server changes, and the merged document saves with the latest ETag; 422 remains editable. |
 | Recovery | PASS | Fresh/broken migration, database outage, restart/down-up, Campaign/blob persistence, and exact project cleanup pass; PostgreSQL idle-client disconnect no longer terminates API. |
 | Responsive/browser | PASS | Real local Web/API/PostgreSQL flow reopens v4; CDP `390 × 844` measurement reports document/body `390` with only the navigation rail locally scrollable; console warning/error count is zero. |
-| External review | PASS WITH CORRECTIONS | ChatGPT Pro returned `CHANGES_REQUIRED`; every P1 was independently reproduced or rejected with evidence, remediated, and re-run locally. Pro is not an acceptance authority. |
+| External review | PASS WITH CORRECTIONS | ChatGPT Pro's third reviewed Head returned `CHANGES_REQUIRED`, no P0: six P1 were closed and two residual P1 identified. The conflict-refresh/latest-draft and calendar-invalid RFC 3339 paths were then remediated and re-run locally; a public-safe targeted re-review remains the final external-review step. Pro is not an acceptance authority. |
 | Claims and status | PASS | Evidence maturity is `ENGINEERING_VERIFIED`; Owner UAT/Coordinator acceptance, production, external actions, customers, growth, leads, and revenue remain unclaimed. Both progress registers have zero diff. |
 
 ## Convergence decision

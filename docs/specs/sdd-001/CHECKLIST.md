@@ -14,16 +14,19 @@
 - [x] Organization scope appears on requests, rows, FKs, fixtures, and negative tests.
 - [x] Canonical digest inclusion/exclusion and mutation behavior are specified.
 - [x] Claim expiry/revocation/Product/Market/Evidence errors are specified.
+- [x] Initial create authority, unreferenced governed Claim validation, platform/content discrimination, and RFC 3339 rejection are specified.
 - [x] PostgreSQL history, idempotency, ETag/version conflict, OpenAPI, and shared-state client paths are specified.
 - [x] No page/localStorage/in-memory success path exists.
 
 ## Product, i18n, platform, and time
 
 - [x] Empty/loading/blocked/needs-owner/saved/conflict/recovery/non-live states are defined.
+- [x] 412 preserves the local draft through explicit three-way rebase; 422 remains editable.
 - [x] Chinese default, English deep links, stable codes, and four independent locale/language/market/time fields are preserved.
 - [x] Four editable models/previews have distinct required behavior.
 - [x] Constraints are versioned server state and preview does not imply capability.
 - [x] ONCE/RRULE, IANA, UTC, gap/fold, misfire, and edit invalidation semantics are explicit.
+- [x] Fold has no implicit UI default; preview-to-save misfire is recomputed by the server clock.
 - [x] 390px document overflow is a binary acceptance criterion.
 
 ## Security, dependency, evidence, and claims
@@ -44,6 +47,7 @@ No `[NEEDS CLARIFICATION]` marker remains. The requirements, plan, tests, failur
 - [x] All 16 acceptance criteria map to concrete automated, PostgreSQL/Compose, browser, or documented Owner evidence.
 - [x] ChatGPT Pro findings were treated as untrusted input, independently checked, corrected where valid, and reverified.
 - [x] PostgreSQL/API idempotency, ETag, tenant isolation, invalid scope, digest reopen, temporal readiness, schedule DST/misfire/invalidation, and recovery have positive and negative coverage.
+- [x] Cross-Campaign child ID collisions are transaction-serialized and rejected; schedule proposals are server-rederived and content-plus-schedule/forged-occurrence mutations fail closed.
 - [x] Four platform stories and real-browser previews expose persisted context and constraints; `390 × 844` has no document-level overflow.
 - [x] Secret/license/SBOM/source-package gates are fail-closed and machine evidence is content-validated before maturity is written.
 - [x] Chinese acceptance report includes exact commands, failures/fixes, limitations, rollback, Owner UAT, claims, and status proposal.

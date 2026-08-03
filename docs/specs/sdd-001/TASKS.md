@@ -11,6 +11,7 @@
 
 - Add CampaignBrief, GoalProfile, Claim/Evidence, ActivationPlan/Unit, MissionContract, ArtifactRevision, CapabilitySnapshot, platform artifact, and aggregate schemas.
 - Add canonical serialization/digest and Claim/artifact constraint validation.
+- Validate server-issued authority on create, every governed Claim even when unreferenced, and Organization/Brand as ArtifactRevision context.
 - Add four-platform synthetic fixture and invalid scope/expiry/revocation/Product/Market/tamper cases.
 - Add `@lumiclaw/mission-compiler` non-live six-role adapter-input smoke.
 - Checkpoint: same content/key permutation has same digest; every governed mutation changes it; compiler imports exact source digest.
@@ -19,6 +20,7 @@
 
 - Add snapshot/artifact/capability/idempotency tables and typed repository.
 - Add create/list/get/update/mission-contract routes, organization scope, idempotency, strong ETag, version conflict, safe errors, and OpenAPI 3.1.
+- Serialize campaign-scoped child ID ownership and reject same-tenant cross-Campaign/cross-type reuse before writes.
 - Unit contract tests use an explicit repository double; PostgreSQL integration uses the real migration/repository.
 - Checkpoint: create/save/reopen/restart, replay/conflict/cross-tenant/rollback tests pass.
 
@@ -26,6 +28,7 @@
 
 - Add same-origin Fastify proxy and client Campaign state controller.
 - Add creation/reopen selector, readiness graph/gaps, route-specific M1 panels, stable localized states, conflict/recovery actions.
+- Add safe 412 base/local/server rebase, editable 422 validation state, and unknown-result idempotency replay behavior.
 - Fix shared shell/nav/grid/document overflow for 390px and keep desktop behavior.
 - Add bilingual message parity, reducer/view-model tests, and state Storybook stories.
 - Checkpoint: local browser real API flow passes in zh-CN/en, desktop/390px, without console error.
@@ -41,6 +44,7 @@
 
 - Add bounded RRULE parser/canonicalizer, IANA resolver, gap/fold candidates, misfire, schedule/version/occurrence schemas and tables.
 - Add schedule form and local/zone/UTC preview; require explicit fold choice.
+- Treat preview rows as proposals: reject forged occurrence data and content-plus-schedule PUT, then server-rederive every persisted Schedule/Occurrence derived field.
 - Repository update retains replaced schedule history, invalidates superseded future previews, and leaves future occurrences `PENDING` without execution authority.
 - Tests first: normal zone, invalid zone/rule, New York gap/fold, earlier/later, misfire, uniqueness, edit invalidation, no execution/grant.
 - Checkpoint: API/UI/DB schedule tests pass and no mission-worker scheduler exists.

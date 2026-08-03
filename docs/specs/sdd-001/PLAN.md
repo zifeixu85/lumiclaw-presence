@@ -5,6 +5,7 @@
 - Add repository-owned `@lumiclaw/domain` for schemas, validation, canonical digest, IDs, fixtures, platform constraints, and time contracts.
 - Extend `@lumiclaw/db` with the M1 migration, typed Kysely database, and transaction-backed Campaign repository.
 - Extend Fastify with `/api/v1` Campaign resources and a static schema-derived OpenAPI document. The server owns validation, idempotency, ETag, and tenant checks.
+- POST compares authority-bearing fields with the server-issued public-safe M1 template; Claim approval/version, Evidence, Capability, Artifact metadata, Mission, graph edges, and initial Schedule state cannot be self-issued by a client.
 - Add a repository-owned `@lumiclaw/mission-compiler` which converts one persisted aggregate into a non-live AgentTeams adapter input.
 - Keep Next as UI only. A thin same-origin route proxy forwards requests to Fastify; client state always reloads authoritative responses.
 - Extend the five-screen shell with one M1 Campaign workspace, shared state vocabulary, four distinct preview adapters, and schedule editor.
@@ -15,7 +16,8 @@
 - M1 table names are explicit and organization-scoped. Composite FKs prevent cross-organization graph edges.
 - Campaign head is mutable only for current version/digest pointers. `campaign_snapshots`, `artifact_revisions`, and schedule versions preserve history.
 - Idempotency is transactionally stored with the mutation result.
-- Schedule preview resolves the wall time before Campaign PUT and creates only non-executing occurrence states; future rows remain `PENDING`, while past rows follow `SKIP | HOLD_FOR_OWNER`.
+- Schedule preview resolves the wall time before Campaign PUT and creates only a non-executing proposal. PUT validates that proposal, rejects a simultaneous content edit, then regenerates authoritative IDs/timestamps/states/scope/revision bindings from the server clock; future rows remain `PENDING`, while past rows follow `SKIP | HOLD_FOR_OWNER`.
+- Campaign-scoped child IDs are tenant-bound to one Campaign; PostgreSQL advisory-locks the sorted child ID set and rejects cross-Campaign or cross-child-type reuse before projection writes.
 - No secret/ref/token/private payload column is introduced.
 
 ## API and error design
@@ -31,6 +33,7 @@
 - Client begins in loading, then renders empty, saved, blocked/needs-owner, conflict, or recovery from the API result.
 - Creation uses synthetic defaults with editable organization/brand/product/objective/CTA labels; no actual account identifiers are requested.
 - Setup shows graph/Claim gaps; Mission shows rail/editor/preview; Review says M2 governance is not implemented; Learn says no response exists.
+- A 412 stores server head separately from the local draft and requires explicit three-way rebase; deterministic 422 leaves the editor available for correction, while unknown transport outcomes alone replay the same idempotency key.
 - The navigation rail wraps into a width-contained horizontal list. Every grid uses `minmax(0,1fr)`, controls use `min-width:0`, and long digests/codes wrap.
 - Storybook covers state matrix and each platform. Browser evidence covers desktop and 390px.
 
