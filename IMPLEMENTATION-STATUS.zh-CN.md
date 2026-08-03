@@ -4,7 +4,7 @@
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
 > **快照日期：** 2026-08-03
-> **当前阶段：** M0 已验收；M1 — Campaign walking skeleton 待调度
+> **当前阶段：** M1 — Campaign walking skeleton
 > **当前实现真相：** M0 本地交付基础已经实现并验收，包括可复现 Monorepo、Docker Compose/PostgreSQL/BlobStore、默认中文的双语 Web Shell、隔离 AgentTeams Adapter Smoke 与质量门禁。M1 业务领域、真实 AgentTeams Mission、Provider、Connector 和外部动作仍未实现。
 
 ## 进度状态合同
@@ -28,16 +28,16 @@
 | 已验收模块 | `7 / 39`（`17.9%`） |
 | 证据已就绪 | `0 / 39` |
 | 被阻塞 | `0 / 39` |
-| 当前实现 SDD | 无；`SDD-000 Delivery Foundation` 已在本地验收 |
+| 当前实现 SDD | `SDD-001 Campaign Walking Skeleton` — Coordinator 正在分配 |
 | 最早 Owner 阻塞项 | 下一个本地 M1 切片无；Provider Credential 继续延后到各自 SDD |
-| 下一个可执行模块 | `M1-01` Organization、Identity、Brand、Product、Market 与 Account Graph |
+| 下一个可执行模块 | `M1-01` Organization、Identity、Brand、Product、Market 与 Account Graph — `IN_PROGRESS` |
 
 ## 里程碑总进度
 
 | 里程碑 | 状态 | 已验收 | 当前模块分布 | Exit Evidence |
 |---|---|---:|---|---|
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 个已验收 | [SDD-000 验收报告](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)，以及 Compose、Migration、CI 映射、隔离 AgentTeams Smoke、设计与 i18n 证据 |
-| M1 — Campaign walking skeleton | `NOT_STARTED` | `0 / 6` | 6 个未开始 | 持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State |
+| M1 — Campaign walking skeleton | `IN_PROGRESS` | `0 / 6` | 1 个进行中、5 个未开始 | 持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State |
 | M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 个未开始 | 六成员 AgentTeams、DeepSeek Gateway、Revision/Audit、故障拒绝与 Trace |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 个未开始 | Interaction → Outcome → Scoped Learning → 下一 Mission，隔离 SignalProvider PoC |
@@ -62,7 +62,7 @@
 
 | ID | 模块 | 状态 | 依赖 | 必须提交的证据 / 验收 |
 |---|---|---|---|---|
-| M1-01 | Organization、Identity、Brand、Product、Market 与 Account Graph | `NOT_STARTED` | M0 验收 | Schema、Migration、租户约束与负向 Fixture |
+| M1-01 | Organization、Identity、Brand、Product、Market 与 Account Graph | `IN_PROGRESS` | M0 验收；SDD-001 | Schema、Migration、租户约束与负向 Fixture |
 | M1-02 | Campaign、Activation、Claim 与 Evidence 合同 | `NOT_STARTED` | M1-01 | 版本化 JSON Schema、Canonical Digest 与错误 Scope 拒绝 |
 | M1-03 | Campaign API、持久化与重新打开 | `NOT_STARTED` | M1-01、M1-02 | REST/OpenAPI、幂等、ETag/版本冲突与数据库集成测试 |
 | M1-04 | 五主屏 Web Shell 与 Readiness Journey | `NOT_STARTED` | M0-05、M1-03 | 中英文 Empty/Loading/Blocked/Owner/Recovery 状态 |

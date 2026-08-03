@@ -4,7 +4,7 @@
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
 > **Snapshot:** 2026-08-03
-> **Current phase:** M0 accepted; M1 — Campaign walking skeleton ready for dispatch
+> **Current phase:** M1 — Campaign walking skeleton
 > **Current implementation truth:** The M0 local delivery foundation is implemented and accepted: reproducible monorepo, Docker Compose/PostgreSQL/BlobStore, Chinese-default bilingual Web shell, isolated AgentTeams adapter smoke, and quality gates. M1 business domains, live AgentTeams missions, providers, connectors and external actions remain unimplemented.
 
 ## Progress contract
@@ -28,16 +28,16 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | Accepted modules | `7 / 39` (`17.9%`) |
 | Evidence ready | `0 / 39` |
 | Blocked | `0 / 39` |
-| Active implementation SDD | None; `SDD-000 Delivery Foundation` accepted locally |
+| Active implementation SDD | `SDD-001 Campaign Walking Skeleton` — Coordinator allocation in progress |
 | Earliest owner blocker | None for the next local M1 slice; provider credentials remain deferred to their SDDs |
-| Next executable module | `M1-01` Organization, identity, brand, product, market and account graph |
+| Next executable module | `M1-01` Organization, identity, brand, product, market and account graph — `IN_PROGRESS` |
 
 ## Milestone progress
 
 | Milestone | State | Accepted | Current module mix | Exit evidence |
 |---|---|---:|---|---|
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 accepted | [SDD-000 acceptance](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) plus fresh Compose, migrations, CI mapping, isolated AgentTeams smoke and design/i18n evidence |
-| M1 — Campaign walking skeleton | `NOT_STARTED` | `0 / 6` | 6 not started | Persisted campaign, four editable previews, schedule editor, shared control-plane state |
+| M1 — Campaign walking skeleton | `IN_PROGRESS` | `0 / 6` | 1 in progress, 5 not started | Persisted campaign, four editable previews, schedule editor, shared control-plane state |
 | M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 not started | Six-member AgentTeams run, DeepSeek gateway, revision/audit, fault denial, trace |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 not started | Exact grants, persistent scheduler, Bluesky Direct, honest Handoffs, receipts/reconciliation |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 not started | Interaction → outcome → scoped learning → next mission, isolated SignalProvider PoC |
@@ -62,7 +62,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
-| M1-01 | Organization, identity, brand, product, market and account graph | `NOT_STARTED` | M0 accepted | Schema, migrations, tenant-aware constraints and negative fixtures |
+| M1-01 | Organization, identity, brand, product, market and account graph | `IN_PROGRESS` | M0 accepted; SDD-001 | Schema, migrations, tenant-aware constraints and negative fixtures |
 | M1-02 | Campaign, activation, claim and evidence contracts | `NOT_STARTED` | M1-01 | Versioned JSON Schemas, canonical digests and invalid-scope rejection |
 | M1-03 | Campaign API, persistence and reopen flow | `NOT_STARTED` | M1-01, M1-02 | REST/OpenAPI, idempotency, ETag/version conflict and database integration tests |
 | M1-04 | Five-screen Web shell and readiness journey | `NOT_STARTED` | M0-05, M1-03 | Empty/loading/blocked/owner/recovery states in English and Chinese |
