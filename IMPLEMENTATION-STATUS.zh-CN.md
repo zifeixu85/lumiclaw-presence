@@ -28,7 +28,7 @@
 | 已验收模块 | `13 / 39`（`33.3%`） |
 | 证据已就绪 | `0 / 39` |
 | 被阻塞 | `0 / 39` |
-| 当前实现 SDD | `SDD-002 Governed SHADOW Campaign` — 已选择并等待独立 Executor 派发 |
+| 当前实现 SDD | `SDD-002 Governed SHADOW Campaign` — Executor 任务 `019fc941-237b-77c3-8c56-3cc42b1bd6c6` 已启动 |
 | 最早 Owner 阻塞项 | 本地 M2 SHADOW 工作无；Provider Credential 继续延后到各自 SDD |
 | 下一个可执行模块 | `M2-01` AgentTeams Runtime Adapter 与 Shared Mission State — `IN_PROGRESS` |
 

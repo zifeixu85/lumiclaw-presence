@@ -28,7 +28,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | Accepted modules | `13 / 39` (`33.3%`) |
 | Evidence ready | `0 / 39` |
 | Blocked | `0 / 39` |
-| Active implementation SDD | `SDD-002 Governed SHADOW Campaign` — selected for independent Executor dispatch |
+| Active implementation SDD | `SDD-002 Governed SHADOW Campaign` — Executor task `019fc941-237b-77c3-8c56-3cc42b1bd6c6` active |
 | Earliest owner blocker | None for local M2 SHADOW work; provider credentials remain deferred to their SDDs |
 | Next executable module | `M2-01` AgentTeams Runtime Adapter and shared mission state — `IN_PROGRESS` |
 
