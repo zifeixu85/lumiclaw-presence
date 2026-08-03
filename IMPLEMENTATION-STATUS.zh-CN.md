@@ -28,7 +28,7 @@
 | 已验收模块 | `7 / 39`（`17.9%`） |
 | 证据已就绪 | `0 / 39` |
 | 被阻塞 | `0 / 39` |
-| 当前实现 SDD | `SDD-001 Campaign Walking Skeleton` — Coordinator 正在分配 |
+| 当前实现 SDD | `SDD-001 Campaign Walking Skeleton` — Executor 任务 `019fc6d8-2c5a-76d3-b3ad-ddb96b56f62e` 已启动 |
 | 最早 Owner 阻塞项 | 下一个本地 M1 切片无；Provider Credential 继续延后到各自 SDD |
 | 下一个可执行模块 | `M1-01` Organization、Identity、Brand、Product、Market 与 Account Graph — `IN_PROGRESS` |
 

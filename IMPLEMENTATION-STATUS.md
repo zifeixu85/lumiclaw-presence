@@ -28,7 +28,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | Accepted modules | `7 / 39` (`17.9%`) |
 | Evidence ready | `0 / 39` |
 | Blocked | `0 / 39` |
-| Active implementation SDD | `SDD-001 Campaign Walking Skeleton` — Coordinator allocation in progress |
+| Active implementation SDD | `SDD-001 Campaign Walking Skeleton` — Executor task `019fc6d8-2c5a-76d3-b3ad-ddb96b56f62e` active |
 | Earliest owner blocker | None for the next local M1 slice; provider credentials remain deferred to their SDDs |
 | Next executable module | `M1-01` Organization, identity, brand, product, market and account graph — `IN_PROGRESS` |
 
