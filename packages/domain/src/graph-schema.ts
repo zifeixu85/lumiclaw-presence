@@ -1,4 +1,5 @@
 import {Ajv, type ErrorObject} from 'ajv';
+import {isValidRfc3339DateTime} from './rfc3339.js';
 import type {OrganizationGraph, ValidationIssue} from './types.js';
 
 const id = {type: 'string', pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'} as const;
@@ -56,8 +57,7 @@ export const organizationGraphSchema = {
   }
 } as const;
 
-const rfc3339DateTime = /^\d{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])T(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d+)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/u;
-const ajv = new Ajv({allErrors: true, strict: true, formats: {'date-time': (value: string) => rfc3339DateTime.test(value) && Number.isFinite(Date.parse(value))}});
+const ajv = new Ajv({allErrors: true, strict: true, formats: {'date-time': isValidRfc3339DateTime}});
 const validate = ajv.compile<OrganizationGraph>(organizationGraphSchema);
 
 export function validateGraphShape(value: unknown): {valid: true; value: OrganizationGraph} | {valid: false; issues: ValidationIssue[]} {

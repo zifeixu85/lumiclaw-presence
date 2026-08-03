@@ -42,4 +42,20 @@ describe('four-platform native-like preview contract', () => {
     expect(rebased.document.scheduleOccurrences).toEqual(server.scheduleOccurrences);
     expect(rebased.conflictPaths).toContain('/publishingSchedules/stale-preview');
   });
+
+  it('recomputes a conflict merge from the latest local draft instead of applying a cached result', () => {
+    const base = createDemoCampaignDocument();
+    const server = structuredClone(base);
+    server.brief.callToAction = 'Concurrent server call to action';
+    const localAtRefresh = structuredClone(base);
+    localAtRefresh.brief.objective = 'Local objective at refresh';
+    const cached = rebaseCampaignDraft(base, localAtRefresh, server);
+    const latestLocal = structuredClone(localAtRefresh);
+    const x = latestLocal.artifactRevisions.find((item) => item.platform === 'X')!;
+    if (x.content.kind === 'X') x.content.posts[0] = 'Edit made after the conflict refresh.';
+    const recomputed = rebaseCampaignDraft(base, latestLocal, server);
+    expect(JSON.stringify(cached.document)).not.toContain('Edit made after the conflict refresh.');
+    expect(JSON.stringify(recomputed.document)).toContain('Edit made after the conflict refresh.');
+    expect(recomputed.document.brief.callToAction).toBe('Concurrent server call to action');
+  });
 });

@@ -49,6 +49,14 @@ describe('organization graph v1', () => {
     if (!result.ok) expect(result.issues.map((item) => item.code)).toContain('SCHEMA_INVALID');
   });
 
+  it('rejects an impossible mandate calendar date at the shared schema boundary', () => {
+    const graph = createDemoOrganizationGraph();
+    graph.accountMandates[0]!.validFrom = '2026-02-31T00:00:00Z';
+    const result = validateOrganizationGraph(graph, now);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.issues.map((item) => item.code)).toContain('SCHEMA_INVALID');
+  });
+
   it('creates RFC 9562 version/variant-shaped UUIDv7 values deterministically with injected entropy', () => {
     const value = createUuidV7(1_788_000_000_000, Buffer.from('00112233445566778899', 'hex'));
     expect(value).toBe('01a04d1a-d800-7011-a233-445566778899');

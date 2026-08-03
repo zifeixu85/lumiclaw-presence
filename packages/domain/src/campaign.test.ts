@@ -2,6 +2,7 @@ import {describe, expect, it} from 'vitest';
 import {canonicalize, sha256Digest} from './canonical.js';
 import {createDemoCampaignDocument} from './campaign-fixture.js';
 import {digestCampaign, validateCampaignDocument} from './campaign.js';
+import {isValidRfc3339DateTime} from './rfc3339.js';
 
 const now = new Date('2026-08-03T12:00:00.000Z');
 
@@ -19,6 +20,30 @@ describe('campaign contracts v1', () => {
     const document = createDemoCampaignDocument();
     expect(validateCampaignDocument(document, now)).toEqual({ok: true});
     expect(document.missionContract.sourceDigest).toBe(digestCampaign(document));
+  });
+
+  it('validates RFC 3339 calendar dates before using JavaScript timestamp normalization', () => {
+    expect(isValidRfc3339DateTime('2024-02-29T23:59:59.123+08:00')).toBe(true);
+    expect(isValidRfc3339DateTime('2025-02-29T00:00:00Z')).toBe(false);
+    expect(isValidRfc3339DateTime('2026-02-30T00:00:00Z')).toBe(false);
+    expect(isValidRfc3339DateTime('2026-02-31T00:00:00Z')).toBe(false);
+    expect(isValidRfc3339DateTime('2026-04-31T00:00:00Z')).toBe(false);
+  });
+
+  it.each([
+    ['brief', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.brief.targetWindowStart = '2026-02-31T00:00:00Z'; }],
+    ['Evidence', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.evidenceRefs[0]!.capturedAt = '2026-04-31T00:00:00Z'; }],
+    ['Claim', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.claims[0]!.effectiveUntil = '2026-02-31T00:00:00Z'; }],
+    ['Capability', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.capabilitySnapshots[0]!.capturedAt = '2025-02-29T00:00:00Z'; }],
+    ['Artifact', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.artifactRevisions[0]!.createdAt = '2026-04-31T00:00:00Z'; }],
+    ['Mandate', (document: ReturnType<typeof createDemoCampaignDocument>) => { document.graph.accountMandates[0]!.validFrom = '2026-02-30T00:00:00Z'; }]
+  ])('rejects an impossible calendar date in %s timestamps', (_field, mutate) => {
+    const document = createDemoCampaignDocument();
+    mutate(document);
+    document.missionContract.sourceDigest = digestCampaign(document);
+    const result = validateCampaignDocument(document, now);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.issues.map((item) => item.code)).toContain('SCHEMA_INVALID');
   });
 
   it.each([

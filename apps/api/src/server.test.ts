@@ -71,13 +71,14 @@ describe('M1 Campaign API contract', () => {
       (document: ReturnType<typeof createDemoCampaignDocument>) => { document.claims[1]!.status = 'APPROVED'; document.claims[1]!.version = 99; document.claims[1]!.evidenceRefIds = [document.evidenceRefs[0]!.id]; },
       (document: ReturnType<typeof createDemoCampaignDocument>) => { document.capabilitySnapshots[0]!.constraints.posts!.maxLength = 99_999; },
       (document: ReturnType<typeof createDemoCampaignDocument>) => { document.artifactRevisions[0]!.revision = 99; document.artifactRevisions[0]!.createdAt = '2026-08-03T01:00:00.000Z'; },
-      (document: ReturnType<typeof createDemoCampaignDocument>) => { document.evidenceRefs[0]!.capturedAt = 'not-a-date'; }
+      (document: ReturnType<typeof createDemoCampaignDocument>) => { document.evidenceRefs[0]!.capturedAt = 'not-a-date'; },
+      (document: ReturnType<typeof createDemoCampaignDocument>) => { document.brief.targetWindowStart = '2026-02-31T00:00:00Z'; }
     ];
     for (const [index, mutate] of cases.entries()) {
       const document = createDemoCampaignDocument(); mutate(document);
       const response = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers: {'x-lumiclaw-organization-id': document.organizationId, 'idempotency-key': `forged-create-${index}`}, payload: document});
       expect(response.statusCode).toBe(422);
-      expect(response.json().code).toBe(index === cases.length - 1 ? 'CAMPAIGN_VALIDATION_FAILED' : 'CAMPAIGN_AUTHORITY_FIELD_CHANGED');
+      expect(response.json().code).toBe(index >= cases.length - 2 ? 'CAMPAIGN_VALIDATION_FAILED' : 'CAMPAIGN_AUTHORITY_FIELD_CHANGED');
     }
   });
 

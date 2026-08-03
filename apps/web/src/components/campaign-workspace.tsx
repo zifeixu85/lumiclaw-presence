@@ -9,7 +9,7 @@ import {platformPreviewModel} from '@/lib/platform-preview-model';
 export type WorkspaceFixtureState = 'loading' | 'empty' | 'blocked' | 'needs-owner' | 'recovery';
 type Phase = WorkspaceFixtureState | 'ready' | 'saving' | 'saved';
 type ApiFailure = Error & {status?: number; code?: string; current?: {version: number; digest: string; etag: string}};
-type ConflictRecovery = {server: CampaignEnvelope; merged: CampaignDocument; conflictPaths: string[]};
+type ConflictRecovery = {server: CampaignEnvelope; conflictPaths: string[]};
 
 export const copy = {
   'zh-CN': {
@@ -62,7 +62,18 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
   }, [fixtureState]);
 
   useEffect(() => { const timeout = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timeout); }, [load]);
-  const update = useCallback((next: CampaignDocument) => { setDocument(next); setDirty(true); setPhase(next.claims.some((claim) => claim.status !== 'APPROVED') ? 'needs-owner' : 'ready'); }, []);
+  const update = useCallback((next: CampaignDocument) => {
+    setDocument(next); setDirty(true);
+    if (conflictRecovery !== undefined && envelope !== undefined) {
+      const rebased = rebaseCampaignDraft(envelope.document, next, conflictRecovery.server.document);
+      setConflictRecovery({server: conflictRecovery.server, conflictPaths: rebased.conflictPaths});
+      setErrorCode(`CAMPAIGN_VERSION_CONFLICT · v${conflictRecovery.server.version} · ${conflictRecovery.server.digest.slice(0, 12)}… · ${rebased.conflictPaths.length} conflict(s)`);
+      setPhase('blocked');
+      return;
+    }
+    if (conflictRefreshNeeded) { setPhase('blocked'); return; }
+    setPhase(next.claims.some((claim) => claim.status !== 'APPROVED') ? 'needs-owner' : 'ready');
+  }, [conflictRecovery, conflictRefreshNeeded, envelope]);
 
   const persist = useCallback(async () => {
     if (document === undefined || savingRef.current) return;
@@ -90,7 +101,7 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
         try {
           const server = await api<CampaignEnvelope>(`/api/v1/campaigns/${document.id}`, {headers: organizationHeaders(document.organizationId)});
           const rebased = rebaseCampaignDraft(envelope.document, document, server.document);
-          setConflictRecovery({server, merged: rebased.document, conflictPaths: rebased.conflictPaths});
+          setConflictRecovery({server, conflictPaths: rebased.conflictPaths});
           setConflictRefreshNeeded(false);
           setErrorCode(`${failure.code ?? 'CAMPAIGN_VERSION_CONFLICT'} · v${server.version} · ${server.digest.slice(0, 12)}… · ${rebased.conflictPaths.length} conflict(s)`);
           setPhase('blocked');
@@ -109,10 +120,13 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
 
   const recover = useCallback(() => {
     if (conflictRecovery !== undefined) {
+      if (envelope === undefined || document === undefined) return;
+      const rebased = rebaseCampaignDraft(envelope.document, document, conflictRecovery.server.document);
       setEnvelope(conflictRecovery.server);
-      setDocument(conflictRecovery.merged);
+      setDocument(rebased.document);
       setDirty(true);
       setConflictRecovery(undefined);
+      setConflictRefreshNeeded(false);
       setErrorCode(undefined);
       setPhase('ready');
     } else if (conflictRefreshNeeded && envelope !== undefined && document !== undefined) {
@@ -120,7 +134,7 @@ export function CampaignWorkspace({locale, routeId, fixtureState}: {locale: AppL
         try {
           const server = await api<CampaignEnvelope>(`/api/v1/campaigns/${document.id}`, {headers: organizationHeaders(document.organizationId)});
           const rebased = rebaseCampaignDraft(envelope.document, document, server.document);
-          setConflictRecovery({server, merged: rebased.document, conflictPaths: rebased.conflictPaths});
+          setConflictRecovery({server, conflictPaths: rebased.conflictPaths});
           setConflictRefreshNeeded(false);
           setErrorCode(`CAMPAIGN_VERSION_CONFLICT · v${server.version} · ${server.digest.slice(0, 12)}… · ${rebased.conflictPaths.length} conflict(s)`);
         } catch (refreshError) { setErrorCode((refreshError as ApiFailure).code ?? 'CONFLICT_REFRESH_FAILED'); }

@@ -47,6 +47,11 @@ try {
   const document = template.body.document;
   const organizationId = document.organizationId;
   const headers = {'content-type': 'application/json', 'x-lumiclaw-organization-id': organizationId, 'idempotency-key': 'integration-create-0001'};
+  const impossibleDate = structuredClone(document);
+  impossibleDate.brief.targetWindowStart = '2026-02-31T00:00:00Z';
+  const impossibleDateResponse = await request('/api/v1/campaigns', {method: 'POST', headers: {...headers, 'idempotency-key': 'integration-invalid-calendar-date'}, body: JSON.stringify(impossibleDate)}, 422);
+  if (impossibleDateResponse.body.code !== 'CAMPAIGN_VALIDATION_FAILED') throw new Error('Impossible RFC 3339 calendar date did not fail at the domain boundary.');
+  checks.impossibleCalendarDateRejected = true;
   const created = await request('/api/v1/campaigns', {method: 'POST', headers, body: JSON.stringify(document)}, 201);
   checks.created = {id: created.body.document.id, version: created.body.version, digest: created.body.digest};
   const replay = await request('/api/v1/campaigns', {method: 'POST', headers, body: JSON.stringify(document)}, 200);
