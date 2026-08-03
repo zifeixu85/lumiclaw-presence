@@ -1,0 +1,41 @@
+{
+  "verifiedAt": "2026-08-04",
+  "modelProviders": [
+    {
+      "id": "deepseek-official",
+      "classification": "EXTERNAL_GATEWAY",
+      "baseUrl": "https://api.deepseek.com",
+      "models": ["deepseek-v4-flash", "deepseek-v4-pro"],
+      "sources": [
+        "https://api-docs.deepseek.com/api/list-models",
+        "https://api-docs.deepseek.com/quick_start/pricing",
+        "https://api-docs.deepseek.com/quick_start/rate_limit",
+        "https://api-docs.deepseek.com/news/news260424/"
+      ],
+      "defaultMaturity": "NOT_RUN_NO_KEY",
+      "silentModelFallback": false
+    },
+    {
+      "id": "public-safe-mock",
+      "classification": "LOCAL_CONFORMANCE",
+      "models": ["mock-agentteams-conformance", "mock-shadow-structured-v1"],
+      "defaultMaturity": "MOCK_CONFORMANCE",
+      "realModelClaim": false
+    }
+  ],
+  "mediaProviders": [
+    {
+      "id": "public-safe-mock",
+      "classification": "LOCAL_CONFORMANCE",
+      "defaultMaturity": "MOCK_CONFORMANCE",
+      "automaticApproval": false
+    },
+    {
+      "id": "evolink",
+      "classification": "POC_GATED_OPTIONAL_CANARY",
+      "defaultMaturity": "NOT_RUN_NO_KEY",
+      "blockingLocalAcceptance": false,
+      "automaticApproval": false
+    }
+  ]
+}

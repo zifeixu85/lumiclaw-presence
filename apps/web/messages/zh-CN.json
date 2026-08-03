@@ -62,36 +62,36 @@
       "technicalBasis": "Organization、Identity、Brand、Product、Market、ChannelAccount、AccountMandate 与 Claim–Evidence 已具备租户约束。"
     },
     "mission": {
-      "eyebrow": "03 · 为不同平台准备内容",
-      "title": "一次准备，形成四个平台各自合适的表达。",
-      "summary": "同一条品牌信息会按照 X、Bluesky、LinkedIn 和小红书的表达习惯分别准备，同时保留编辑区和发布前预览。",
-      "status": "四个平台内容可编辑、预览和保存",
-      "basis": "内容来自合成演示种子；没有调用模型或平台，也不会批准或发布。",
-      "next": "修改任一平台内容，检查预览，然后保存新版本。",
+      "eyebrow": "03 · 六位专员协同制作",
+      "title": "让每项工作有责任人，也让每个结论有证据。",
+      "summary": "六位职责不同的专员分开完成事实核对、规划、四个平台的表达和独立复核；协调者只安排工作，不替其他人产出。",
+      "status": "所有进度、内容版本和复核记录来自同一个可靠数据源",
+      "basis": "当前只做安全演练；演示结果与真实协作证据会分别标注，绝不伪装成发布结果。",
+      "next": "从已保存的准确版本启动安全演练，观察六位专员和前后依赖。",
       "previewTitle": "这里将展示四个平台的内容版本",
       "previewItems": {
         "first": "每个平台准备的表达方式",
         "second": "可以由你修改的内容",
         "third": "发送或发布前的效果预览"
       },
-      "technicalStatus": "COMPOSER_PERSISTED / NO_AGENT_TURN / NO_PUBLISH",
-      "technicalBasis": "四平台 ArtifactRevision、CapabilitySnapshot 与六角色 MissionContract 可重开；真实 AgentTeams Mission 尚未运行。"
+      "technicalStatus": "AGENTTEAMS_V1_2_0 / SIX_MEMBERS / SHADOW_ONLY / NO_ACTION",
+      "technicalBasis": "Project/DAG/ACK/Submit、RoleContext、SkillLock、digest/schema、timeout/recovery 与 PostgreSQL 状态均有可重复工程验证。"
     },
     "review": {
       "eyebrow": "04 · 由你做最后确认",
-      "title": "发布之前，你始终拥有最后决定权。",
-      "summary": "内容、事实依据和风险提示会放在一起，让你清楚知道将发布什么、为什么这样写。只有你确认后，未来才可能进入执行。",
-      "status": "存在需要你补全依据的草稿事实",
-      "basis": "页面显示准确版本和稳定摘要，但本阶段不产生批准决定或发布权限。",
-      "next": "核对事实状态、依据数量和当前版本；不要把演示内容视为已批准。",
+      "title": "先看为什么被拒绝，再确认修正后的准确版本。",
+      "summary": "独立复核者会把每一版内容与已确认的事实、依据、账号职责和平台限制逐一核对；修订后，旧复核自动失效。",
+      "status": "错误说法已被拒绝，四个平台修正版等待你的准确确认",
+      "basis": "你的确认明确不可执行：它不会连接账号、触发排程或产生任何对外动作。",
+      "next": "比较最多两版差异，确认引用依据和下一责任人，再记录对准确版本的确认。",
       "previewTitle": "正式审核时，你会一起看到",
       "previewItems": {
         "first": "准备发布的准确内容",
         "second": "支持这些表达的事实依据",
         "third": "风险提示和需要你确认的决定"
       },
-      "technicalStatus": "NEEDS_OWNER / NO_OWNER_DECISION / NO_ACTION_GRANT",
-      "technicalBasis": "精确 Revision 与摘要已实现；Producer/Auditor、OwnerDecision、ActionGrant 和 Receipt 属于后续受治理执行。"
+      "technicalStatus": "INDEPENDENT_AUDIT / EXACT_OWNER_REVIEW / NO_ACTION_GRANT",
+      "technicalBasis": "四平台不可变 Revision、FAIL→修正版→re-audit、Audit 失效与非执行 Owner Review 已进入同一控制面；M3 执行仍未实现。"
     },
     "learn": {
       "eyebrow": "05 · 从真实反馈中改进",

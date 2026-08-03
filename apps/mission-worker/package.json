@@ -10,6 +10,7 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@lumiclaw/governed-shadow": "*",
     "@lumiclaw/process-health": "*"
   }
 }

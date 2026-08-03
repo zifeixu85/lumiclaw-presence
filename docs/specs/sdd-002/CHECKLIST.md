@@ -11,5 +11,4 @@
 - [x] M3 Grant/scheduler/operator/connector/action and business/customer/production claims are excluded.
 - [x] Failure, recovery, rollback, dependency/license, secret, evidence, report, handoff, and Coordinator-owned progress are complete.
 
-No unresolved clarification remains. The SDD is `SPEC_READY` for a future dedicated M2 Executor after M1 acceptance.
-
+No unresolved clarification remains. M1 acceptance and Coordinator assignment satisfied the entry gate; the dedicated M2 Executor implemented the bounded slice without changing these requirements. Machine evidence supports an `EVIDENCE_READY` recommendation only; Owner UAT and Coordinator acceptance remain external gates.

@@ -2,7 +2,7 @@
 
 [English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE.zh-CN.md) | [README](README.md) | [Roadmap](ROADMAP.md)
 
-> **Status:** Mixed implementation truth. M0 and the local non-live M1 control plane are implemented on this branch; AgentTeams Missions, providers, governed approval/grants, connectors, external actions, and production deployment remain `PLANNED`.
+> **Status:** Mixed implementation truth. M0/M1 are accepted; this branch adds an SDD-002 M2 Executor evidence candidate with a real pinned six-member AgentTeams SHADOW Mission, provider ports/conformance, immutable revisions, independent audit and non-executable Owner Review. Credentialed provider Canaries, ActionGrants, connectors, external actions and production deployment remain `PLANNED`.
 
 ## Architecture goals
 
@@ -151,6 +151,8 @@ The Leader coordinates but does not create domain artifacts. Producers and the A
 
 AgentTeams may run through an external endpoint or an optional pinned Compose profile. Its internal Matrix, object storage, workers, and runtime state are not LumiClaw's product data plane.
 
+The SDD-002 candidate pins AgentTeams v1.2.0 source and image digests, creates exactly one Leader plus five Workers, and exercises real Project/DAG/Task/ACK/Submit operations. The adapter accepts only the Mission's exact role identity, input digest, SkillLock digest and output schema; conflicting or duplicate accepted output is quarantined. Accepted payloads are materialized only through the API into the same PostgreSQL Mission that references the persisted M1 Campaign. AgentTeams can be restarted and reconciled, but it never becomes a second business source of truth. A bounded upstream v1.2.0 gap—no public checked-result acceptance operation—is handled by its versioned public task store API after the official effective-result check; no AgentTeams Manager, Worker or Matrix source/image is modified.
+
 ## Provider ports
 
 Read-side intelligence and write-side actions use different interfaces so that a data provider cannot silently gain publishing authority.
@@ -164,6 +166,8 @@ Read-side intelligence and write-side actions use different interfaces so that a
 | `NativeHandoffAdapter` | LinkedIn, Xiaohongshu, and X fallback | User-driven native completion with URL or approved evidence reconciliation |
 
 The planned DeepSeek routes are `deepseek-v4-flash` for lower-risk transformation and summarization, and `deepseek-v4-pro` for planning, evidence stewardship, audit, and higher-risk revision. EvoLink is replaceable and never becomes the media asset source of truth. A `SignalProvider` can only produce a claim candidate; it cannot turn third-party data into an approved public claim by itself.
+
+In the SDD-002 candidate, the DeepSeek official gateway and media-provider boundary are implemented and conformance-tested. Model/config/cost/latency/error snapshots, structured-schema validation, bounded retry for 429/5xx, timeout, redaction and no-silent-model-switch behavior are persisted contracts. Media ingest is content-addressed and requires synthetic-rights/cost receipts while remaining unapproved. No credential was supplied, so DeepSeek and EvoLink live Canaries are `NOT_RUN_NO_KEY`; public-safe fixtures are `MOCK_CONFORMANCE`, not real-provider evidence.
 
 ## Four-platform editable composer
 

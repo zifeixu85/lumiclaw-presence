@@ -15,3 +15,9 @@
 ## Decision
 
 No unresolved requirement or architecture conflict remains. This Epic is `SPEC_READY` for a new Coordinator-assigned M2 Executor after M1 is accepted. This file is a planning artifact only and makes no M2 implementation claim.
+
+## Executor convergence analysis — 2026-08-04
+
+The Coordinator-assigned branch entered implementation after M1 acceptance. No Clarify change or M3 scope expansion was required. The implementation preserves one PostgreSQL control plane, uses the pinned AgentTeams v1.2.0 external runtime without modifying Manager/Worker/Matrix, and isolates the only bounded upstream gap to checked-result acceptance in the versioned public task store API.
+
+The real runtime proof uses six AgentTeams members and real Project/DAG/Task/ACK/Submit, while model output remains explicitly public-safe `MOCK_CONFORMANCE`; DeepSeek and EvoLink live Canaries are `NOT_RUN_NO_KEY`. Owner Review is non-executable and creates no ActionGrant. The final acceptance report and evidence manifest are the authoritative convergence record. Executor completion can recommend `M2-01` through `M2-06` as `EVIDENCE_READY`; only the Coordinator may update canonical progress, and Owner UAT is still required for `ACCEPTED`.

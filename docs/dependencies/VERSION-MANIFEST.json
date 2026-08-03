@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "sourceLockSha256": "de71bb2b075a766c80a703216d0bd1db71f98414031ea7cef0a327e0c8f482c5",
+  "sourceLockSha256": "91b7d4899b3bd92e0524dd7be21016380c7f8b7be14ccde74560f78480aa95e5",
   "runtime": {
     "node": "24.16.0",
     "npm": "11.13.0",
@@ -81,7 +81,7 @@
     },
     {
       "name": "next",
-      "version": "16.2.12",
+      "version": "16.3.0",
       "classification": "runtime"
     },
     {
@@ -143,10 +143,17 @@
     "postgres": "postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4",
     "agentTeams": [
       {
-        "component": "manager",
-        "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-manager",
+        "component": "embedded-controller",
+        "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-embedded",
         "tag": "v1.2.0",
-        "digest": "sha256:a429666fcc66fa01b81da3bc9ea5af98437697ef794f811ac7d358d4286c317e",
+        "digest": "sha256:c0de550018e51b36138a5990b1e8095eacc9d44cc7cbdb36a697785ba02c9be4",
+        "platformVerified": "linux/arm64"
+      },
+      {
+        "component": "manager-copaw",
+        "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-manager-copaw",
+        "tag": "v1.2.0",
+        "digest": "sha256:29429e47118f859191fa133f8d617434019c0f03221b405474be7e467bad87b4",
         "platformVerified": "linux/arm64"
       },
       {
@@ -158,8 +165,63 @@
       }
     ]
   },
+  "externalRuntime": {
+    "agentTeams": {
+      "requestedVersion": "v1.2.0",
+      "source": "https://github.com/agentscope-ai/AgentTeams",
+      "sourceTagCommit": "793db242257a569d911b1aa59c1cd554af78511f",
+      "sourceTarSha256": "a4a9d66fabc49e1d08246d9b8b65d2b67742b71b2b43d3dfc0d27e8861f0770c"
+    },
+    "providers": {
+      "verifiedAt": "2026-08-04",
+      "modelProviders": [
+        {
+          "id": "deepseek-official",
+          "classification": "EXTERNAL_GATEWAY",
+          "baseUrl": "https://api.deepseek.com",
+          "models": [
+            "deepseek-v4-flash",
+            "deepseek-v4-pro"
+          ],
+          "sources": [
+            "https://api-docs.deepseek.com/api/list-models",
+            "https://api-docs.deepseek.com/quick_start/pricing",
+            "https://api-docs.deepseek.com/quick_start/rate_limit",
+            "https://api-docs.deepseek.com/news/news260424/"
+          ],
+          "defaultMaturity": "NOT_RUN_NO_KEY",
+          "silentModelFallback": false
+        },
+        {
+          "id": "public-safe-mock",
+          "classification": "LOCAL_CONFORMANCE",
+          "models": [
+            "mock-agentteams-conformance",
+            "mock-shadow-structured-v1"
+          ],
+          "defaultMaturity": "MOCK_CONFORMANCE",
+          "realModelClaim": false
+        }
+      ],
+      "mediaProviders": [
+        {
+          "id": "public-safe-mock",
+          "classification": "LOCAL_CONFORMANCE",
+          "defaultMaturity": "MOCK_CONFORMANCE",
+          "automaticApproval": false
+        },
+        {
+          "id": "evolink",
+          "classification": "POC_GATED_OPTIONAL_CANARY",
+          "defaultMaturity": "NOT_RUN_NO_KEY",
+          "blockingLocalAcceptance": false,
+          "automaticApproval": false
+        }
+      ]
+    }
+  },
   "lockfile": {
     "format": 3,
-    "packages": 979
+    "packages": 983
   }
 }

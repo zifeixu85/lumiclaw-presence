@@ -1,7 +1,7 @@
 name: lumiclaw-presence
 
 x-app-security: &app-security
-  image: lumiclaw/presence:m1-campaign-skeleton
+  image: lumiclaw/presence:m2-governed-shadow
   build:
     context: .
     dockerfile: infra/compose/Dockerfile

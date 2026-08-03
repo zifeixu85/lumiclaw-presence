@@ -38,7 +38,7 @@ Each milestone is a user-visible vertical slice. Product UI, domain contracts, A
 
 Exit: the repository installs through the documented Compose path, migrations and tests pass, a labeled product shell opens, and the first vertical-slice spec is ready.
 
-### M1 — Campaign walking skeleton · CURRENT ACCEPTANCE SLICE
+### M1 — Campaign walking skeleton · DELIVERED
 
 - Create, save, and reopen a real CampaignBrief using PostgreSQL as the authoritative state.
 - Model identity, product, market, account mandate, claims, evidence, and four activation units.
@@ -49,7 +49,7 @@ Exit: the repository installs through the documented Compose path, migrations an
 
 Exit: a real LumiClaw campaign can reach readiness and reopen its four editable platform revisions without hidden demo-only state.
 
-### M2 — Governed shadow campaign
+### M2 — Governed shadow campaign · CURRENT EXECUTOR EVIDENCE SLICE
 
 - Run one mission leader and five domain specialists in AgentTeams; the leader orchestrates but does not produce domain artifacts.
 - Route model work through the `ModelProvider` port and the planned DeepSeek V4 gateway.
@@ -60,6 +60,8 @@ Exit: a real LumiClaw campaign can reach readiness and reopen its four editable 
 - Inject one claim or platform-constraint fault and prove that no external action can occur.
 
 Exit: the six-member team returns digest-validated artifacts; one valid revision reaches owner review and one invalid revision is blocked and revised.
+
+Current branch evidence reaches this engineering exit with a real pinned AgentTeams runtime and a public-safe mock model flight. It remains an `EVIDENCE_READY` candidate until Coordinator verification and Owner UAT; the absence of provider keys means no live DeepSeek or EvoLink maturity claim is made.
 
 ### M3 — Controlled live activation
 

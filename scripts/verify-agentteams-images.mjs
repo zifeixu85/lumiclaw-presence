@@ -3,9 +3,9 @@ import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const project = 'lumiclaw-sdd001-agentteams-verify';
+const project = 'lumiclaw-sdd002-agentteams-image-verify';
 const composeFile = 'infra/agentteams/compose.agentteams-profile.yml';
-const evidencePath = path.join(root, '.evidence/sdd-001/agentteams-image-smoke.json');
+const evidencePath = path.join(root, '.evidence/sdd-002/agentteams-image-smoke.json');
 const events = [];
 const baseArgs = ['compose', '--project-name', project, '-f', composeFile, '--profile', 'agentteams-smoke'];
 
@@ -27,7 +27,7 @@ function docker(args, options = {}) {
 }
 
 await mkdir(path.dirname(evidencePath), {recursive: true});
-const imageManifest = JSON.parse(await readFile(path.join(root, 'infra/agentteams/image-manifest.json'), 'utf8'));
+const runtimeProfile = JSON.parse(await readFile(path.join(root, 'infra/agentteams/runtime-profile.json'), 'utf8'));
 let result = 'FAIL';
 let cleanup = 'FAIL';
 let primaryError = null;
@@ -63,7 +63,7 @@ try {
     result,
     cleanup,
     generatedAt: new Date().toISOString(),
-    images: imageManifest.images,
+    images: runtimeProfile.images,
     probes: {manager, worker},
     liveAgentTeamRun: false,
     limitations: [
@@ -78,4 +78,4 @@ try {
   if (cleanupError !== null && primaryError === null) throw new Error(cleanupError);
 }
 
-console.info(JSON.stringify({status: result, project, evidence: '.evidence/sdd-001/agentteams-image-smoke.json'}));
+console.info(JSON.stringify({status: result, project, evidence: '.evidence/sdd-002/agentteams-image-smoke.json'}));

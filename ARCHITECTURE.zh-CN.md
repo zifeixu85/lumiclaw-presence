@@ -2,7 +2,7 @@
 
 [English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE.zh-CN.md) | [README](README.zh-CN.md) | [路线图](ROADMAP.zh-CN.md)
 
-> **状态：** 本文同时标记实现与规划边界。当前分支已实现 M0 与本地非实时 M1 Control Plane；AgentTeams Mission、Provider、受治理批准/Grant、Connector、外部动作和生产部署仍为 `PLANNED`。
+> **状态：** 本文同时标记实现与规划边界。M0/M1 已验收；当前分支新增 SDD-002 M2 Executor 证据候选，包括固定版本的真实六成员 AgentTeams SHADOW Mission、Provider Port/Conformance、不可变 Revision、独立 Audit 与不可执行 Owner Review。带凭据 Provider Canary、ActionGrant、Connector、外部动作和生产部署仍为 `PLANNED`。
 
 ## 架构目标
 
@@ -151,6 +151,8 @@ Leader 只编排，不生成领域 Artifact。Producer 与 Auditor 必须分离�
 
 AgentTeams 可通过外部 Endpoint 运行，也可使用可选且锁定版本的 Compose Profile。它内部的 Matrix、对象存储、Worker 与 Runtime State 不属于 LumiClaw 产品数据面。
 
+SDD-002 候选固定 AgentTeams v1.2.0 源码与镜像 digest，创建恰好一个 Leader 与五个 Worker，并真实执行 Project/DAG/Task/ACK/Submit。Adapter 只接受 Mission 中精确的 Role Identity、Input Digest、SkillLock Digest 与 Output Schema；重复或冲突的已接受输出会进入隔离。已接受 Payload 只能通过 API 写入同一个 PostgreSQL Mission，并引用已持久化 M1 Campaign。AgentTeams 可重启与对账，但不会成为第二套业务真源。v1.2.0 上游缺少公开的 checked-result acceptance 操作；本实现只在官方 effective-result 检查通过后调用其固定版本公开 Task Store API，不修改 AgentTeams Manager、Worker、Matrix 源码或镜像。
+
 ## Provider 端口
 
 读侧智能与写侧动作使用不同接口，避免数据 Provider 静默获得发布权限。
@@ -164,6 +166,8 @@ AgentTeams 可通过外部 Endpoint 运行，也可使用可选且锁定版本�
 | `NativeHandoffAdapter` | LinkedIn、小红书与 X 降级路径 | 用户在原生平台完成动作，并通过 URL 或批准证据对账 |
 
 计划中的 DeepSeek 路由使用 `deepseek-v4-flash` 处理较低风险转换与归纳，使用 `deepseek-v4-pro` 处理规划、Evidence Stewardship、审校和高风险修订。EvoLink 可替换，不能成为 MediaAsset 真源。`SignalProvider` 只能产生 Claim Candidate，不能把第三方数据自行升级成已批准公开主张。
+
+SDD-002 候选已实现 DeepSeek 官方 Gateway 与 Media Provider 边界，并通过 Conformance：合同保存模型/config/成本/延迟/错误快照，验证结构化 Schema，对 429/5xx 做有界重试，覆盖超时、脱敏和禁止静默换模。媒体采用 Content-addressed Ingest，要求合成素材权利/成本 Receipt，且保持未批准。由于未提供凭据，DeepSeek 与 EvoLink 真实 Canary 为 `NOT_RUN_NO_KEY`；公开安全 Fixture 仅标记 `MOCK_CONFORMANCE`，不是实际 Provider 证据。
 
 ## 四平台可编辑 Composer
 

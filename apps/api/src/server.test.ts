@@ -1,4 +1,4 @@
-import {createDemoCampaignDocument, createUuidV7} from '@lumiclaw/domain';
+import {createDemoCampaignDocument, createUuidV7, sha256Digest} from '@lumiclaw/domain';
 import {afterEach, describe, expect, it} from 'vitest';
 import {buildApi} from './server.js';
 
@@ -14,7 +14,57 @@ describe('M1 Campaign API contract', () => {
     const openapi = await app.inject({method: 'GET', url: '/api/v1/openapi.json'});
     expect(openapi.json().openapi).toBe('3.1.0');
     expect(openapi.json().paths['/api/v1/campaigns']).toBeDefined();
+    expect(openapi.json().paths['/api/v1/campaigns/{campaignId}/shadow-missions']).toBeDefined();
+    expect(openapi.json().paths['/api/v1/shadow-missions/{missionId}/runtime-events']).toBeDefined();
     expect(openapi.json().components.schemas.CampaignDocument.properties.graph.additionalProperties).toBe(false);
+  });
+
+  it('queues, runs, reopens and exactly reviews a governed SHADOW Mission without action authority', async () => {
+    const app = buildApi({now}); apps.push(app); const document = createDemoCampaignDocument();
+    const baseHeaders = {'x-lumiclaw-organization-id': document.organizationId, 'idempotency-key': 'campaign-for-shadow'};
+    const created = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers: baseHeaders, payload: document});
+    const started = await app.inject({method: 'POST', url: `/api/v1/campaigns/${document.id}/shadow-missions`, headers: {...baseHeaders, 'idempotency-key': 'shadow-start-0001', 'if-match': created.headers.etag!}, payload: {sourceDigest: created.json().digest, fault: 'BETA_TO_GA'}});
+    expect(started.statusCode).toBe(201); expect(started.json().mission).toMatchObject({runtimeVersion: 'v1.2.0', state: 'QUEUED', externalActionAllowed: false}); expect(started.json().mission.roleContexts).toHaveLength(6);
+    const missionId = started.json().mission.id;
+    const flight = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/public-safe-flight`, headers: {...baseHeaders, 'idempotency-key': 'flight-run-00001', 'if-match': started.headers.etag!}});
+    expect(flight.statusCode).toBe(200); expect(flight.json()).toMatchObject({maturity: 'MOCK_CONFORMANCE', realAgentTeamsClaim: false}); expect(flight.json().mission).toMatchObject({state: 'NEEDS_OWNER_REVIEW', actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
+    expect(flight.json().mission.modelCalls).toHaveLength(1); expect(flight.json().mission.modelCalls[0]).toMatchObject({provider: 'PUBLIC_SAFE_MOCK', maturity: 'MOCK_CONFORMANCE', secretPresent: false});
+    expect(flight.json().mission.mediaAssets).toHaveLength(1); expect(flight.json().mission.mediaAssets[0]).toMatchObject({provider: 'PUBLIC_SAFE_MOCK', approvalState: 'UNREVIEWED'});
+    const flightReplay = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/public-safe-flight`, headers: {...baseHeaders, 'idempotency-key': 'flight-run-00001', 'if-match': started.headers.etag!}});
+    expect(flightReplay.statusCode).toBe(200); expect(flightReplay.headers['idempotency-replayed']).toBe('true'); expect(flightReplay.json().mission.etag).toBe(flight.json().mission.etag);
+    const denied = flight.json().mission.revisions.find((item: {id: string}) => item.id === flight.json().mission.fault.deniedRevisionId);
+    const deniedReview = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/owner-reviews`, headers: {...baseHeaders, 'idempotency-key': 'denied-review-01', 'if-match': flight.headers.etag!}, payload: {revisionId: denied.id, revisionDigest: denied.digest, decision: 'READY_FOR_FUTURE_EXECUTION'}});
+    expect(deniedReview.statusCode).toBe(422); expect(deniedReview.json().code).toBe('REVIEW_AUDIT_PASS_REQUIRED');
+    const corrected = flight.json().mission.revisions.find((item: {id: string}) => item.id === flight.json().mission.fault.correctedRevisionId);
+    const reviewed = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/owner-reviews`, headers: {...baseHeaders, 'idempotency-key': 'exact-review-001', 'if-match': flight.headers.etag!}, payload: {revisionId: corrected.id, revisionDigest: corrected.digest, decision: 'READY_FOR_FUTURE_EXECUTION'}});
+    expect(reviewed.statusCode).toBe(200); expect(reviewed.json()).toMatchObject({createsActionGrant: false, externalActionAllowed: false}); expect(reviewed.json().mission.reviews[0]).toMatchObject({authority: 'NON_EXECUTABLE_OWNER_REVIEW', createsActionGrant: false});
+    const reviewReplay = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/owner-reviews`, headers: {...baseHeaders, 'idempotency-key': 'exact-review-001', 'if-match': flight.headers.etag!}, payload: {revisionId: corrected.id, revisionDigest: corrected.digest, decision: 'READY_FOR_FUTURE_EXECUTION'}});
+    expect(reviewReplay.statusCode).toBe(200); expect(reviewReplay.headers['idempotency-replayed']).toBe('true'); expect(reviewReplay.json().mission.etag).toBe(reviewed.json().mission.etag);
+    const evidence = await app.inject({method: 'GET', url: `/api/v1/shadow-missions/${missionId}/evidence`, headers: baseHeaders});
+    expect(evidence.json().evidence.noAction).toEqual({externalActionAllowed: false, actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
+  });
+
+  it('persists adapter Project/ACK/Submit events and quarantines duplicate accepted Runtime output', async () => {
+    const app = buildApi({now}); apps.push(app); const document = createDemoCampaignDocument();
+    const headers = {'x-lumiclaw-organization-id': document.organizationId, 'idempotency-key': 'runtime-campaign'};
+    const created = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers, payload: document});
+    const started = await app.inject({method: 'POST', url: `/api/v1/campaigns/${document.id}/shadow-missions`, headers: {...headers, 'idempotency-key': 'runtime-start-001', 'if-match': created.headers.etag!}, payload: {sourceDigest: created.json().digest, fault: 'BETA_TO_GA'}});
+    const missionId = started.json().mission.id; const route = `/api/v1/shadow-missions/${missionId}/runtime-events`;
+    const dispatched = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-project-1', 'if-match': started.headers.etag!}, payload: {kind: 'PROJECT_DISPATCHED', buildDigest: `sha256:${'a'.repeat(64)}`}});
+    expect(dispatched.statusCode).toBe(200); expect(dispatched.json().mission.state).toBe('RUNNING');
+    const task = dispatched.json().mission.tasks.find((item: {roleId: string}) => item.roleId === 'presence-mission-leader');
+    const ack = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-ack-0001', 'if-match': dispatched.headers.etag!}, payload: {kind: 'TASK_ACK', taskId: task.id, roleId: task.roleId}});
+    expect(ack.statusCode).toBe(200); expect(ack.json().mission.tasks.find((item: {id: string}) => item.id === task.id).state).toBe('ACKNOWLEDGED');
+    const payload = {projectId: ack.json().mission.runtimeProjectId, externalActionAllowed: false};
+    const submission = {schemaVersion: 1, missionId, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1, payload, outputDigest: sha256Digest(payload)};
+    const submitted = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-submit-01', 'if-match': ack.headers.etag!}, payload: {kind: 'TASK_SUBMIT', submission}});
+    expect(submitted.statusCode).toBe(200); expect(submitted.json().mission.tasks.find((item: {id: string}) => item.id === task.id).state).toBe('ACCEPTED');
+    const duplicate = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-submit-02', 'if-match': submitted.headers.etag!}, payload: {kind: 'TASK_SUBMIT', submission}});
+    expect(duplicate.statusCode).toBe(422); expect(duplicate.json()).toMatchObject({code: 'RUNTIME_SUBMISSION_QUARANTINED', accepted: false}); expect(duplicate.json().mission.trace.at(-1).detail.errors).toContain('DUPLICATE_ACCEPTED_SUBMISSION');
+    const duplicateReplay = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-submit-02', 'if-match': submitted.headers.etag!}, payload: {kind: 'TASK_SUBMIT', submission}});
+    expect(duplicateReplay.statusCode).toBe(422); expect(duplicateReplay.headers['idempotency-replayed']).toBe('true'); expect(duplicateReplay.json()).toMatchObject({code: 'RUNTIME_SUBMISSION_QUARANTINED_REPLAYED', accepted: false, realAgentTeamsClaim: false});
+    const secondDispatch = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-project-2', 'if-match': duplicate.headers.etag!}, payload: {kind: 'PROJECT_DISPATCHED', buildDigest: `sha256:${'b'.repeat(64)}`}});
+    expect(secondDispatch.statusCode).toBe(409); expect(secondDispatch.json()).toMatchObject({code: 'RUNTIME_PROJECT_ALREADY_DISPATCHED'});
   });
 
   it('creates, replays, reopens, saves, and returns the same mission source digest', async () => {

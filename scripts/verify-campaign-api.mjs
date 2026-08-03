@@ -3,15 +3,15 @@ import {mkdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const project = 'lumiclaw-sdd001-api';
-const apiUrl = 'http://127.0.0.1:4121';
-const evidenceDir = path.join(root, '.evidence/sdd-001');
+const project = 'lumiclaw-sdd002-api';
+const apiUrl = 'http://127.0.0.1:4123';
+const evidenceDir = path.join(root, '.evidence/sdd-002');
 const checks = {};
 const events = [];
 
 function docker(args, inherit = false) {
   const command = ['docker', 'compose', '--project-name', project, ...args];
-  const output = execFileSync('docker', command.slice(1), {cwd: root, encoding: 'utf8', stdio: inherit ? 'inherit' : ['ignore', 'pipe', 'pipe'], env: {...process.env, LUMICLAW_API_PORT: '4121', LUMICLAW_WEB_PORT: '3121'}});
+  const output = execFileSync('docker', command.slice(1), {cwd: root, encoding: 'utf8', stdio: inherit ? 'inherit' : ['ignore', 'pipe', 'pipe'], env: {...process.env, LUMICLAW_API_PORT: '4123', LUMICLAW_WEB_PORT: '3123'}});
   events.push({command, result: 'PASS'});
   return output ?? '';
 }
@@ -105,6 +105,38 @@ try {
   const mission = await request(`/api/v1/campaigns/${document.id}/mission-contract`, {headers: {'x-lumiclaw-organization-id': organizationId}}, 200);
   if (mission.body.digest !== invalidated.body.digest || mission.body.contract.sourceDigest !== invalidated.body.digest) throw new Error('Mission contract does not import the persisted digest.');
   checks.missionDigest = mission.body.digest;
+  const shadowStarted = await request(`/api/v1/campaigns/${document.id}/shadow-missions`, {method: 'POST', headers: {...headers, 'idempotency-key': 'integration-shadow-start', 'if-match': invalidated.headers.get('etag')}, body: JSON.stringify({sourceDigest: invalidated.body.digest, fault: 'BETA_TO_GA'})}, 201);
+  if (shadowStarted.body.mission.roleContexts.length !== 6 || shadowStarted.body.mission.tasks.length !== 6 || shadowStarted.body.mission.skillLocks.length !== 5 || shadowStarted.body.mission.externalActionAllowed !== false) throw new Error('SHADOW Mission did not compile to the exact six-role/five-skill no-action contract.');
+  const shadowId = shadowStarted.body.mission.id;
+  const flightHeaders = {'x-lumiclaw-organization-id': organizationId, 'idempotency-key': 'integration-shadow-flight', 'if-match': shadowStarted.headers.get('etag')};
+  const shadowFlight = await request(`/api/v1/shadow-missions/${shadowId}/public-safe-flight`, {method: 'POST', headers: flightHeaders}, 200);
+  const flightMission = shadowFlight.body.mission;
+  if (shadowFlight.body.maturity !== 'MOCK_CONFORMANCE' || shadowFlight.body.realAgentTeamsClaim !== false || flightMission.revisions.length !== 5 || flightMission.audits.length !== 5 || flightMission.modelCalls.length !== 1 || flightMission.mediaAssets.length !== 1) throw new Error('Public-safe Flight maturity or provider/revision/audit evidence is incomplete.');
+  if (flightMission.modelCalls[0].provider !== 'PUBLIC_SAFE_MOCK' || flightMission.modelCalls[0].secretPresent !== false || flightMission.mediaAssets[0].approvalState !== 'UNREVIEWED') throw new Error('Provider conformance evidence was mislabeled or auto-approved.');
+  const failedAudit = flightMission.audits.find((item) => item.outcome === 'FAIL');
+  if (failedAudit === undefined || failedAudit.status !== 'INVALIDATED' || failedAudit.issues[0]?.code !== 'CLAIM_OVERREACH') throw new Error('Frozen Claim fault was not independently rejected and invalidated after correction.');
+  const shadowFlightReplay = await request(`/api/v1/shadow-missions/${shadowId}/public-safe-flight`, {method: 'POST', headers: flightHeaders}, 200);
+  if (shadowFlightReplay.headers.get('idempotency-replayed') !== 'true' || shadowFlightReplay.body.mission.etag !== flightMission.etag) throw new Error('Flight idempotency did not replay the exact persisted response.');
+  checks.shadowFlight = {roles: 6, tasks: 6, skills: 5, revisions: 5, audits: 5, modelCalls: 1, mediaAssets: 1, replayed: true};
+  const deniedRevision = flightMission.revisions.find((item) => item.id === flightMission.fault.deniedRevisionId);
+  const deniedReview = await request(`/api/v1/shadow-missions/${shadowId}/owner-reviews`, {method: 'POST', headers: {...headers, 'idempotency-key': 'integration-denied-review', 'if-match': shadowFlight.headers.get('etag')}, body: JSON.stringify({revisionId: deniedRevision.id, revisionDigest: deniedRevision.digest, decision: 'READY_FOR_FUTURE_EXECUTION'})}, 422);
+  if (deniedReview.body.code !== 'REVIEW_AUDIT_PASS_REQUIRED') throw new Error('Failed Revision unexpectedly reached Owner Review.');
+  const activePassIds = new Set(flightMission.audits.filter((item) => item.status === 'ACTIVE' && item.outcome === 'PASS').map((item) => item.revisionId));
+  const reviewable = flightMission.revisions.filter((item) => activePassIds.has(item.id));
+  if (reviewable.length !== 4 || new Set(reviewable.map((item) => item.platform)).size !== 4) throw new Error('Owner Review set is not the exact latest four-platform PASS set.');
+  let reviewEtag = shadowFlight.headers.get('etag'); let finalReview = null; let finalReviewHeaders = null; let finalReviewBody = null;
+  for (const [index, revision] of reviewable.entries()) {
+    const reviewBody = {revisionId: revision.id, revisionDigest: revision.digest, decision: 'READY_FOR_FUTURE_EXECUTION'};
+    const reviewHeaders = {...headers, 'idempotency-key': `integration-exact-review-${index + 1}`, 'if-match': reviewEtag};
+    finalReview = await request(`/api/v1/shadow-missions/${shadowId}/owner-reviews`, {method: 'POST', headers: reviewHeaders, body: JSON.stringify(reviewBody)}, 200);
+    reviewEtag = finalReview.headers.get('etag'); finalReviewHeaders = reviewHeaders; finalReviewBody = reviewBody;
+  }
+  if (finalReview.body.mission.state !== 'SHADOW_COMPLETE' || finalReview.body.mission.reviews.length !== 4 || finalReview.body.mission.actionGrantCount !== 0 || finalReview.body.mission.connectorCount !== 0 || finalReview.body.mission.externalActionCount !== 0) throw new Error('Exact four-platform Owner Review did not close SHADOW without action authority.');
+  const finalReviewReplay = await request(`/api/v1/shadow-missions/${shadowId}/owner-reviews`, {method: 'POST', headers: finalReviewHeaders, body: JSON.stringify(finalReviewBody)}, 200);
+  if (finalReviewReplay.headers.get('idempotency-replayed') !== 'true' || finalReviewReplay.body.mission.etag !== finalReview.body.mission.etag) throw new Error('Owner Review idempotency did not replay the exact response.');
+  const publicEvidence = await request(`/api/v1/shadow-missions/${shadowId}/evidence`, {headers: {'x-lumiclaw-organization-id': organizationId}}, 200);
+  if (publicEvidence.body.evidence.maturity !== 'MOCK_CONFORMANCE' || publicEvidence.body.evidence.realAgentTeamsAcceptance !== false || publicEvidence.body.evidence.noAction.externalActionCount !== 0 || publicEvidence.body.evidence.ledgerHead === null) throw new Error('Public evidence export lacks mock truth-label, no-action proof, or replay ledger head.');
+  checks.ownerReviewAndNoAction = {failedRevisionBlocked: true, exactPassRevisionsReviewed: 4, state: 'SHADOW_COMPLETE', actionGrants: 0, connectors: 0, externalActions: 0};
   docker(['restart', 'postgres', 'api']);
   await waitForApi();
   docker(['down']);
@@ -112,17 +144,24 @@ try {
   await waitForApi();
   const reopened = await request(`/api/v1/campaigns/${document.id}`, {headers: {'x-lumiclaw-organization-id': organizationId}}, 200);
   if (reopened.body.digest !== invalidated.body.digest || reopened.body.document.artifactRevisions.find((item) => item.platform === 'X').content.posts[0] !== 'Persisted edit invalidates the schedule.') throw new Error('Restart/down-up reopen lost Campaign state.');
+  const reopenedShadow = await request(`/api/v1/shadow-missions/${shadowId}`, {headers: {'x-lumiclaw-organization-id': organizationId}}, 200);
+  if (reopenedShadow.body.mission.state !== 'SHADOW_COMPLETE' || reopenedShadow.body.mission.reviews.length !== 4) throw new Error('Restart/down-up reopen lost governed SHADOW state.');
   checks.restartAndDownUpPersistence = true;
-  const counts = docker(['exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At', '-F', ',', '-c', 'SELECT (SELECT count(*) FROM campaigns),(SELECT count(*) FROM campaign_snapshots),(SELECT count(*) FROM artifact_revisions),(SELECT count(*) FROM idempotency_records),(SELECT count(*) FROM publishing_schedules),(SELECT count(*) FROM schedule_occurrences)']).trim().split(',').map(Number);
-  if (counts[0] !== 1 || counts[1] !== 4 || counts[2] !== 6 || counts[3] !== 4 || counts[4] !== 1 || counts[5] !== 2) throw new Error(`Unexpected persisted counts: ${counts.join(',')}`);
-  checks.persistedCounts = {campaigns: counts[0], snapshots: counts[1], artifactRevisions: counts[2], idempotencyRecords: counts[3], publishingSchedules: counts[4], scheduleOccurrences: counts[5]};
+  const countSql = "SELECT (SELECT count(*) FROM campaigns),(SELECT count(*) FROM campaign_snapshots),(SELECT count(*) FROM artifact_revisions),(SELECT count(*) FROM idempotency_records),(SELECT count(*) FROM publishing_schedules),(SELECT count(*) FROM schedule_occurrences),(SELECT count(*) FROM missions),(SELECT count(*) FROM agent_runs),(SELECT count(*) FROM agent_tasks),(SELECT count(*) FROM skill_locks),(SELECT count(*) FROM governed_artifact_revisions),(SELECT count(*) FROM audit_decisions),(SELECT count(*) FROM owner_reviews),(SELECT count(*) FROM model_calls),(SELECT count(*) FROM media_assets),(SELECT count(*) FROM shadow_idempotency),(SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('action_grants','connectors','action_outbox'))";
+  const counts = docker(['exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At', '-F', ',', '-c', countSql]).trim().split(',').map(Number);
+  if (counts[0] !== 1 || counts[1] !== 4 || counts[2] !== 6 || counts[3] !== 4 || counts[4] !== 1 || counts[5] !== 2 || counts[6] !== 1 || counts[7] !== 6 || counts[8] !== 6 || counts[9] !== 5 || counts[10] !== 5 || counts[11] !== 5 || counts[12] !== 4 || counts[13] !== 1 || counts[14] !== 1 || counts[15] !== 6 || counts[16] !== 0) throw new Error(`Unexpected persisted counts: ${counts.join(',')}`);
+  checks.persistedCounts = {campaigns: counts[0], snapshots: counts[1], artifactRevisions: counts[2], idempotencyRecords: counts[3], publishingSchedules: counts[4], scheduleOccurrences: counts[5], missions: counts[6], agentRuns: counts[7], agentTasks: counts[8], skillLocks: counts[9], governedRevisions: counts[10], auditDecisions: counts[11], ownerReviews: counts[12], modelCalls: counts[13], mediaAssets: counts[14], shadowIdempotency: counts[15], forbiddenActionTables: counts[16]};
   result = 'PASS';
 } catch (error) {
   primaryError = error instanceof Error ? error.message : 'UNKNOWN_API_INTEGRATION_ERROR';
+  try {
+    checks.failureDiagnostics = {apiLogs: docker(['logs', '--no-color', '--tail', '120', 'api'])};
+    console.error(checks.failureDiagnostics.apiLogs);
+  } catch {}
   throw error;
 } finally {
   try { docker(['down', '--volumes', '--remove-orphans']); cleanup = 'PASS'; } catch {}
-  await writeFile(path.join(evidenceDir, 'api-integration.json'), `${JSON.stringify({schemaVersion: '1.0.0', sdd: 'SDD-001', project, result, cleanup, generatedAt: new Date().toISOString(), checks, primaryError, events}, null, 2)}\n`);
+  await writeFile(path.join(evidenceDir, 'api-integration.json'), `${JSON.stringify({schemaVersion: '1.0.0', sdd: 'SDD-002', project, result, cleanup, generatedAt: new Date().toISOString(), checks, primaryError, events}, null, 2)}\n`);
 }
 
-console.info(JSON.stringify({status: result, cleanup, evidence: '.evidence/sdd-001/api-integration.json'}));
+console.info(JSON.stringify({status: result, cleanup, evidence: '.evidence/sdd-002/api-integration.json'}));

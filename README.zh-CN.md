@@ -4,7 +4,7 @@
 
 > 面向多品牌、多市场团队的 AI 原生全球品牌运营系统。
 
-**状态：** Pre-alpha，已有本地、非实时的 M1 Campaign Walking Skeleton。本分支可在 PostgreSQL 中创建、保存和重新打开合成 Campaign，编辑四平台版本，并持久化不执行的排程；仍等待 Coordinator/Owner 验收，不代表生产就绪。
+**状态：** Pre-alpha；M0/M1 已验收，当前分支是 SDD-002 M2 Executor 的证据候选。它可让持久化合成 Campaign 经过固定版本、真实六成员 AgentTeams SHADOW Mission，把通过 digest/schema 校验的输出导入 PostgreSQL，阻断并重审一个冻结 Claim 故障，再进入四个平台的精确、不可执行 Owner Review。由于未提供 Key，DeepSeek/EvoLink 真实 Canary 未运行；分支仍需 Coordinator 复核与 Owner UAT，不代表生产就绪。
 
 LumiClaw Presence 把一个业务目标转化为跨身份、品牌、产品、市场和公开账号的协同行动，在已批准的事实、权限与责任边界内执行，并把真实回应带回下一轮决策。
 
@@ -148,16 +148,19 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 - Fastify REST/OpenAPI Control API，以及 PostgreSQL 创建/保存/重开、Idempotency-Key、ETag 冲突、Snapshot 和租户隔离；
 - 默认中文、支持英文的五主屏 M1 状态，以及 X、Bluesky、LinkedIn、小红书四种可编辑且结构不同的 Preview；
 - PostgreSQL PublishingSchedule/ScheduleOccurrence，覆盖受约束 RRULE、IANA 时区、DST gap/fold、Misfire 与编辑失效；
-- 不包含到期执行、真实平台动作、模型/Provider 调用、OwnerDecision、ActionGrant、ActionReceipt 或真实客户数据。
+- 固定 AgentTeams v1.2.0 Runtime Adapter，以及可重复的真实 Manager/Worker/Project/DAG/Task/ACK/Submit：恰好六个分权成员，包括只编排的 Leader 与独立 Auditor；
+- PostgreSQL 权威 Mission、RoleContext、五个版本锁定 Skill、已接受 Runtime Payload、四平台不可变 Revision、独立 AuditDecision 历史、精确不可执行 Owner Review、重启对账、隔离、Trace、Ledger 与公开安全证据；
+- DeepSeek 官方 `ModelProvider` 与可替换 `MediaGenerationProvider` 边界，覆盖结构化输出、超时/重试/限流/错误、脱敏、成本/延迟和 Content-addressed Rights Receipt；公开安全 Mock 明确标记 `MOCK_CONFORMANCE`，真实 Canary 为 `NOT_RUN_NO_KEY`；
+- 默认中文、支持英文的 Mission/Review 流程、390px、14 个浏览器渲染 Storybook 状态，以及 UX-M1-001 两类准确且可操作的禁用原因；
+- 不包含到期执行、Connector、真实平台动作、可执行 OwnerDecision、ActionGrant、ActionReceipt、真实 Provider 成熟度声明或真实客户数据。
 
 **仍在规划：**
 
-- AgentTeams Campaign Runtime；
 - ActionGrant、ActionReceipt 与 Capability Probe；
 - Bluesky Direct、LinkedIn 与小红书 Handoff，以及分级准入的 X Direct Canary；
-- DeepSeek、EvoLink 与隔离的 SignalProvider Adapter；
-- Response Disposition、作用域学习与 Flight Replay；
-- Web 产品面。
+- 带凭据的 DeepSeek/EvoLink Canary 与隔离的 SignalProvider Adapter；
+- Response Disposition 与作用域学习；
+- Hosted Authentication、多租户 RLS 与生产 Web Surface。
 
 旧私有原型存在部分工程资产，但不能写成当前产品已经实现。任何复用都将逐文件记录来源、License、语义变化和新测试。
 
