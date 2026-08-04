@@ -387,7 +387,7 @@ button:disabled { cursor: not-allowed; opacity: 0.48; }
 .role-card p { margin: 0.55rem 0 0; color: var(--console-muted); font-size: 0.68rem; line-height: 1.5; }
 .role-card > small { grid-column: 1 / -1; align-self: end; color: var(--acid); font: 0.55rem/1.35 var(--mono); }
 .role-card em { position: absolute; top: 0.65rem; right: 0.65rem; color: var(--console-muted); font: normal 0.45rem/1 var(--mono); }
-.task-flow { display: grid; grid-template-columns: repeat(6, minmax(7.4rem, 1fr)); gap: var(--space-2); overflow-x: auto; padding-bottom: 0.4rem; }
+.task-flow { display: grid; grid-template-columns: repeat(8, minmax(7.4rem, 1fr)); gap: var(--space-2); overflow-x: auto; padding-bottom: 0.4rem; }
 .task-node { position: relative; min-height: 7.5rem; padding: 1rem; border: 1px solid var(--console-line); background: rgba(255,255,255,0.025); }
 .task-node::after { content: "→"; position: absolute; top: 0.9rem; right: -0.85rem; z-index: 2; color: var(--console-muted); }
 .task-node:last-child::after { display: none; }
@@ -529,7 +529,7 @@ button:disabled { cursor: not-allowed; opacity: 0.48; }
   .role-roster,
   .no-action-proof > div:last-child,
   .revision-grid { grid-template-columns: 1fr; }
-  .task-flow { grid-template-columns: repeat(6, 8.5rem); }
+  .task-flow { grid-template-columns: repeat(8, 8.5rem); }
   .flight-control { align-items: stretch; flex-direction: column; }
   .fault-case { grid-template-columns: 1fr; }
   .fault-flag { grid-template-columns: auto auto 1fr; }

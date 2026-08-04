@@ -72,6 +72,8 @@ export type RuntimeTaskSubmissionReceipt = {
   runtimeState: 'submitted';
   submittedAt: string;
   resultDigest: string;
+  resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY';
+  runtimeObservationId: string;
   receiptDigest: string;
 };
 
@@ -81,7 +83,7 @@ export type TaskContract = {
   missionId: string;
   roleId: MissionRoleId;
   roleIdentityId: string;
-  kind: 'PROJECT_COORDINATION' | 'FREEZE_EVIDENCE' | 'PLAN_CAMPAIGN' | 'PRODUCE_FOUNDER' | 'PRODUCE_PRODUCT' | 'AUDIT_REVISIONS';
+  kind: 'PROJECT_COORDINATION' | 'FREEZE_EVIDENCE' | 'PLAN_CAMPAIGN' | 'PRODUCE_FOUNDER' | 'PRODUCE_PRODUCT' | 'AUDIT_REVISIONS' | 'PRODUCE_FOUNDER_CORRECTION' | 'REAUDIT_CORRECTION';
   inputDigest: string;
   prerequisiteTaskIds: string[];
   skillLockDigest: string;
@@ -144,6 +146,7 @@ export type AuditDecision = {
   bindings: {claimEvidenceDigest: string; mandateDigest: string; capabilityDigest: string; policyVersion: 'm2-shadow-policy@1.0.0'};
   status: 'ACTIVE' | 'INVALIDATED';
   invalidatedByRevisionId: string | null;
+  supersedesAuditId: string | null;
   createdAt: string;
   digest: string;
 };
@@ -253,7 +256,7 @@ export type ShadowMission = {
   updatedAt: string;
   roleContexts: [RoleContext, RoleContext, RoleContext, RoleContext, RoleContext, RoleContext];
   skillLocks: [SkillLock, SkillLock, SkillLock, SkillLock, SkillLock];
-  tasks: [TaskContract, TaskContract, TaskContract, TaskContract, TaskContract, TaskContract];
+  tasks: TaskContract[];
   revisions: GovernedArtifactRevision[];
   audits: AuditDecision[];
   reviews: OwnerReview[];

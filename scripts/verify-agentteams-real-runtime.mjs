@@ -1,4 +1,4 @@
-import {createHash} from 'node:crypto';
+import {createHash, randomBytes} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -12,6 +12,7 @@ const controlApi = 'http://127.0.0.1:4125';
 let projectId = '';
 let controlPlaneRunning = false;
 const runtimeModel = 'mock-agentteams-conformance';
+const runtimeImportToken = randomBytes(32).toString('base64url');
 const expectedRoles = [
   leader,
   'evidence-claim-steward',
@@ -23,6 +24,7 @@ const expectedRoles = [
 const events = [];
 process.env.LUMICLAW_API_PORT = '4125';
 process.env.LUMICLAW_WEB_PORT = '3125';
+process.env.LUMICLAW_RUNTIME_IMPORT_TOKEN = runtimeImportToken;
 
 function run(executable, args, label, timeout = 30_000) {
   const startedAt = new Date().toISOString();
@@ -122,15 +124,16 @@ projectId = productMission.runtimeProjectId;
 let runtimeEventCounter = 0;
 async function runtimeEvent(body, expected = 200) {
   runtimeEventCounter += 1;
-  const response = await request(`/api/v1/shadow-missions/${productMission.id}/runtime-events`, {method: 'POST', headers: {...organizationHeaders, 'content-type': 'application/json', 'idempotency-key': `real-runtime-event-${String(runtimeEventCounter).padStart(3, '0')}`, 'if-match': productEtag}, body: JSON.stringify(body)}, expected);
+  const response = await request(`/api/v1/shadow-missions/${productMission.id}/runtime-events`, {method: 'POST', headers: {...organizationHeaders, 'x-lumiclaw-runtime-import-token': runtimeImportToken, 'content-type': 'application/json', 'idempotency-key': `real-runtime-event-${String(runtimeEventCounter).padStart(3, '0')}`, 'if-match': productEtag}, body: JSON.stringify(body)}, expected);
   productMission = response.body.mission; productEtag = response.etag; return response;
 }
 
-const titleByRole = {
-  'presence-mission-leader': 'Coordinate exact SHADOW Project', 'evidence-claim-steward': 'Freeze Claim and Evidence bindings', 'campaign-planner': 'Allocate persisted activation plan',
-  'founder-identity-producer': 'Produce X and Xiaohongshu revisions', 'product-account-producer': 'Produce Bluesky and LinkedIn revisions', 'independent-auditor': 'Independently audit exact revision digests'
+const titleByKind = {
+  PROJECT_COORDINATION: 'Coordinate exact SHADOW Project', FREEZE_EVIDENCE: 'Freeze Claim and Evidence bindings', PLAN_CAMPAIGN: 'Allocate persisted activation plan',
+  PRODUCE_FOUNDER: 'Produce initial X and Xiaohongshu revisions', PRODUCE_PRODUCT: 'Produce Bluesky and LinkedIn revisions', AUDIT_REVISIONS: 'Independently audit four initial revision digests',
+  PRODUCE_FOUNDER_CORRECTION: 'Correct the rejected X revision', REAUDIT_CORRECTION: 'Independently re-audit the corrected X revision'
 };
-const dag = productMission.tasks.map((task) => ({taskId: task.id, title: titleByRole[task.roleId], assignedTo: task.roleId, dependsOn: task.prerequisiteTaskIds}));
+const dag = productMission.tasks.map((task) => ({taskId: task.id, title: titleByKind[task.kind], assignedTo: task.roleId, taskKind: task.kind, attempt: task.attempt, dependsOn: task.prerequisiteTaskIds}));
 const workersDocument = agt('workers');
 const teamsDocument = agt('teams');
 const workers = workersDocument.workers.filter((worker) => expectedRoles.includes(worker.name));
@@ -146,7 +149,7 @@ const manifest = JSON.parse(await readFile(path.join(root, 'infra/agentteams/ima
 const created = callTool(leader, 'projectflow', 'create_project', {projectId, title: 'SDD-002 Governed SHADOW Campaign', source: productMission.sourceCampaignDigest, requester: 'lumiclaw-postgresql-control-plane'});
 if (!created.ok && !String(created.error).includes('already exists')) throw new Error(`REAL_PROJECT_CREATE_FAILED:${created.error}`);
 const planned = callTool(leader, 'projectflow', 'plan_dag', {projectId, tasks: dag});
-if (!planned.ok || planned.tasks.length !== 6) throw new Error('REAL_PROJECT_DAG_PLAN_FAILED');
+if (!planned.ok || planned.tasks.length !== 8) throw new Error('REAL_PROJECT_DAG_PLAN_FAILED');
 const plannedState = projectState();
 const memberBindings = productMission.roleContexts.map((context) => {
   const worker = workers.find((candidate) => candidate.name === context.roleId);
@@ -164,15 +167,42 @@ const dispatchBase = {
   dispatchedAt: new Date(plannedState.project.created_at).toISOString()
 };
 const dispatchReceipt = {...dispatchBase, receiptDigest: digest({...dispatchBase, memberBindings: [...memberBindings].sort((left, right) => left.roleId.localeCompare(right.roleId))})};
+const unauthenticatedImport = await request(`/api/v1/shadow-missions/${productMission.id}/runtime-events`, {method: 'POST', headers: {...organizationHeaders, 'content-type': 'application/json', 'idempotency-key': 'real-runtime-unauthenticated', 'if-match': productEtag}, body: JSON.stringify({kind: 'PROJECT_DISPATCHED', receipt: dispatchReceipt})}, 403);
+if (unauthenticatedImport.body.code !== 'RUNTIME_IMPORT_AUTH_REQUIRED') throw new Error('UNAUTHENTICATED_RUNTIME_IMPORT_NOT_REJECTED');
 await runtimeEvent({kind: 'PROJECT_DISPATCHED', receipt: dispatchReceipt});
 
 const taskEvidence = [];
 const acceptedRuntimePayloads = {};
+const causalTransitions = [];
+function roleScopedRuntimeInput(task) {
+  let projection;
+  if (task.kind === 'PROJECT_COORDINATION') projection = {mission: {id: productMission.id, runtimeProjectId: projectId, executionMode: 'SHADOW_PREP_ONLY'}};
+  else if (task.kind === 'FREEZE_EVIDENCE') projection = {claimEvidence: {claims: campaign.claims, evidenceRefs: campaign.evidenceRefs}};
+  else if (task.kind === 'PLAN_CAMPAIGN') projection = {frozenClaimEvidenceDigest: acceptedRuntimePayloads.FREEZE_EVIDENCE?.claimEvidenceDigest, activationPlan: campaign.activationPlan};
+  else if (task.kind === 'PRODUCE_FOUNDER') projection = {sourceRevisions: campaign.artifactRevisions.filter((revision) => ['X', 'XIAOHONGSHU'].includes(revision.platform)), evidenceRefIds: campaign.evidenceRefs.map((item) => item.id)};
+  else if (task.kind === 'PRODUCE_PRODUCT') projection = {sourceRevisions: campaign.artifactRevisions.filter((revision) => ['BLUESKY', 'LINKEDIN'].includes(revision.platform)), evidenceRefIds: campaign.evidenceRefs.map((item) => item.id)};
+  else if (task.kind === 'AUDIT_REVISIONS') projection = {evidenceRefIds: campaign.evidenceRefs.map((item) => item.id), producerSummaries: {founder: acceptedRuntimePayloads.PRODUCE_FOUNDER, product: acceptedRuntimePayloads.PRODUCE_PRODUCT}};
+  else if (task.kind === 'PRODUCE_FOUNDER_CORRECTION') {
+    const denied = productMission.revisions.find((revision) => revision.id === productMission.fault.deniedRevisionId);
+    const failedAudit = productMission.audits.find((audit) => audit.revisionId === denied?.id && audit.status === 'ACTIVE');
+    if (!denied || !failedAudit) throw new Error('ROLE_PROJECTION_FAILED_AUDIT_MISSING');
+    projection = {sourceRevisions: campaign.artifactRevisions.filter((revision) => revision.platform === 'X'), failedAudit: {id: failedAudit.id, digest: failedAudit.digest, issues: failedAudit.issues}, deniedRevision: {id: denied.id, digest: denied.digest}};
+  } else if (task.kind === 'REAUDIT_CORRECTION') {
+    const denied = productMission.revisions.find((revision) => revision.id === productMission.fault.deniedRevisionId);
+    const corrected = productMission.revisions.find((revision) => revision.id === productMission.fault.correctedRevisionId);
+    const failedAudit = productMission.audits.find((audit) => audit.revisionId === denied?.id && audit.status === 'ACTIVE');
+    if (!corrected || !failedAudit) throw new Error('ROLE_PROJECTION_CORRECTION_MISSING');
+    projection = {failedAudit: {id: failedAudit.id, digest: failedAudit.digest}, correctedRevision: {id: corrected.id, digest: corrected.digest, content: corrected.content}};
+  } else throw new Error(`ROLE_PROJECTION_UNKNOWN_TASK:${task.kind}`);
+  const input = {kind: 'LUMICLAW_PUBLIC_SAFE_SHADOW_TASK', projectId, taskId: task.id, taskKind: task.kind, roleId: task.roleId, roleContextDigest: productMission.roleContexts.find((context) => context.roleId === task.roleId)?.contextDigest, inputDigest: task.inputDigest, projection, externalActionAllowed: false};
+  if ('campaign' in input || 'upstream' in input) throw new Error('ROLE_PROJECTION_WHOLE_CAMPAIGN_LEAK');
+  return input;
+}
 for (const node of dag) {
   let current = projectState().tasks.find((item) => item.task_id === node.taskId);
   if (!current) throw new Error(`REAL_DAG_NODE_MISSING:${node.taskId}`);
   let checked = callTool(leader, 'taskflow', 'check_task', {taskId: node.taskId});
-  let ackReceiptDigest = null; let submissionReceiptDigest = null; let runtimeResultDigest = null;
+  let ackReceiptDigest = null; let submissionReceiptDigest = null; let runtimeResultDigest = null; let inputProjectionDigest = null; let inputProjectionKeys = [];
   if (!(checked.ok && checked.effective)) {
     if (current.status === 'pending') {
       const productTask = productMission.tasks.find((task) => task.id === node.taskId);
@@ -206,7 +236,9 @@ for (const node of dag) {
     await runtimeEvent({kind: 'TASK_ACK', receipt: ackReceipt});
     const productTask = productMission.tasks.find((task) => task.id === node.taskId);
     if (!productTask) throw new Error(`PRODUCT_TASK_NOT_REOPENED_AFTER_ACK:${node.taskId}`);
-    const generated = callPublicSafeModelFromWorker(node.assignedTo, {kind: 'LUMICLAW_PUBLIC_SAFE_SHADOW_TASK', projectId, taskId: node.taskId, roleId: node.assignedTo, campaign, upstream: {founder: acceptedRuntimePayloads['founder-identity-producer'], product: acceptedRuntimePayloads['product-account-producer']}, externalActionAllowed: false});
+    const scopedInput = roleScopedRuntimeInput(productTask);
+    inputProjectionDigest = digest(scopedInput); inputProjectionKeys = Object.keys(scopedInput.projection).sort();
+    const generated = callPublicSafeModelFromWorker(node.assignedTo, scopedInput);
     if (generated.taskId !== node.taskId || generated.roleId !== node.assignedTo || generated.maturity !== 'MOCK_CONFORMANCE' || generated.externalActionAllowed !== false || generated.outputDigest !== digest(generated.payload)) throw new Error(`PUBLIC_SAFE_WORKER_RESULT_INVALID:${node.taskId}`);
     const submitted = callTool(node.assignedTo, 'taskflow', 'submit_task', {taskId: node.taskId, status: 'SUCCESS', summary: JSON.stringify(generated), deliverables: [], notes: ['REAL_AGENTTEAMS_V1_2_0_TASK_PROTOCOL', 'PUBLIC_SAFE_MODEL_OUTPUT', 'NO_ACTION_GRANT', 'NO_CONNECTOR', 'NO_EXTERNAL_ACTION']}, runtimeWorker.matrixUserID);
     if (!submitted.ok || submitted.verified !== true || submitted.task.status !== 'submitted') throw new Error(`REAL_TASK_SUBMIT_FAILED:${node.taskId}:${submitted.error ?? ''}`);
@@ -215,7 +247,7 @@ for (const node of dag) {
     const runtimeResult = JSON.parse(checked.result.summary);
     if (digest(runtimeResult) !== digest(generated)) throw new Error(`REAL_TASK_RESULT_NOT_ROUND_TRIPPED:${node.taskId}`);
     runtimeResultDigest = digest(runtimeResult);
-    const submitBase = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTask.attempt, ackReceiptDigest: ackReceipt.receiptDigest, runtimeState: 'submitted', submittedAt: new Date(checked.task.submitted_at).toISOString(), resultDigest: runtimeResultDigest};
+    const submitBase = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTask.attempt, ackReceiptDigest: ackReceipt.receiptDigest, runtimeState: 'submitted', submittedAt: new Date(checked.task.submitted_at).toISOString(), resultDigest: runtimeResultDigest, resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY', runtimeObservationId: digest({projectId, taskId: node.taskId, submittedAt: checked.task.submitted_at, summaryDigest: runtimeResultDigest})};
     const runtimeReceipt = {...submitBase, receiptDigest: digest(submitBase)}; submissionReceiptDigest = runtimeReceipt.receiptDigest;
     const submission = {schemaVersion: 1, missionId: productMission.id, taskId: productTask.id, roleId: productTask.roleId, roleIdentityId: productTask.roleIdentityId, inputDigest: productTask.inputDigest, skillLockDigest: productTask.skillLockDigest, outputSchema: productTask.outputSchema, outputSchemaVersion: 1, payload: runtimeResult.payload, outputDigest: runtimeResult.outputDigest, runtimeResultMaturity: runtimeResult.maturity, runtimeReceipt};
     if (node.assignedTo === 'evidence-claim-steward') {
@@ -223,7 +255,19 @@ for (const node of dag) {
       if (quarantined.body.code !== 'RUNTIME_SUBMISSION_QUARANTINED') throw new Error('PRODUCT_DIGEST_MISMATCH_NOT_QUARANTINED');
     }
     await runtimeEvent({kind: 'TASK_SUBMIT', submission});
-    acceptedRuntimePayloads[node.assignedTo] = structuredClone(runtimeResult.payload);
+    acceptedRuntimePayloads[productTask.kind] = structuredClone(runtimeResult.payload);
+    if (productTask.kind === 'AUDIT_REVISIONS') {
+      const failed = productMission.audits.find((audit) => audit.outcome === 'FAIL' && audit.status === 'ACTIVE');
+      if (productMission.state !== 'REVISION_REQUIRED' || productMission.revisions.length !== 4 || productMission.audits.length !== 4 || !failed || productMission.fault.correctedRevisionId !== null) throw new Error('CAUSAL_INITIAL_AUDIT_STATE_INVALID');
+      causalTransitions.push({afterTaskKind: productTask.kind, state: productMission.state, revisionCount: 4, auditCount: 4, activeFailedAuditDigest: failed.digest});
+    } else if (productTask.kind === 'PRODUCE_FOUNDER_CORRECTION') {
+      if (productMission.state !== 'AUDIT_BLOCKED' || productMission.revisions.length !== 5 || productMission.audits.length !== 4 || !productMission.fault.correctedRevisionId) throw new Error('CAUSAL_CORRECTION_STATE_INVALID');
+      causalTransitions.push({afterTaskKind: productTask.kind, state: productMission.state, revisionCount: 5, auditCount: 4, correctedRevisionId: productMission.fault.correctedRevisionId});
+    } else if (productTask.kind === 'REAUDIT_CORRECTION') {
+      const oldAudit = productMission.audits.find((audit) => audit.outcome === 'FAIL'); const newAudit = productMission.audits.find((audit) => audit.supersedesAuditId === oldAudit?.id);
+      if (productMission.state !== 'NEEDS_OWNER_REVIEW' || productMission.audits.length !== 5 || oldAudit?.status !== 'INVALIDATED' || newAudit?.outcome !== 'PASS') throw new Error('CAUSAL_REAUDIT_STATE_INVALID');
+      causalTransitions.push({afterTaskKind: productTask.kind, state: productMission.state, revisionCount: 5, auditCount: 5, supersededAuditId: newAudit.supersedesAuditId});
+    }
   }
   if (!checked.ok || checked.effective !== true || checked.task.status !== 'submitted') throw new Error(`REAL_TASK_CHECK_FAILED:${node.taskId}`);
   current = projectState().tasks.find((item) => item.task_id === node.taskId);
@@ -231,6 +275,8 @@ for (const node of dag) {
   taskEvidence.push({
     taskId: node.taskId,
     roleId: node.assignedTo,
+    taskKind: node.taskKind,
+    attempt: node.attempt,
     dependsOn: node.dependsOn,
     protocol: ['DELEGATE', 'ACK', 'SUBMIT', 'CHECK', 'ACCEPT'],
     taskStatus: checked.task.status,
@@ -242,7 +288,9 @@ for (const node of dag) {
     ackReceiptDigest,
     submissionReceiptDigest,
     runtimeResultDigest,
-    resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY'
+    resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY',
+    inputProjectionDigest,
+    inputProjectionKeys
   });
 }
 
@@ -284,7 +332,7 @@ const providerProbeCode = 'import json,urllib.request; body=json.dumps({"model":
 const providerRuntimeProbe = JSON.parse(run('docker', ['exec', `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', providerProbeCode], 'agentteams-container-model-provider-probe'));
 if (providerRuntimeProbe.status !== 200 || providerRuntimeProbe.maturity !== 'MOCK_CONFORMANCE' || providerRuntimeProbe.content?.externalActionAllowed !== false) throw new Error('PUBLIC_SAFE_RUNTIME_MODEL_CONTAINER_PROBE_FAILED');
 const mockHealth = await fetch('http://127.0.0.1:28333/health', {signal: AbortSignal.timeout(3_000)}).then((response) => response.json());
-if (mockHealth.provider !== 'PUBLIC_SAFE_MOCK' || mockHealth.maturity !== 'MOCK_CONFORMANCE' || mockHealth.realModelClaim !== false || mockHealth.requestCounts?.chatCompletions < 7) throw new Error('PUBLIC_SAFE_RUNTIME_MODEL_MATURITY_INVALID');
+if (mockHealth.provider !== 'PUBLIC_SAFE_MOCK' || mockHealth.maturity !== 'MOCK_CONFORMANCE' || mockHealth.realModelClaim !== false || mockHealth.requestCounts?.chatCompletions < 9) throw new Error('PUBLIC_SAFE_RUNTIME_MODEL_MATURITY_INVALID');
 
 run('docker', ['compose', '--project-name', controlProject, 'restart', 'api'], 'product-api-restart', 60_000);
 await waitForControlApi();
@@ -302,7 +350,7 @@ const normalizedDivergence = await request(`/api/v1/shadow-missions/${productMis
 if (normalizedDivergence.body.code !== 'CONTROL_PLANE_HISTORY_DIVERGED') throw new Error('NORMALIZED_HISTORY_TAMPER_NOT_REJECTED');
 run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update agent_tasks set payload=jsonb_set(payload,'{acceptedOutputDigest}',to_jsonb(trim(accepted_output_digest)::text)) where id='${tamperedTaskId}'`], 'restore-normalized-task-history');
 const databaseCounts = JSON.parse(run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At', '-c', "select json_build_object('campaigns',(select count(*) from campaigns),'missions',(select count(*) from missions),'agent_runs',(select count(*) from agent_runs),'agent_tasks',(select count(*) from agent_tasks),'revisions',(select count(*) from governed_artifact_revisions),'audits',(select count(*) from audit_decisions),'owner_reviews',(select count(*) from owner_reviews),'action_tables',(select count(*) from information_schema.tables where table_schema='public' and table_name in ('action_grants','connectors','action_outbox')))"], 'product-database-counts'));
-if (databaseCounts.campaigns !== 1 || databaseCounts.missions !== 1 || databaseCounts.agent_runs !== 6 || databaseCounts.agent_tasks !== 6 || databaseCounts.revisions !== 5 || databaseCounts.audits !== 5 || databaseCounts.owner_reviews !== 1 || databaseCounts.action_tables !== 0) throw new Error('PRODUCT_CONTROL_PLANE_COUNTS_INVALID');
+if (databaseCounts.campaigns !== 1 || databaseCounts.missions !== 1 || databaseCounts.agent_runs !== 6 || databaseCounts.agent_tasks !== 8 || databaseCounts.revisions !== 5 || databaseCounts.audits !== 5 || databaseCounts.owner_reviews !== 1 || databaseCounts.action_tables !== 0) throw new Error('PRODUCT_CONTROL_PLANE_COUNTS_INVALID');
 
 const evidence = {
   schemaVersion: 1,
@@ -368,12 +416,21 @@ const evidence = {
     projectDispatchReceiptDigest: dispatchReceipt.receiptDigest,
     exactRuntimeActorCount: new Set(memberBindings.map((binding) => binding.runtimeActorId)).size,
     workerGeneratedResultCount: taskEvidence.filter((task) => task.resultSource === 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY' && task.runtimeResultDigest).length,
-    independentAuditorResultSource: taskEvidence.find((task) => task.roleId === 'independent-auditor')?.resultSource,
-    apiRejectsUnacknowledgedOrDigestMismatchedSubmit: true
+    independentAuditorResultSource: taskEvidence.filter((task) => task.roleId === 'independent-auditor').every((task) => task.resultSource === 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY') ? 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY' : 'INVALID',
+    exactTaskCount: taskEvidence.length,
+    causalTransitions,
+    roleContextProjectionVerified: taskEvidence.every((task) => typeof task.inputProjectionDigest === 'string' && task.inputProjectionKeys.length > 0),
+    wholeCampaignWorkerInputForbidden: true,
+    apiRejectsUnacknowledgedOrDigestMismatchedSubmit: true,
+    runtimeImportAuthentication: 'EPHEMERAL_ADAPTER_TOKEN',
+    unauthenticatedRuntimeImportRejected: true,
+    authenticationMaterialPersisted: false
   },
   events
 };
 cleanupControlPlane();
+delete process.env.LUMICLAW_RUNTIME_IMPORT_TOKEN;
+if (JSON.stringify(evidence).includes(runtimeImportToken)) throw new Error('RUNTIME_IMPORT_TOKEN_LEAKED_TO_EVIDENCE');
 await mkdir(path.join(root, '.evidence/sdd-002'), {recursive: true});
 await writeFile(path.join(root, '.evidence/sdd-002/agentteams-real-runtime.json'), `${JSON.stringify(evidence, null, 2)}\n`);
-console.info(JSON.stringify({status: 'PASS', realAgentTeamsAcceptance: true, realModelAcceptance: false, memberCount: 6, tasks: 6, restartRecovered: true, evidence: '.evidence/sdd-002/agentteams-real-runtime.json'}));
+console.info(JSON.stringify({status: 'PASS', realAgentTeamsAcceptance: true, realModelAcceptance: false, memberCount: 6, tasks: 8, restartRecovered: true, evidence: '.evidence/sdd-002/agentteams-real-runtime.json'}));

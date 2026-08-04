@@ -1,8 +1,9 @@
-name: SDD delivery gates
+name: SDD-002 delivery gates
 
 on:
   push:
   pull_request:
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -36,12 +37,14 @@ jobs:
         run: npm run build
       - name: Storybook review build
         run: npm run storybook:build
+      - name: Provider conformance without private keys
+        run: npm run verify:providers
       - name: Upload public-safe machine evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: sdd-001-static-evidence
-          path: .evidence/sdd-001/
+          name: sdd-002-static-evidence
+          path: .evidence/sdd-002/
           if-no-files-found: warn
           retention-days: 7
 
@@ -71,10 +74,72 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: sdd-001-integration-evidence
+          name: sdd-002-integration-evidence
           path: |
-            .evidence/sdd-001/compose-verification.json
-            .evidence/sdd-001/api-integration.json
-            .evidence/sdd-001/agentteams-image-smoke.json
+            .evidence/sdd-002/compose-verification.json
+            .evidence/sdd-002/api-integration.json
+            .evidence/sdd-002/agentteams-image-smoke.json
           if-no-files-found: warn
+          retention-days: 7
+
+  shadow-postgres:
+    name: Normalized PostgreSQL SHADOW authority and replay
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4
+        env:
+          POSTGRES_DB: lumiclaw
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lumiclaw"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres@127.0.0.1:5432/lumiclaw
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - run: npm ci
+      - name: Apply exact migrations
+        run: npm run migrate:up --workspace @lumiclaw/db
+      - name: Verify normalized authority, immutable rows, restart and idempotency replay
+        run: npm run verify:shadow-postgres
+      - name: Upload PostgreSQL evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdd-002-shadow-postgres-evidence
+          path: .evidence/sdd-002/shadow-postgres.json
+          if-no-files-found: warn
+          retention-days: 7
+
+  real-agentteams-arm64:
+    name: Self-provisioned real AgentTeams v1.2.0 (manual ARM64 evidence runner)
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: [self-hosted, macOS, ARM64, lumiclaw-sdd002]
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - run: npm ci
+      - name: Provision, verify, restart and remove exact runtime objects
+        run: npm run verify:agentteams-real
+      - name: Upload real runtime evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdd-002-real-agentteams-evidence
+          path: .evidence/sdd-002/agentteams-real-runtime.json
+          if-no-files-found: error
           retention-days: 7

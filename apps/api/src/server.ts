@@ -14,6 +14,7 @@ import {
   acknowledgeRuntimeTask,
   attachProviderEvidence,
   materializeAcceptedRuntimeMission,
+  materializeAcceptedRuntimeProgress,
   MemoryShadowMissionRepository,
   PostgresShadowMissionRepository,
   PublicSafeMockMediaProvider,
@@ -30,11 +31,12 @@ import {
   type ShadowMissionRepository
 } from '@lumiclaw/governed-shadow';
 import {PostgresCampaignRepository} from '@lumiclaw/db';
+import {timingSafeEqual} from 'node:crypto';
 import Fastify, {type FastifyInstance, type FastifyReply, type FastifyRequest} from 'fastify';
 import {MemoryCampaignRepository} from './memory-campaign-repository.js';
 import {openApiDocument} from './openapi.js';
 
-type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; now?: () => Date};
+type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; now?: () => Date; runtimeImportToken?: string | undefined};
 type CampaignParams = {campaignId: string};
 type MissionParams = {missionId: string};
 type RuntimeEventBody =
@@ -49,6 +51,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   const now = options.now ?? (() => new Date());
   const repository = options.repository ?? new MemoryCampaignRepository(now);
   const shadowRepository = options.shadowRepository ?? new MemoryShadowMissionRepository();
+  const runtimeImportToken = options.runtimeImportToken;
   app.addHook('onClose', async () => { await repository.close(); await shadowRepository.close(); });
 
   app.get('/health', async (_request, reply) => {
@@ -156,6 +159,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   app.post<{Params: MissionParams; Body: RuntimeEventBody}>('/api/v1/shadow-missions/:missionId/runtime-events', async (request, reply) => {
     const organizationId = requireOrganization(request, reply); const idempotencyKey = requireIdempotency(request, reply);
     if (organizationId === undefined || idempotencyKey === undefined) return;
+    if (!requireRuntimeImportAuthentication(request, reply, runtimeImportToken)) return;
     if (!isRuntimeEventBody(request.body)) return reply.status(422).send(errorBody('RUNTIME_EVENT_SCHEMA_INVALID'));
     const route = `/api/v1/shadow-missions/${request.params.missionId}/runtime-events`; const requestDigest = sha256Digest(request.body);
     try {
@@ -171,7 +175,13 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
       let next; let accepted = true;
       if (request.body.kind === 'PROJECT_DISPATCHED') next = recordRuntimeProjectDispatch(mission, request.body.receipt, now());
       else if (request.body.kind === 'TASK_ACK') next = acknowledgeRuntimeTask(mission, request.body.receipt, now());
-      else if (request.body.kind === 'TASK_SUBMIT') { next = acceptRuntimeSubmission(mission, request.body.submission, now()); accepted = next.trace.at(-1)?.kind !== 'QUARANTINE'; }
+      else if (request.body.kind === 'TASK_SUBMIT') {
+        next = acceptRuntimeSubmission(mission, request.body.submission, now()); accepted = next.trace.at(-1)?.kind !== 'QUARANTINE';
+        if (accepted) {
+          const campaign = await repository.get(organizationId, mission.campaignId); if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+          next = materializeAcceptedRuntimeProgress(next, campaign.document, now());
+        }
+      }
       else {
         const campaign = await repository.get(organizationId, mission.campaignId); if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
         next = materializeAcceptedRuntimeMission(mission, campaign.document, now());
@@ -248,7 +258,7 @@ function isRuntimeEventBody(value: unknown): value is RuntimeEventBody {
   if (event.kind === 'TASK_SUBMIT') {
     if (!isRecord(event.submission)) return false; const submission = event.submission;
     if (!isRecord(submission.runtimeReceipt)) return false; const receipt = submission.runtimeReceipt;
-    return submission.schemaVersion === 1 && typeof submission.missionId === 'string' && typeof submission.taskId === 'string' && isRoleId(submission.roleId) && typeof submission.roleIdentityId === 'string' && isDigest(submission.inputDigest) && isDigest(submission.skillLockDigest) && typeof submission.outputSchema === 'string' && submission.outputSchemaVersion === 1 && 'payload' in submission && isDigest(submission.outputDigest) && ['MOCK_CONFORMANCE', 'CANARY'].includes(String(submission.runtimeResultMaturity)) && receipt.schemaVersion === 1 && typeof receipt.projectId === 'string' && typeof receipt.taskId === 'string' && isRoleId(receipt.roleId) && typeof receipt.runtimeActorId === 'string' && Number.isInteger(receipt.attempt) && Number(receipt.attempt) >= 1 && isDigest(receipt.ackReceiptDigest) && receipt.runtimeState === 'submitted' && typeof receipt.submittedAt === 'string' && isDigest(receipt.resultDigest) && isDigest(receipt.receiptDigest);
+    return submission.schemaVersion === 1 && typeof submission.missionId === 'string' && typeof submission.taskId === 'string' && isRoleId(submission.roleId) && typeof submission.roleIdentityId === 'string' && isDigest(submission.inputDigest) && isDigest(submission.skillLockDigest) && typeof submission.outputSchema === 'string' && submission.outputSchemaVersion === 1 && 'payload' in submission && isDigest(submission.outputDigest) && ['MOCK_CONFORMANCE', 'CANARY'].includes(String(submission.runtimeResultMaturity)) && receipt.schemaVersion === 1 && typeof receipt.projectId === 'string' && typeof receipt.taskId === 'string' && isRoleId(receipt.roleId) && typeof receipt.runtimeActorId === 'string' && Number.isInteger(receipt.attempt) && Number(receipt.attempt) >= 1 && isDigest(receipt.ackReceiptDigest) && receipt.runtimeState === 'submitted' && typeof receipt.submittedAt === 'string' && isDigest(receipt.resultDigest) && receipt.resultSource === 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY' && isDigest(receipt.runtimeObservationId) && isDigest(receipt.receiptDigest);
   }
   return event.kind === 'FINALIZE_ACCEPTED_OUTPUTS';
 }
@@ -263,6 +273,15 @@ function requireIdempotency(request: FastifyRequest, reply: FastifyReply): strin
   const value = request.headers['idempotency-key'];
   if (typeof value !== 'string' || value.length < 8 || value.length > 128) { void reply.status(428).send(errorBody('IDEMPOTENCY_KEY_REQUIRED')); return undefined; }
   return value;
+}
+
+function requireRuntimeImportAuthentication(request: FastifyRequest, reply: FastifyReply, expected: string | undefined): boolean {
+  if (expected === undefined || expected.length < 32) { void reply.status(503).send(errorBody('RUNTIME_IMPORT_DISABLED')); return false; }
+  const supplied = request.headers['x-lumiclaw-runtime-import-token'];
+  if (typeof supplied !== 'string') { void reply.status(403).send(errorBody('RUNTIME_IMPORT_AUTH_REQUIRED')); return false; }
+  const expectedBytes = Buffer.from(expected); const suppliedBytes = Buffer.from(supplied);
+  if (expectedBytes.length !== suppliedBytes.length || !timingSafeEqual(expectedBytes, suppliedBytes)) { void reply.status(403).send(errorBody('RUNTIME_IMPORT_AUTH_INVALID')); return false; }
+  return true;
 }
 
 function sendMutation(reply: FastifyReply, result: MutationResult, status: 200 | 201) {
@@ -309,7 +328,7 @@ function parseSchedulePreviewBody(value: unknown): SchedulePreviewBody {
 async function start(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
   if (connectionString === undefined) throw new Error('DATABASE_URL is required.');
-  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString)});
+  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), runtimeImportToken: process.env.LUMICLAW_RUNTIME_IMPORT_TOKEN});
   const port = Number.parseInt(process.env.PORT ?? '4000', 10);
   await app.listen({host: '0.0.0.0', port});
 }

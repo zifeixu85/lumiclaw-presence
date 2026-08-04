@@ -23,8 +23,15 @@ try {
   await shadowRepository.close();
   const reopenedRepository = new PostgresShadowMissionRepository(connectionString); const reopened = await reopenedRepository.get(campaign.organizationId, flight.id); if (reopened === undefined) throw new Error('MISSION_RESTART_RECOVERY_FAILED');
   const replay = await reopenedRepository.create({campaign: created.envelope.document, campaignVersion: created.envelope.version, campaignDigest: created.envelope.digest, now}, 'shadow-db-mission', sha256Digest({sourceDigest: created.envelope.digest, fault: 'BETA_TO_GA'}));
-  const crossTenant = await reopenedRepository.get(campaign.graph.identities[0]!.id, flight.id); await reopenedRepository.close();
+  const crossTenant = await reopenedRepository.get(campaign.graph.identities[0]!.id, flight.id);
   const pool = new Pool({connectionString});
+  const tamperTask = flight.tasks.find((task) => task.acceptedOutputDigest !== null)!;
+  await pool.query("update agent_tasks set payload=jsonb_set(payload,'{acceptedOutputDigest}',to_jsonb($1::text)) where organization_id=$2 and mission_id=$3 and id=$4", ['0'.repeat(64), campaign.organizationId, flight.id, tamperTask.id]);
+  let idempotentReplayNormalizedValidated = false;
+  try { await reopenedRepository.getIdempotentReplay(campaign.organizationId, flightRoute, 'shadow-db-flight', flightRequestDigest); }
+  catch (error) { idempotentReplayNormalizedValidated = error instanceof Error && 'code' in error && error.code === 'CONTROL_PLANE_HISTORY_DIVERGED'; }
+  await pool.query("update agent_tasks set payload=jsonb_set(payload,'{acceptedOutputDigest}',to_jsonb(trim(accepted_output_digest)::text)) where organization_id=$1 and mission_id=$2 and id=$3", [campaign.organizationId, flight.id, tamperTask.id]);
+  await reopenedRepository.close();
   const counts = Object.fromEntries(await Promise.all(['missions', 'agent_runs', 'agent_tasks', 'skill_locks', 'governed_artifact_revisions', 'audit_decisions', 'trace_events', 'ledger_entries', 'model_calls', 'media_assets', 'shadow_idempotency'].map(async (table) => [table, Number((await pool.query(`select count(*)::int as count from ${table}`)).rows[0].count)])));
   const immutableHistory: Record<string, boolean> = {};
   for (const [table, assignment] of [['governed_artifact_revisions', 'revision=99'], ['audit_decisions', "status='MUTATED'"], ['trace_events', "kind='MUTATED'"], ['ledger_entries', 'sequence=999']] as const) {
@@ -35,7 +42,7 @@ try {
   const normalizedHistoryOnly = Object.values(envelopeHistoryCounts).every((count) => count === 0);
   const forbiddenTables = Number((await pool.query("select count(*)::int as count from information_schema.tables where table_schema='public' and table_name in ('action_grants','connectors','action_outbox')")).rows[0].count); await pool.end();
   const evidence = missionPublicEvidence(reopened) as {noAction: unknown};
-  const result = {schemaVersion: 1, status: counts.missions === 1 && counts.agent_runs === 6 && counts.agent_tasks === 6 && counts.skill_locks === 5 && counts.governed_artifact_revisions === 5 && counts.audit_decisions === 5 && counts.model_calls === 1 && counts.media_assets === 1 && counts.shadow_idempotency === 2 && Object.values(immutableHistory).every(Boolean) && normalizedHistoryOnly && replay.replayed && flightMutationReplay.replayed && crossTenant === undefined && forbiddenTables === 0 ? 'PASS' : 'FAIL', restartRecovered: reopened.state === 'NEEDS_OWNER_REVIEW', replayed: replay.replayed, mutationReplayed: flightMutationReplay.replayed, crossTenantHidden: crossTenant === undefined, immutableHistory, normalizedHistoryOnly, envelopeHistoryCounts, counts, forbiddenTables, noAction: evidence.noAction};
+  const result = {schemaVersion: 1, status: counts.missions === 1 && counts.agent_runs === 6 && counts.agent_tasks === 8 && counts.skill_locks === 5 && counts.governed_artifact_revisions === 5 && counts.audit_decisions === 5 && counts.model_calls === 1 && counts.media_assets === 1 && counts.shadow_idempotency === 2 && Object.values(immutableHistory).every(Boolean) && normalizedHistoryOnly && idempotentReplayNormalizedValidated && replay.replayed && flightMutationReplay.replayed && crossTenant === undefined && forbiddenTables === 0 ? 'PASS' : 'FAIL', restartRecovered: reopened.state === 'NEEDS_OWNER_REVIEW', replayed: replay.replayed, mutationReplayed: flightMutationReplay.replayed, idempotentReplayNormalizedValidated, crossTenantHidden: crossTenant === undefined, immutableHistory, normalizedHistoryOnly, envelopeHistoryCounts, counts, forbiddenTables, noAction: evidence.noAction};
   await mkdir('.evidence/sdd-002', {recursive: true}); await writeFile('.evidence/sdd-002/shadow-postgres.json', `${JSON.stringify(result, null, 2)}\n`);
   console.info(JSON.stringify({...result, evidence: '.evidence/sdd-002/shadow-postgres.json'})); if (result.status !== 'PASS') process.exitCode = 1;
 } finally { await campaignRepository.close().catch(() => {}); await shadowRepository.close().catch(() => {}); }

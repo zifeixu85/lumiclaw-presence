@@ -10,6 +10,8 @@ const ROLE_IDS = [
   'founder-identity-producer', 'product-account-producer', 'independent-auditor'
 ] as const satisfies readonly MissionRoleId[];
 
+export const AGENTTEAMS_V120_BUILD_DIGEST = 'sha256:a4a9d66fabc49e1d08246d9b8b65d2b67742b71b2b43d3dfc0d27e8861f0770c';
+
 const ROLE_DEFINITIONS = {
   'presence-mission-leader': {responsibility: 'Coordinate the AgentTeams Project/DAG and release or escalate tasks.', permissions: ['ORCHESTRATE'], tools: ['TASK_READ', 'TRACE_APPEND'], visible: ['MISSION'], prohibited: ['claim', 'plan', 'platform artifact', 'audit', 'approval'], orchestrationOnly: true},
   'evidence-claim-steward': {responsibility: 'Freeze approved Claim/Evidence bindings and identify gaps.', permissions: ['READ_EVIDENCE'], tools: ['TASK_READ', 'TASK_ACK', 'TASK_SUBMIT', 'EVIDENCE_READ', 'TRACE_APPEND'], visible: ['MISSION', 'FROZEN_EVIDENCE'], prohibited: ['platform artifact', 'audit', 'approval'], orchestrationOnly: false},
@@ -63,9 +65,9 @@ export function runPublicSafeFlight(missionValue: ShadowMission, campaign: Campa
   assertCampaignBinding(mission, campaign);
   if (!['QUEUED', 'UNKNOWN_RECOVERY', 'RUNNING'].includes(mission.state)) throw new ShadowContractError('MISSION_STATE_CONFLICT', `Cannot run a flight from ${mission.state}.`);
   mission.state = 'RUNNING';
-  appendEvent(mission, 'PROJECT', 'AgentTeams Project/DAG 已导入', {projectId: mission.runtimeProjectId, memberCount: 6, taskCount: 6}, 'presence-mission-leader', mission.sourceCampaignDigest, sha256Digest(mission.tasks), now);
-  const ordered = ['presence-mission-leader', 'evidence-claim-steward', 'campaign-planner', 'founder-identity-producer', 'product-account-producer'] as const;
-  for (const roleId of ordered) completeTask(mission, roleId, now);
+  appendEvent(mission, 'PROJECT', 'AgentTeams Project/DAG 已导入', {projectId: mission.runtimeProjectId, memberCount: 6, taskCount: mission.tasks.length}, 'presence-mission-leader', mission.sourceCampaignDigest, sha256Digest(mission.tasks), now);
+  const ordered = ['PROJECT_COORDINATION', 'FREEZE_EVIDENCE', 'PLAN_CAMPAIGN', 'PRODUCE_FOUNDER', 'PRODUCE_PRODUCT'] as const;
+  for (const kind of ordered) completeTask(mission, kind, now);
 
   const byPlatform = new Map(campaign.artifactRevisions.map((revision) => [revision.platform, revision]));
   for (const unit of campaign.activationPlan.units) {
@@ -78,7 +80,7 @@ export function runPublicSafeFlight(missionValue: ShadowMission, campaign: Campa
     mission.revisions.push(revision);
     appendEvent(mission, 'REVISION', `${unit.platform} Revision v1 已接收`, {platform: unit.platform, revisionId: revision.id, immutable: true}, producerRoleId, source.id, revision.digest, now);
   }
-  completeTask(mission, 'independent-auditor', now);
+  completeTask(mission, 'AUDIT_REVISIONS', now);
   for (const revision of mission.revisions) {
     const fault = revision.platform === 'X' && revision.revision === 1;
     const decision = createAudit(mission, campaign, revision, fault ? 'FAIL' : 'PASS', now);
@@ -87,6 +89,7 @@ export function runPublicSafeFlight(missionValue: ShadowMission, campaign: Campa
     if (fault) mission.fault.deniedRevisionId = revision.id;
   }
   mission.state = 'REVISION_REQUIRED';
+  completeTask(mission, 'PRODUCE_FOUNDER_CORRECTION', new Date(now.getTime() + 1000));
   const denied = mission.revisions.find((item) => item.id === mission.fault.deniedRevisionId)!;
   const source = byPlatform.get('X')!;
   const corrected = revisionFromSource(mission, campaign, source.content, source.id, denied.activationUnitId, 'X', 'founder-identity-producer', 2, denied.id, new Date(now.getTime() + 1000));
@@ -95,7 +98,8 @@ export function runPublicSafeFlight(missionValue: ShadowMission, campaign: Campa
   const oldAudit = mission.audits.find((item) => item.revisionId === denied.id)!;
   oldAudit.status = 'INVALIDATED'; oldAudit.invalidatedByRevisionId = corrected.id; oldAudit.digest = auditDigest(oldAudit);
   appendEvent(mission, 'REVISION', 'X Revision v2 修正后已接收，旧 Audit 失效', {revisionId: corrected.id, parentRevisionId: denied.id, invalidatedAuditId: oldAudit.id}, 'founder-identity-producer', denied.digest, corrected.digest, new Date(now.getTime() + 1000));
-  const correctedAudit = createAudit(mission, campaign, corrected, 'PASS', new Date(now.getTime() + 2000));
+  completeTask(mission, 'REAUDIT_CORRECTION', new Date(now.getTime() + 2000));
+  const correctedAudit = createAudit(mission, campaign, corrected, 'PASS', new Date(now.getTime() + 2000), undefined, oldAudit.id);
   mission.audits.push(correctedAudit);
   appendEvent(mission, 'AUDIT', '修正版已由独立 Auditor 重新审核', {revisionId: corrected.id, outcome: 'PASS'}, 'independent-auditor', corrected.digest, correctedAudit.digest, new Date(now.getTime() + 2000));
   mission.state = 'NEEDS_OWNER_REVIEW';
@@ -201,55 +205,84 @@ export function acceptRuntimeSubmission(missionValue: ShadowMission, submission:
   return seal(mission, now);
 }
 
-export function materializeAcceptedRuntimeMission(missionValue: ShadowMission, campaign: CampaignDocument, now = new Date()): ShadowMission {
+export function materializeAcceptedRuntimeProgress(missionValue: ShadowMission, campaign: CampaignDocument, now = new Date()): ShadowMission {
   const mission = structuredClone(missionValue);
   assertCampaignBinding(mission, campaign);
-  if (mission.revisions.length > 0 || mission.audits.length > 0) throw new ShadowContractError('RUNTIME_OUTPUT_ALREADY_MATERIALIZED', 'Runtime output can be materialized once.');
-  if (!mission.tasks.every((task) => task.state === 'ACCEPTED' && task.acceptedPayload !== undefined)) throw new ShadowContractError('RUNTIME_TASKS_NOT_ACCEPTED', 'All six exact Task submissions must be accepted first.');
-  const founder = runtimePayload(mission, 'founder-identity-producer');
-  const product = runtimePayload(mission, 'product-account-producer');
-  const auditor = runtimePayload(mission, 'independent-auditor');
-  const drafts = [...runtimeRevisions(founder), ...runtimeRevisions(product)];
-  const expectedDraftKeys = new Set(['X:1', 'X:2', 'XIAOHONGSHU:1', 'BLUESKY:1', 'LINKEDIN:1']);
-  if (drafts.length !== expectedDraftKeys.size || drafts.some((draft) => !expectedDraftKeys.delete(`${draft.platform}:${draft.revision}`)) || expectedDraftKeys.size !== 0) throw new ShadowContractError('RUNTIME_REVISION_SET_INVALID', 'Producer submissions must contain four platform v1 revisions plus corrected X v2.');
+  const initialAuditor = mission.tasks.find((task) => task.kind === 'AUDIT_REVISIONS')!;
+  const correctionProducer = mission.tasks.find((task) => task.kind === 'PRODUCE_FOUNDER_CORRECTION')!;
+  const correctionAuditor = mission.tasks.find((task) => task.kind === 'REAUDIT_CORRECTION')!;
   const sourceByPlatform = new Map(campaign.artifactRevisions.map((revision) => [revision.platform, revision]));
-  const createdByKey = new Map<string, GovernedArtifactRevision>();
-  for (const draft of drafts.sort((left, right) => left.revision - right.revision || left.platform.localeCompare(right.platform))) {
-    const source = sourceByPlatform.get(draft.platform); const unit = campaign.activationPlan.units.find((candidate) => candidate.platform === draft.platform);
-    if (source === undefined || unit === undefined || draft.sourceRevisionDigest !== sha256Digest(source)) throw new ShadowContractError('RUNTIME_SOURCE_REVISION_MISMATCH', `Runtime ${draft.platform} output is not bound to the persisted M1 Revision.`);
-    const producerRoleId = draft.platform === 'X' || draft.platform === 'XIAOHONGSHU' ? 'founder-identity-producer' : 'product-account-producer';
-    const parent = draft.revision === 1 ? null : createdByKey.get(`${draft.platform}:${draft.revision - 1}`);
-    if (draft.revision > 1 && parent === undefined) throw new ShadowContractError('RUNTIME_PARENT_REVISION_MISSING', `${draft.platform} v${draft.revision}`);
-    const createdAt = new Date(now.getTime() + mission.revisions.length * 1000);
-    const revision = revisionFromSource(mission, campaign, draft.content, source.id, unit.id, draft.platform, producerRoleId, draft.revision, parent?.id ?? null, createdAt);
-    mission.revisions.push(revision); createdByKey.set(`${draft.platform}:${draft.revision}`, revision);
-    appendEvent(mission, 'REVISION', `${draft.platform} Revision v${draft.revision} 已从 digest 验证的 Runtime Submit 导入`, {platform: draft.platform, revisionId: revision.id, immutable: true}, producerRoleId, draft.contentDigest, revision.digest, createdAt);
+
+  if (initialAuditor.state === 'ACCEPTED' && mission.revisions.length === 0) {
+    const drafts = [...runtimeRevisions(runtimePayloadByKind(mission, 'PRODUCE_FOUNDER')), ...runtimeRevisions(runtimePayloadByKind(mission, 'PRODUCE_PRODUCT'))];
+    const expectedDraftKeys = new Set(['X:1', 'XIAOHONGSHU:1', 'BLUESKY:1', 'LINKEDIN:1']);
+    if (drafts.length !== 4 || drafts.some((draft) => !expectedDraftKeys.delete(`${draft.platform}:${draft.revision}`)) || expectedDraftKeys.size !== 0) throw new ShadowContractError('RUNTIME_REVISION_SET_INVALID', 'Initial Producer submissions must contain exactly four platform v1 revisions.');
+    for (const draft of drafts.sort((left, right) => left.platform.localeCompare(right.platform))) {
+      const source = sourceByPlatform.get(draft.platform); const unit = campaign.activationPlan.units.find((candidate) => candidate.platform === draft.platform);
+      if (source === undefined || unit === undefined || draft.sourceRevisionDigest !== sha256Digest(source)) throw new ShadowContractError('RUNTIME_SOURCE_REVISION_MISMATCH', `Runtime ${draft.platform} output is not bound to the persisted M1 Revision.`);
+      const producerRoleId = draft.platform === 'X' || draft.platform === 'XIAOHONGSHU' ? 'founder-identity-producer' : 'product-account-producer';
+      const createdAt = new Date(now.getTime() + mission.revisions.length * 1000);
+      const revision = revisionFromSource(mission, campaign, draft.content, source.id, unit.id, draft.platform, producerRoleId, 1, null, createdAt);
+      mission.revisions.push(revision);
+      appendEvent(mission, 'REVISION', `${draft.platform} Revision v1 已从 digest 验证的 Runtime Submit 导入`, {platform: draft.platform, revisionId: revision.id, immutable: true}, producerRoleId, draft.contentDigest, revision.digest, createdAt);
+    }
+    const decisions = runtimeDecisions(runtimePayloadByKind(mission, 'AUDIT_REVISIONS'));
+    if (decisions.length !== 4) throw new ShadowContractError('RUNTIME_AUDIT_SET_INVALID', 'Initial Auditor must submit one decision for every v1 Revision.');
+    for (const decision of decisions) {
+      const revision = mission.revisions.find((candidate) => candidate.platform === decision.platform && candidate.revision === 1);
+      if (revision === undefined || decision.revisionContentDigest !== sha256Digest(revision.content)) throw new ShadowContractError('RUNTIME_AUDIT_REVISION_MISMATCH', `${decision.platform} v1`);
+      const auditAt = new Date(now.getTime() + 10_000 + mission.audits.length * 1000);
+      const audit = createAudit(mission, campaign, revision, decision.outcome, auditAt, decision.issues);
+      mission.audits.push(audit);
+      appendEvent(mission, 'AUDIT', decision.outcome === 'PASS' ? `${revision.platform} v1 Runtime Audit 通过` : '冻结 Claim 故障由独立 Runtime Auditor 拒绝', {revisionId: revision.id, outcome: decision.outcome, nextRole: decision.issues[0]?.nextResponsibleRoleId ?? null}, 'independent-auditor', revision.digest, audit.digest, auditAt);
+    }
+    const denied = mission.revisions.find((revision) => revision.platform === 'X' && revision.revision === 1)!;
+    const deniedAudit = mission.audits.find((audit) => audit.revisionId === denied.id)!;
+    const faultIssue = deniedAudit.issues.find((issue) => issue.code === 'CLAIM_OVERREACH' && issue.evidenceRefIds.length > 0 && issue.nextResponsibleRoleId === 'founder-identity-producer');
+    const deniedText = denied.content.kind === 'X' ? denied.content.posts.join('\n').toLowerCase() : '';
+    if (!deniedText.includes('generally available') || deniedAudit.outcome !== 'FAIL' || faultIssue === undefined) throw new ShadowContractError('RUNTIME_FROZEN_FAULT_INVALID', 'X v1 must persist as an active evidence-bound FAIL before correction.');
+    mission.fault.deniedRevisionId = denied.id;
+    mission.state = 'REVISION_REQUIRED';
+    correctionProducer.inputDigest = sha256Digest({sourceDigest: mission.sourceCampaignDigest, failedAuditId: deniedAudit.id, failedAuditDigest: deniedAudit.digest, deniedRevisionDigest: denied.digest, phase: correctionProducer.kind});
+    appendEvent(mission, 'MISSION', 'X v1 已被独立 Auditor 拒绝，等待准确 Producer 修订', {failedAuditId: deniedAudit.id, nextRole: 'founder-identity-producer', revisionCount: 4}, 'CONTROL_PLANE', deniedAudit.digest, correctionProducer.inputDigest, new Date(now.getTime() + 15_000));
+    return seal(mission, new Date(now.getTime() + 15_000));
   }
-  const decisions = runtimeDecisions(auditor);
-  if (decisions.length !== 5) throw new ShadowContractError('RUNTIME_AUDIT_SET_INVALID', 'Auditor must submit one decision for every imported Revision.');
-  for (const decision of decisions) {
-    const revision = createdByKey.get(`${decision.platform}:${decision.revision}`);
-    if (revision === undefined || decision.revisionContentDigest !== sha256Digest(revision.content)) throw new ShadowContractError('RUNTIME_AUDIT_REVISION_MISMATCH', `${decision.platform} v${decision.revision}`);
-    const auditAt = new Date(now.getTime() + 10_000 + mission.audits.length * 1000);
-    const audit = createAudit(mission, campaign, revision, decision.outcome, auditAt, decision.issues);
-    mission.audits.push(audit);
-    appendEvent(mission, 'AUDIT', decision.outcome === 'PASS' ? `${revision.platform} v${revision.revision} Runtime Audit 通过` : '冻结 Claim 故障由独立 Runtime Auditor 拒绝', {revisionId: revision.id, outcome: decision.outcome, nextRole: decision.issues[0]?.nextResponsibleRoleId ?? null}, 'independent-auditor', revision.digest, audit.digest, auditAt);
+
+  if (correctionProducer.state === 'ACCEPTED' && mission.fault.correctedRevisionId === null) {
+    const denied = mission.revisions.find((revision) => revision.id === mission.fault.deniedRevisionId)!;
+    const failedAudit = mission.audits.find((audit) => audit.revisionId === denied.id && audit.status === 'ACTIVE')!;
+    const payload = runtimePayloadByKind(mission, 'PRODUCE_FOUNDER_CORRECTION'); const drafts = runtimeRevisions(payload);
+    if (payload.failedAuditDigest !== failedAudit.digest || drafts.length !== 1 || drafts[0]?.platform !== 'X' || drafts[0].revision !== 2) throw new ShadowContractError('RUNTIME_CORRECTION_BINDING_INVALID', 'Correction Submit must bind the active failed Audit digest and contain only X v2.');
+    const draft = drafts[0]; const source = sourceByPlatform.get('X')!; const unit = campaign.activationPlan.units.find((candidate) => candidate.platform === 'X')!;
+    if (draft.sourceRevisionDigest !== sha256Digest(source) || sha256Digest(draft.content) !== sha256Digest(source.content)) throw new ShadowContractError('RUNTIME_CORRECTION_SOURCE_INVALID', 'X v2 must restore the exact persisted M1 source content.');
+    const corrected = revisionFromSource(mission, campaign, draft.content, source.id, unit.id, 'X', 'founder-identity-producer', 2, denied.id, now);
+    mission.revisions.push(corrected); mission.fault.correctedRevisionId = corrected.id; mission.state = 'AUDIT_BLOCKED';
+    correctionAuditor.inputDigest = sha256Digest({sourceDigest: mission.sourceCampaignDigest, failedAuditId: failedAudit.id, failedAuditDigest: failedAudit.digest, correctedRevisionId: corrected.id, correctedRevisionDigest: corrected.digest, phase: correctionAuditor.kind});
+    appendEvent(mission, 'REVISION', 'X Revision v2 已绑定失败 Audit 修正并持久化，等待独立重审', {revisionId: corrected.id, parentRevisionId: denied.id, failedAuditId: failedAudit.id}, 'founder-identity-producer', failedAudit.digest, corrected.digest, now);
+    return seal(mission, now);
   }
-  const denied = createdByKey.get('X:1')!; const corrected = createdByKey.get('X:2')!;
-  const sourceX = sourceByPlatform.get('X')!;
-  const deniedText = denied.content.kind === 'X' ? denied.content.posts.join('\n').toLowerCase() : '';
-  if (!deniedText.includes('generally available') || sha256Digest(corrected.content) !== sha256Digest(sourceX.content)) throw new ShadowContractError('RUNTIME_FROZEN_FAULT_INVALID', 'X v1 must contain the frozen Beta-to-GA fault and X v2 must restore the exact persisted M1 source content.');
-  const deniedAudit = mission.audits.find((audit) => audit.revisionId === denied.id)!;
-  const correctedAudit = mission.audits.find((audit) => audit.revisionId === corrected.id)!;
-  const faultIssue = deniedAudit.issues.find((issue) => issue.code === 'CLAIM_OVERREACH' && issue.evidenceRefIds.length > 0 && issue.nextResponsibleRoleId === 'founder-identity-producer');
-  const latestKeys = ['X:2', 'XIAOHONGSHU:1', 'BLUESKY:1', 'LINKEDIN:1'];
-  const latestAllPass = latestKeys.every((key) => mission.audits.some((audit) => audit.revisionId === createdByKey.get(key)?.id && audit.outcome === 'PASS' && audit.status === 'ACTIVE'));
-  if (deniedAudit.outcome !== 'FAIL' || faultIssue === undefined || correctedAudit.outcome !== 'PASS' || !latestAllPass) throw new ShadowContractError('RUNTIME_FAULT_DECISION_INVALID', 'X v1 must fail with Evidence and the exact next Producer; X v2 and all other latest platform revisions must pass independent audit.');
-  deniedAudit.status = 'INVALIDATED'; deniedAudit.invalidatedByRevisionId = corrected.id; deniedAudit.digest = auditDigest(deniedAudit);
-  mission.fault.deniedRevisionId = denied.id; mission.fault.correctedRevisionId = corrected.id;
-  mission.state = 'NEEDS_OWNER_REVIEW';
-  appendEvent(mission, 'MISSION', '真实 AgentTeams Runtime 输出已导入；四平台精确 Revision 等待 Owner Review', {reviewableRevisionCount: 4, createsActionGrant: false, externalActionCount: 0}, 'CONTROL_PLANE', correctedAudit.digest, sha256Digest({state: 'NEEDS_OWNER_REVIEW'}), new Date(now.getTime() + 20_000));
-  return seal(mission, new Date(now.getTime() + 20_000));
+
+  if (correctionAuditor.state === 'ACCEPTED' && mission.state === 'AUDIT_BLOCKED') {
+    const denied = mission.revisions.find((revision) => revision.id === mission.fault.deniedRevisionId)!;
+    const corrected = mission.revisions.find((revision) => revision.id === mission.fault.correctedRevisionId)!;
+    const failedAudit = mission.audits.find((audit) => audit.revisionId === denied.id && audit.status === 'ACTIVE')!;
+    const payload = runtimePayloadByKind(mission, 'REAUDIT_CORRECTION'); const decisions = runtimeDecisions(payload);
+    if (payload.failedAuditDigest !== failedAudit.digest || decisions.length !== 1 || decisions[0]?.platform !== 'X' || decisions[0].revision !== 2 || decisions[0].outcome !== 'PASS' || decisions[0].revisionContentDigest !== sha256Digest(corrected.content)) throw new ShadowContractError('RUNTIME_REAUDIT_BINDING_INVALID', 'Re-audit must bind the exact X v2 and prior failed Audit digest.');
+    const correctedAudit = createAudit(mission, campaign, corrected, 'PASS', now, decisions[0].issues, failedAudit.id);
+    mission.audits.push(correctedAudit);
+    failedAudit.status = 'INVALIDATED'; failedAudit.invalidatedByRevisionId = corrected.id; failedAudit.digest = auditDigest(failedAudit);
+    mission.state = 'NEEDS_OWNER_REVIEW';
+    appendEvent(mission, 'AUDIT', 'X v2 已由独立 Auditor 重审通过，旧 Audit 由不可变 supersession 失效', {revisionId: corrected.id, supersededAuditId: correctedAudit.supersedesAuditId, outcome: 'PASS'}, 'independent-auditor', corrected.digest, correctedAudit.digest, now);
+    appendEvent(mission, 'MISSION', '真实 AgentTeams 因果修订链完成；四平台精确 Revision 等待 Owner Review', {reviewableRevisionCount: 4, createsActionGrant: false, externalActionCount: 0}, 'CONTROL_PLANE', correctedAudit.digest, sha256Digest({state: 'NEEDS_OWNER_REVIEW'}), new Date(now.getTime() + 1000));
+    return seal(mission, new Date(now.getTime() + 1000));
+  }
+  return mission;
+}
+
+export function materializeAcceptedRuntimeMission(missionValue: ShadowMission, campaign: CampaignDocument, now = new Date()): ShadowMission {
+  const mission = materializeAcceptedRuntimeProgress(missionValue, campaign, now);
+  if (!mission.tasks.every((task) => task.state === 'ACCEPTED' && task.acceptedPayload !== undefined) || mission.state !== 'NEEDS_OWNER_REVIEW' || mission.revisions.length !== 5 || mission.audits.length !== 5) throw new ShadowContractError('RUNTIME_TASKS_NOT_ACCEPTED', 'All eight causal Task submissions and three persisted materialization phases must complete before finalization.');
+  return mission;
 }
 
 export function acknowledgeRuntimeTask(missionValue: ShadowMission, receipt: RuntimeTaskAckReceipt, now = new Date()): ShadowMission {
@@ -281,12 +314,12 @@ export function recordRuntimeProjectDispatch(missionValue: ShadowMission, receip
   if (mission.state !== 'QUEUED') throw new ShadowContractError('RUNTIME_PROJECT_ALREADY_DISPATCHED', 'A Mission can bind exactly one AgentTeams Project dispatch. Restart recovery must reconcile that Project instead of dispatching another.');
   const bindings = [...receipt.memberBindings].sort((left, right) => left.roleId.localeCompare(right.roleId));
   const expectedRoles = [...ROLE_IDS].sort();
-  if (receipt.projectId !== mission.runtimeProjectId || receipt.runtimeVersion !== mission.runtimeVersion || !/^sha256:[a-f0-9]{64}$/u.test(receipt.buildDigest)) throw new ShadowContractError('RUNTIME_PROJECT_BINDING_MISMATCH', 'Project dispatch does not bind the exact Mission Project/version/build.');
+  if (receipt.projectId !== mission.runtimeProjectId || receipt.runtimeVersion !== mission.runtimeVersion || receipt.buildDigest !== AGENTTEAMS_V120_BUILD_DIGEST) throw new ShadowContractError('RUNTIME_PROJECT_BINDING_MISMATCH', 'Project dispatch does not bind the exact Mission Project/version/build.');
   if (bindings.length !== 6 || bindings.some((binding, index) => binding.roleId !== expectedRoles[index] || binding.roleIdentityId !== mission.roleContexts.find((context) => context.roleId === binding.roleId)?.identityId) || new Set(bindings.map((binding) => binding.runtimeActorId)).size !== 6) throw new ShadowContractError('RUNTIME_MEMBER_BINDING_INVALID', 'Project dispatch must bind exactly six distinct runtime members to the six RoleContexts.');
   if (receipt.memberSetDigest !== runtimeMemberSetDigest(receipt.memberBindings) || receipt.dagDigest !== runtimeDagDigest(mission) || !isIsoInstant(receipt.dispatchedAt) || receipt.receiptDigest !== runtimeProjectDispatchReceiptDigest(receipt)) throw new ShadowContractError('RUNTIME_PROJECT_RECEIPT_INVALID', 'Project member/DAG/timestamp/receipt digest validation failed.');
   mission.runtimeProjectDispatch = structuredClone(receipt);
   mission.state = 'RUNNING';
-  appendEvent(mission, 'PROJECT', 'AgentTeams v1.2.0 Project/DAG 已派发并验证运行时成员凭据', {projectId: mission.runtimeProjectId, memberCount: 6, taskCount: 6, buildDigest: receipt.buildDigest, receiptDigest: receipt.receiptDigest, externalActionAllowed: false}, 'presence-mission-leader', mission.sourceCampaignDigest, receipt.dagDigest, now);
+  appendEvent(mission, 'PROJECT', 'AgentTeams v1.2.0 Project/DAG 已派发并验证运行时成员凭据', {projectId: mission.runtimeProjectId, memberCount: 6, taskCount: mission.tasks.length, buildDigest: receipt.buildDigest, receiptDigest: receipt.receiptDigest, externalActionAllowed: false}, 'presence-mission-leader', mission.sourceCampaignDigest, receipt.dagDigest, now);
   return seal(mission, now);
 }
 
@@ -335,7 +368,9 @@ export function runtimeTaskSubmissionReceiptDigest(receipt: Omit<RuntimeTaskSubm
     ackReceiptDigest: receipt.ackReceiptDigest,
     runtimeState: receipt.runtimeState,
     submittedAt: receipt.submittedAt,
-    resultDigest: receipt.resultDigest
+    resultDigest: receipt.resultDigest,
+    resultSource: receipt.resultSource,
+    runtimeObservationId: receipt.runtimeObservationId
   });
 }
 
@@ -343,7 +378,7 @@ function validateRuntimeSubmissionReceipt(mission: ShadowMission, task: TaskCont
   const receipt = submission.runtimeReceipt;
   const ack = task.runtimeAck;
   const binding = mission.runtimeProjectDispatch?.memberBindings.find((item) => item.roleId === task.roleId);
-  if (ack === null || receipt.projectId !== mission.runtimeProjectId || receipt.taskId !== task.id || receipt.roleId !== task.roleId || receipt.runtimeActorId !== binding?.runtimeActorId || receipt.attempt !== task.attempt || receipt.ackReceiptDigest !== ack?.receiptDigest || receipt.runtimeState !== 'submitted') errors.push('RUNTIME_SUBMISSION_BINDING_MISMATCH');
+  if (ack === null || receipt.projectId !== mission.runtimeProjectId || receipt.taskId !== task.id || receipt.roleId !== task.roleId || receipt.runtimeActorId !== binding?.runtimeActorId || receipt.attempt !== task.attempt || receipt.ackReceiptDigest !== ack?.receiptDigest || receipt.runtimeState !== 'submitted' || receipt.resultSource !== 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY' || !digestString(receipt.runtimeObservationId)) errors.push('RUNTIME_SUBMISSION_BINDING_MISMATCH');
   if (!isIsoInstant(receipt.submittedAt) || (ack !== null && Date.parse(receipt.submittedAt) < Date.parse(ack.acknowledgedAt))) errors.push('RUNTIME_SUBMISSION_TIMESTAMP_INVALID');
   const expectedResultDigest = sha256Digest({schemaVersion: 1, taskId: task.id, roleId: task.roleId, payload: submission.payload, outputDigest: submission.outputDigest, maturity: submission.runtimeResultMaturity, externalActionAllowed: false});
   if (receipt.resultDigest !== expectedResultDigest) errors.push('RUNTIME_RESULT_DIGEST_MISMATCH');
@@ -418,16 +453,25 @@ function roleContext(missionId: string, roleId: MissionRoleId, identityId: strin
 }
 
 function taskContracts(missionId: string, sourceDigest: string, contexts: RoleContext[], locks: SkillLock[], now: Date): ShadowMission['tasks'] {
-  const ids = ROLE_IDS.map((_, index) => stableId(now, sourceDigest, 50 + index));
-  const kinds = ['PROJECT_COORDINATION', 'FREEZE_EVIDENCE', 'PLAN_CAMPAIGN', 'PRODUCE_FOUNDER', 'PRODUCE_PRODUCT', 'AUDIT_REVISIONS'] as const;
-  return ROLE_IDS.map((roleId, index) => {
-    const context = contexts[index]!; const prereqs = index === 2 ? [ids[1]!] : index === 3 || index === 4 ? [ids[2]!] : index === 5 ? [ids[3]!, ids[4]!] : [];
-    return {schemaVersion: 1, id: ids[index]!, missionId, roleId, roleIdentityId: context.identityId, kind: kinds[index]!, inputDigest: sha256Digest({sourceDigest, contextDigest: context.contextDigest, prerequisites: prereqs}), prerequisiteTaskIds: prereqs, skillLockDigest: sha256Digest(context.skillLockIds.map((id) => locks.find((lock) => lock.id === id)!.digest)), outputSchema: `lumiclaw.shadow.${kinds[index]!.toLowerCase()}.v1`, outputSchemaVersion: 1, timeoutMs: 120_000, allowedTools: context.allowedTools, state: prereqs.length > 0 ? 'WAITING_DEPENDENCY' : 'ASSIGNED', attempt: 1, ackedAt: null, runtimeAck: null, submittedAt: null, runtimeSubmission: null, acceptedOutputDigest: null};
-  }) as ShadowMission['tasks'];
+  const ids = Array.from({length: 8}, (_, index) => stableId(now, sourceDigest, 50 + index));
+  const definitions = [
+    ['presence-mission-leader', 'PROJECT_COORDINATION', [], 1],
+    ['evidence-claim-steward', 'FREEZE_EVIDENCE', [], 1],
+    ['campaign-planner', 'PLAN_CAMPAIGN', [ids[1]!], 1],
+    ['founder-identity-producer', 'PRODUCE_FOUNDER', [ids[2]!], 1],
+    ['product-account-producer', 'PRODUCE_PRODUCT', [ids[2]!], 1],
+    ['independent-auditor', 'AUDIT_REVISIONS', [ids[3]!, ids[4]!], 1],
+    ['founder-identity-producer', 'PRODUCE_FOUNDER_CORRECTION', [ids[5]!], 2],
+    ['independent-auditor', 'REAUDIT_CORRECTION', [ids[6]!], 2]
+  ] as const;
+  return definitions.map(([roleId, kind, prereqs, attempt], index) => {
+    const context = contexts.find((candidate) => candidate.roleId === roleId)!;
+    return {schemaVersion: 1, id: ids[index]!, missionId, roleId, roleIdentityId: context.identityId, kind, inputDigest: sha256Digest({sourceDigest, contextDigest: context.contextDigest, prerequisites: prereqs, phase: kind}), prerequisiteTaskIds: [...prereqs], skillLockDigest: sha256Digest(context.skillLockIds.map((id) => locks.find((lock) => lock.id === id)!.digest)), outputSchema: `lumiclaw.shadow.${kind.toLowerCase()}.v1`, outputSchemaVersion: 1, timeoutMs: 120_000, allowedTools: context.allowedTools, state: prereqs.length > 0 ? 'WAITING_DEPENDENCY' : 'ASSIGNED', attempt, ackedAt: null, runtimeAck: null, submittedAt: null, runtimeSubmission: null, acceptedOutputDigest: null};
+  });
 }
 
-function completeTask(mission: ShadowMission, roleId: MissionRoleId, now: Date): void {
-  const task = mission.tasks.find((item) => item.roleId === roleId)!;
+function completeTask(mission: ShadowMission, kind: TaskContract['kind'], now: Date): void {
+  const task = mission.tasks.find((item) => item.kind === kind)!; const roleId = task.roleId;
   task.state = 'ACKNOWLEDGED'; task.ackedAt = now.toISOString();
   appendEvent(mission, 'ACK', `${roleId} 已 ACK`, {taskId: task.id, attempt: task.attempt}, roleId, task.inputDigest, sha256Digest({ack: task.id}), now);
   task.state = 'ACCEPTED'; task.submittedAt = now.toISOString(); task.acceptedOutputDigest = sha256Digest({taskId: task.id, roleId, publicSafe: true});
@@ -441,18 +485,20 @@ function validateSubmissionPayload(task: TaskContract, payload: unknown): boolea
     case 'PROJECT_COORDINATION': return typeof payload.projectId === 'string' && payload.projectId.length > 0 && payload.externalActionAllowed === false;
     case 'FREEZE_EVIDENCE': return payload.frozen === true && digestString(payload.claimEvidenceDigest);
     case 'PLAN_CAMPAIGN': return digestString(payload.activationPlanDigest);
-    case 'PRODUCE_FOUNDER': { const revisions = runtimeRevisions(payload); return Array.isArray(payload.revisions) && payload.revisions.length === 3 && revisions.length === 3 && revisions.every((draft) => ['X', 'XIAOHONGSHU'].includes(draft.platform)); }
+    case 'PRODUCE_FOUNDER': { const revisions = runtimeRevisions(payload); return Array.isArray(payload.revisions) && payload.revisions.length === 2 && revisions.length === 2 && revisions.every((draft) => ['X', 'XIAOHONGSHU'].includes(draft.platform) && draft.revision === 1); }
     case 'PRODUCE_PRODUCT': { const revisions = runtimeRevisions(payload); return Array.isArray(payload.revisions) && payload.revisions.length === 2 && revisions.length === 2 && revisions.every((draft) => ['BLUESKY', 'LINKEDIN'].includes(draft.platform)); }
-    case 'AUDIT_REVISIONS': { const decisions = runtimeDecisions(payload); return Array.isArray(payload.decisions) && payload.decisions.length === 5 && decisions.length === 5; }
+    case 'AUDIT_REVISIONS': { const decisions = runtimeDecisions(payload); return Array.isArray(payload.decisions) && payload.decisions.length === 4 && decisions.length === 4 && decisions.every((decision) => decision.revision === 1); }
+    case 'PRODUCE_FOUNDER_CORRECTION': { const revisions = runtimeRevisions(payload); return Array.isArray(payload.revisions) && payload.revisions.length === 1 && revisions.length === 1 && revisions[0]?.platform === 'X' && revisions[0]?.revision === 2 && digestString(payload.failedAuditDigest); }
+    case 'REAUDIT_CORRECTION': { const decisions = runtimeDecisions(payload); return Array.isArray(payload.decisions) && payload.decisions.length === 1 && decisions.length === 1 && decisions[0]?.platform === 'X' && decisions[0]?.revision === 2 && digestString(payload.failedAuditDigest); }
   }
 }
 
 type RuntimeRevisionDraft = {platform: GovernedArtifactRevision['platform']; revision: number; sourceRevisionDigest: string; contentDigest: string; content: PlatformArtifact};
 type RuntimeAuditDraft = {platform: GovernedArtifactRevision['platform']; revision: number; revisionContentDigest: string; outcome: 'PASS' | 'FAIL' | 'ESCALATE'; issues: AuditIssue[]};
 
-function runtimePayload(mission: ShadowMission, roleId: MissionRoleId): Record<string, unknown> {
-  const payload = mission.tasks.find((task) => task.roleId === roleId)?.acceptedPayload;
-  if (!isRecord(payload)) throw new ShadowContractError('RUNTIME_ACCEPTED_PAYLOAD_MISSING', roleId);
+function runtimePayloadByKind(mission: ShadowMission, kind: TaskContract['kind']): Record<string, unknown> {
+  const payload = mission.tasks.find((task) => task.kind === kind)?.acceptedPayload;
+  if (!isRecord(payload)) throw new ShadowContractError('RUNTIME_ACCEPTED_PAYLOAD_MISSING', kind);
   return payload;
 }
 
@@ -499,10 +545,10 @@ function revisionFromSource(mission: ShadowMission, campaign: CampaignDocument, 
   return {...value, digest: revisionDigest(value)};
 }
 
-function createAudit(mission: ShadowMission, campaign: CampaignDocument, revision: GovernedArtifactRevision, outcome: AuditDecision['outcome'], now: Date, providedIssues?: AuditIssue[]): AuditDecision {
+function createAudit(mission: ShadowMission, campaign: CampaignDocument, revision: GovernedArtifactRevision, outcome: AuditDecision['outcome'], now: Date, providedIssues?: AuditIssue[], supersedesAuditId: string | null = null): AuditDecision {
   const auditor = mission.roleContexts.find((item) => item.roleId === 'independent-auditor')!;
   const issues = providedIssues ?? (outcome === 'FAIL' ? [{code: 'CLAIM_OVERREACH' as const, severity: 'BLOCKING' as const, path: mission.fault.injectedPath, message: '“Generally available” exceeds the frozen approved product-direction Claim.', evidenceRefIds: campaign.evidenceRefs.map((item) => item.id), nextResponsibleRoleId: 'founder-identity-producer' as const}] : []);
-  const value = {schemaVersion: 1 as const, id: stableId(now, `${revision.digest}:audit`, 70), organizationId: mission.organizationId, campaignId: mission.campaignId, missionId: mission.id, revisionId: revision.id, revisionDigest: revision.digest, auditorRoleId: 'independent-auditor' as const, auditorIdentityId: auditor.identityId, outcome, issues, bindings: {claimEvidenceDigest: sha256Digest({claims: campaign.claims, evidence: campaign.evidenceRefs}), mandateDigest: sha256Digest(campaign.graph.accountMandates), capabilityDigest: revision.capabilityBindingDigest, policyVersion: 'm2-shadow-policy@1.0.0' as const}, status: 'ACTIVE' as const, invalidatedByRevisionId: null, createdAt: now.toISOString(), digest: ''};
+  const value = {schemaVersion: 1 as const, id: stableId(now, `${revision.digest}:audit`, 70), organizationId: mission.organizationId, campaignId: mission.campaignId, missionId: mission.id, revisionId: revision.id, revisionDigest: revision.digest, auditorRoleId: 'independent-auditor' as const, auditorIdentityId: auditor.identityId, outcome, issues, bindings: {claimEvidenceDigest: sha256Digest({claims: campaign.claims, evidence: campaign.evidenceRefs}), mandateDigest: sha256Digest(campaign.graph.accountMandates), capabilityDigest: revision.capabilityBindingDigest, policyVersion: 'm2-shadow-policy@1.0.0' as const}, status: 'ACTIVE' as const, invalidatedByRevisionId: null, supersedesAuditId, createdAt: now.toISOString(), digest: ''};
   return {...value, digest: auditDigest(value)};
 }
 

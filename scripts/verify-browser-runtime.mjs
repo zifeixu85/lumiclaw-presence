@@ -129,7 +129,7 @@ try {
   }
   const queuedStory = renderedStates.find((story) => story.id.endsWith('--queued'));
   const englishMobileStory = renderedStates.find((story) => story.id.endsWith('--english-queued-390-px'));
-  if (queuedStory?.roles !== 6 || queuedStory.tasks !== 6 || englishMobileStory?.width !== 390) throw new Error('Storybook six-member or 390px acceptance failed.');
+  if (queuedStory?.roles !== 6 || queuedStory.tasks !== 8 || englishMobileStory?.width !== 390) throw new Error('Storybook six-member/eight-Task or 390px acceptance failed.');
   checks.storybookRealBrowserStateMatrix = {count: renderedStates.length, renderedStates};
   await cdp.navigate(`${storybookBase}/iframe.html?id=${encodeURIComponent(englishMobileStory.id)}&viewMode=story`);
   await cdp.waitFor("document.querySelectorAll('.role-card').length === 6", 'mobile Storybook six-role roster');
@@ -168,7 +168,7 @@ try {
   await cdp.evaluate("[...document.querySelectorAll('button')].find((button) => button.textContent.includes('启动六成员 SHADOW')).click(); true");
   await cdp.waitFor("[...document.querySelectorAll('button')].some((button) => button.textContent.includes('运行公开安全故障演练'))", 'queued SHADOW Mission');
   await cdp.evaluate("[...document.querySelectorAll('button')].find((button) => button.textContent.includes('运行公开安全故障演练')).click(); true");
-  await cdp.waitFor("document.querySelectorAll('.role-card').length === 6 && document.querySelectorAll('.task-node').length === 6 && document.body.innerText.includes('等待 Owner 精确确认')", 'fault flight awaiting exact Owner Review', 60_000);
+  await cdp.waitFor("document.querySelectorAll('.role-card').length === 6 && document.querySelectorAll('.task-node').length === 8 && document.body.innerText.includes('等待 Owner 精确确认')", 'fault flight awaiting exact Owner Review', 60_000);
   const mission = await missionSnapshot(cdp);
   assertMissionSnapshot(mission, 'desktop zh-CN Mission');
   await cdp.screenshot('product-zh-mission-desktop');
@@ -256,7 +256,7 @@ async function missionSnapshot(page) {
 }
 
 function assertMissionSnapshot(snapshot, label) {
-  if (snapshot.roles !== 6 || snapshot.tasks !== 6 || snapshot.grants !== 0 || snapshot.connectors !== 0 || snapshot.actions !== 0 || snapshot.executionAllowed !== 'FALSE') throw new Error(`${label} lost six-member or no-action proof.`);
+  if (snapshot.roles !== 6 || snapshot.tasks !== 8 || snapshot.grants !== 0 || snapshot.connectors !== 0 || snapshot.actions !== 0 || snapshot.executionAllowed !== 'FALSE') throw new Error(`${label} lost six-member/eight-Task or no-action proof.`);
 }
 
 function delay(milliseconds) { return new Promise((resolve) => setTimeout(resolve, milliseconds)); }

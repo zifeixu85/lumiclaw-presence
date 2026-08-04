@@ -10,14 +10,14 @@ const members = (value = mission()) => value.roleContexts.map((context) => ({nam
 function submission(value: ShadowMission, task: TaskContract, payload: unknown): RuntimeSubmission {
   const current = value.tasks.find((item) => item.id === task.id)!; const outputDigest = sha256Digest(payload);
   const resultDigest = sha256Digest({schemaVersion: 1, taskId: task.id, roleId: task.roleId, payload, outputDigest, maturity: 'MOCK_CONFORMANCE', externalActionAllowed: false});
-  const base = {schemaVersion: 1 as const, projectId: value.runtimeProjectId, taskId: task.id, roleId: task.roleId, runtimeActorId: current.runtimeAck!.runtimeActorId, attempt: task.attempt, ackReceiptDigest: current.runtimeAck!.receiptDigest, runtimeState: 'submitted' as const, submittedAt: now().toISOString(), resultDigest};
+  const base = {schemaVersion: 1 as const, projectId: value.runtimeProjectId, taskId: task.id, roleId: task.roleId, runtimeActorId: current.runtimeAck!.runtimeActorId, attempt: task.attempt, ackReceiptDigest: current.runtimeAck!.receiptDigest, runtimeState: 'submitted' as const, submittedAt: now().toISOString(), resultDigest, resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY' as const, runtimeObservationId: sha256Digest({taskId: task.id, resultDigest, source: 'test-persisted-summary'})};
   return {schemaVersion: 1, missionId: value.id, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1, payload, outputDigest, runtimeResultMaturity: 'MOCK_CONFORMANCE', runtimeReceipt: {...base, receiptDigest: runtimeTaskSubmissionReceiptDigest(base)}};
 }
 
 describe('AgentTeams v1.2.0 SHADOW Runtime Adapter', () => {
   it('creates one Project, six-member DAG and observes runtime state', async () => {
     const value = mission(); const result = await new AgentTeamsV120ShadowAdapter(new InMemoryAgentTeamsV120Transport(members(value)), now).dispatch(value);
-    expect(result.accepted).toBe(true); expect(result.runtime).toMatchObject({state: 'ready'}); expect(Object.keys(result.runtime!.taskStates)).toHaveLength(6); expect(result.mission.runtimeProjectDispatch?.memberBindings).toHaveLength(6);
+    expect(result.accepted).toBe(true); expect(result.runtime).toMatchObject({state: 'ready'}); expect(Object.keys(result.runtime!.taskStates)).toHaveLength(8); expect(result.mission.runtimeProjectDispatch?.memberBindings).toHaveLength(6);
   });
 
   it('fails closed for version, member count and identity collision', async () => {

@@ -18,25 +18,31 @@ function generatedTaskResult(body) {
   const message = [...(Array.isArray(body.messages) ? body.messages : [])].reverse().find((item) => item?.role === 'user' && typeof item.content === 'string');
   let input;
   try { input = JSON.parse(message?.content ?? ''); } catch { return genericResponse; }
-  if (input?.kind !== 'LUMICLAW_PUBLIC_SAFE_SHADOW_TASK' || input.externalActionAllowed !== false || input.campaign === undefined) return genericResponse;
-  const campaign = input.campaign; const byPlatform = new Map(campaign.artifactRevisions.map((revision) => [revision.platform, revision]));
+  if (input?.kind !== 'LUMICLAW_PUBLIC_SAFE_SHADOW_TASK' || input.externalActionAllowed !== false || typeof input.taskKind !== 'string' || input.campaign !== undefined || input.upstream !== undefined || input.projection === undefined) return genericResponse;
+  const projection = input.projection;
+  const byPlatform = new Map((projection.sourceRevisions ?? []).map((revision) => [revision.platform, revision]));
   const draft = (platform, revision, content) => ({platform, revision, sourceRevisionDigest: digest(byPlatform.get(platform)), contentDigest: digest(content), content});
   let payload;
-  if (input.roleId === 'presence-mission-leader') payload = {projectId: input.projectId, externalActionAllowed: false};
-  else if (input.roleId === 'evidence-claim-steward') payload = {frozen: true, claimEvidenceDigest: digest({claims: campaign.claims, evidence: campaign.evidenceRefs})};
-  else if (input.roleId === 'campaign-planner') payload = {activationPlanDigest: digest(campaign.activationPlan)};
-  else if (input.roleId === 'founder-identity-producer') {
+  if (input.taskKind === 'PROJECT_COORDINATION' && input.roleId === 'presence-mission-leader') payload = {projectId: input.projectId, externalActionAllowed: false};
+  else if (input.taskKind === 'FREEZE_EVIDENCE' && input.roleId === 'evidence-claim-steward') payload = {frozen: true, claimEvidenceDigest: digest({claims: projection.claimEvidence.claims, evidence: projection.claimEvidence.evidenceRefs})};
+  else if (input.taskKind === 'PLAN_CAMPAIGN' && input.roleId === 'campaign-planner') payload = {activationPlanDigest: digest(projection.activationPlan)};
+  else if (input.taskKind === 'PRODUCE_FOUNDER' && input.roleId === 'founder-identity-producer') {
     const sourceX = byPlatform.get('X'); const faultyX = structuredClone(sourceX.content); faultyX.posts = ['LumiClaw Presence is generally available in every market today.'];
-    payload = {revisions: [draft('X', 1, faultyX), draft('X', 2, structuredClone(sourceX.content)), draft('XIAOHONGSHU', 1, structuredClone(byPlatform.get('XIAOHONGSHU').content))]};
-  } else if (input.roleId === 'product-account-producer') {
+    payload = {revisions: [draft('X', 1, faultyX), draft('XIAOHONGSHU', 1, structuredClone(byPlatform.get('XIAOHONGSHU').content))]};
+  } else if (input.taskKind === 'PRODUCE_PRODUCT' && input.roleId === 'product-account-producer') {
     payload = {revisions: [draft('BLUESKY', 1, structuredClone(byPlatform.get('BLUESKY').content)), draft('LINKEDIN', 1, structuredClone(byPlatform.get('LINKEDIN').content))]};
-  } else if (input.roleId === 'independent-auditor') {
-    const revisions = [...(input.upstream?.founder?.revisions ?? []), ...(input.upstream?.product?.revisions ?? [])];
+  } else if (input.taskKind === 'AUDIT_REVISIONS' && input.roleId === 'independent-auditor') {
+    const revisions = [...(projection.producerSummaries?.founder?.revisions ?? []), ...(projection.producerSummaries?.product?.revisions ?? [])];
     payload = {decisions: revisions.map((revision) => {
       const text = JSON.stringify(revision.content).toLowerCase(); const fault = revision.platform === 'X' && revision.revision === 1 && text.includes('generally available');
-      const issue = {code: 'CLAIM_OVERREACH', severity: 'BLOCKING', path: '/content/posts/0', message: '“Generally available” exceeds the frozen approved product-direction Claim.', evidenceRefIds: campaign.evidenceRefs.map((item) => item.id), nextResponsibleRoleId: 'founder-identity-producer'};
+      const issue = {code: 'CLAIM_OVERREACH', severity: 'BLOCKING', path: '/content/posts/0', message: '“Generally available” exceeds the frozen approved product-direction Claim.', evidenceRefIds: projection.evidenceRefIds, nextResponsibleRoleId: 'founder-identity-producer'};
       return {platform: revision.platform, revision: revision.revision, revisionContentDigest: revision.contentDigest, outcome: fault ? 'FAIL' : 'PASS', issues: fault ? [issue] : []};
     })};
+  } else if (input.taskKind === 'PRODUCE_FOUNDER_CORRECTION' && input.roleId === 'founder-identity-producer') {
+    const sourceX = byPlatform.get('X');
+    payload = {revisions: [draft('X', 2, structuredClone(sourceX.content))], failedAuditDigest: projection.failedAudit.digest};
+  } else if (input.taskKind === 'REAUDIT_CORRECTION' && input.roleId === 'independent-auditor') {
+    payload = {decisions: [{platform: 'X', revision: 2, revisionContentDigest: digest(projection.correctedRevision.content), outcome: 'PASS', issues: []}], failedAuditDigest: projection.failedAudit.digest};
   } else return genericResponse;
   const outputDigest = digest(payload);
   return {schemaVersion: 1, taskId: input.taskId, roleId: input.roleId, payload, outputDigest, maturity: 'MOCK_CONFORMANCE', externalActionAllowed: false};

@@ -29,9 +29,24 @@ async function assertEvidence() {
   if (api.result !== 'PASS' || api.cleanup !== 'PASS') failures.push('api-integration');
   if (compose.result !== 'PASS' || compose.cleanup !== 'PASS') failures.push('compose-verification');
   if (agentteamsImage.result !== 'PASS' || agentteamsImage.cleanup !== 'PASS' || agentteamsImage.liveAgentTeamRun !== false) failures.push('agentteams-image-smoke');
-  if (agentteamsReal.status !== 'PASS' || agentteamsReal.runtime?.realAgentTeamsAcceptance !== true || agentteamsReal.runtime?.realModelAcceptance !== false || agentteamsReal.topology?.memberCount !== 6 || agentteamsReal.project?.taskCount !== 6 || agentteamsReal.project?.restartRecovered !== true || agentteamsReal.productControlPlane?.sameProjectBinding !== true || agentteamsReal.noAction?.externalActionAllowed !== false) failures.push('agentteams-real-runtime');
+  const causalTasks = agentteamsReal.project?.tasks ?? [];
+  const causalRuntimeValid = agentteamsReal.causalRuntimeImport?.exactRuntimeActorCount === 6
+    && agentteamsReal.causalRuntimeImport?.workerGeneratedResultCount === 8
+    && agentteamsReal.causalRuntimeImport?.independentAuditorResultSource === 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY'
+    && agentteamsReal.causalRuntimeImport?.apiRejectsUnacknowledgedOrDigestMismatchedSubmit === true
+    && agentteamsReal.causalRuntimeImport?.runtimeImportAuthentication === 'EPHEMERAL_ADAPTER_TOKEN'
+    && agentteamsReal.causalRuntimeImport?.unauthenticatedRuntimeImportRejected === true
+    && agentteamsReal.causalRuntimeImport?.authenticationMaterialPersisted === false
+    && agentteamsReal.causalRuntimeImport?.exactTaskCount === 8
+    && agentteamsReal.causalRuntimeImport?.roleContextProjectionVerified === true
+    && agentteamsReal.causalRuntimeImport?.wholeCampaignWorkerInputForbidden === true
+    && Array.isArray(agentteamsReal.causalRuntimeImport?.causalTransitions)
+    && agentteamsReal.causalRuntimeImport.causalTransitions.map((transition) => transition.state).join(',') === 'REVISION_REQUIRED,AUDIT_BLOCKED,NEEDS_OWNER_REVIEW'
+    && causalTasks.length === 8
+    && causalTasks.every((task) => task.resultSource === 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY' && typeof task.ackReceiptDigest === 'string' && typeof task.submissionReceiptDigest === 'string' && typeof task.runtimeResultDigest === 'string' && typeof task.inputProjectionDigest === 'string' && Array.isArray(task.inputProjectionKeys) && task.inputProjectionKeys.length > 0);
+  if (agentteamsReal.status !== 'PASS' || agentteamsReal.runtime?.realAgentTeamsAcceptance !== true || agentteamsReal.runtime?.realModelAcceptance !== false || agentteamsReal.topology?.memberCount !== 6 || agentteamsReal.project?.taskCount !== 8 || agentteamsReal.project?.restartRecovered !== true || agentteamsReal.productControlPlane?.sameProjectBinding !== true || agentteamsReal.productControlPlane?.normalizedHistoryAuthoritative !== true || agentteamsReal.productControlPlane?.normalizedHistoryTamperRejected !== true || agentteamsReal.environmentLifecycle?.status !== 'PASS' || agentteamsReal.environmentLifecycle?.selfProvisioned !== true || agentteamsReal.environmentLifecycle?.exactRuntimeObjectsRemoved !== true || agentteamsReal.environmentLifecycle?.ephemeralCredentialsRemoved !== true || !causalRuntimeValid || agentteamsReal.noAction?.externalActionAllowed !== false) failures.push('agentteams-real-runtime');
   if (providers.status !== 'PASS' || providers.deepSeek?.canary !== 'NOT_RUN_NO_KEY' || providers.evoLink?.canary !== 'NOT_RUN_NO_KEY' || providers.publicSafeMock?.maturity !== 'MOCK_CONFORMANCE' || providers.noAction?.externalActionAllowed !== false) failures.push('provider-conformance');
-  if (shadowPostgres.status !== 'PASS' || shadowPostgres.restartRecovered !== true || shadowPostgres.forbiddenTables !== 0 || shadowPostgres.noAction?.externalActionAllowed !== false) failures.push('shadow-postgres');
+  if (shadowPostgres.status !== 'PASS' || shadowPostgres.restartRecovered !== true || shadowPostgres.normalizedHistoryOnly !== true || shadowPostgres.idempotentReplayNormalizedValidated !== true || !Object.values(shadowPostgres.immutableHistory ?? {}).every(Boolean) || shadowPostgres.forbiddenTables !== 0 || shadowPostgres.noAction?.externalActionAllowed !== false) failures.push('shadow-postgres');
   if (browser.status !== 'PASS' || browser.consoleErrorCount !== 0 || browser.checks?.storybookRealBrowserStateMatrix?.count !== 14 || browser.screenshots?.length !== 5 || browser.realAgentTeamsClaim !== false) failures.push('browser-verification');
   if (!Array.isArray(licenses.disallowed) || licenses.disallowed.length !== 0) failures.push('license-inventory');
   if (secretScan.status !== 'PASS' || !Array.isArray(secretScan.findings) || secretScan.findings.length !== 0) failures.push('secret-scan');

@@ -1,7 +1,7 @@
 import {sha256Digest} from '@lumiclaw/domain';
 import {Pool, type PoolClient} from 'pg';
 import {createShadowMission, ShadowContractError} from './mission.js';
-import type {ShadowMission, ShadowMissionRepository, StartShadowMissionInput} from './types.js';
+import type {AuditDecision, ShadowMission, ShadowMissionRepository, StartShadowMissionInput} from './types.js';
 
 type Idempotency = {requestDigest: string; missionId: string; response: ShadowMission};
 
@@ -12,6 +12,8 @@ export class MemoryShadowMissionRepository implements ShadowMissionRepository {
     const key = `${input.campaign.organizationId}:${input.campaign.id}:${idempotencyKey}`; const previous = this.#idempotency.get(key);
     if (previous !== undefined) {
       if (previous.requestDigest !== requestDigest) throw new ShadowContractError('IDEMPOTENCY_KEY_REUSED', 'Idempotency key was reused with a different body.');
+      const current = this.#missions.get(previous.missionId); if (current === undefined) throw new ShadowContractError('MISSION_NOT_FOUND', previous.missionId);
+      validateReconstructedMission(current); validateReconstructedMission(previous.response);
       return {mission: structuredClone(previous.response), replayed: true};
     }
     const existing = [...this.#missions.values()].find((item) => item.organizationId === input.campaign.organizationId && item.campaignId === input.campaign.id && item.sourceCampaignDigest === input.campaignDigest);
@@ -25,12 +27,16 @@ export class MemoryShadowMissionRepository implements ShadowMissionRepository {
     const previous = this.#idempotency.get(`${organizationId}:${route}:${idempotencyKey}`);
     if (previous === undefined) return undefined;
     if (previous.requestDigest !== requestDigest) throw new ShadowContractError('IDEMPOTENCY_KEY_REUSED', 'Idempotency key was reused with a different body.');
+    const current = this.#missions.get(previous.missionId); if (current === undefined) throw new ShadowContractError('MISSION_NOT_FOUND', previous.missionId);
+    validateReconstructedMission(current); validateReconstructedMission(previous.response);
     return structuredClone(previous.response);
   }
   async replaceIdempotent(mission: ShadowMission, expectedEtag: string, route: string, idempotencyKey: string, requestDigest: string): Promise<{mission: ShadowMission; replayed: boolean}> {
     const key = `${mission.organizationId}:${route}:${idempotencyKey}`; const previous = this.#idempotency.get(key);
     if (previous !== undefined) {
       if (previous.requestDigest !== requestDigest) throw new ShadowContractError('IDEMPOTENCY_KEY_REUSED', 'Idempotency key was reused with a different body.');
+      const current = this.#missions.get(previous.missionId); if (current === undefined) throw new ShadowContractError('MISSION_NOT_FOUND', previous.missionId);
+      validateReconstructedMission(current); validateReconstructedMission(previous.response);
       return {mission: structuredClone(previous.response), replayed: true};
     }
     const saved = await this.replace(mission, expectedEtag);
@@ -50,7 +56,7 @@ export class PostgresShadowMissionRepository implements ShadowMissionRepository 
       const replay = await client.query('select request_digest, mission_id, response_payload from shadow_idempotency where organization_id=$1 and route=$2 and idempotency_key=$3', [input.campaign.organizationId, route, idempotencyKey]);
       if (replay.rowCount !== 0) {
         if (String(replay.rows[0].request_digest).trim() !== requestDigest) throw new ShadowContractError('IDEMPOTENCY_KEY_REUSED', 'Idempotency key was reused with a different body.');
-        return {mission: replay.rows[0].response_payload as ShadowMission, replayed: true};
+        return {mission: await validateIdempotentReplay(client, input.campaign.organizationId, replay.rows[0]), replayed: true};
       }
       const existing = await client.query('select id from missions where organization_id=$1 and campaign_id=$2 and source_campaign_digest=$3', [input.campaign.organizationId, input.campaign.id, input.campaignDigest]);
       const mission = existing.rowCount === 0 ? createShadowMission(input) : (await readMission(client, input.campaign.organizationId, existing.rows[0].id as string))!;
@@ -63,18 +69,21 @@ export class PostgresShadowMissionRepository implements ShadowMissionRepository 
   async getByCampaign(organizationId: string, campaignId: string): Promise<ShadowMission[]> { const client = await this.#pool.connect(); try { const result = await client.query('select id from missions where organization_id=$1 and campaign_id=$2 order by created_at desc', [organizationId, campaignId]); return (await Promise.all(result.rows.map((row) => readMission(client, organizationId, row.id as string)))).filter((mission): mission is ShadowMission => mission !== undefined); } finally { client.release(); } }
   async replace(mission: ShadowMission, expectedEtag: string): Promise<ShadowMission> { return this.#transaction(async (client) => { const locked = await client.query('select etag from missions where organization_id=$1 and id=$2 for update', [mission.organizationId, mission.id]); if (locked.rowCount === 0) throw new ShadowContractError('MISSION_NOT_FOUND', mission.id); if (locked.rows[0].etag !== expectedEtag) throw new ShadowContractError('MISSION_VERSION_CONFLICT', 'Mission ETag is stale.'); await persistMission(client, mission, false); return mission; }); }
   async getIdempotentReplay(organizationId: string, route: string, idempotencyKey: string, requestDigest: string): Promise<ShadowMission | undefined> {
-    const result = await this.#pool.query('select request_digest,response_payload from shadow_idempotency where organization_id=$1 and route=$2 and idempotency_key=$3', [organizationId, route, idempotencyKey]);
-    if (result.rowCount === 0) return undefined;
-    if (String(result.rows[0].request_digest).trim() !== requestDigest) throw new ShadowContractError('IDEMPOTENCY_KEY_REUSED', 'Idempotency key was reused with a different body.');
-    return result.rows[0].response_payload as ShadowMission;
+    const client = await this.#pool.connect();
+    try {
+      const result = await client.query('select request_digest,mission_id,response_payload from shadow_idempotency where organization_id=$1 and route=$2 and idempotency_key=$3', [organizationId, route, idempotencyKey]);
+      if (result.rowCount === 0) return undefined;
+      if (String(result.rows[0].request_digest).trim() !== requestDigest) throw new ShadowContractError('IDEMPOTENCY_KEY_REUSED', 'Idempotency key was reused with a different body.');
+      return await validateIdempotentReplay(client, organizationId, result.rows[0]);
+    } finally { client.release(); }
   }
   async replaceIdempotent(mission: ShadowMission, expectedEtag: string, route: string, idempotencyKey: string, requestDigest: string): Promise<{mission: ShadowMission; replayed: boolean}> {
     return this.#transaction(async (client) => {
       await client.query('select pg_advisory_xact_lock(hashtextextended($1, 0))', [`${mission.organizationId}:${route}:${idempotencyKey}`]);
-      const replay = await client.query('select request_digest,response_payload from shadow_idempotency where organization_id=$1 and route=$2 and idempotency_key=$3', [mission.organizationId, route, idempotencyKey]);
+      const replay = await client.query('select request_digest,mission_id,response_payload from shadow_idempotency where organization_id=$1 and route=$2 and idempotency_key=$3', [mission.organizationId, route, idempotencyKey]);
       if (replay.rowCount !== 0) {
         if (String(replay.rows[0].request_digest).trim() !== requestDigest) throw new ShadowContractError('IDEMPOTENCY_KEY_REUSED', 'Idempotency key was reused with a different body.');
-        return {mission: replay.rows[0].response_payload as ShadowMission, replayed: true};
+        return {mission: await validateIdempotentReplay(client, mission.organizationId, replay.rows[0]), replayed: true};
       }
       const locked = await client.query('select etag from missions where organization_id=$1 and id=$2 for update', [mission.organizationId, mission.id]);
       if (locked.rowCount === 0) throw new ShadowContractError('MISSION_NOT_FOUND', mission.id);
@@ -86,6 +95,14 @@ export class PostgresShadowMissionRepository implements ShadowMissionRepository 
   }
   async close(): Promise<void> { await this.#pool.end(); }
   async #transaction<T>(operation: (client: PoolClient) => Promise<T>): Promise<T> { const client = await this.#pool.connect(); try { await client.query('begin'); const value = await operation(client); await client.query('commit'); return value; } catch (error) { await client.query('rollback'); throw error; } finally { client.release(); } }
+}
+
+async function validateIdempotentReplay(client: PoolClient, organizationId: string, row: Record<string, unknown>): Promise<ShadowMission> {
+  const snapshot = row.response_payload as ShadowMission;
+  validateReconstructedMission(snapshot);
+  const current = await readMission(client, organizationId, String(row.mission_id));
+  if (current === undefined) throw new ShadowContractError('MISSION_NOT_FOUND', String(row.mission_id));
+  return snapshot;
 }
 
 async function readMission(client: PoolClient, organizationId: string, missionId: string): Promise<ShadowMission | undefined> {
@@ -120,6 +137,14 @@ async function readNormalizedHistory(client: PoolClient, organizationId: string,
     const rows = await client.query(`select payload from ${table} where organization_id=$1 and mission_id=$2 order by ${order}`, [organizationId, missionId]);
     history[key] = rows.rows.map((row) => row.payload);
   }
+  const audits = history.audits as AuditDecision[];
+  const superseded = new Map(audits.filter((audit) => audit.supersedesAuditId !== null).map((audit) => [audit.supersedesAuditId!, audit]));
+  history.audits = audits.map((audit) => {
+    const superseding = superseded.get(audit.id);
+    if (superseding === undefined) return audit;
+    const invalidated = {...audit, status: 'INVALIDATED' as const, invalidatedByRevisionId: superseding.revisionId, digest: ''};
+    return {...invalidated, digest: sha256Digest(invalidated)};
+  });
   return history as Pick<ShadowMission, 'roleContexts' | 'skillLocks' | 'tasks' | 'revisions' | 'audits' | 'reviews' | 'trace' | 'ledger' | 'modelCalls' | 'mediaAssets'>;
 }
 

@@ -1,5 +1,5 @@
 import {
-  acceptRuntimeSubmission, acknowledgeRuntimeTask, cancelMission, markRecoveryUnknown, markTimedOut, reconcileMission,
+  AGENTTEAMS_V120_BUILD_DIGEST, acceptRuntimeSubmission, acknowledgeRuntimeTask, cancelMission, markRecoveryUnknown, markTimedOut, reconcileMission,
   recordRuntimeProjectDispatch, runtimeDagDigest, runtimeMemberSetDigest, runtimeProjectDispatchReceiptDigest,
   runtimeTaskAckReceiptDigest, type RuntimeSubmission, type ShadowMission
 } from '@lumiclaw/governed-shadow';
@@ -71,7 +71,7 @@ export class AgentTeamsV120ShadowAdapter {
 
 export class InMemoryAgentTeamsV120Transport implements AgentTeamsV120Transport {
   readonly #projects = new Map<string, {state: string; tasks: Record<string, string>}>();
-  constructor(private readonly memberList: AgentTeamsMember[], private readonly buildDigest = `sha256:${'a'.repeat(64)}`, private readonly runtimeVersion = 'v1.2.0') {}
+  constructor(private readonly memberList: AgentTeamsMember[], private readonly buildDigest = AGENTTEAMS_V120_BUILD_DIGEST, private readonly runtimeVersion = 'v1.2.0') {}
   async identity() { return {runtime: 'agentteams' as const, version: this.runtimeVersion, buildDigest: this.buildDigest}; }
   async members() { return structuredClone(this.memberList); }
   async createProject(input: AgentTeamsProjectInput) { if (input.externalActionAllowed) throw new Error('EXTERNAL_ACTION_NOT_ALLOWED'); this.#projects.set(input.id, {state: 'planning', tasks: {}}); }
