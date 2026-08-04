@@ -6,8 +6,8 @@
 > Executor Task：`019fc941-237b-77c3-8c56-3cc42b1bd6c6`  
 > Worktree：`/Users/ameng/Documents/Projects/GOAI-hangzhou/worktrees/lumiclaw-presence/sdd-002-governed-shadow-campaign`  
 > Branch / Base：`codex/sdd-002-governed-shadow-campaign` / `4377103b3fea493a591af7f069fd697d9601f1ca`  
-> Final Head / Commits：最终提交后在本报告 Closeout 更新  
-> 报告状态：`DRAFT`（最终机器门禁、Pro 终审与 clean Head 完成后改为 `EVIDENCE_READY`）  
+> Final Head / Commits：Pro-reviewed code candidate `7730cb56b6cb7102c7d0f39e92348c7c2a57ffe2`；本报告提交后的 final closeout Head 由结构化 handoff 与 final source-package manifest 精确记录
+> 报告状态：`EVIDENCE_READY`（Executor 可执行门禁与外部源码复核完成；Owner UAT / Coordinator acceptance 仍为 `PENDING`）
 > 证据成熟度：`ENGINEERING_VERIFIED`（真实 AgentTeams + 公开安全 Mock Model Conformance；真实 DeepSeek/EvoLink Canary 均未运行）  
 > 生成日期：`2026-08-04`
 
@@ -57,7 +57,7 @@ DeepSeek 官方 Gateway 与 MediaGenerationProvider 边界已实现并通过公�
 | Provider / Media | `packages/governed-shadow/src/providers.ts`、`media.ts`、`infra/providers/` | DeepSeek official gateway/mock transport conformance；EvoLink no-key boundary；rights/cost/unreviewed content-addressed media；`.evidence/sdd-002/provider-conformance.json`。 |
 | UI / i18n | `shadow-mission-workspace.tsx`、stories、`campaign-workspace.tsx`、双语 message、CSS | Mission/Review 状态矩阵、Evidence Drawer、Diff/Review、UX-M1-001、390px；`.evidence/sdd-002/browser-verification.json` 与五张截图。 |
 | No action | domain/API/Compose/action-operator health contract | `externalActionAllowed=false`，Grant/Connector/Action/table/route 均为 0；M3 类型与执行路径未引入。 |
-| Security / License | `secret-scan.mjs`、dependency inventory/version manifest、CycloneDX SBOM | public-safe allowlist packaging、Secret positive fixture、license/provenance、npm audit 与 SBOM；最终 manifest 在 clean Head 后生成。 |
+| Security / License | `secret-scan.mjs`、dependency inventory/version manifest、CycloneDX SBOM | public-safe allowlist packaging、Secret positive fixture、license/provenance、npm audit、SBOM 与 19-file/38-mutation final manifest。 |
 
 ## 四、自动化验证
 
@@ -65,18 +65,18 @@ DeepSeek 官方 Gateway 与 MediaGenerationProvider 边界已实现并通过公�
 
 | 检查 | 命令或协议 | 期望 | 实际 | 结果 |
 |---|---|---|---|---|
-| Unit / Schema / Permission | `npm test` | 正反合同、六角色、权限、runtime/provider/media/audit/review/UI 全通过 | 21 个 test files、127 个 tests 全通过 | `PASS` |
+| Unit / Schema / Permission | `npm test` | 正反合同、六角色、权限、runtime/provider/media/audit/review/UI 全通过 | 21 个 test files、129 个 tests 全通过 | `PASS` |
 | Lint / Type | `npm run lint && npm run typecheck` | 所有 workspace 无错误 | 全部 workspace 无错误 | `PASS` |
-| PostgreSQL Mission | 临时 PostgreSQL + migrate + `npm run verify:shadow-postgres` | restart/idempotency/normalized history/revision/audit/no-action | `status=PASS`；Mission envelope 六类已检查历史数组均为 0；6 run/8 task/5 skill/5 revision/5 audit/31 trace/31 ledger；幂等只存不可变 metadata，Replay 重构 current normalized authority，版本推进后的旧 checkpoint 被拒绝；forbidden table 0 | `PASS` |
+| PostgreSQL Mission | 临时 PostgreSQL + migrate + `npm run verify:shadow-postgres` | restart/idempotency/normalized history/revision/audit/no-action | `status=PASS`；Mission envelope 历史数组均为 0；6 run/8 task/5 skill/5 revision/5 audit/1 exact OwnerReview/32 trace/32 ledger；六张历史表 mutation 全拒绝；幂等只存不可变 metadata，Replay 重构 current normalized authority，版本推进后的旧 checkpoint 被拒绝；forbidden table 0 | `PASS` |
 | Campaign/API | `npm run verify:campaign-api` | M1+M2 create/replay/scope/ETag/flight/review/restart/down-up/cleanup | `result=PASS`、`cleanup=PASS`；四个 exact review，state `SHADOW_COMPLETE`，forbidden action table 0 | `PASS` |
 | AgentTeams images | `npm run verify:agentteams-images` | 固定 v1.2.0 tag/source/image digest 与受控 smoke | `result=PASS`、`cleanup=PASS` | `PASS` |
 | 真实 AgentTeams | `npm run verify:agentteams-real` | 官方 source/installer 自举，真实六成员、八 Task Project/DAG/ACK/Submit/restart，与同一 PG Mission 链接并清理 | `status=PASS`、`realAgentTeamsAcceptance=true`、`realModelAcceptance=false`；8 个 Task 结果均来自 AgentTeams CHECK persisted summary；状态依次为 `REVISION_REQUIRED → AUDIT_BLOCKED → NEEDS_OWNER_REVIEW`；RoleContext projection、Project/actor/ACK/Submit/observation receipts 因果绑定；unauthenticated/digest mismatch/normalized tamper 拒绝；cleanup PASS | `PASS` |
 | Provider / Media | `npm run verify:providers` | structured/429/5xx/4xx/timeout/schema/no-switch/redaction/cost/media rights/no approval | `status=PASS`；DeepSeek/EvoLink `NOT_RUN_NO_KEY`；Mock `MOCK_CONFORMANCE`；8 个合法 Role projection 通过、15 个越权/篡改输入拒绝（含 8 个递归嵌套攻击与 2 个四平台精确集合攻击）；响应 model/finish/usage 身份负例通过；Secret absent | `PASS` |
 | Browser / Storybook | current Compose API + production Web + Storybook + `npm run verify:browser` | 14 状态、真实 Blink、zh/en、390px、UX-M1-001、四 Review | `status=PASS`；14 stories；desktop/mobile document width 等于 viewport；reviewed=4；5 张 screenshot；console error/warning 均为 0 | `PASS` |
 | Fresh Compose / Recovery | `npm run verify:compose` | broken migration/DB unavailable fail closed，fresh health，DB/blob restart/down-up，no action，cleanup | current-source `result=PASS`、`cleanup=PASS`；5 migration；forbidden action table 0 | `PASS` |
-| Build / Storybook / Static | `npm run verify` | lint/type/test/messages/status/report/secret/compose/profile/license/SBOM/build/Storybook | lint 零 warning；21 files/127 tests；99 双语 keys；39 status modules；958 packages；Next 13 pages；Storybook browser-safety PASS | `PASS` |
+| Build / Storybook / Static | `npm run verify` | lint/type/test/messages/status/report/secret/compose/profile/license/SBOM/build/Storybook | lint 零 warning；21 files/129 tests；99 双语 keys；39 status modules；958 packages；CycloneDX 671 components；Next 13 pages；Storybook browser-safety PASS | `PASS` |
 | Security / License / SBOM | `npm audit --audit-level=high --json`；`npm run verify:dependencies`；`npm run check:secrets` | 0 high/critical；无 disallowed license/Secret | Next `16.2.12` 升级到 `16.3.0` 后 audit 为 0；958 个 inventory packages、disallowed license 0、CycloneDX SBOM 已生成 | `PASS` |
-| Source ZIP / Evidence | `npm run evidence:package-source && npm run evidence:manifest` | clean committed Head；文件/bytes/SHA-256/Secret/path/CRC scan；必要 evidence 全 PASS | 最终 clean Head 后回填 | `PENDING` |
+| Source ZIP / Evidence | `npm run evidence:package-source && npm run evidence:manifest` | clean committed Head；文件/bytes/SHA-256/Secret/path/CRC/content-to-Git scan；必要 evidence 全 PASS | Pro-reviewed candidate `7730cb56…`：216 files、1,040,925 bytes、SHA-256 `1720d8b54d65345f04552b1104a67d573e276115229a8f665c4a52b97346d0cd`；19 files / 38 fail-closed mutations；final doc-only successor 包在本报告提交后生成并由 handoff 精确记录 | `PASS` |
 
 GitHub Actions 未 Push，因此远端 CI run 为 `NOT_CLAIMED`；这里只声明本地 CI-equivalent 门禁。
 
@@ -95,7 +95,7 @@ GitHub Actions 未 Push，因此远端 CI run 为 `NOT_CLAIMED`；这里只声�
 | AC-09 | `PASS` | 14 Storybook state + product browser evidence | zh/en 覆盖 empty/blocked/queued/running/waiting/needs-owner/failure/timeout/cancelled/unknown/recovery/audit-blocked/revision/complete，Trace 渐进披露，390px 无 document overflow。 |
 | AC-10 | `PASS` | unit/DB/API/runtime/provider/browser/Compose/secret/license/SBOM/build evidence | 所有可执行门禁在最终 Closeout 完整回填；真实 Runtime 与 Mock Provider 成熟度严格分开。 |
 | AC-11 | `PASS` | code/table/route scan、Compose/API/real runtime noAction | 无 Connector、Schedule execution、ActionGrant、platform credential/action、客户资料、业务或生产声明；action tables/routes/count 均 0。 |
-| AC-12 | `PENDING` | 本报告、Owner UAT、Pro URL、最终 source ZIP/manifest、结构化 handoff | 报告已建立；最终 clean commit/ZIP/Pro 复核/manifest/handoff 完成后改为 `PASS`。Canonical status 文件保持 Coordinator-owned。 |
+| AC-12 | `PASS` | 本报告、Pro URL、clean source ZIP/manifest、结构化 handoff | Executor 文档、公开安全包、Pro `PASS_EVIDENCE_READY` 与结构化 handoff 完成；Owner UAT / Coordinator acceptance 仍 `PENDING`，因此模块只建议 `EVIDENCE_READY`、不宣告 `ACCEPTED`。Canonical status 文件保持 Coordinator-owned。 |
 
 ## 六、Owner 参与验收
 
@@ -171,7 +171,9 @@ GitHub Actions 未 Push，因此远端 CI run 为 `NOT_CLAIMED`；这里只声�
 - Codex 六轮独立修正：Planner 对四平台执行 exact multiset；增加 four-X 与 duplicate-LinkedIn/missing-Xiaohongshu 重算 digest 负例；PG verifier 写入一条 exact OwnerReview 并证明六张历史表不可变；license 与当前 lockfile 的 958 项 exact inventory 绑定；SBOM 与独立重生成的 component/dependency identities 绑定；ZIP 使用固定路径，独立校验 CRC/path/symlink/file set，并把 216 个文件逐字节与 Git blob 比对；manifest 的 fail-closed mutations 从 10 个增至 21 个；公开 metadata 不再记录本机绝对 worktree。
 - 第七轮候选包：Head `c31d49461d985b8d9f518646ad8ee9024ff16a62`，216 files，`1,036,431` bytes，SHA-256 `5a08c129d2758a5a05c22ce602ad4a092923e55e3f18c1f1c50dc5b80d62ff88`；本地 package/CRC/path/symlink/content-to-Git/secret/license 与 19-file/21-mutation manifest 均 `PASS`。
 - Pro 第七轮结论：`FAIL_NOT_EVIDENCE_READY`，无 P0，两个 P1：Runtime image identity 只逐项检查且长度相同，三个重复的合法 component 可替代精确 embedded-controller/manager/worker 集合；`agentteams-capability-report.json` 只被哈希，空对象仍可能进入 `ENGINEERING_VERIFIED` manifest，未证明 exact role/permission/Skill/profile。
-- Codex 七轮独立修正：Runtime manifest 强制三个 component 精确一对一且 repository/tag/digest/platform 全匹配；生产 profile validator 强制 manager/worker 与六角色逐角色 permission/SkillLock；capability report 绑定 current runtime/team profile SHA-256、完整六角色、五 Skill、SHADOW/no-action/mock maturity；manifest 对 capability 做语义验证，内置负向 mutation 增至 38 个，并补 PNG signature/IHDR/精确尺寸门禁。第八轮 clean candidate 与 Pro 复核在 Closeout 后回填。
+- Codex 七轮独立修正：Runtime manifest 强制三个 component 精确一对一且 repository/tag/digest/platform 全匹配；生产 profile validator 强制 manager/worker 与六角色逐角色 permission/SkillLock；capability report 绑定 current runtime/team profile SHA-256、完整六角色、五 Skill、SHADOW/no-action/mock maturity；manifest 对 capability 做语义验证，内置负向 mutation 增至 38 个，并补 PNG signature/IHDR/精确尺寸门禁。
+- 第八轮候选包：Head `7730cb56b6cb7102c7d0f39e92348c7c2a57ffe2`，216 files，`1,040,925` bytes，SHA-256 `1720d8b54d65345f04552b1104a67d573e276115229a8f665c4a52b97346d0cd`；ZIP CRC/path/symlink/content-to-Git/secret/license、19-file manifest 与 38 个 mutation 均 `PASS`。
+- Pro 第八轮正式结论：`PASS_EVIDENCE_READY`，`P0=0`、`P1=0`。Pro 独立复现 duplicate/missing/extra runtime component、wrong platform/repository/tag/digest、空/错 capability/role/permission/Skill/profile SHA/SHADOW boundary 与 ASCII/错误尺寸 PNG；全部不能产生 `ENGINEERING_VERIFIED`。不能重跑本地 Docker/PostgreSQL/AgentTeams/Chrome 与 Owner/Coordinator 决策列为 non-blocking limitation，不当作工程失败。
 - 修正不是直接采纳 Pro 代码；每项由本地 unit/API/PG/真实 Runtime/浏览器/Compose 证据独立验证。Pro 不能访问本地 Docker/浏览器，也不替代 Coordinator/Owner。
 
 ## 八、失败、限制与非声明
@@ -216,16 +218,16 @@ Executor 未修改 `IMPLEMENTATION-STATUS.md` 或 `IMPLEMENTATION-STATUS.zh-CN.m
 
 - Worktree / Branch / Base / Goal：见报告头；全程只使用 Coordinator 指定 Worktree 与一个 Goal。
 - Changed Files：集中于 `packages/governed-shadow`、`packages/runtime-agentteams`、migration 000005、API/Worker/Operator、Mission/Review UI/i18n/stories、五 Skills、Provider/AgentTeams infra、Compose、verification/evidence scripts、architecture/roadmap/README、SDD lifecycle 与本报告。
-- Commits / Final Head：Closeout 回填；最终必须 clean committed，未 Push。
+- Commits / Final Head：Pro-reviewed code candidate 见报告头；本报告提交后的 exact final Head 由 source-package manifest 与结构化 handoff 记录；最终必须 clean committed，未 Push。
 - Status files：相对 Base diff 必须为 0。
-- Pro / source ZIP：Closeout 回填最终 URL、files/bytes/SHA-256/scan/final verdict。
+- Pro / source ZIP：<https://chatgpt.com/c/6a71005f-4fa0-83ea-902c-fb3ace4b8a68>；第八轮 candidate 216 files / 1,040,925 bytes / SHA-256 `1720d8b54d65345f04552b1104a67d573e276115229a8f665c4a52b97346d0cd` / `PASS_EVIDENCE_READY`；final doc-only successor hash 在 handoff 记录。
 - Push / PR / Deploy / external action：全部 `NO`。
 - Blocker：无本地工程 blocker；Owner UAT 与 Coordinator 决定是外部 acceptance gate，不阻止 Executor 建议 `EVIDENCE_READY`。
 - 下一候选步骤：只建议 Coordinator 独立复核、执行 Owner UAT 并更新 canonical status；本任务不自动开始 M3。
 
 ## 十一、Coordinator 验收决定
 
-- Executor 自动化验证：`PENDING FINAL CLOSEOUT`
+- Executor 自动化验证：`PASS / EVIDENCE_READY`
 - Coordinator 独立复验：`PENDING`
 - 是否需要 Owner 验收：`YES`
 - Owner 决定：`PENDING`
