@@ -185,6 +185,8 @@
           ],
           "sources": [
             "https://api-docs.deepseek.com/api/list-models",
+            "https://api-docs.deepseek.com/api/create-chat-completion",
+            "https://api-docs.deepseek.com/guides/thinking_mode",
             "https://api-docs.deepseek.com/quick_start/pricing",
             "https://api-docs.deepseek.com/quick_start/rate_limit",
             "https://api-docs.deepseek.com/news/news260424/"
@@ -209,6 +211,23 @@
             }
           },
           "defaultMaturity": "NOT_RUN_NO_KEY",
+          "structuredMode": {
+            "responseFormat": "json_object",
+            "thinking": "disabled",
+            "liveMaxTokens": 4000,
+            "finishReasonPolicy": {
+              "stop": "ACCEPT",
+              "length": "MODEL_OUTPUT_TRUNCATED",
+              "content_filter": "MODEL_CONTENT_FILTERED",
+              "tool_calls": "MODEL_TOOL_CALL_FORBIDDEN",
+              "insufficient_system_resource": "MODEL_INFERENCE_RESOURCE_UNAVAILABLE",
+              "nullOrUnknown": "MODEL_FINISH_REASON_INVALID"
+            },
+            "retryableFinishReasons": [
+              "insufficient_system_resource"
+            ],
+            "partialOutputAccepted": false
+          },
           "silentModelFallback": false
         },
         {
