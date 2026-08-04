@@ -61,6 +61,7 @@ const publicEvidencePaths = [
   'browser/storybook-en-queued-390.png',
   'compose-verification.json',
   'license-inventory.json',
+  'live-agentteams-no-secret-diagnostic.json',
   'live-deepseek-conformance.json',
   'npm-audit.json',
   'provider-conformance.json',
@@ -159,6 +160,41 @@ function liveConformanceValid(value) {
     && value?.cleanupEvidence?.currentFailedCanaryObjectsAbsentBeforeRun === true
     && exactNoAction(value?.noAction)
     && value?.cleanup === 'PASS';
+}
+
+function liveNoSecretDiagnosticValid(value, currentHead, imageManifest) {
+  const progress = value?.diagnosedBoundary?.progress;
+  return value?.schemaVersion === 1
+    && value?.status === 'PASS'
+    && value?.maturity === 'ENGINEERING_VERIFIED_NO_OWNER_SECRET'
+    && value?.source?.base === expectedBase
+    && value?.source?.head === currentHead
+    && value?.source?.branch === expectedBranch
+    && value?.runtime?.name === 'AgentTeams'
+    && value?.runtime?.version === 'v1.2.0'
+    && value?.runtime?.sourceTarSha256 === imageManifest?.sourceTarSha256
+    && value?.runtime?.buildDigest === `sha256:${imageManifest?.sourceTarSha256}`
+    && digest(value?.runtime?.imageDigestSetDigest)
+    && value?.runtime?.expectedMemberCount === 6
+    && value?.runtime?.exactMemberCount === 6
+    && value?.runtime?.expectedTaskCount === 8
+    && value?.runtime?.exactTaskCount === 8
+    && value?.diagnosedBoundary?.stage === 'PROVIDER_REQUEST'
+    && value?.diagnosedBoundary?.code === 'LIVE_PROVIDER_REQUEST_FAILED'
+    && exactRecord(progress, {runtimeIdentityVerified: true, topologyVerified: true, projectCreated: true, dagPlanned: true, memberBindingsResolved: true, projectDispatched: true, providerBrokerRequestStarted: true})
+    && value?.diagnosedBoundary?.modelReceiptCount === 0
+    && value?.diagnosedBoundary?.ownerSecretPresent === false
+    && value?.diagnosedBoundary?.externalProviderRequestOccurred === false
+    && value?.diagnosedBoundary?.liveProviderVerified === false
+    && value?.diagnosedBoundary?.mockFallback === false
+    && value?.persistedMission?.state === 'FAILED'
+    && value?.persistedMission?.failureCode === 'LIVE_PROVIDER_REQUEST_FAILED'
+    && value?.persistedMission?.externalActionCount === 0
+    && exactNoAction({...value?.noAction, externalActionAllowed: false})
+    && exactRecord(value?.nonDisclosure, {bootstrapFinding: false, ticketFinding: false, authorizationFinding: false, rawProviderResponseFinding: false})
+    && exactRecord(value?.cleanup, {agentTeams: 'PASS', controlPlane: 'PASS', secretDirectory: 'PASS'})
+    && value?.failureReceipt === '.evidence/sdd-002/deepseek-live-failure.json'
+    && !publicEvidencePaths.includes('deepseek-live-failure.json');
 }
 
 function digest(value) { return typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value); }
@@ -354,7 +390,7 @@ function sbomEvidenceValid(sbom, expectedSbom, rootPackage, packageCount, source
     && properties.get('lumiclaw:license-inventory-path') === '.evidence/sdd-002/license-inventory.json';
 }
 
-function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256, sourcePackage, runtimeSource, currentHead, sourceArchive, currentGitFiles, productControlPlane, noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage, providers, liveConformance}) {
+function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256, sourcePackage, runtimeSource, currentHead, sourceArchive, currentGitFiles, productControlPlane, noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage, providers, liveConformance, liveNoSecret}) {
   const duplicateRuntimeImages = runtime.images.map(() => ({...runtime.images[0]}));
   const extraRuntimeImage = {...runtime.images[0], component: 'unknown-component'};
   const mutateCapabilityRole = (roleId, mutation) => ({
@@ -417,14 +453,17 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, nestedChildProcess: false}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, bootstrapOrSecretFinding: true}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, extraFieldRejected: false}}),
-    !liveConformanceValid({...liveConformance, cleanupEvidence: {...liveConformance.cleanupEvidence, exactComposeProjectRemoved: false}})
+    !liveConformanceValid({...liveConformance, cleanupEvidence: {...liveConformance.cleanupEvidence, exactComposeProjectRemoved: false}}),
+    !liveNoSecretDiagnosticValid({...liveNoSecret, source: {...liveNoSecret.source, head: '0'.repeat(40)}}, currentHead, imageManifest),
+    !liveNoSecretDiagnosticValid({...liveNoSecret, diagnosedBoundary: {...liveNoSecret.diagnosedBoundary, ownerSecretPresent: true}}, currentHead, imageManifest),
+    !liveNoSecretDiagnosticValid({...liveNoSecret, noAction: {...liveNoSecret.noAction, externalActionCount: 1}}, currentHead, imageManifest)
   ];
   if (!mutationsRejected.every(Boolean)) throw new Error('EVIDENCE_NEGATIVE_SELF_TEST_FAILED');
   return mutationsRejected.length;
 }
 
 async function assertEvidence() {
-  const [capability, api, compose, agentteamsImage, agentteamsReal, providers, liveConformance, shadowPostgres, browser, licenses, secretScan, sourcePackage, sbom, npmAudit] = await Promise.all([
+  const [capability, api, compose, agentteamsImage, agentteamsReal, providers, liveConformance, liveNoSecret, shadowPostgres, browser, licenses, secretScan, sourcePackage, sbom, npmAudit] = await Promise.all([
     readJson('agentteams-capability-report.json'),
     readJson('api-integration.json'),
     readJson('compose-verification.json'),
@@ -432,6 +471,7 @@ async function assertEvidence() {
     readJson('agentteams-real-runtime.json'),
     readJson('provider-conformance.json'),
     readJson('live-deepseek-conformance.json'),
+    readJson('live-agentteams-no-secret-diagnostic.json'),
     readJson('shadow-postgres.json'),
     readJson('browser-verification.json'),
     readJson('license-inventory.json'),
@@ -527,6 +567,7 @@ async function assertEvidence() {
   if (agentteamsReal.status !== 'PASS' || agentteamsReal.runtime?.realAgentTeamsAcceptance !== true || agentteamsReal.runtime?.realModelAcceptance !== false || agentteamsReal.topology?.memberCount !== 6 || agentteamsReal.project?.taskCount !== 8 || agentteamsReal.project?.restartRecovered !== true || !exactProductIdentity || agentteamsReal.productControlPlane?.sameProjectBinding !== true || agentteamsReal.productControlPlane?.normalizedHistoryAuthoritative !== true || agentteamsReal.productControlPlane?.aggregatePoisonIgnored !== true || agentteamsReal.productControlPlane?.normalizedHistoryTamperRejected !== true || agentteamsReal.productControlPlane?.databaseCounts?.action_tables !== 0 || agentteamsReal.environmentLifecycle?.status !== 'PASS' || agentteamsReal.environmentLifecycle?.selfProvisioned !== true || agentteamsReal.environmentLifecycle?.exactRuntimeObjectsRemoved !== true || agentteamsReal.environmentLifecycle?.ephemeralCredentialsRemoved !== true || !runtimeIdentityMatches(agentteamsReal.runtime, agentteamsReal.environmentLifecycle, imageManifest) || !causalRuntimeValid || agentteamsReal.noAction?.executionMode !== 'SHADOW_PREP_ONLY' || !exactNoAction(agentteamsReal.noAction)) failures.push('agentteams-real-runtime');
   if (!providerEvidenceValid(providers)) failures.push('provider-conformance');
   if (!liveConformanceValid(liveConformance)) failures.push('live-deepseek-conformance');
+  if (!liveNoSecretDiagnosticValid(liveNoSecret, currentHead, imageManifest)) failures.push('live-agentteams-no-secret-diagnostic');
   if (shadowPostgres.status !== 'PASS' || shadowPostgres.restartRecovered !== true || shadowPostgres.normalizedHistoryOnly !== true || shadowPostgres.idempotencyMetadataOnly !== true || shadowPostgres.advancedCheckpointRejected !== true || shadowPostgres.idempotentReplayNormalizedValidated !== true || !exactBooleanMap(shadowPostgres.immutableHistory, expectedImmutableHistory) || shadowPostgres.counts?.owner_reviews !== 1 || shadowPostgres.forbiddenTables !== 0 || !exactNoAction(shadowPostgres.noAction)) failures.push('shadow-postgres');
   const productBrowser = browser.checks?.productHydratedMissionAndReview;
   const browserNoActionValid = exactBrowserNoAction(productBrowser?.mission)
@@ -544,7 +585,7 @@ async function assertEvidence() {
   if (!sbomEvidenceValid(sbom, expectedSbom, rootPackage, expectedPackages.length, sourceLockSha256)) failures.push('sbom');
   if (npmAudit.metadata?.vulnerabilities?.total !== 0) failures.push('npm-audit');
   if (failures.length > 0) throw new Error(`EVIDENCE_VALIDATION_FAILED:${failures.join(',')}`);
-  return runNegativeSelfTests({tasks: causalTasks, runtime: agentteamsReal.runtime, lifecycle: agentteamsReal.environmentLifecycle, imageManifest, capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256, sourcePackage, runtimeSource: agentteamsReal.sourceIdentity, currentHead, sourceArchive, currentGitFiles, productControlPlane: agentteamsReal.productControlPlane, noAction: agentteamsReal.noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage, providers, liveConformance});
+  return runNegativeSelfTests({tasks: causalTasks, runtime: agentteamsReal.runtime, lifecycle: agentteamsReal.environmentLifecycle, imageManifest, capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256, sourcePackage, runtimeSource: agentteamsReal.sourceIdentity, currentHead, sourceArchive, currentGitFiles, productControlPlane: agentteamsReal.productControlPlane, noAction: agentteamsReal.noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage, providers, liveConformance, liveNoSecret});
 }
 
 const negativeMutationsRejected = await assertEvidence();
@@ -576,6 +617,7 @@ const manifest = {
     'agentteams-real-runtime',
     'provider-conformance',
     'live-deepseek-conformance',
+    'live-agentteams-no-secret-diagnostic',
     'shadow-postgres',
     'browser-verification',
     'license-inventory',

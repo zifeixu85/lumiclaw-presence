@@ -28,8 +28,8 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 
 ## CR2 Fix 2 tasks
 
-- [ ] `CR2-F2-01`: shared allowlisted stage/code/envelope and atomic failure receipt contract.
-- [ ] `CR2-F2-02`: Runner, environment verifier and launcher propagation with exact owned cleanup updates.
-- [ ] `CR2-F2-03`: real nested child-process stage/non-disclosure/contradiction regressions and Live conformance evidence.
-- [ ] `CR2-F2-04`: no-Owner-Key pinned AgentTeams diagnosis and any resulting minimal functional correction.
-- [ ] `CR2-F2-05`: Chinese acceptance update, full gates, clean commit, public-safe ZIP and Coordinator retry handoff.
+- [x] `CR2-F2-01`: shared allowlisted stage/code/envelope and atomic failure receipt contract.
+- [x] `CR2-F2-02`: Runner, environment verifier and launcher propagation with exact owned cleanup updates.
+- [x] `CR2-F2-03`: real nested child-process stage/non-disclosure/contradiction regressions and Live conformance evidence.
+- [x] `CR2-F2-04`: no-Owner-Key pinned AgentTeams diagnosis; exact pre-dispatch path reached provider boundary, so no unverified AgentTeams functional change was introduced.
+- [x] `CR2-F2-05`: Chinese acceptance update, full gates, clean commit, public-safe ZIP and Coordinator retry handoff.
