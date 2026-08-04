@@ -181,7 +181,7 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, sourceP
     !sourceIdentityMatches({...sourcePackage, archive: '.evidence/sdd-002/source-packages/not-the-evidence.zip'}, runtimeSource, currentHead, sourceArchive, currentGitFiles),
     !sourceIdentityMatches(sourcePackage, runtimeSource, currentHead, {...sourceArchive, zipValid: false}, currentGitFiles),
     !sourceIdentityMatches(sourcePackage, runtimeSource, currentHead, {...sourceArchive, contentsMatchGit: false}, currentGitFiles),
-    !licenseEvidenceValid({disallowed: []}, expectedPackages, sourceLockSha256),
+    !licenseEvidenceValid({...licenses, packages: [], packageCount: 0}, expectedPackages, sourceLockSha256),
     !sbomEvidenceValid({bomFormat: 'CycloneDX'}, expectedSbom, rootPackage, expectedPackages.length, sourceLockSha256),
     !sbomEvidenceValid({...sbom, components: sbom.components.slice(0, 1)}, expectedSbom, rootPackage, expectedPackages.length, sourceLockSha256),
     !exactBooleanMap({...shadowPostgres.immutableHistory, owner_reviews: false}, expectedImmutableHistory)
