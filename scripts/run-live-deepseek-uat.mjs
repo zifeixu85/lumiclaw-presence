@@ -3,6 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync, writeSync} from 'node:fs';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
+import {LiveTaskProtocolError, planLiveTaskProtocol, safeTaskProtocolStatus, taskContractDigest} from './live-agentteams-task-protocol.mjs';
 import {conformanceProgressForStage, createLiveFailureEnvelope, createLiveFailureReceipt, defaultLiveProgress, isLiveStage, isProviderOutcomeCode, liveStageCode, providerOutcomeFromMission, readSourceIdentity, writeLiveFailureReceipt} from './live-uat-diagnostics.mjs';
 import {createRedactedTransportReceipt, deriveWorkerBrokerUrl, parseLiveUatTransport} from './live-uat-transport.mjs';
 
@@ -38,7 +39,7 @@ if (diagnosticStage !== undefined || diagnosticProviderOutcome !== undefined) {
 
 const organizationHeaders = {'x-lumiclaw-organization-id': organizationId};
 let mission; let etag; let projectId; let eventCounter = 0; let lastTaskId = null; const receipts = [];
-let currentStage = 'MISSION_OPEN'; let providerOutcomeCode = null; let workerBrokerUrl; const progress = defaultLiveProgress();
+let currentStage = 'MISSION_OPEN'; let providerOutcomeCode = null; let taskProtocolOutcomeCode = null; let taskProtocolStatus = {planStatus: null, taskStatus: null}; let workerBrokerUrl; const progress = defaultLiveProgress();
 
 function digest(value) { return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(canonical(value))).digest('hex'); }
 function canonical(value) { if (Array.isArray(value)) return value.map(canonical); if (value !== null && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().filter((key) => value[key] !== undefined).map((key) => [key, canonical(value[key])])); return value; }
@@ -58,6 +59,10 @@ function callTool(role, tool, action, payload, actor) {
 function projectState() {
   const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,parse_dag_tasks; s=FileSystemTaskStore(); m=s.read_project_meta(sys.argv[1]); p=s.read_project_plan(sys.argv[1]); print(json.dumps({"project":asdict(m),"tasks":[asdict(x) for x in parse_dag_tasks(p)]}))';
   return JSON.parse(run('docker', ['exec', '-w', workspace(leader), `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', code, projectId], 'project-state'));
+}
+function projectTaskState(taskId) {
+  const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,TaskflowError,parse_dag_tasks; s=FileSystemTaskStore(); m=s.read_project_meta(sys.argv[1]); p=s.read_project_plan(sys.argv[1]); t=next((x for x in parse_dag_tasks(p) if x.task_id==sys.argv[2]),None); meta=spec=result=None;\ntry: meta=asdict(s.read_task_meta(sys.argv[2]))\nexcept TaskflowError: pass\ntry: spec=s.read_task_spec(sys.argv[2])\nexcept TaskflowError: pass\ntry: result=asdict(s.read_task_result(sys.argv[2]))\nexcept TaskflowError: pass\nprint(json.dumps({"project":asdict(m),"task":{"plan":None if t is None else asdict(t),"meta":meta,"spec":spec,"result":result}}))';
+  return JSON.parse(run('docker', ['exec', '-w', workspace(leader), `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', code, projectId, taskId], 'project-task-state'));
 }
 function acceptTask(taskId) {
   const code = 'import sys; from copaw_worker.task import FileSystemTaskStore,parse_dag_tasks,_replace_task_status,replace_dag_tasks; s=FileSystemTaskStore(); p=s.read_project_plan(sys.argv[1]); s.write_project_plan(sys.argv[1],replace_dag_tasks(p,_replace_task_status(parse_dag_tasks(p),sys.argv[2],"completed"))); print("accepted")';
@@ -131,24 +136,69 @@ try {
   progress.projectDispatched = true;
 
   for (const node of dag) {
-    currentStage = 'TASK_PROTOCOL';
-    lastTaskId = node.taskId; const taskBefore = mission.tasks.find((item) => item.id === node.taskId); const worker = workers.find((item) => item.name === node.assignedTo); if (!taskBefore || !worker?.matrixUserID) throw new Error('LIVE_TASK_BINDING_MISSING');
-    const delegated = callTool(leader, 'taskflow', 'delegate_task', {projectId, taskId: node.taskId, roomId, spec: JSON.stringify({schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, roleIdentityId: taskBefore.roleIdentityId, inputDigest: taskBefore.inputDigest, inputProjectionSchema: taskBefore.inputProjectionSchema, inputProjectionDigest: taskBefore.inputProjectionDigest, outputSchema: taskBefore.outputSchema, outputSchemaVersion: 1, executionMode: 'SHADOW_PREP_ONLY', externalActionAllowed: false})});
-    if (!delegated.ok || delegated.task.status !== 'assigned') throw new Error(`LIVE_TASK_DELEGATE_FAILED:${node.taskId}`);
-    const ack = callTool(node.assignedTo, 'taskflow', 'ack_task', {taskId: node.taskId}, worker.matrixUserID); if (!ack.ok || ack.task.status !== 'in_progress') throw new Error(`LIVE_TASK_ACK_FAILED:${node.taskId}`);
-    const ackBase = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, runtimeActorId: worker.matrixUserID, attempt: taskBefore.attempt, inputProjectionSchema: taskBefore.inputProjectionSchema, inputProjectionDigest: taskBefore.inputProjectionDigest, runtimeState: 'in_progress', acknowledgedAt: new Date(ack.task.acknowledged_at).toISOString()};
-    await runtimeEvent({kind: 'TASK_ACK', receipt: {...ackBase, receiptDigest: digest(ackBase)}}, 'TASK_ACK', taskBefore);
-    const task = mission.tasks.find((item) => item.id === node.taskId); if (!task) throw new Error('LIVE_TASK_REOPEN_FAILED');
-    let payload;
-    if (task.roleId === leader) payload = {projectId, externalActionAllowed: false};
-    else { currentStage = 'PROVIDER_REQUEST'; payload = await modelFromWorker(task.roleId, task); currentStage = 'TASK_PROTOCOL'; }
-    const outputDigest = digest(payload); const runtimeResult = {schemaVersion: 1, taskId: task.id, roleId: task.roleId, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, payload, outputDigest, maturity: task.roleId === leader ? 'CANARY' : 'CANARY', externalActionAllowed: false};
-    const submitted = callTool(task.roleId, 'taskflow', 'submit_task', {taskId: task.id, status: 'SUCCESS', summary: JSON.stringify(runtimeResult), deliverables: [], notes: ['LIVE_DEEPSEEK_UAT', 'NO_ACTION_GRANT', 'NO_CONNECTOR', 'NO_EXTERNAL_ACTION']}, worker.matrixUserID); if (!submitted.ok || !submitted.verified) throw new Error(`LIVE_TASK_SUBMIT_FAILED:${task.id}`);
-    const checked = callTool(leader, 'taskflow', 'check_task', {taskId: task.id}); if (!checked.ok || !checked.effective || checked.task.status !== 'submitted') throw new Error(`LIVE_TASK_CHECK_FAILED:${task.id}`);
-    const persisted = JSON.parse(checked.result.summary); const resultDigest = digest(persisted); if (persisted.outputDigest !== outputDigest) throw new Error('LIVE_TASK_ROUNDTRIP_MISMATCH');
-    const submitBase = {schemaVersion: 1, projectId, taskId: task.id, roleId: task.roleId, runtimeActorId: worker.matrixUserID, attempt: task.attempt, ackReceiptDigest: mission.tasks.find((item) => item.id === task.id).runtimeAck.receiptDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, runtimeState: 'submitted', submittedAt: new Date(checked.task.submitted_at).toISOString(), resultDigest, resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY', runtimeObservationId: digest({projectId, taskId: task.id, resultDigest, inputProjectionDigest: task.inputProjectionDigest})};
-    const submission = {schemaVersion: 1, missionId, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1, payload, outputDigest, runtimeResultMaturity: 'CANARY', runtimeReceipt: {...submitBase, receiptDigest: digest(submitBase)}};
-    await runtimeEvent({kind: 'TASK_SUBMIT', submission}, 'TASK_SUBMIT', task); acceptTask(task.id);
+    currentStage = 'TASK_PROTOCOL'; lastTaskId = node.taskId; let preparedResult = null; let complete = false;
+    while (!complete) {
+      const task = mission.tasks.find((item) => item.id === node.taskId); const worker = workers.find((item) => item.name === node.assignedTo);
+      if (!task || !worker?.matrixUserID) { taskProtocolOutcomeCode = 'LIVE_TASK_BINDING_INVALID'; throw new Error('LIVE_TASK_BINDING_MISSING'); }
+      const contract = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: task.outputSchemaVersion, executionMode: 'SHADOW_PREP_ONLY', externalActionAllowed: false};
+      const binding = {projectId, taskId: node.taskId, roleId: node.assignedTo, roleIdentityId: task.roleIdentityId, runtimeActorId: worker.matrixUserID, attempt: task.attempt, dependsOn: node.dependsOn, roomId, contract, contractDigest: taskContractDigest(contract)};
+      taskProtocolOutcomeCode = 'LIVE_TASK_INSPECT_FAILED'; let snapshot;
+      try { snapshot = projectTaskState(node.taskId); } catch { throw new Error('LIVE_TASK_INSPECT_FAILED'); }
+      taskProtocolStatus = safeTaskProtocolStatus(snapshot);
+      const successfulCalls = mission.modelCalls.filter((call) => call.taskId === task.id && call.error === null && call.outputDigest !== null);
+      let decision;
+      try { decision = planLiveTaskProtocol({snapshot, binding, controlTask: task, modelCallCount: successfulCalls.length, modelOutputDigest: successfulCalls[0]?.runtimeOutputDigest ?? successfulCalls[0]?.outputDigest, preparedOutputDigest: preparedResult?.outputDigest}); }
+      catch (error) { if (error instanceof LiveTaskProtocolError) { taskProtocolOutcomeCode = error.code; taskProtocolStatus = error.status; } throw error; }
+      taskProtocolStatus = decision.status;
+
+      if (decision.action === 'DELEGATE') {
+        taskProtocolOutcomeCode = 'LIVE_TASK_DELEGATE_FAILED';
+        const delegated = callTool(leader, 'taskflow', 'delegate_task', {projectId, taskId: node.taskId, roomId, spec: JSON.stringify(contract)});
+        if (!delegated.ok || delegated.task.status !== 'assigned' || delegated.task.project_id !== projectId || delegated.task.task_id !== task.id || delegated.task.assigned_to !== task.roleId) throw new Error('LIVE_TASK_DELEGATE_FAILED');
+        taskProtocolOutcomeCode = 'LIVE_TASK_DELEGATE_RECONCILE_FAILED'; continue;
+      }
+      if (decision.action === 'ACK') {
+        taskProtocolOutcomeCode = 'LIVE_TASK_ACK_FAILED';
+        const ack = callTool(node.assignedTo, 'taskflow', 'ack_task', {taskId: node.taskId}, worker.matrixUserID);
+        if (!ack.ok || ack.task.status !== 'in_progress' || ack.task.project_id !== projectId || ack.task.task_id !== task.id || ack.task.assigned_to !== task.roleId || !ack.task.acknowledged_at) throw new Error('LIVE_TASK_ACK_FAILED');
+        continue;
+      }
+      if (decision.action === 'IMPORT_ACK') {
+        taskProtocolOutcomeCode = 'LIVE_TASK_ACK_IMPORT_FAILED';
+        const ackBase = {schemaVersion: 1, projectId, taskId: task.id, roleId: task.roleId, runtimeActorId: worker.matrixUserID, attempt: task.attempt, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, runtimeState: 'in_progress', acknowledgedAt: new Date(snapshot.task.meta.acknowledged_at).toISOString()};
+        await runtimeEvent({kind: 'TASK_ACK', receipt: {...ackBase, receiptDigest: digest(ackBase)}}, 'TASK_ACK', task); continue;
+      }
+      if (decision.action === 'RUN_DOMAIN') {
+        let payload;
+        if (task.roleId === leader) payload = {projectId, externalActionAllowed: false};
+        else { taskProtocolOutcomeCode = null; taskProtocolStatus = {planStatus: null, taskStatus: null}; currentStage = 'PROVIDER_REQUEST'; payload = await modelFromWorker(task.roleId, task); currentStage = 'TASK_PROTOCOL'; }
+        const outputDigest = digest(payload);
+        preparedResult = {schemaVersion: 1, taskId: task.id, roleId: task.roleId, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, payload, outputDigest, maturity: 'CANARY', externalActionAllowed: false};
+        continue;
+      }
+      if (decision.action === 'SUBMIT') {
+        if (preparedResult === null) { taskProtocolOutcomeCode = 'LIVE_TASK_DOMAIN_RESUME_UNSAFE'; throw new Error('LIVE_TASK_DOMAIN_RESUME_UNSAFE'); }
+        taskProtocolOutcomeCode = 'LIVE_TASK_SUBMIT_FAILED';
+        const submitted = callTool(task.roleId, 'taskflow', 'submit_task', {taskId: task.id, status: 'SUCCESS', summary: JSON.stringify(preparedResult), deliverables: [], notes: ['LIVE_DEEPSEEK_UAT', 'NO_ACTION_GRANT', 'NO_CONNECTOR', 'NO_EXTERNAL_ACTION']}, worker.matrixUserID);
+        if (!submitted.ok || !submitted.verified || submitted.task.status !== 'submitted' || submitted.task.project_id !== projectId || submitted.task.task_id !== task.id) throw new Error('LIVE_TASK_SUBMIT_FAILED');
+        continue;
+      }
+      if (decision.action === 'CHECK_IMPORT') {
+        taskProtocolOutcomeCode = 'LIVE_TASK_CHECK_FAILED';
+        const checked = callTool(leader, 'taskflow', 'check_task', {taskId: task.id});
+        if (!checked.ok || !checked.effective || checked.task.status !== 'submitted' || checked.task.project_id !== projectId || checked.task.task_id !== task.id || checked.task.assigned_to !== task.roleId || !checked.task.submitted_at) throw new Error('LIVE_TASK_CHECK_FAILED');
+        const persisted = JSON.parse(checked.result.summary); const resultDigest = digest(persisted); const outputDigest = digest(persisted.payload);
+        if (persisted.taskId !== task.id || persisted.roleId !== task.roleId || persisted.inputProjectionSchema !== task.inputProjectionSchema || persisted.inputProjectionDigest !== task.inputProjectionDigest || persisted.outputDigest !== outputDigest || persisted.externalActionAllowed !== false || persisted.maturity !== 'CANARY') throw new Error('LIVE_TASK_CHECK_FAILED');
+        const ack = task.runtimeAck;
+        if (!ack) { taskProtocolOutcomeCode = 'LIVE_TASK_SUBMISSION_IMPORT_FAILED'; throw new Error('LIVE_TASK_SUBMISSION_IMPORT_FAILED'); }
+        const submitBase = {schemaVersion: 1, projectId, taskId: task.id, roleId: task.roleId, runtimeActorId: worker.matrixUserID, attempt: task.attempt, ackReceiptDigest: ack.receiptDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, runtimeState: 'submitted', submittedAt: new Date(checked.task.submitted_at).toISOString(), resultDigest, resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY', runtimeObservationId: digest({projectId, taskId: task.id, resultDigest, inputProjectionDigest: task.inputProjectionDigest})};
+        const submission = {schemaVersion: 1, missionId, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: task.outputSchemaVersion, payload: persisted.payload, outputDigest, runtimeResultMaturity: persisted.maturity, runtimeReceipt: {...submitBase, receiptDigest: digest(submitBase)}};
+        taskProtocolOutcomeCode = 'LIVE_TASK_SUBMISSION_IMPORT_FAILED'; await runtimeEvent({kind: 'TASK_SUBMIT', submission}, 'TASK_SUBMIT', task); continue;
+      }
+      if (decision.action === 'ACCEPT') { taskProtocolOutcomeCode = 'LIVE_TASK_ACCEPT_FAILED'; acceptTask(task.id); continue; }
+      if (decision.action === 'COMPLETE') { taskProtocolOutcomeCode = null; complete = true; continue; }
+      taskProtocolOutcomeCode = 'LIVE_TASK_STATE_INVALID'; throw new Error('LIVE_TASK_STATE_INVALID');
+    }
   }
   currentStage = 'FINALIZE';
   const completed = callTool(leader, 'projectflow', 'complete_project', {projectId}); if (!completed.ok) throw new Error('LIVE_PROJECT_COMPLETE_FAILED');
@@ -165,7 +215,7 @@ try {
     receipt = createLiveFailureReceipt({
       source: readSourceIdentity(root), organizationId, missionId, campaignDigest, stage: currentStage, failedTaskId: lastTaskId,
       runtime: {projectId: projectId ?? null, sourceTarSha256: mission?.runtimeExpectation?.agentTeamsSourceTarSha256 ?? null, buildDigest: mission?.runtimeExpectation?.agentTeamsBuildDigest ?? null, imageDigestSetDigest: mission?.runtimeExpectation?.imageDigests === undefined ? null : digest(mission.runtimeExpectation.imageDigests)},
-      progress, providerOutcomeCode, modelReceiptCount: receipts.length
+      progress, providerOutcomeCode, taskProtocolOutcomeCode, taskProtocolStatus, modelReceiptCount: receipts.length
     });
     await writeLiveFailureReceipt(root, receipt);
   } catch { emitFailure('LIVE_FAILURE_RECEIPT_WRITE_FAILED'); process.exitCode = 1; }

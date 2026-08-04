@@ -54,3 +54,12 @@ Rollback uses local Git reverts and project-scoped test migrations. Cancellation
 - Keep normalize and persisted-output validation as independent gates, including a strict X re-audit boundary.
 - Exercise accepted order permutations plus duplicate/wrong/mismatched/missing/extra/unknown-field negatives for founder, product, correction, audit and re-audit.
 - Rerun full Live/AgentTeams/PostgreSQL/Compose/browser/security/evidence gates, update the Chinese report, commit cleanly and return the fifth Coordinator Canary protocol.
+
+## CR2 Fix 5 plan
+
+- Record the exact AgentTeams pre-operation Task state for every DAG node in a real public-safe six-member/eight-Task run, with special evidence for the same member's second dependent correction Task.
+- Extract a closed task-protocol state planner shared by the Live Runner and tests; bind every decision to Project, Task, role/member, attempt and contract digest.
+- Delegate only `pending`, accept exact already-`delegated` before ACK, and preserve real ACK/Submit/Check plus the existing typed checked-result completion bridge.
+- Reconcile advanced states only from matching Runtime and PostgreSQL receipts; reject unknown, stale, wrong-scope or replayed combinations with stable redacted outcomes.
+- Exercise transition, identity, digest, replay, forbidden-marker and cleanup negatives, then rerun real AgentTeams, Live no-Secret, provider, PostgreSQL, browser, Compose, full security/evidence gates.
+- Update the Chinese report, commit cleanly, rebuild the public-safe ZIP/manifest and return a seventh Coordinator Canary protocol without claiming the real-key result.

@@ -84,6 +84,6 @@ describe('Live UAT nested child-process stdin transport', () => {
     expect(result.status).not.toBe(0);
     expectNoDisclosure(result, bootstrap, secretMarker);
     expect(result.stdout).toBe('');
-    expect(JSON.parse(result.stderr)).toEqual({status: 'FAIL', code: 'LIVE_MISSION_OPEN_FAILED', stage: 'MISSION_OPEN', providerOutcomeCode: null, missionId, evidence: '.evidence/sdd-002/deepseek-live-failure.json', secretPresent: false, liveProviderVerified: false});
+    expect(JSON.parse(result.stderr)).toEqual({status: 'FAIL', code: 'LIVE_MISSION_OPEN_FAILED', stage: 'MISSION_OPEN', providerOutcomeCode: null, taskProtocolOutcomeCode: null, taskProtocolStatus: {planStatus: null, taskStatus: null}, missionId, evidence: '.evidence/sdd-002/deepseek-live-failure.json', secretPresent: false, liveProviderVerified: false});
   });
 });

@@ -4,6 +4,7 @@ import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {planLiveTaskProtocol, safeTaskProtocolStatus, taskContractDigest} from './live-agentteams-task-protocol.mjs';
 
 const root = process.cwd();
 const controller = 'agentteams-controller';
@@ -72,6 +73,10 @@ function callPublicSafeModelFromWorker(role, input) {
 function projectState() {
   const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,parse_dag_tasks; s=FileSystemTaskStore(); m=s.read_project_meta(sys.argv[1]); p=s.read_project_plan(sys.argv[1]); print(json.dumps({"project":asdict(m),"tasks":[asdict(x) for x in parse_dag_tasks(p)]}))';
   return JSON.parse(run('docker', ['exec', '-w', workspace(leader), `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', code, projectId], 'project-state'));
+}
+function projectTaskState(taskId) {
+  const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,TaskflowError,parse_dag_tasks; s=FileSystemTaskStore(); m=s.read_project_meta(sys.argv[1]); p=s.read_project_plan(sys.argv[1]); t=next((x for x in parse_dag_tasks(p) if x.task_id==sys.argv[2]),None); meta=spec=result=None;\ntry: meta=asdict(s.read_task_meta(sys.argv[2]))\nexcept TaskflowError: pass\ntry: spec=s.read_task_spec(sys.argv[2])\nexcept TaskflowError: pass\ntry: result=asdict(s.read_task_result(sys.argv[2]))\nexcept TaskflowError: pass\nprint(json.dumps({"project":asdict(m),"task":{"plan":None if t is None else asdict(t),"meta":meta,"spec":spec,"result":result}}))';
+  return JSON.parse(run('docker', ['exec', '-w', workspace(leader), `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', code, projectId, taskId], `project-task-state:${taskId}`));
 }
 
 function acceptSubmittedTask(taskId) {
@@ -221,32 +226,35 @@ for (const node of dag) {
   if (!current) throw new Error(`REAL_DAG_NODE_MISSING:${node.taskId}`);
   let checked = callTool(leader, 'taskflow', 'check_task', {taskId: node.taskId});
   let ackReceiptDigest = null; let submissionReceiptDigest = null; let runtimeResultDigest = null; let inputProjectionDigest = null; let inputProjectionKeys = [];
+  let preOperation = {planStatus: current.status, taskStatus: null, selectedAction: checked.ok && checked.effective ? 'RECOVER_CHECKED' : null, bindingDigest: null};
   if (!(checked.ok && checked.effective)) {
-    if (current.status === 'pending') {
-      const productTask = productMission.tasks.find((task) => task.id === node.taskId);
-      if (!productTask) throw new Error(`PRODUCT_TASK_CONTRACT_MISSING:${node.taskId}`);
-      const contract = {
-        schemaVersion: 1,
-        projectId,
-        taskId: node.taskId,
-        roleId: node.assignedTo,
-        roleIdentityId: productTask.roleIdentityId,
-        inputDigest: productTask.inputDigest,
-        inputProjectionSchema: productTask.inputProjectionSchema,
-        inputProjectionDigest: productTask.inputProjectionDigest,
-        skillLockDigest: productTask.skillLockDigest,
-        outputSchema: productTask.outputSchema,
-        outputSchemaVersion: productTask.outputSchemaVersion,
-        executionMode: 'SHADOW_PREP_ONLY',
-        externalActionAllowed: false
-      };
-      const delegated = callTool(leader, 'taskflow', 'delegate_task', {projectId, taskId: node.taskId, roomId, spec: JSON.stringify(contract)});
-      if (!delegated.ok || delegated.task.status !== 'assigned') throw new Error(`REAL_TASK_DELEGATE_FAILED:${node.taskId}`);
-    } else if (current.status !== 'delegated') {
-      throw new Error(`REAL_TASK_STATE_NOT_RESUMABLE:${node.taskId}:${current.status}`);
-    }
+    const productTaskBeforeProtocol = productMission.tasks.find((task) => task.id === node.taskId);
+    if (!productTaskBeforeProtocol) throw new Error(`PRODUCT_TASK_CONTRACT_MISSING:${node.taskId}`);
     const runtimeWorker = workers.find((worker) => worker.name === node.assignedTo);
     if (!runtimeWorker?.matrixUserID) throw new Error(`REAL_WORKER_IDENTITY_MISSING:${node.assignedTo}`);
+    const contract = {
+      schemaVersion: 1,
+      projectId,
+      taskId: node.taskId,
+      roleId: node.assignedTo,
+      roleIdentityId: productTaskBeforeProtocol.roleIdentityId,
+      inputDigest: productTaskBeforeProtocol.inputDigest,
+      inputProjectionSchema: productTaskBeforeProtocol.inputProjectionSchema,
+      inputProjectionDigest: productTaskBeforeProtocol.inputProjectionDigest,
+      skillLockDigest: productTaskBeforeProtocol.skillLockDigest,
+      outputSchema: productTaskBeforeProtocol.outputSchema,
+      outputSchemaVersion: productTaskBeforeProtocol.outputSchemaVersion,
+      executionMode: 'SHADOW_PREP_ONLY',
+      externalActionAllowed: false
+    };
+    const binding = {projectId, taskId: node.taskId, roleId: node.assignedTo, roleIdentityId: productTaskBeforeProtocol.roleIdentityId, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTaskBeforeProtocol.attempt, dependsOn: node.dependsOn, roomId, contract, contractDigest: taskContractDigest(contract)};
+    const snapshot = projectTaskState(node.taskId);
+    const decision = planLiveTaskProtocol({snapshot, binding, controlTask: productTaskBeforeProtocol, modelCallCount: 0});
+    preOperation = {...safeTaskProtocolStatus(snapshot), selectedAction: decision.action, bindingDigest: decision.bindingDigest};
+    if (decision.action === 'DELEGATE') {
+      const delegated = callTool(leader, 'taskflow', 'delegate_task', {projectId, taskId: node.taskId, roomId, spec: JSON.stringify(contract)});
+      if (!delegated.ok || delegated.task.status !== 'assigned') throw new Error(`REAL_TASK_DELEGATE_FAILED:${node.taskId}`);
+    } else if (decision.action !== 'ACK') throw new Error(`REAL_TASK_STATE_NOT_RESUMABLE:${node.taskId}:${decision.action}`);
     const productTaskBeforeAck = productMission.tasks.find((task) => task.id === node.taskId);
     if (!productTaskBeforeAck || productTaskBeforeAck.inputProjectionDigest === null) throw new Error(`PRODUCT_TASK_PROJECTION_NOT_READY:${node.taskId}`);
     const scopedInput = roleScopedRuntimeInput(productTaskBeforeAck);
@@ -311,7 +319,8 @@ for (const node of dag) {
     resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY',
     inputProjectionDigest,
     inputProjectionSchema: productMission.tasks.find((task) => task.id === node.taskId)?.inputProjectionSchema,
-    inputProjectionKeys
+    inputProjectionKeys,
+    preOperation
   });
 }
 

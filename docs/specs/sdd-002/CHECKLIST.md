@@ -48,3 +48,10 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 - [x] Exact task-specific unordered platform sets, platform/content binding, correction source equality and closed audit issue shape are binary.
 - [x] Server-derived revision/digest fields, normalize/audit strictness, Producer/Auditor separation and zero-action boundaries remain unchanged.
 - [x] Positive order permutations and duplicate/wrong/mismatch/missing/extra/unknown-field negatives are required before the fifth Canary.
+
+## CR2 Fix 5 checklist
+
+- [x] Fifth and sixth Canary evidence freezes one repeated failure after five accepted model receipts and before the correction provider call; it is explicitly not a transient or Live Provider verification.
+- [x] The unconditional Live delegate path and the state-aware passing real-Runtime path are identified, while the exact correction pre-state remains a runtime fact to prove rather than an assumption.
+- [x] Pending/delegated/advanced/unknown transitions, exact Project/Task/member/attempt/digest binding, duplicate replay and stable redaction are binary.
+- [x] Real six-member/eight-Task correction/re-audit, zero action, exact cleanup, full gates and Coordinator-only seventh Canary are mandatory.

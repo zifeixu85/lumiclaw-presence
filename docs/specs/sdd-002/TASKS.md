@@ -48,3 +48,10 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F4-02`: dynamic correction source-content binding, deterministic server digest/revision derivation and strict re-audit normalization.
 - [x] `CR2-F4-03`: schema positive/order and duplicate/wrong/mismatch/missing/extra/unknown-field regression matrix.
 - [x] `CR2-F4-04`: full Live/AgentTeams/security/evidence/report/clean-Head ZIP gates and fifth Coordinator Canary handoff. The real-key result remains external and is not claimed here.
+
+## CR2 Fix 5 tasks
+
+- [ ] `CR2-F5-01`: real public-safe six-member/eight-Task reproduction with exact correction pre-operation state and failed/suppressed operation evidence.
+- [ ] `CR2-F5-02`: closed, exact-binding resumable AgentTeams task-protocol state planner integrated into the Live Runner.
+- [ ] `CR2-F5-03`: pending/delegated/advanced/unknown, wrong-scope/digest, replay, redaction and cleanup regression matrix.
+- [ ] `CR2-F5-04`: full AgentTeams/Live/provider/PostgreSQL/browser/security/evidence/report/clean-Head ZIP gates and seventh Coordinator Canary handoff. The real-key result remains external and is not claimed here.
