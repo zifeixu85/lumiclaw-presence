@@ -250,8 +250,17 @@ function generationRevisionSchema(platform: GovernedArtifactRevision['platform']
   return {type: 'object', additionalProperties: false, required: ['platform', 'content'], properties: {platform: {const: platform}, content: exactContent === undefined ? livePlatformContentSchema(platform) : {const: structuredClone(exactContent)}}};
 }
 
-function generationDecisionSchema(platform: GovernedArtifactRevision['platform']): LiveJsonSchema {
-  return {type: 'object', additionalProperties: false, required: ['platform', 'outcome', 'issues'], properties: {platform: {const: platform}, outcome: {enum: ['PASS', 'FAIL', 'ESCALATE']}, issues: {type: 'array', items: liveAuditIssueSchema()}}};
+function passingGenerationDecisionSchema(platform: GovernedArtifactRevision['platform']): LiveJsonSchema {
+  return {type: 'object', additionalProperties: false, required: ['platform', 'outcome', 'issues'], properties: {platform: {const: platform}, outcome: {const: 'PASS'}, issues: {type: 'array', maxItems: 0}}};
+}
+
+function frozenFaultIssueSchema(evidenceRefIds: string[]): LiveJsonSchema {
+  if (evidenceRefIds.length === 0) throw new ShadowContractError('LIVE_MODEL_GENERATION_SCHEMA_INPUT_INVALID', 'Initial audit generation requires frozen Evidence Ref IDs.');
+  return {type: 'object', additionalProperties: false, required: ['code', 'severity', 'path', 'message', 'evidenceRefIds', 'nextResponsibleRoleId'], properties: {code: {const: 'CLAIM_OVERREACH'}, severity: {const: 'BLOCKING'}, path: {type: 'string', minLength: 1}, message: {type: 'string', minLength: 1}, evidenceRefIds: {type: 'array', minItems: 1, uniqueItems: true, items: {enum: evidenceRefIds}}, nextResponsibleRoleId: {const: 'founder-identity-producer'}}};
+}
+
+function frozenFaultDecisionSchema(evidenceRefIds: string[]): LiveJsonSchema {
+  return {type: 'object', additionalProperties: false, required: ['platform', 'outcome', 'issues'], properties: {platform: {const: 'X'}, outcome: {const: 'FAIL'}, issues: {type: 'array', minItems: 1, maxItems: 1, items: frozenFaultIssueSchema(evidenceRefIds)}}};
 }
 
 function exactUnorderedPlatformArray(entries: {platform: GovernedArtifactRevision['platform']; schema: LiveJsonSchema}[]): LiveJsonSchema {
@@ -285,8 +294,16 @@ export function liveModelGenerationSchema(task: TaskContract, input: Record<stri
     const platform = 'X' as const;
     return {type: 'object', additionalProperties: false, required: ['revisions'], properties: {revisions: exactUnorderedPlatformArray([{platform, schema: generationRevisionSchema(platform, correctionSourceContent(input))}])}};
   }
-  const platforms = task.kind === 'AUDIT_REVISIONS' ? ['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU'] as const : ['X'] as const;
-  return {type: 'object', additionalProperties: false, required: ['decisions'], properties: {decisions: exactUnorderedPlatformArray(platforms.map((platform) => ({platform, schema: generationDecisionSchema(platform)})))}};
+  if (task.kind === 'AUDIT_REVISIONS') {
+    if (!isRecord(input.projection) || !Array.isArray(input.projection.evidenceRefIds) || !input.projection.evidenceRefIds.every((value) => typeof value === 'string')) throw new ShadowContractError('LIVE_MODEL_GENERATION_SCHEMA_INPUT_INVALID', 'Initial audit generation requires exact Evidence Ref IDs.');
+    const evidenceRefIds = input.projection.evidenceRefIds as string[];
+    const entries = [
+      {platform: 'X' as const, schema: frozenFaultDecisionSchema(evidenceRefIds)},
+      ...(['BLUESKY', 'LINKEDIN', 'XIAOHONGSHU'] as const).map((platform) => ({platform, schema: passingGenerationDecisionSchema(platform)}))
+    ];
+    return {type: 'object', additionalProperties: false, required: ['decisions'], properties: {decisions: exactUnorderedPlatformArray(entries)}};
+  }
+  return {type: 'object', additionalProperties: false, required: ['decisions'], properties: {decisions: exactUnorderedPlatformArray([{platform: 'X', schema: passingGenerationDecisionSchema('X')}])}};
 }
 
 export function liveModelTaskOutputSchema(task: TaskContract): Record<string, unknown> {

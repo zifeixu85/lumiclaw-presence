@@ -462,13 +462,26 @@ function normalizeLiveRoleOutput(task: TaskContract, raw: unknown, input: Record
   if (task.kind === 'AUDIT_REVISIONS') {
     if (!isRecord(projection.producerSummaries) || !isRecord(projection.producerSummaries.founder) || !isRecord(projection.producerSummaries.product)) return undefined;
     const revisions = [...(Array.isArray(projection.producerSummaries.founder.revisions) ? projection.producerSummaries.founder.revisions : []), ...(Array.isArray(projection.producerSummaries.product.revisions) ? projection.producerSummaries.product.revisions : [])];
-    if (revisions.length !== 4 || rawDecisions.length !== 4) return undefined;
-    const decisions = revisions.map((revision) => { if (!isRecord(revision)) return undefined; const candidate = rawDecisions.find((value) => isRecord(value) && value.platform === revision.platform); if (!isRecord(candidate) || !['PASS', 'FAIL', 'ESCALATE'].includes(String(candidate.outcome)) || !Array.isArray(candidate.issues)) return undefined; return {platform: revision.platform, revision: 1, revisionContentDigest: revision.contentDigest, outcome: candidate.outcome, issues: candidate.issues}; });
+    if (revisions.length !== 4 || rawDecisions.length !== 4 || !Array.isArray(projection.evidenceRefIds) || !projection.evidenceRefIds.every((value) => typeof value === 'string')) return undefined;
+    const evidenceRefIds = new Set(projection.evidenceRefIds as string[]);
+    const decisions = revisions.map((revision) => {
+      if (!isRecord(revision)) return undefined;
+      const candidate = rawDecisions.find((value) => isRecord(value) && value.platform === revision.platform);
+      if (!isRecord(candidate) || !Array.isArray(candidate.issues)) return undefined;
+      if (revision.platform !== 'X') {
+        if (candidate.outcome !== 'PASS' || candidate.issues.length !== 0) return undefined;
+      } else {
+        if (candidate.outcome !== 'FAIL' || candidate.issues.length !== 1 || !isRecord(candidate.issues[0])) return undefined;
+        const issue = candidate.issues[0];
+        if (issue.code !== 'CLAIM_OVERREACH' || issue.severity !== 'BLOCKING' || issue.nextResponsibleRoleId !== 'founder-identity-producer' || typeof issue.path !== 'string' || issue.path.length === 0 || typeof issue.message !== 'string' || issue.message.length === 0 || !Array.isArray(issue.evidenceRefIds) || issue.evidenceRefIds.length === 0 || !issue.evidenceRefIds.every((value) => typeof value === 'string' && evidenceRefIds.has(value))) return undefined;
+      }
+      return {platform: revision.platform, revision: 1, revisionContentDigest: revision.contentDigest, outcome: candidate.outcome, issues: candidate.issues};
+    });
     return decisions.some((value) => value === undefined) ? undefined : {decisions};
   }
   if (!isRecord(projection.correctedRevision) || !isRecord(projection.failedAudit) || rawDecisions.length !== 1 || !isRecord(rawDecisions[0])) return undefined;
   const candidate = rawDecisions[0];
-  if (candidate.platform !== 'X' || !['PASS', 'FAIL', 'ESCALATE'].includes(String(candidate.outcome)) || !Array.isArray(candidate.issues)) return undefined;
+  if (candidate.platform !== 'X' || candidate.outcome !== 'PASS' || !Array.isArray(candidate.issues) || candidate.issues.length !== 0) return undefined;
   return {decisions: [{platform: 'X', revision: 2, revisionContentDigest: sha256Digest(projection.correctedRevision.content), outcome: candidate.outcome, issues: candidate.issues}], failedAuditDigest: projection.failedAudit.digest};
 }
 

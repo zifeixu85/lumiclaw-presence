@@ -55,3 +55,10 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F5-02`: closed, exact-binding resumable AgentTeams task-protocol state planner integrated into the Live Runner.
 - [x] `CR2-F5-03`: pending/delegated/advanced/unknown, wrong-scope/digest, replay, redaction and cleanup regression matrix, including 13 actual nested child outcomes.
 - [x] `CR2-F5-04`: full AgentTeams/Live/provider/PostgreSQL/browser/security/evidence/report/clean-Head ZIP gates and seventh Coordinator Canary handoff. The real-key result remains external and is not claimed here.
+
+## CR2 Fix 6 tasks
+
+- [x] `CR2-F6-01`: public-safe deterministic fifth-model-receipt initial-audit reproduction through the production API ticket/model/runtime-event import path.
+- [x] `CR2-F6-02`: exact frozen initial-audit/re-audit generation and semantic contracts, retaining server-derived digests and strict materialization.
+- [x] `CR2-F6-03`: allowlisted submission-import outcome propagation plus success, semantic, ticket/ETag/digest/schema/replay and redaction regressions.
+- [ ] `CR2-F6-04`: full AgentTeams/Live/provider/PostgreSQL/browser/security/evidence/report/clean-Head ZIP gates and eighth Coordinator Canary handoff. Real-key verification remains external.

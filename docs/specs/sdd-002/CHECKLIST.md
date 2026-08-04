@@ -55,3 +55,13 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 - [x] Pinned source and real Runtime evidence record correction as `pending/null/DELEGATE` and disprove the proposed auto-delegation cause; the old suppressed operation is explicitly left unrecoverable rather than guessed.
 - [x] Pending/delegated/advanced/unknown transitions, exact Project/Task/member/attempt/digest binding, duplicate replay and stable redaction are binary.
 - [x] Real six-member/eight-Task correction/re-audit, zero action, exact cleanup, full gates and Coordinator-only seventh Canary are mandatory.
+
+## CR2 Fix 6 checklist
+
+- [x] Public-safe reproduction executes the deterministic Leader plus FREEZE, PLAN, both Producers and independent initial Auditor through the same API ticket/model/runtime-event route.
+- [x] Correct initial audit imports after the fifth model snapshot and persists exact X FAIL / other-platform PASS decisions before correction.
+- [x] Structurally closed but frozen-invariant-invalid initial audit and re-audit outputs fail at the semantic Provider boundary without coercion.
+- [x] Duplicate/replay, stale ETag, ticket scope, Task/role/attempt/digest/schema and persistence boundaries fail closed.
+- [x] Only an allowlisted submission-import category may cross child/host diagnostics; forbidden raw/security/model markers remain absent.
+- [ ] Public-safe real AgentTeams six/eight, no-Secret Live, full verification, report, manifest and clean-Head ZIP pass with all action counts zero.
+- [x] The eighth real-key Canary remains Coordinator-owned and is not represented as `LIVE_PROVIDER_VERIFIED` or `ACCEPTED`.

@@ -44,7 +44,7 @@ describe('Live UAT allowlisted stage diagnostics', () => {
     expect(result.stdout).toBe('');
     expectNoDisclosure(`${result.stdout}${result.stderr}`);
     const envelope = parseLiveFailureEnvelope(result.stderr, {missionId});
-    expect(envelope).toEqual({status: 'FAIL', code, stage, providerOutcomeCode: null, taskProtocolOutcomeCode: null, taskProtocolStatus: {planStatus: null, taskStatus: null}, missionId, evidence: '.evidence/sdd-002/deepseek-live-failure.json', secretPresent: false, liveProviderVerified: false});
+    expect(envelope).toEqual({status: 'FAIL', code, stage, providerOutcomeCode: null, taskProtocolOutcomeCode: null, submissionImportOutcomeCode: null, taskProtocolStatus: {planStatus: null, taskStatus: null}, missionId, evidence: '.evidence/sdd-002/deepseek-live-failure.json', secretPresent: false, liveProviderVerified: false});
     const rawReceipt = readFileSync(evidencePath, 'utf8');
     expectNoDisclosure(rawReceipt);
     const receipt = JSON.parse(rawReceipt);
@@ -55,6 +55,7 @@ describe('Live UAT allowlisted stage diagnostics', () => {
     expect(receipt.liveProviderVerified).toBe(false);
     expect(receipt.providerOutcomeCode).toBeNull();
     expect(receipt.taskProtocolOutcomeCode).toBeNull();
+    expect(receipt.submissionImportOutcomeCode).toBeNull();
     expect(receipt.taskProtocolStatus).toEqual({planStatus: null, taskStatus: null});
   });
 

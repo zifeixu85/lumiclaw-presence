@@ -6,6 +6,7 @@ import path from 'node:path';
 import {LIVE_TASK_PROTOCOL_OUTCOMES, taskProtocolDiagnosticStatus} from './live-agentteams-task-protocol.mjs';
 import {isLiveFailureReceipt, LIVE_STAGE_CODE, parseLiveFailureEnvelope} from './live-uat-diagnostics.mjs';
 import {isRedactedTransportReceipt} from './live-uat-transport.mjs';
+import {LIVE_SUBMISSION_IMPORT_OUTCOMES} from './live-submission-import-outcome.mjs';
 
 const root = process.cwd();
 const project = 'lumiclaw-sdd002-live-conformance';
@@ -123,6 +124,24 @@ async function verifyTaskProtocolDiagnostics() {
   } finally { await rm(diagnosticRoot, {recursive: true, force: true}); }
 }
 
+async function verifySubmissionImportDiagnostics() {
+  const organizationId = '019fcc41-dd89-70c1-ae55-c8e45b4aeb3f'; const missionId = '019fcc41-ddba-7897-a271-d0eda0c9a7fd'; const campaignDigest = 'f'.repeat(64);
+  const bootstrap = 'public-safe-submission-import-evidence-bootstrap-0001'; const dummySecret = 'dummy-secret-submission-import-evidence-0001'; const dummyTicket = 'dummy-ticket-submission-import-evidence-0001'; const rawResponse = 'raw-response-submission-import-evidence-0001';
+  const diagnosticRoot = await mkdtemp(path.join(tmpdir(), 'lumiclaw-submission-import-evidence.')); const receipts = [];
+  try {
+    for (const submissionImportOutcomeCode of LIVE_SUBMISSION_IMPORT_OUTCOMES) {
+      const evidencePath = path.join(diagnosticRoot, `${submissionImportOutcomeCode}.json`);
+      const result = spawnSync(process.execPath, ['scripts/verify-agentteams-real-environment.mjs', `--live-submission-import-outcome-diagnostic-conformance=${submissionImportOutcomeCode}`], {cwd: root, input: JSON.stringify({organizationId, missionId, campaignDigest, bootstrap}), encoding: 'utf8', timeout: 15_000, stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH: evidencePath, DUMMY_SECRET_MARKER: dummySecret, DUMMY_TICKET_MARKER: dummyTicket, DUMMY_RAW_RESPONSE_MARKER: rawResponse}});
+      const output = `${result.stdout}${result.stderr}`;
+      if (result.status === 0 || result.stdout !== '' || [bootstrap, dummySecret, dummyTicket, rawResponse].some((marker) => output.includes(marker)) || /x-lumiclaw-runner-bootstrap|x-lumiclaw-runtime-ticket|authorization|\bbearer\b|responseId|details|Traceback|Exception/iu.test(output)) throw new Error('LIVE_SUBMISSION_IMPORT_DISCLOSURE_OR_STATUS_INVALID');
+      const envelope = parseLiveFailureEnvelope(result.stderr, {missionId}); const receipt = JSON.parse(await readFile(evidencePath, 'utf8'));
+      if (envelope.stage !== 'TASK_PROTOCOL' || envelope.code !== 'LIVE_TASK_PROTOCOL_FAILED' || envelope.providerOutcomeCode !== null || envelope.taskProtocolOutcomeCode !== 'LIVE_TASK_SUBMISSION_IMPORT_FAILED' || envelope.submissionImportOutcomeCode !== submissionImportOutcomeCode || !isLiveFailureReceipt(receipt, {organizationId, missionId, campaignDigest, stage: 'TASK_PROTOCOL', code: 'LIVE_TASK_PROTOCOL_FAILED', taskProtocolOutcomeCode: 'LIVE_TASK_SUBMISSION_IMPORT_FAILED', submissionImportOutcomeCode})) throw new Error('LIVE_SUBMISSION_IMPORT_RECEIPT_INVALID');
+      receipts.push({submissionImportOutcomeCode, failedTaskBound: receipt.failedTaskId === 'public-safe-task-protocol-task'});
+    }
+    return {status: 'PASS', actualNestedChildProcess: true, cases: receipts.length, outcomes: receipts, arbitraryApiCodeMapsTo: 'LIVE_SUBMISSION_IMPORT_UNCLASSIFIED', arbitraryExceptionTextForwarded: false, rawApiOrModelOutputForwarded: false, bootstrapTicketHeaderResponseIdFinding: false};
+  } finally { await rm(diagnosticRoot, {recursive: true, force: true}); }
+}
+
 function infrastructureNames() {
   return [
     ...run('docker', ['ps', '-a', '--format', '{{.Names}}']).split('\n'),
@@ -155,12 +174,13 @@ async function waitForApi() {
 }
 
 try {
-  const tests = run(path.join(root, 'node_modules/.bin/vitest'), ['run', 'apps/api/src/live-runtime-security.test.ts', 'apps/api/src/server.test.ts', 'packages/governed-shadow/src/model-provider.test.ts', 'packages/governed-shadow/src/live-model-generation-schema.test.ts', 'scripts/live-uat-transport.test.ts', 'scripts/live-uat-diagnostics.test.ts', 'scripts/live-provider-outcome.test.ts', 'scripts/live-agentteams-task-protocol.test.ts', 'scripts/live-task-protocol-diagnostics.test.ts']);
-  if (!/Test Files\s+9 passed \(9\)/u.test(tests) || !/Tests\s+156 passed \(156\)/u.test(tests)) throw new Error('LIVE_CONFORMANCE_TARGETED_TEST_COUNT_INVALID');
+  const tests = run(path.join(root, 'node_modules/.bin/vitest'), ['run', 'apps/api/src/live-runtime-security.test.ts', 'apps/api/src/server.test.ts', 'packages/governed-shadow/src/model-provider.test.ts', 'packages/governed-shadow/src/live-model-generation-schema.test.ts', 'scripts/live-uat-transport.test.ts', 'scripts/live-uat-diagnostics.test.ts', 'scripts/live-provider-outcome.test.ts', 'scripts/live-agentteams-task-protocol.test.ts', 'scripts/live-task-protocol-diagnostics.test.ts', 'scripts/live-submission-import-outcome.test.ts']);
+  if (!/Test Files\s+10 passed \(10\)/u.test(tests) || !/Tests\s+167 passed \(167\)/u.test(tests)) throw new Error('LIVE_CONFORMANCE_TARGETED_TEST_COUNT_INVALID');
   const stdinTransport = verifyStdinTransport();
   const stageDiagnostics = await verifyStageDiagnostics();
   const providerOutcomeDiagnostics = await verifyProviderOutcomeDiagnostics();
   const taskProtocolDiagnostics = await verifyTaskProtocolDiagnostics();
+  const submissionImportDiagnostics = await verifySubmissionImportDiagnostics();
   const composePolicy = JSON.parse(run(process.execPath, ['scripts/check-compose-policy.mjs']));
   const clientBundle = JSON.parse(run(process.execPath, ['scripts/check-storybook-browser-safety.mjs']));
   const currentFailedCanaryObjectsAbsentBeforeRun = failedCanaryObjectsAbsent();
@@ -198,11 +218,12 @@ try {
     liveProviderVerified: false,
     liveProviderStatus: 'NOT_RUN_NO_OWNER_SECRET',
     generatedAt: new Date().toISOString(),
-    targetedContracts: {testFiles: 9, tests: 156, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true, exactRoleSchemaPromptBound: true, taskSpecificSemanticSchemas: true, firstDomainFixtureCovered: true, workerBrokerOriginBound: true, resumableAgentTeamsTaskProtocol: true},
+    targetedContracts: {testFiles: 10, tests: 167, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true, exactRoleSchemaPromptBound: true, taskSpecificSemanticSchemas: true, frozenAuditSemanticBoundary: true, fifthModelSubmissionImportCovered: true, firstDomainFixtureCovered: true, workerBrokerOriginBound: true, resumableAgentTeamsTaskProtocol: true},
     stdinTransport,
     stageDiagnostics,
     providerOutcomeDiagnostics,
     taskProtocolDiagnostics,
+    submissionImportDiagnostics,
     composePolicy,
     clientBundle: {status: clientBundle.status, bundleCount: clientBundle.bundles.length, forbidden: clientBundle.forbidden},
     composeInspect: {project, health, secretInEnvironment, secretMounts, dockerSocketMounted, sensitiveLogFinding},
@@ -213,7 +234,7 @@ try {
   };
   await mkdir(path.join(root, '.evidence/sdd-002'), {recursive: true});
   await writeFile(path.join(root, '.evidence/sdd-002/live-deepseek-conformance.json'), `${JSON.stringify(evidence, null, 2)}\n`);
-  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, liveProviderStatus: evidence.liveProviderStatus, tests: 156, stdinTransportCases: 5, stageDiagnosticCases: stageDiagnostics.cases, providerOutcomeCases: providerOutcomeDiagnostics.cases, taskProtocolOutcomeCases: taskProtocolDiagnostics.cases, secretInEnvironment, dockerSocketMounted, cleanup: evidence.cleanup, evidence: '.evidence/sdd-002/live-deepseek-conformance.json'}));
+  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, liveProviderStatus: evidence.liveProviderStatus, tests: 167, stdinTransportCases: 5, stageDiagnosticCases: stageDiagnostics.cases, providerOutcomeCases: providerOutcomeDiagnostics.cases, taskProtocolOutcomeCases: taskProtocolDiagnostics.cases, submissionImportOutcomeCases: submissionImportDiagnostics.cases, secretInEnvironment, dockerSocketMounted, cleanup: evidence.cleanup, evidence: '.evidence/sdd-002/live-deepseek-conformance.json'}));
 } finally {
   if (composeStarted && secretRoot !== undefined) {
     const environment = {...process.env, LUMICLAW_DEEPSEEK_SECRET_FILE: path.join(secretRoot, 'deepseek'), LUMICLAW_RUNTIME_BOOTSTRAP_FILE: path.join(secretRoot, 'bootstrap'), LUMICLAW_API_PORT: apiPort, LUMICLAW_WEB_PORT: webPort};

@@ -63,3 +63,12 @@ Rollback uses local Git reverts and project-scoped test migrations. Cancellation
 - Reconcile advanced states only from matching Runtime and PostgreSQL receipts; reject unknown, stale, wrong-scope or replayed combinations with stable redacted outcomes.
 - Exercise transition, identity, digest, replay, forbidden-marker and cleanup negatives, then rerun real AgentTeams, Live no-Secret, provider, PostgreSQL, browser, Compose, full security/evidence gates.
 - Update the Chinese report, commit cleanly, rebuild the public-safe ZIP/manifest and return a seventh Coordinator Canary protocol without claiming the real-key result.
+
+## CR2 Fix 6 plan
+
+- Reproduce the fifth-domain-call initial-audit import with a deterministic public-safe Provider through the production API ticket/model/runtime-event path and exact task order.
+- Align initial-audit and re-audit generation schemas, semantic normalization and persisted materialization around the frozen FAIL → correction → PASS invariant without coercion.
+- Classify submission-import failure using only a closed status/code mapping and propagate one nullable redacted outcome through nested child diagnostics.
+- Cover successful fifth-receipt import, semantic-invalid output, ticket/ETag/digest/schema/replay and forbidden-marker cases.
+- Rerun public-safe real AgentTeams six/eight, no-Secret Live, Provider/PostgreSQL/API/browser/Compose/security/evidence gates; update the Chinese report and clean-Head source package.
+- Return an eighth Coordinator Canary protocol while leaving real-key verification and acceptance external.

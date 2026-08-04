@@ -38,12 +38,12 @@ describe('Live AgentTeams task-protocol diagnostics', () => {
     const envelope = parseLiveFailureEnvelope(result.stderr, {missionId});
     expect(envelope).toEqual({
       status: 'FAIL', code: 'LIVE_TASK_PROTOCOL_FAILED', stage: 'TASK_PROTOCOL', providerOutcomeCode: null,
-      taskProtocolOutcomeCode, taskProtocolStatus: taskProtocolDiagnosticStatus(taskProtocolOutcomeCode), missionId,
+      taskProtocolOutcomeCode, submissionImportOutcomeCode: taskProtocolOutcomeCode === 'LIVE_TASK_SUBMISSION_IMPORT_FAILED' ? 'LIVE_SUBMISSION_IMPORT_UNCLASSIFIED' : null, taskProtocolStatus: taskProtocolDiagnosticStatus(taskProtocolOutcomeCode), missionId,
       evidence: '.evidence/sdd-002/deepseek-live-failure.json', secretPresent: false, liveProviderVerified: false
     });
     const rawReceipt = readFileSync(evidencePath, 'utf8'); expectNoDisclosure(rawReceipt);
     expect(JSON.parse(rawReceipt)).toMatchObject({
-      taskProtocolOutcomeCode, taskProtocolStatus: taskProtocolDiagnosticStatus(taskProtocolOutcomeCode), failedTaskId,
+      taskProtocolOutcomeCode, submissionImportOutcomeCode: taskProtocolOutcomeCode === 'LIVE_TASK_SUBMISSION_IMPORT_FAILED' ? 'LIVE_SUBMISSION_IMPORT_UNCLASSIFIED' : null, taskProtocolStatus: taskProtocolDiagnosticStatus(taskProtocolOutcomeCode), failedTaskId,
       modelReceiptCount: 0, mockFallback: false, secretPresent: false, liveProviderVerified: false,
       noAction: {actionGrantCount: 0, connectorCount: 0, externalActionCount: 0}
     });

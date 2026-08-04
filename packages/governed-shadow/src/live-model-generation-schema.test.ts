@@ -11,7 +11,8 @@ const issue = {code: 'CLAIM_OVERREACH', severity: 'BLOCKING', path: '/content/po
 
 function task(kind: TaskContract['kind']): TaskContract { return {kind} as TaskContract; }
 function validator(kind: TaskContract['kind'], input: Record<string, unknown> = {}): ValidateFunction {
-  return new Ajv({allErrors: true, strict: false}).compile(liveModelGenerationSchema(task(kind), input));
+  const exactInput = kind === 'AUDIT_REVISIONS' && Object.keys(input).length === 0 ? {projection: {evidenceRefIds: ['evidence-public-safe']}} : input;
+  return new Ajv({allErrors: true, strict: false}).compile(liveModelGenerationSchema(task(kind), exactInput));
 }
 function revision(platform: string, content: unknown) { return {platform, content}; }
 function decision(platform: string, outcome = 'PASS', issues: unknown[] = []) { return {platform, outcome, issues}; }
@@ -73,6 +74,9 @@ describe('Live task-specific generation schemas', () => {
     expectAccepted(validate, [{decisions: values}, {decisions: [...values].reverse()}]);
     expectRejected(validate, [
       {decisions: [values[0], decision('X', 'ESCALATE', [issue]), values[2], values[3]]},
+      {decisions: [decision('X'), values[1], values[2], values[3]]},
+      {decisions: [decision('X', 'FAIL'), values[1], values[2], values[3]]},
+      {decisions: [values[0], decision('BLUESKY', 'FAIL', [issue]), values[2], values[3]]},
       {decisions: [values[0], values[1], values[2], decision('MASTODON')]},
       {decisions: values.slice(0, 3)},
       {decisions: [...values, decision('X')]},
@@ -85,9 +89,11 @@ describe('Live task-specific generation schemas', () => {
 
   it('accepts exactly one closed X re-audit decision and rejects relabeling or server-derived fields', () => {
     const validate = validator('REAUDIT_CORRECTION'); const accepted = decision('X');
-    expectAccepted(validate, [{decisions: [accepted]}, {decisions: [decision('X', 'ESCALATE', [issue])]}]);
+    expectAccepted(validate, [{decisions: [accepted]}]);
     expectRejected(validate, [
       {decisions: [decision('BLUESKY')]},
+      {decisions: [decision('X', 'ESCALATE', [issue])]},
+      {decisions: [decision('X', 'FAIL', [issue])]},
       {decisions: []},
       {decisions: [accepted, accepted]},
       {decisions: [accepted], failedAuditDigest: 'a'.repeat(64)},

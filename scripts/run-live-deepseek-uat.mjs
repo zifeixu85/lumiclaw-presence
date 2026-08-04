@@ -5,6 +5,7 @@ import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {isLiveTaskProtocolOutcome, LiveTaskProtocolError, planLiveTaskProtocol, safeTaskProtocolStatus, selectRuntimeTaskMaterial, taskContractDigest, taskProtocolDiagnosticStatus} from './live-agentteams-task-protocol.mjs';
 import {conformanceProgressForStage, createLiveFailureEnvelope, createLiveFailureReceipt, defaultLiveProgress, isLiveStage, isProviderOutcomeCode, liveStageCode, providerOutcomeFromMission, readSourceIdentity, writeLiveFailureReceipt} from './live-uat-diagnostics.mjs';
+import {classifyLiveSubmissionImportOutcome, isLiveSubmissionImportOutcome} from './live-submission-import-outcome.mjs';
 import {createRedactedTransportReceipt, deriveWorkerBrokerUrl, parseLiveUatTransport} from './live-uat-transport.mjs';
 
 const root = process.cwd();
@@ -28,17 +29,20 @@ const {organizationId, missionId, campaignDigest, bootstrap} = transport;
 const diagnosticStage = process.argv.find((value) => value.startsWith('--diagnostic-stage-conformance='))?.split('=', 2)[1];
 const diagnosticProviderOutcome = process.argv.find((value) => value.startsWith('--provider-outcome-diagnostic-conformance='))?.split('=', 2)[1];
 const diagnosticTaskProtocolOutcome = process.argv.find((value) => value.startsWith('--task-protocol-outcome-diagnostic-conformance='))?.split('=', 2)[1];
-if (diagnosticStage !== undefined || diagnosticProviderOutcome !== undefined || diagnosticTaskProtocolOutcome !== undefined) {
+const diagnosticSubmissionImportOutcome = process.argv.find((value) => value.startsWith('--submission-import-outcome-diagnostic-conformance='))?.split('=', 2)[1];
+if (diagnosticStage !== undefined || diagnosticProviderOutcome !== undefined || diagnosticTaskProtocolOutcome !== undefined || diagnosticSubmissionImportOutcome !== undefined) {
   try {
-    const modeCount = [diagnosticStage, diagnosticProviderOutcome, diagnosticTaskProtocolOutcome].filter((value) => value !== undefined).length;
-    const stage = diagnosticTaskProtocolOutcome !== undefined ? 'TASK_PROTOCOL' : diagnosticProviderOutcome !== undefined ? 'PROVIDER_REQUEST' : diagnosticStage;
-    if (modeCount !== 1 || !isLiveStage(stage) || (diagnosticProviderOutcome !== undefined && !isProviderOutcomeCode(diagnosticProviderOutcome)) || (diagnosticTaskProtocolOutcome !== undefined && !isLiveTaskProtocolOutcome(diagnosticTaskProtocolOutcome))) throw new Error('LIVE_DIAGNOSTIC_STAGE_INVALID');
+    const modeCount = [diagnosticStage, diagnosticProviderOutcome, diagnosticTaskProtocolOutcome, diagnosticSubmissionImportOutcome].filter((value) => value !== undefined).length;
+    const stage = diagnosticSubmissionImportOutcome !== undefined || diagnosticTaskProtocolOutcome !== undefined ? 'TASK_PROTOCOL' : diagnosticProviderOutcome !== undefined ? 'PROVIDER_REQUEST' : diagnosticStage;
+    if (modeCount !== 1 || !isLiveStage(stage) || (diagnosticProviderOutcome !== undefined && !isProviderOutcomeCode(diagnosticProviderOutcome)) || (diagnosticTaskProtocolOutcome !== undefined && !isLiveTaskProtocolOutcome(diagnosticTaskProtocolOutcome)) || (diagnosticSubmissionImportOutcome !== undefined && !isLiveSubmissionImportOutcome(diagnosticSubmissionImportOutcome))) throw new Error('LIVE_DIAGNOSTIC_STAGE_INVALID');
+    const taskOutcome = diagnosticSubmissionImportOutcome === undefined ? diagnosticTaskProtocolOutcome : 'LIVE_TASK_SUBMISSION_IMPORT_FAILED';
     const receipt = createLiveFailureReceipt({
       source: readSourceIdentity(root), organizationId, missionId, campaignDigest, stage,
-      failedTaskId: diagnosticProviderOutcome !== undefined ? 'public-safe-provider-task' : diagnosticTaskProtocolOutcome !== undefined ? 'public-safe-task-protocol-task' : null,
+      failedTaskId: diagnosticProviderOutcome !== undefined ? 'public-safe-provider-task' : taskOutcome !== undefined ? 'public-safe-task-protocol-task' : null,
       providerOutcomeCode: diagnosticProviderOutcome ?? null,
-      taskProtocolOutcomeCode: diagnosticTaskProtocolOutcome ?? null,
-      taskProtocolStatus: diagnosticTaskProtocolOutcome === undefined ? undefined : taskProtocolDiagnosticStatus(diagnosticTaskProtocolOutcome),
+      taskProtocolOutcomeCode: taskOutcome ?? null,
+      submissionImportOutcomeCode: diagnosticSubmissionImportOutcome ?? (taskOutcome === 'LIVE_TASK_SUBMISSION_IMPORT_FAILED' ? 'LIVE_SUBMISSION_IMPORT_UNCLASSIFIED' : null),
+      taskProtocolStatus: taskOutcome === undefined ? undefined : taskProtocolDiagnosticStatus(taskOutcome),
       progress: conformanceProgressForStage(stage)
     });
     await writeLiveFailureReceipt(root, receipt, {targetPath: process.env.LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH});
@@ -48,7 +52,11 @@ if (diagnosticStage !== undefined || diagnosticProviderOutcome !== undefined || 
 
 const organizationHeaders = {'x-lumiclaw-organization-id': organizationId};
 let mission; let etag; let projectId; let eventCounter = 0; let lastTaskId = null; const receipts = [];
-let currentStage = 'MISSION_OPEN'; let providerOutcomeCode = null; let taskProtocolOutcomeCode = null; let taskProtocolStatus = {planStatus: null, taskStatus: null}; let workerBrokerUrl; const progress = defaultLiveProgress();
+let currentStage = 'MISSION_OPEN'; let providerOutcomeCode = null; let taskProtocolOutcomeCode = null; let submissionImportOutcomeCode = null; let taskProtocolStatus = {planStatus: null, taskStatus: null}; let workerBrokerUrl; const progress = defaultLiveProgress();
+
+class LiveApiRequestError extends Error {
+  constructor(status, apiCode) { super('LIVE_UAT_API_REQUEST_REJECTED'); this.name = 'LiveApiRequestError'; this.submissionImportOutcomeCode = classifyLiveSubmissionImportOutcome(status, apiCode); }
+}
 
 function digest(value) { return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(canonical(value))).digest('hex'); }
 function canonical(value) { if (Array.isArray(value)) return value.map(canonical); if (value !== null && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().filter((key) => value[key] !== undefined).map((key) => [key, canonical(value[key])])); return value; }
@@ -84,8 +92,8 @@ function acceptTask(taskId) {
 async function request(pathname, init, expected = 200) {
   let response; let body;
   try { response = await fetch(`${api}${pathname}`, init); body = await response.json(); }
-  catch { throw new Error('LIVE_UAT_API_RESPONSE_INVALID'); }
-  if (response.status !== expected) throw new Error('LIVE_UAT_API_REQUEST_REJECTED');
+  catch { throw new LiveApiRequestError(null, null); }
+  if (response.status !== expected) throw new LiveApiRequestError(response.status, typeof body?.code === 'string' ? body.code : null);
   return {body, etag: response.headers.get('etag')};
 }
 async function issue(action, task = null) {
@@ -93,9 +101,14 @@ async function issue(action, task = null) {
   return (await request(`/api/v1/shadow-missions/${missionId}/live-runner/tickets`, {method: 'POST', headers: {...organizationHeaders, 'x-lumiclaw-runner-bootstrap': bootstrap, 'content-type': 'application/json'}, body: JSON.stringify(body)})).body.ticket;
 }
 async function runtimeEvent(body, action, task = null) {
-  const ticket = await issue(action, task); eventCounter += 1;
-  const response = await request(`/api/v1/shadow-missions/${missionId}/runtime-events`, {method: 'POST', headers: {...organizationHeaders, 'x-lumiclaw-runtime-ticket': ticket, 'idempotency-key': `live-uat-${String(eventCounter).padStart(3, '0')}`, 'if-match': etag, 'content-type': 'application/json'}, body: JSON.stringify(body)});
-  mission = response.body.mission; etag = response.etag; return response;
+  try {
+    const ticket = await issue(action, task); eventCounter += 1;
+    const response = await request(`/api/v1/shadow-missions/${missionId}/runtime-events`, {method: 'POST', headers: {...organizationHeaders, 'x-lumiclaw-runtime-ticket': ticket, 'idempotency-key': `live-uat-${String(eventCounter).padStart(3, '0')}`, 'if-match': etag, 'content-type': 'application/json'}, body: JSON.stringify(body)});
+    mission = response.body.mission; etag = response.etag; if (action === 'TASK_SUBMIT') submissionImportOutcomeCode = null; return response;
+  } catch (error) {
+    if (action === 'TASK_SUBMIT') submissionImportOutcomeCode = error instanceof LiveApiRequestError ? error.submissionImportOutcomeCode : 'LIVE_SUBMISSION_PERSISTENCE_UNAVAILABLE';
+    throw error;
+  }
 }
 async function modelFromWorker(role, task) {
   const ticket = await issue('MODEL_GENERATE', task);
@@ -228,7 +241,7 @@ try {
     receipt = createLiveFailureReceipt({
       source: readSourceIdentity(root), organizationId, missionId, campaignDigest, stage: currentStage, failedTaskId: lastTaskId,
       runtime: {projectId: projectId ?? null, sourceTarSha256: mission?.runtimeExpectation?.agentTeamsSourceTarSha256 ?? null, buildDigest: mission?.runtimeExpectation?.agentTeamsBuildDigest ?? null, imageDigestSetDigest: mission?.runtimeExpectation?.imageDigests === undefined ? null : digest(mission.runtimeExpectation.imageDigests)},
-      progress, providerOutcomeCode, taskProtocolOutcomeCode, taskProtocolStatus, modelReceiptCount: receipts.length
+      progress, providerOutcomeCode, taskProtocolOutcomeCode, submissionImportOutcomeCode, taskProtocolStatus, modelReceiptCount: receipts.length
     });
     await writeLiveFailureReceipt(root, receipt);
   } catch { emitFailure('LIVE_FAILURE_RECEIPT_WRITE_FAILED'); process.exitCode = 1; }

@@ -3,6 +3,7 @@ import {readFile} from 'node:fs/promises';
 import {mkdir, rename, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {isLiveTaskProtocolOutcome, isLiveTaskProtocolStatus} from './live-agentteams-task-protocol.mjs';
+import {isLiveSubmissionImportOutcome} from './live-submission-import-outcome.mjs';
 
 export const LIVE_FAILURE_EVIDENCE_RELATIVE_PATH = '.evidence/sdd-002/deepseek-live-failure.json';
 export const SDD002_BASE = '4377103b3fea493a591af7f069fd697d9601f1ca';
@@ -140,6 +141,7 @@ export function createLiveFailureReceipt(input) {
     progress: structuredClone(input.progress ?? defaultLiveProgress()),
     providerOutcomeCode: input.providerOutcomeCode ?? null,
     taskProtocolOutcomeCode: input.taskProtocolOutcomeCode ?? null,
+    submissionImportOutcomeCode: input.submissionImportOutcomeCode ?? null,
     taskProtocolStatus: structuredClone(input.taskProtocolStatus ?? {planStatus: null, taskStatus: null}),
     modelReceiptCount: input.modelReceiptCount ?? 0,
     noAction: {actionGrantCount: 0, connectorCount: 0, externalActionCount: 0},
@@ -153,7 +155,7 @@ export function createLiveFailureReceipt(input) {
 }
 
 export function isLiveFailureReceipt(value, expected = {}) {
-  if (!isRecord(value) || Object.keys(value).sort().join(',') !== ['campaignDigest', 'cleanup', 'code', 'failedTaskId', 'generatedAt', 'liveProviderVerified', 'maturity', 'missionId', 'mockFallback', 'modelReceiptCount', 'noAction', 'organizationId', 'progress', 'providerOutcomeCode', 'runtime', 'schemaVersion', 'secretPresent', 'source', 'stage', 'status', 'taskProtocolOutcomeCode', 'taskProtocolStatus'].sort().join(',')) return false;
+  if (!isRecord(value) || Object.keys(value).sort().join(',') !== ['campaignDigest', 'cleanup', 'code', 'failedTaskId', 'generatedAt', 'liveProviderVerified', 'maturity', 'missionId', 'mockFallback', 'modelReceiptCount', 'noAction', 'organizationId', 'progress', 'providerOutcomeCode', 'runtime', 'schemaVersion', 'secretPresent', 'source', 'stage', 'status', 'submissionImportOutcomeCode', 'taskProtocolOutcomeCode', 'taskProtocolStatus'].sort().join(',')) return false;
   if (value.schemaVersion !== 1 || value.status !== 'FAIL' || value.maturity !== 'LIVE_PROVIDER_CANARY_FAILED' || value.mockFallback !== false || value.secretPresent !== false || value.liveProviderVerified !== false) return false;
   if (!isLiveStage(value.stage) || value.code !== LIVE_STAGE_CODE[value.stage] || !isIso(value.generatedAt)) return false;
   if (!uuidPattern.test(String(value.organizationId)) || !uuidPattern.test(String(value.missionId)) || !digestPattern.test(String(value.campaignDigest))) return false;
@@ -161,8 +163,12 @@ export function isLiveFailureReceipt(value, expected = {}) {
   if (value.providerOutcomeCode !== null && !isProviderOutcomeCode(value.providerOutcomeCode)) return false;
   if (value.providerOutcomeCode !== null && (value.stage !== 'PROVIDER_REQUEST' || value.failedTaskId === null || !value.progress?.providerBrokerRequestStarted)) return false;
   if (value.taskProtocolOutcomeCode !== null && !isLiveTaskProtocolOutcome(value.taskProtocolOutcomeCode)) return false;
+  if (value.submissionImportOutcomeCode !== null && !isLiveSubmissionImportOutcome(value.submissionImportOutcomeCode)) return false;
   if (!isLiveTaskProtocolStatus(value.taskProtocolStatus)) return false;
   if (value.taskProtocolOutcomeCode !== null && (value.stage !== 'TASK_PROTOCOL' || value.failedTaskId === null || !value.progress?.projectDispatched)) return false;
+  if (value.submissionImportOutcomeCode !== null && value.taskProtocolOutcomeCode !== 'LIVE_TASK_SUBMISSION_IMPORT_FAILED') return false;
+  if (value.taskProtocolOutcomeCode === 'LIVE_TASK_SUBMISSION_IMPORT_FAILED' && value.submissionImportOutcomeCode === null) return false;
+  if (value.taskProtocolOutcomeCode !== 'LIVE_TASK_SUBMISSION_IMPORT_FAILED' && value.submissionImportOutcomeCode !== null) return false;
   if (value.stage !== 'TASK_PROTOCOL' && (value.taskProtocolOutcomeCode !== null || value.taskProtocolStatus.planStatus !== null || value.taskProtocolStatus.taskStatus !== null)) return false;
   if (!Number.isSafeInteger(value.modelReceiptCount) || value.modelReceiptCount < 0 || value.modelReceiptCount > 7) return false;
   if (!isSource(value.source) || !isRuntime(value.runtime) || !isProgress(value.progress) || !isNoAction(value.noAction) || !isCleanup(value.cleanup)) return false;
@@ -178,6 +184,7 @@ export function isLiveFailureReceipt(value, expected = {}) {
   if (expected.code !== undefined && value.code !== expected.code) return false;
   if (expected.providerOutcomeCode !== undefined && value.providerOutcomeCode !== expected.providerOutcomeCode) return false;
   if (expected.taskProtocolOutcomeCode !== undefined && value.taskProtocolOutcomeCode !== expected.taskProtocolOutcomeCode) return false;
+  if (expected.submissionImportOutcomeCode !== undefined && value.submissionImportOutcomeCode !== expected.submissionImportOutcomeCode) return false;
   return true;
 }
 
@@ -189,6 +196,7 @@ export function createLiveFailureEnvelope(receipt) {
     stage: receipt.stage,
     providerOutcomeCode: receipt.providerOutcomeCode,
     taskProtocolOutcomeCode: receipt.taskProtocolOutcomeCode,
+    submissionImportOutcomeCode: receipt.submissionImportOutcomeCode,
     taskProtocolStatus: structuredClone(receipt.taskProtocolStatus),
     missionId: receipt.missionId,
     evidence: LIVE_FAILURE_EVIDENCE_RELATIVE_PATH,
@@ -201,8 +209,8 @@ export function parseLiveFailureEnvelope(raw, expected = {}) {
   if (typeof raw !== 'string' || Buffer.byteLength(raw, 'utf8') === 0 || Buffer.byteLength(raw, 'utf8') > 2048) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
   let value;
   try { value = JSON.parse(raw); } catch { throw new Error('LIVE_FAILURE_ENVELOPE_INVALID'); }
-  if (!isRecord(value) || Object.keys(value).sort().join(',') !== ['code', 'evidence', 'liveProviderVerified', 'missionId', 'providerOutcomeCode', 'secretPresent', 'stage', 'status', 'taskProtocolOutcomeCode', 'taskProtocolStatus'].sort().join(',')) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
-  if (value.status !== 'FAIL' || !isLiveStage(value.stage) || value.code !== LIVE_STAGE_CODE[value.stage] || (value.providerOutcomeCode !== null && !isProviderOutcomeCode(value.providerOutcomeCode)) || (value.providerOutcomeCode !== null && value.stage !== 'PROVIDER_REQUEST') || (value.taskProtocolOutcomeCode !== null && (!isLiveTaskProtocolOutcome(value.taskProtocolOutcomeCode) || value.stage !== 'TASK_PROTOCOL')) || !isLiveTaskProtocolStatus(value.taskProtocolStatus) || (value.stage !== 'TASK_PROTOCOL' && (value.taskProtocolStatus.planStatus !== null || value.taskProtocolStatus.taskStatus !== null)) || !uuidPattern.test(String(value.missionId)) || value.evidence !== LIVE_FAILURE_EVIDENCE_RELATIVE_PATH || value.secretPresent !== false || value.liveProviderVerified !== false) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
+  if (!isRecord(value) || Object.keys(value).sort().join(',') !== ['code', 'evidence', 'liveProviderVerified', 'missionId', 'providerOutcomeCode', 'secretPresent', 'stage', 'status', 'submissionImportOutcomeCode', 'taskProtocolOutcomeCode', 'taskProtocolStatus'].sort().join(',')) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
+  if (value.status !== 'FAIL' || !isLiveStage(value.stage) || value.code !== LIVE_STAGE_CODE[value.stage] || (value.providerOutcomeCode !== null && !isProviderOutcomeCode(value.providerOutcomeCode)) || (value.providerOutcomeCode !== null && value.stage !== 'PROVIDER_REQUEST') || (value.taskProtocolOutcomeCode !== null && (!isLiveTaskProtocolOutcome(value.taskProtocolOutcomeCode) || value.stage !== 'TASK_PROTOCOL')) || (value.submissionImportOutcomeCode !== null && (!isLiveSubmissionImportOutcome(value.submissionImportOutcomeCode) || value.taskProtocolOutcomeCode !== 'LIVE_TASK_SUBMISSION_IMPORT_FAILED')) || (value.taskProtocolOutcomeCode === 'LIVE_TASK_SUBMISSION_IMPORT_FAILED' && value.submissionImportOutcomeCode === null) || !isLiveTaskProtocolStatus(value.taskProtocolStatus) || (value.stage !== 'TASK_PROTOCOL' && (value.taskProtocolStatus.planStatus !== null || value.taskProtocolStatus.taskStatus !== null)) || !uuidPattern.test(String(value.missionId)) || value.evidence !== LIVE_FAILURE_EVIDENCE_RELATIVE_PATH || value.secretPresent !== false || value.liveProviderVerified !== false) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
   if (expected.missionId !== undefined && value.missionId !== expected.missionId) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
   return value;
 }

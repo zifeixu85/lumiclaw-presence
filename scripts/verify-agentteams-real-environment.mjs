@@ -22,6 +22,7 @@ const transportConformance = process.argv.includes('--live-stdin-transport-confo
 const diagnosticStageConformance = process.argv.find((value) => value.startsWith('--live-stage-diagnostic-conformance='))?.split('=', 2)[1];
 const diagnosticProviderOutcomeConformance = process.argv.find((value) => value.startsWith('--live-provider-outcome-diagnostic-conformance='))?.split('=', 2)[1];
 const diagnosticTaskProtocolOutcomeConformance = process.argv.find((value) => value.startsWith('--live-task-protocol-outcome-diagnostic-conformance='))?.split('=', 2)[1];
+const diagnosticSubmissionImportOutcomeConformance = process.argv.find((value) => value.startsWith('--live-submission-import-outcome-diagnostic-conformance='))?.split('=', 2)[1];
 const runtimeModel = liveUat ? 'lumiclaw-deepseek-broker-v1' : 'mock-agentteams-conformance';
 let temporaryRoot;
 let provider;
@@ -45,9 +46,9 @@ async function readCanonicalLiveRunnerInput() {
   return {parsed, serialized: serializeLiveUatTransport(parsed)};
 }
 async function spawnLiveRunner(serialized, parsed, options = {}) {
-  const transportOnly = options.transportConformance === true; const diagnosticStage = options.diagnosticStage; const diagnosticProviderOutcome = options.diagnosticProviderOutcome; const diagnosticTaskProtocolOutcome = options.diagnosticTaskProtocolOutcome;
-  const diagnostic = diagnosticStage !== undefined || diagnosticProviderOutcome !== undefined || diagnosticTaskProtocolOutcome !== undefined;
-  const result = spawnSync(process.execPath, ['scripts/run-live-deepseek-uat.mjs', ...(transportOnly ? ['--transport-conformance'] : []), ...(diagnosticStage === undefined ? [] : [`--diagnostic-stage-conformance=${diagnosticStage}`]), ...(diagnosticProviderOutcome === undefined ? [] : [`--provider-outcome-diagnostic-conformance=${diagnosticProviderOutcome}`]), ...(diagnosticTaskProtocolOutcome === undefined ? [] : [`--task-protocol-outcome-diagnostic-conformance=${diagnosticTaskProtocolOutcome}`])], {
+  const transportOnly = options.transportConformance === true; const diagnosticStage = options.diagnosticStage; const diagnosticProviderOutcome = options.diagnosticProviderOutcome; const diagnosticTaskProtocolOutcome = options.diagnosticTaskProtocolOutcome; const diagnosticSubmissionImportOutcome = options.diagnosticSubmissionImportOutcome;
+  const diagnostic = diagnosticStage !== undefined || diagnosticProviderOutcome !== undefined || diagnosticTaskProtocolOutcome !== undefined || diagnosticSubmissionImportOutcome !== undefined;
+  const result = spawnSync(process.execPath, ['scripts/run-live-deepseek-uat.mjs', ...(transportOnly ? ['--transport-conformance'] : []), ...(diagnosticStage === undefined ? [] : [`--diagnostic-stage-conformance=${diagnosticStage}`]), ...(diagnosticProviderOutcome === undefined ? [] : [`--provider-outcome-diagnostic-conformance=${diagnosticProviderOutcome}`]), ...(diagnosticTaskProtocolOutcome === undefined ? [] : [`--task-protocol-outcome-diagnostic-conformance=${diagnosticTaskProtocolOutcome}`]), ...(diagnosticSubmissionImportOutcome === undefined ? [] : [`--submission-import-outcome-diagnostic-conformance=${diagnosticSubmissionImportOutcome}`])], {
     cwd: root, input: serialized, encoding: 'utf8', timeout: transportOnly || diagnostic ? 10_000 : 1_200_000, stdio: ['pipe', 'pipe', 'pipe'],
     env: diagnostic ? {...process.env, LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH: process.env.LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH} : process.env
   });
@@ -57,7 +58,7 @@ async function spawnLiveRunner(serialized, parsed, options = {}) {
     let envelope;
     try {
       envelope = parseLiveFailureEnvelope(stderr, {missionId: parsed.missionId});
-      await readLiveFailureReceipt(root, {organizationId: parsed.organizationId, missionId: parsed.missionId, campaignDigest: parsed.campaignDigest, stage: envelope.stage, code: envelope.code, providerOutcomeCode: envelope.providerOutcomeCode, taskProtocolOutcomeCode: envelope.taskProtocolOutcomeCode}, {targetPath: diagnostic ? process.env.LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH : undefined});
+      await readLiveFailureReceipt(root, {organizationId: parsed.organizationId, missionId: parsed.missionId, campaignDigest: parsed.campaignDigest, stage: envelope.stage, code: envelope.code, providerOutcomeCode: envelope.providerOutcomeCode, taskProtocolOutcomeCode: envelope.taskProtocolOutcomeCode, submissionImportOutcomeCode: envelope.submissionImportOutcomeCode}, {targetPath: diagnostic ? process.env.LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH : undefined});
     } catch { throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID'); }
     throw new LiveUatDiagnosticError(envelope);
   }
@@ -157,12 +158,12 @@ if (transportConformance) {
     emitStableFailure(error instanceof LiveUatTransportError ? error.code : 'LIVE_UAT_TRANSPORT_FAILED');
     process.exitCode = 1;
   }
-} else if (diagnosticStageConformance !== undefined || diagnosticProviderOutcomeConformance !== undefined || diagnosticTaskProtocolOutcomeConformance !== undefined) {
+} else if (diagnosticStageConformance !== undefined || diagnosticProviderOutcomeConformance !== undefined || diagnosticTaskProtocolOutcomeConformance !== undefined || diagnosticSubmissionImportOutcomeConformance !== undefined) {
   try {
     if (diagnosticStageConformance !== undefined && !isLiveStage(diagnosticStageConformance)) throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID');
     if (diagnosticTaskProtocolOutcomeConformance !== undefined && !isLiveTaskProtocolOutcome(diagnosticTaskProtocolOutcomeConformance)) throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID');
     const input = await readCanonicalLiveRunnerInput();
-    await spawnLiveRunner(input.serialized, input.parsed, {diagnosticStage: diagnosticStageConformance, diagnosticProviderOutcome: diagnosticProviderOutcomeConformance, diagnosticTaskProtocolOutcome: diagnosticTaskProtocolOutcomeConformance});
+    await spawnLiveRunner(input.serialized, input.parsed, {diagnosticStage: diagnosticStageConformance, diagnosticProviderOutcome: diagnosticProviderOutcomeConformance, diagnosticTaskProtocolOutcome: diagnosticTaskProtocolOutcomeConformance, diagnosticSubmissionImportOutcome: diagnosticSubmissionImportOutcomeConformance});
     throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID');
   } catch (error) {
     if (error instanceof LiveUatDiagnosticError) emitDiagnosticFailure(error.envelope);

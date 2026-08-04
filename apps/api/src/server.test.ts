@@ -32,6 +32,76 @@ function liveSnapshot(request: ModelGenerateRequest<unknown>, errorCode: string 
   return {schemaVersion: 1 as const, id: createUuidV7(now().getTime(), new Uint8Array(10)), missionId: request.missionId, taskId: request.taskId, provider: 'DEEPSEEK' as const, maturity: 'CANARY' as const, model: request.model, response: {id: 'redacted-fixture-response', actualModel: request.model, systemFingerprint: null, finishReason: 'stop'}, config: {temperature: 0, maxTokens: 4000, responseFormat: 'json_object' as const, timeoutMs: 120000, maxAttempts: 3}, pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04' as const, inputCacheHitUsdPerMillion: 0.0028, inputCacheMissUsdPerMillion: 0.14, outputUsdPerMillion: 0.28, peakMultiplierNotApplied: true as const}, inputDigest, outputDigest: errorCode === null ? sha256Digest(value) : null, tokenUsage: {input: 20, output: 10, cacheHit: 5, cacheMiss: 15, reasoning: 0}, estimatedCostUsd: 0.000004914, latencyMs: 23, attempts: 1, error: errorCode === null ? null : {code: errorCode, retryable: errorCode === 'MODEL_TIMEOUT' || errorCode === 'PROVIDER_UNAVAILABLE' || /^(?:PROVIDER_HTTP_(?:429|5\d\d))$/u.test(errorCode)}, secretPresent: false as const, createdAt: now().toISOString()};
 }
 
+function liveFixtureValue(request: ModelGenerateRequest<unknown>, auditMode: 'EXACT_FROZEN_FAIL' | 'INVALID_ALL_PASS'): unknown {
+  const input = request.input as {taskKind: TaskContract['kind']; projection: Record<string, unknown>};
+  const projection = input.projection;
+  if (input.taskKind === 'FREEZE_EVIDENCE') return {frozen: true, assessment: 'Public-safe deterministic Claim/Evidence freeze.'};
+  if (input.taskKind === 'PLAN_CAMPAIGN') return {rationale: 'Public-safe deterministic four-platform activation plan.'};
+  if (input.taskKind === 'PRODUCE_FOUNDER' || input.taskKind === 'PRODUCE_PRODUCT') {
+    const platforms = input.taskKind === 'PRODUCE_FOUNDER' ? ['X', 'XIAOHONGSHU'] : ['BLUESKY', 'LINKEDIN'];
+    const sourceRevisions = projection.sourceRevisions as {platform: string; content: Record<string, unknown>}[];
+    return {revisions: platforms.map((platform) => {
+      const source = sourceRevisions.find((revision) => revision.platform === platform)!;
+      const content = structuredClone(source.content);
+      if (platform === 'X') content.posts = ['LumiClaw Presence is generally available in every market today.'];
+      return {platform, content};
+    })};
+  }
+  if (input.taskKind === 'AUDIT_REVISIONS') {
+    const producerSummaries = projection.producerSummaries as {founder: {revisions: {platform: string}[]}; product: {revisions: {platform: string}[]}};
+    const evidenceRefIds = projection.evidenceRefIds as string[];
+    const issue = {code: 'CLAIM_OVERREACH', severity: 'BLOCKING', path: '/content/posts/0', message: 'The frozen evidence does not support generally available.', evidenceRefIds, nextResponsibleRoleId: 'founder-identity-producer'};
+    return {decisions: [...producerSummaries.founder.revisions, ...producerSummaries.product.revisions].map((revision) => ({platform: revision.platform, outcome: auditMode === 'EXACT_FROZEN_FAIL' && revision.platform === 'X' ? 'FAIL' : 'PASS', issues: auditMode === 'EXACT_FROZEN_FAIL' && revision.platform === 'X' ? [issue] : []}))};
+  }
+  throw new Error('PUBLIC_SAFE_LIVE_FIXTURE_TASK_UNEXPECTED');
+}
+
+async function liveInitialAuditAttempt(auditMode: 'EXACT_FROZEN_FAIL' | 'INVALID_ALL_PASS', suffix: string) {
+  let callIndex = 0;
+  const provider = {generateStructured: async (request: ModelGenerateRequest<unknown>) => {
+    const value = liveFixtureValue(request, auditMode);
+    const snapshot = liveSnapshot(request, null, value);
+    snapshot.id = createUuidV7(now().getTime() + callIndex, new Uint8Array(10).fill(callIndex + 1));
+    callIndex += 1;
+    return {ok: true as const, value, snapshot};
+  }} as unknown as ModelProvider;
+  const app = buildApi({now, runtimeBootstrapSecret: runtimeBootstrapTestSecret, deepseekApiKey: 'public-safe-in-memory-provider-fixture', liveModelProviderFactory: () => provider}); apps.push(app);
+  const document = createDemoCampaignDocument(); const headers = {'x-lumiclaw-organization-id': document.organizationId};
+  const created = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers: {...headers, 'idempotency-key': `audit-campaign-${suffix}`}, payload: document});
+  const started = await app.inject({method: 'POST', url: `/api/v1/campaigns/${document.id}/shadow-missions`, headers: {...headers, 'idempotency-key': `audit-start-${suffix}`, 'if-match': created.headers.etag!}, payload: {sourceDigest: created.json().digest, fault: 'BETA_TO_GA', providerMode: 'LIVE_DEEPSEEK_UAT', providerModel: 'deepseek-v4-flash'}});
+  let mission = started.json().mission as ShadowMission; let etag = started.headers.etag!; const missionId = mission.id;
+  const issue = async (action: string, task?: TaskContract) => (await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-runner/tickets`, headers: {...headers, 'x-lumiclaw-runner-bootstrap': runtimeBootstrapTestSecret}, payload: {missionId, campaignDigest: mission.sourceCampaignDigest, action, roleId: task?.roleId ?? null, taskId: task?.id ?? null, attempt: task?.attempt ?? null, agentTeamsSourceTarSha256: mission.runtimeExpectation.agentTeamsSourceTarSha256, agentTeamsBuildDigest: mission.runtimeExpectation.agentTeamsBuildDigest, imageDigests: mission.runtimeExpectation.imageDigests}})).json().ticket as string;
+  const dispatch = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('PROJECT_DISPATCH'), 'idempotency-key': `audit-dispatch-${suffix}`, 'if-match': etag}, payload: {kind: 'PROJECT_DISPATCHED', receipt: projectReceipt(mission)}}); mission = dispatch.json().mission; etag = dispatch.headers.etag!;
+  let lastGenerated: Awaited<ReturnType<typeof app.inject>> | undefined; let initialAuditSubmit: Awaited<ReturnType<typeof app.inject>> | undefined; let staleAuditSubmit: Awaited<ReturnType<typeof app.inject>> | undefined; let wrongScopeAuditSubmit: Awaited<ReturnType<typeof app.inject>> | undefined; let acceptedAuditRequest: {ticket: string; idempotencyKey: string; etag: string; submission: ReturnType<typeof taskSubmission>} | undefined;
+  for (const kind of ['PROJECT_COORDINATION', 'FREEZE_EVIDENCE', 'PLAN_CAMPAIGN', 'PRODUCE_FOUNDER', 'PRODUCE_PRODUCT', 'AUDIT_REVISIONS'] as const) {
+    let task = mission.tasks.find((candidate) => candidate.kind === kind)!;
+    const ack = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('TASK_ACK', task), 'idempotency-key': `audit-ack-${suffix}-${kind}`, 'if-match': etag}, payload: {kind: 'TASK_ACK', receipt: ackReceipt(mission, task)}});
+    expect(ack.statusCode).toBe(200); mission = ack.json().mission; etag = ack.headers.etag!; task = mission.tasks.find((candidate) => candidate.id === task.id)!;
+    let payload: unknown;
+    if (kind === 'PROJECT_COORDINATION') payload = {projectId: mission.runtimeProjectId, externalActionAllowed: false};
+    else {
+      lastGenerated = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-model-generate`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('MODEL_GENERATE', task)}, payload: {taskId: task.id, roleId: task.roleId, attempt: task.attempt, inputProjectionDigest: task.inputProjectionDigest}});
+      if (lastGenerated.statusCode !== 200) break;
+      mission = lastGenerated.json().mission; etag = lastGenerated.headers.etag!; task = mission.tasks.find((candidate) => candidate.id === task.id)!; payload = lastGenerated.json().payload;
+    }
+    const submission = taskSubmission(mission, task, payload, 'CANARY');
+    if (kind === 'AUDIT_REVISIONS') {
+      const staleTicket = await issue('TASK_SUBMIT', task);
+      staleAuditSubmit = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': staleTicket, 'idempotency-key': `audit-stale-${suffix}`, 'if-match': '"mission-stale"'}, payload: {kind: 'TASK_SUBMIT', submission}});
+      const wrongScopeTicket = await issue('TASK_SUBMIT', task);
+      wrongScopeAuditSubmit = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': wrongScopeTicket, 'idempotency-key': `audit-scope-${suffix}`, 'if-match': etag}, payload: {kind: 'TASK_SUBMIT', submission: {...submission, roleId: 'campaign-planner'}}});
+    }
+    const ticket = await issue('TASK_SUBMIT', task); const idempotencyKey = `audit-submit-${suffix}-${kind}`;
+    const submitted = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': ticket, 'idempotency-key': idempotencyKey, 'if-match': etag}, payload: {kind: 'TASK_SUBMIT', submission}});
+    if (kind === 'AUDIT_REVISIONS') initialAuditSubmit = submitted;
+    if (kind === 'AUDIT_REVISIONS') acceptedAuditRequest = {ticket, idempotencyKey, etag, submission};
+    if (submitted.statusCode !== 200) break;
+    mission = submitted.json().mission; etag = submitted.headers.etag!;
+  }
+  const reopened = await app.inject({method: 'GET', url: `/api/v1/shadow-missions/${missionId}`, headers});
+  return {app, headers, missionId, lastGenerated, initialAuditSubmit, staleAuditSubmit, wrongScopeAuditSubmit, acceptedAuditRequest, reopened};
+}
+
 async function firstLiveDomainAttempt(provider: ModelProvider, suffix: string) {
   const app = buildApi({now, runtimeBootstrapSecret: runtimeBootstrapTestSecret, deepseekApiKey: 'public-safe-in-memory-provider-fixture', liveModelProviderFactory: () => provider}); apps.push(app);
   const document = createDemoCampaignDocument(); const headers = {'x-lumiclaw-organization-id': document.organizationId};
@@ -94,6 +164,28 @@ describe('M1 Campaign API contract', () => {
     const submit = taskSubmission(mission, task, generated.json().payload, 'CANARY');
     const accepted = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('TASK_SUBMIT', task), 'idempotency-key': 'live-success-submit', 'if-match': etag}, payload: {kind: 'TASK_SUBMIT', submission: submit}});
     expect(accepted.statusCode).toBe(200); expect(accepted.json().mission.tasks.find((item: {id: string}) => item.id === task.id).state).toBe('ACCEPTED'); expect(accepted.json().mission.modelCalls).toHaveLength(1); expect(accepted.json().mission.actionGrantCount).toBe(0);
+  });
+
+  it('imports the fifth independent Auditor model result and materializes the exact frozen FAIL', async () => {
+    const {app, headers, missionId, lastGenerated, initialAuditSubmit, staleAuditSubmit, wrongScopeAuditSubmit, acceptedAuditRequest, reopened} = await liveInitialAuditAttempt('EXACT_FROZEN_FAIL', 'exact');
+    expect(lastGenerated?.statusCode).toBe(200); expect(initialAuditSubmit?.statusCode).toBe(200);
+    expect(staleAuditSubmit?.statusCode).toBe(412); expect(staleAuditSubmit?.json().code).toBe('MISSION_VERSION_CONFLICT');
+    expect(wrongScopeAuditSubmit?.statusCode).toBe(403); expect(wrongScopeAuditSubmit?.json()).toEqual({code: 'LIVE_RUNTIME_TICKET_SCOPE_MISMATCH', mockFallback: false, secretPresent: false});
+    const replayWithConsumedTicket = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': acceptedAuditRequest!.ticket, 'idempotency-key': acceptedAuditRequest!.idempotencyKey, 'if-match': acceptedAuditRequest!.etag}, payload: {kind: 'TASK_SUBMIT', submission: acceptedAuditRequest!.submission}});
+    expect(replayWithConsumedTicket.statusCode).toBe(403); expect(replayWithConsumedTicket.json()).toEqual({code: 'LIVE_RUNTIME_TICKET_REUSED', mockFallback: false, secretPresent: false});
+    expect(reopened.json().mission).toMatchObject({state: 'REVISION_REQUIRED', modelCalls: expect.any(Array), actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
+    expect(reopened.json().mission.modelCalls).toHaveLength(5); expect(reopened.json().mission.revisions).toHaveLength(4); expect(reopened.json().mission.audits).toHaveLength(4);
+    const reopenedMission = reopened.json().mission;
+    expect(reopenedMission.audits.find((audit: {revisionId: string}) => audit.revisionId === reopenedMission.fault.deniedRevisionId)).toMatchObject({outcome: 'FAIL', status: 'ACTIVE', issues: [{code: 'CLAIM_OVERREACH', nextResponsibleRoleId: 'founder-identity-producer'}]});
+    expect(reopenedMission.audits.filter((audit: {revisionId: string}) => audit.revisionId !== reopenedMission.fault.deniedRevisionId).every((audit: {outcome: string; issues: unknown[]}) => audit.outcome === 'PASS' && audit.issues.length === 0)).toBe(true);
+  });
+
+  it('rejects a structurally closed all-PASS initial Audit before AgentTeams submission import', async () => {
+    const {lastGenerated, initialAuditSubmit, reopened} = await liveInitialAuditAttempt('INVALID_ALL_PASS', 'all-pass');
+    expect(lastGenerated?.statusCode).toBe(502); expect(lastGenerated?.json()).toMatchObject({code: 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', providerOutcomeCode: 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', mockFallback: false});
+    expect(initialAuditSubmit).toBeUndefined();
+    expect(reopened.json().mission).toMatchObject({state: 'FAILED', modelCalls: expect.any(Array), revisions: [], audits: [], actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
+    expect(reopened.json().mission.modelCalls).toHaveLength(5);
   });
 
   it.each(['PROVIDER_HTTP_401', 'PROVIDER_HTTP_402', 'PROVIDER_HTTP_404', 'PROVIDER_HTTP_429', 'PROVIDER_HTTP_500', 'PROVIDER_HTTP_502', 'PROVIDER_HTTP_503', 'PROVIDER_HTTP_504', 'MODEL_TIMEOUT', 'PROVIDER_UNAVAILABLE', 'MODEL_RESPONSE_IDENTITY_INVALID', 'MODEL_RETURNED_MODEL_MISMATCH', 'MODEL_FINISH_REASON_INVALID', 'MODEL_USAGE_INVALID', 'PROVIDER_RESPONSE_INVALID', 'MODEL_JSON_MALFORMED', 'MODEL_SCHEMA_INVALID'])('persists only the allowlisted first-domain provider outcome %s', async (providerOutcomeCode) => {

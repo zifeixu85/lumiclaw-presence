@@ -32,6 +32,11 @@ const expectedTaskProtocolOutcomes = [
   'LIVE_TASK_DELEGATE_RECONCILE_FAILED', 'LIVE_TASK_ACK_FAILED', 'LIVE_TASK_ACK_IMPORT_FAILED', 'LIVE_TASK_DOMAIN_RESUME_UNSAFE',
   'LIVE_TASK_SUBMIT_FAILED', 'LIVE_TASK_CHECK_FAILED', 'LIVE_TASK_SUBMISSION_IMPORT_FAILED', 'LIVE_TASK_ACCEPT_FAILED', 'LIVE_TASK_REPLAY_CONFLICT'
 ];
+const expectedSubmissionImportOutcomes = [
+  'LIVE_SUBMISSION_TICKET_REJECTED', 'LIVE_SUBMISSION_ETAG_CONFLICT', 'LIVE_SUBMISSION_REQUEST_CONTRACT_INVALID',
+  'LIVE_SUBMISSION_QUARANTINED', 'LIVE_SUBMISSION_DOMAIN_INVARIANT_INVALID', 'LIVE_SUBMISSION_PERSISTENCE_UNAVAILABLE',
+  'LIVE_SUBMISSION_IMPORT_UNCLASSIFIED'
+];
 const expectedRoleContracts = [
   {id: 'presence-mission-leader', orchestrationOnly: true, permissions: ['ORCHESTRATE'], skillLocks: ['trace-safe-escalation@1.0.0']},
   {id: 'evidence-claim-steward', orchestrationOnly: false, permissions: ['READ_EVIDENCE'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'trace-safe-escalation@1.0.0']},
@@ -107,14 +112,15 @@ function liveConformanceValid(value) {
   const diagnostics = value?.stageDiagnostics;
   const providerOutcomes = value?.providerOutcomeDiagnostics;
   const taskProtocolOutcomes = value?.taskProtocolDiagnostics;
+  const submissionImportOutcomes = value?.submissionImportDiagnostics;
   const receipt = transport?.receipt;
   return value?.schemaVersion === 1
     && value?.status === 'PASS'
     && value?.maturity === 'ENGINEERING_VERIFIED'
     && value?.liveProviderVerified === false
     && value?.liveProviderStatus === 'NOT_RUN_NO_OWNER_SECRET'
-    && value?.targetedContracts?.testFiles === 9
-    && value?.targetedContracts?.tests === 156
+    && value?.targetedContracts?.testFiles === 10
+    && value?.targetedContracts?.tests === 167
     && value?.targetedContracts?.noKeyFailClosed === true
     && value?.targetedContracts?.mockFallback === false
     && value?.targetedContracts?.scopedSingleUseTickets === true
@@ -123,6 +129,8 @@ function liveConformanceValid(value) {
     && value?.targetedContracts?.independentAuditorReceiptRequired === true
     && value?.targetedContracts?.exactRoleSchemaPromptBound === true
     && value?.targetedContracts?.taskSpecificSemanticSchemas === true
+    && value?.targetedContracts?.frozenAuditSemanticBoundary === true
+    && value?.targetedContracts?.fifthModelSubmissionImportCovered === true
     && value?.targetedContracts?.firstDomainFixtureCovered === true
     && value?.targetedContracts?.workerBrokerOriginBound === true
     && value?.targetedContracts?.resumableAgentTeamsTaskProtocol === true
@@ -179,6 +187,15 @@ function liveConformanceValid(value) {
     && taskProtocolOutcomes?.arbitraryExceptionTextForwarded === false
     && taskProtocolOutcomes?.rawChildOrModelOutputForwarded === false
     && taskProtocolOutcomes?.bootstrapTicketHeaderResponseIdFinding === false
+    && submissionImportOutcomes?.status === 'PASS'
+    && submissionImportOutcomes?.actualNestedChildProcess === true
+    && submissionImportOutcomes?.cases === expectedSubmissionImportOutcomes.length
+    && exactStringSet(submissionImportOutcomes?.outcomes?.map((entry) => entry.submissionImportOutcomeCode), expectedSubmissionImportOutcomes)
+    && submissionImportOutcomes.outcomes.every((entry) => entry.failedTaskBound === true)
+    && submissionImportOutcomes?.arbitraryApiCodeMapsTo === 'LIVE_SUBMISSION_IMPORT_UNCLASSIFIED'
+    && submissionImportOutcomes?.arbitraryExceptionTextForwarded === false
+    && submissionImportOutcomes?.rawApiOrModelOutputForwarded === false
+    && submissionImportOutcomes?.bootstrapTicketHeaderResponseIdFinding === false
     && value?.composePolicy?.status === 'PASS'
     && value?.composePolicy?.dockerSocketMounted === false
     && value?.composePolicy?.secretAsServiceEnvironment === false
@@ -286,9 +303,11 @@ function providerEvidenceValid(providers) {
     && roleSchemas?.exactUnorderedPlatformSets === true
     && roleSchemas?.platformContentKindBound === true
     && roleSchemas?.correctionSourceContentConst === true
+    && roleSchemas?.frozenInitialAuditFailRequired === true
+    && roleSchemas?.reAuditPassRequired === true
     && roleSchemas?.serverDerivedFieldsRejected === true
     && roleSchemas?.acceptedCases === 8
-    && roleSchemas?.rejectedCases === 15
+    && roleSchemas?.rejectedCases === 18
     && exactNoAction(providers?.noAction);
 }
 function roleContractIdentity(role) {
@@ -513,16 +532,20 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, usageBreakdownConsistencyRejected: false}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, exactSchemaPromptBound: false}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, roleGenerationSchemas: {...conformance.roleGenerationSchemas, platformContentKindBound: false}}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, roleGenerationSchemas: {...conformance.roleGenerationSchemas, frozenInitialAuditFailRequired: false}}))),
     !liveConformanceValid({...liveConformance, liveProviderVerified: true}),
     !liveConformanceValid({...liveConformance, composeInspect: {...liveConformance.composeInspect, secretInEnvironment: true}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, mockFallback: true}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, tests: 0}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, exactRoleSchemaPromptBound: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, taskSpecificSemanticSchemas: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, frozenAuditSemanticBoundary: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, fifthModelSubmissionImportCovered: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, workerBrokerOriginBound: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, resumableAgentTeamsTaskProtocol: false}}),
     !liveConformanceValid({...liveConformance, providerOutcomeDiagnostics: {...liveConformance.providerOutcomeDiagnostics, outcomes: liveConformance.providerOutcomeDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, providerOutcomeCode: 'RAW_PROVIDER_FAILURE'} : entry)}}),
     !liveConformanceValid({...liveConformance, taskProtocolDiagnostics: {...liveConformance.taskProtocolDiagnostics, outcomes: liveConformance.taskProtocolDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, taskProtocolOutcomeCode: 'RAW_TASK_EXCEPTION'} : entry)}}),
+    !liveConformanceValid({...liveConformance, submissionImportDiagnostics: {...liveConformance.submissionImportDiagnostics, outcomes: liveConformance.submissionImportDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, submissionImportOutcomeCode: 'RAW_API_EXCEPTION'} : entry)}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, nestedChildProcess: false}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, bootstrapOrSecretFinding: true}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, extraFieldRejected: false}}),
