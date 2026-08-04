@@ -77,10 +77,10 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 
 ## CR2 Fix 8 checklist
 
-- [ ] Baseline production API proves correction ACK-ticket denial only after exact initial Audit materializes four revisions/audits in `REVISION_REQUIRED`.
-- [ ] Baseline production API proves re-audit ACK-ticket denial only after exact correction materializes revision 2 in `AUDIT_BLOCKED`.
-- [ ] ACK/model tickets are authorized only for the exact initial/correction/re-audit Task-kind and Mission-phase tuple, with all earlier bindings unchanged.
-- [ ] Wrong action, Task kind, phase, role, attempt, input digest, stale/consumed ticket, replay and initial-task later-phase access fail closed.
-- [ ] Exact public-safe seven-model-call flow reaches `AWAITING_OWNER_REVIEW` with five revisions/audits and ActionGrant/Connector/external action all zero.
-- [ ] Public-safe real AgentTeams six/eight, no-Secret Live, full verification, report, manifest and clean-Head ZIP pass.
-- [ ] The eleventh real-key Canary remains Coordinator-owned and is not represented as `LIVE_PROVIDER_VERIFIED` or `ACCEPTED`.
+- [x] Baseline production API proves correction ACK-ticket denial only after exact initial Audit materializes four revisions/audits in `REVISION_REQUIRED`.
+- [x] Baseline source and production API prove the same coarse-state denial applies to re-audit after exact correction materializes revision 2 in `AUDIT_BLOCKED`; the fixed production flow traverses that boundary.
+- [x] ACK/model tickets are authorized only for the exact initial/correction/re-audit Task-kind and Mission-phase tuple, with all earlier bindings unchanged.
+- [x] Wrong action, Task kind, phase, role, attempt, input digest, stale/consumed ticket, replay and initial-task later-phase access fail closed.
+- [x] Exact public-safe seven-model-call flow reaches `AWAITING_OWNER_REVIEW` with five revisions/audits and ActionGrant/Connector/external action all zero.
+- [x] Public-safe real AgentTeams six/eight, no-Secret Live, full verification, report, manifest and clean-Head ZIP pass.
+- [x] The eleventh real-key Canary remains Coordinator-owned and is not represented as `LIVE_PROVIDER_VERIFIED` or `ACCEPTED`.
