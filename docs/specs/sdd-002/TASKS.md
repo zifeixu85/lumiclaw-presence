@@ -47,4 +47,4 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F4-01`: closed task-specific generation schemas for founder/product/correction/audit/re-audit with exact unordered platform sets and platform/content binding.
 - [x] `CR2-F4-02`: dynamic correction source-content binding, deterministic server digest/revision derivation and strict re-audit normalization.
 - [x] `CR2-F4-03`: schema positive/order and duplicate/wrong/mismatch/missing/extra/unknown-field regression matrix.
-- [ ] `CR2-F4-04`: full Live/AgentTeams/security/evidence/report/clean-Head ZIP gates and fifth Coordinator Canary handoff. The real-key result remains external and is not claimed here.
+- [x] `CR2-F4-04`: full Live/AgentTeams/security/evidence/report/clean-Head ZIP gates and fifth Coordinator Canary handoff. The real-key result remains external and is not claimed here.
