@@ -1,9 +1,30 @@
 import {createHash} from 'node:crypto';
-import {readdir, readFile, stat, writeFile} from 'node:fs/promises';
+import {readFile, stat, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
 const evidenceRoot = path.join(root, '.evidence/sdd-002');
+const publicEvidencePaths = [
+  'agentteams-capability-report.json',
+  'agentteams-image-smoke.json',
+  'agentteams-real-runtime.json',
+  'api-integration.json',
+  'browser-verification.json',
+  'browser/product-zh-mission-390.png',
+  'browser/product-zh-mission-desktop.png',
+  'browser/product-zh-review-390.png',
+  'browser/product-zh-review-desktop.png',
+  'browser/storybook-en-queued-390.png',
+  'compose-verification.json',
+  'license-inventory.json',
+  'npm-audit.json',
+  'provider-conformance.json',
+  'sbom.cdx.json',
+  'secret-scan.json',
+  'shadow-postgres.json',
+  'source-packages/lumiclaw-presence-sdd-002-source.zip',
+  'source-packages/source-package-manifest.json'
+];
 
 async function readJson(relativePath) {
   const value = await readFile(path.join(evidenceRoot, relativePath), 'utf8');
@@ -26,6 +47,8 @@ async function assertEvidence() {
     readJson('npm-audit.json')
   ]);
   const failures = [];
+  const expectedBrowserScreenshots = publicEvidencePaths.filter((file) => file.startsWith('browser/')).sort();
+  const declaredBrowserScreenshots = (browser.screenshots ?? []).map((file) => file.replace(/^\.evidence\/sdd-002\//u, '')).sort();
   if (api.result !== 'PASS' || api.cleanup !== 'PASS') failures.push('api-integration');
   if (compose.result !== 'PASS' || compose.cleanup !== 'PASS') failures.push('compose-verification');
   if (agentteamsImage.result !== 'PASS' || agentteamsImage.cleanup !== 'PASS' || agentteamsImage.liveAgentTeamRun !== false) failures.push('agentteams-image-smoke');
@@ -47,7 +70,7 @@ async function assertEvidence() {
   if (agentteamsReal.status !== 'PASS' || agentteamsReal.runtime?.realAgentTeamsAcceptance !== true || agentteamsReal.runtime?.realModelAcceptance !== false || agentteamsReal.topology?.memberCount !== 6 || agentteamsReal.project?.taskCount !== 8 || agentteamsReal.project?.restartRecovered !== true || agentteamsReal.productControlPlane?.sameProjectBinding !== true || agentteamsReal.productControlPlane?.normalizedHistoryAuthoritative !== true || agentteamsReal.productControlPlane?.normalizedHistoryTamperRejected !== true || agentteamsReal.environmentLifecycle?.status !== 'PASS' || agentteamsReal.environmentLifecycle?.selfProvisioned !== true || agentteamsReal.environmentLifecycle?.exactRuntimeObjectsRemoved !== true || agentteamsReal.environmentLifecycle?.ephemeralCredentialsRemoved !== true || !causalRuntimeValid || agentteamsReal.noAction?.externalActionAllowed !== false) failures.push('agentteams-real-runtime');
   if (providers.status !== 'PASS' || providers.deepSeek?.canary !== 'NOT_RUN_NO_KEY' || providers.evoLink?.canary !== 'NOT_RUN_NO_KEY' || providers.publicSafeMock?.maturity !== 'MOCK_CONFORMANCE' || providers.noAction?.externalActionAllowed !== false) failures.push('provider-conformance');
   if (shadowPostgres.status !== 'PASS' || shadowPostgres.restartRecovered !== true || shadowPostgres.normalizedHistoryOnly !== true || shadowPostgres.idempotentReplayNormalizedValidated !== true || !Object.values(shadowPostgres.immutableHistory ?? {}).every(Boolean) || shadowPostgres.forbiddenTables !== 0 || shadowPostgres.noAction?.externalActionAllowed !== false) failures.push('shadow-postgres');
-  if (browser.status !== 'PASS' || browser.consoleErrorCount !== 0 || browser.checks?.storybookRealBrowserStateMatrix?.count !== 14 || browser.screenshots?.length !== 5 || browser.realAgentTeamsClaim !== false) failures.push('browser-verification');
+  if (browser.status !== 'PASS' || browser.consoleErrorCount !== 0 || browser.checks?.storybookRealBrowserStateMatrix?.count !== 14 || declaredBrowserScreenshots.join(',') !== expectedBrowserScreenshots.join(',') || browser.realAgentTeamsClaim !== false) failures.push('browser-verification');
   if (!Array.isArray(licenses.disallowed) || licenses.disallowed.length !== 0) failures.push('license-inventory');
   if (secretScan.status !== 'PASS' || !Array.isArray(secretScan.findings) || secretScan.findings.length !== 0) failures.push('secret-scan');
   if (sourcePackage.publicSafe !== true || sourcePackage.secretScan !== 'PASS' || sourcePackage.pathScan !== 'PASS' || sourcePackage.archiveCrcTest !== 'PASS' || sourcePackage.workingTreeSnapshot !== false) failures.push('source-package');
@@ -56,21 +79,10 @@ async function assertEvidence() {
   if (failures.length > 0) throw new Error(`EVIDENCE_VALIDATION_FAILED:${failures.join(',')}`);
 }
 
-async function collect(directory) {
-  const entries = await readdir(directory, {withFileTypes: true});
-  const files = [];
-  for (const entry of entries) {
-    const absolute = path.join(directory, entry.name);
-    if (entry.isDirectory()) files.push(...(await collect(absolute)));
-    else if (entry.isFile() && entry.name !== 'run-manifest.json') files.push(absolute);
-  }
-  return files;
-}
-
 await assertEvidence();
-const files = await collect(evidenceRoot);
 const manifestFiles = [];
-for (const file of files.sort()) {
+for (const relativePath of publicEvidencePaths) {
+  const file = path.join(evidenceRoot, relativePath);
   const value = await readFile(file);
   const metadata = await stat(file);
   manifestFiles.push({
@@ -86,6 +98,7 @@ const manifest = {
   maturity: 'ENGINEERING_VERIFIED',
   generatedAt: new Date().toISOString(),
   fixtureDisclosure: 'Synthetic/local Campaign evidence only; not customer UAT, live platform execution, or production verification.',
+  privacyBoundary: 'Strict public-safe allowlist; ChatGPT Pro interaction screenshots, browser/session state, credentials, runtime state, database state, and superseded source archives are excluded.',
   validatedGates: [
     'api-integration',
     'compose-verification',
