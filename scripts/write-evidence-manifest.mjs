@@ -114,7 +114,7 @@ function liveConformanceValid(value) {
     && value?.liveProviderVerified === false
     && value?.liveProviderStatus === 'NOT_RUN_NO_OWNER_SECRET'
     && value?.targetedContracts?.testFiles === 9
-    && value?.targetedContracts?.tests === 155
+    && value?.targetedContracts?.tests === 156
     && value?.targetedContracts?.noKeyFailClosed === true
     && value?.targetedContracts?.mockFallback === false
     && value?.targetedContracts?.scopedSingleUseTickets === true

@@ -3,6 +3,7 @@ import {LiveTaskProtocolError, planLiveTaskProtocol, safeTaskProtocolStatus, tas
 
 const marker = 'dummy-secret-ticket-authorization-bearer-raw-response-never-leak';
 const now = '2026-08-04T00:00:00.000Z';
+const agentTeamsNow = '2026-08-04T00:00:00Z';
 
 function fixture(overrides: Record<string, unknown> = {}) {
   const contract = {
@@ -56,6 +57,17 @@ describe('Live AgentTeams exact task protocol planner', () => {
     expect(() => planLiveTaskProtocol({...base, snapshot: delegated('in_progress'), controlTask, modelCallCount: 1})).toThrowError(expect.objectContaining({code: 'LIVE_TASK_DOMAIN_RESUME_UNSAFE'}));
   });
 
+  it('accepts the pinned AgentTeams whole-second UTC timestamp and compares imported millisecond receipts by instant', () => {
+    const base = fixture(); const assigned = delegated('assigned'); assigned.task.meta.assigned_at = agentTeamsNow;
+    expect(planLiveTaskProtocol({...base, snapshot: assigned})).toMatchObject({action: 'ACK'});
+    const inProgress = delegated('in_progress'); inProgress.task.meta.assigned_at = agentTeamsNow; inProgress.task.meta.acknowledged_at = agentTeamsNow;
+    expect(planLiveTaskProtocol({...base, snapshot: inProgress})).toMatchObject({action: 'IMPORT_ACK'});
+    const controlTask = ackedTask();
+    expect(planLiveTaskProtocol({...base, snapshot: inProgress, controlTask, modelCallCount: 0})).toMatchObject({action: 'RUN_DOMAIN'});
+    inProgress.task.meta.acknowledged_at = '2026-08-04T00:00:01Z';
+    expect(() => planLiveTaskProtocol({...base, snapshot: inProgress, controlTask, modelCallCount: 0})).toThrowError(expect.objectContaining({code: 'LIVE_TASK_REPLAY_CONFLICT'}));
+  });
+
   it('reconciles submitted and accepted results without skipping real Check or completion', () => {
     const submitted = submittedFixture(false, false);
     expect(planLiveTaskProtocol(submitted)).toMatchObject({action: 'CHECK_IMPORT'});
@@ -63,6 +75,8 @@ describe('Live AgentTeams exact task protocol planner', () => {
     expect(planLiveTaskProtocol(accepted)).toMatchObject({action: 'ACCEPT'});
     const completed = submittedFixture(true, true);
     expect(planLiveTaskProtocol(completed)).toMatchObject({action: 'COMPLETE'});
+    const wrongSubmittedAt = submittedFixture(true, false); wrongSubmittedAt.snapshot.task.meta.submitted_at = '2026-08-04T00:00:01Z';
+    expect(() => planLiveTaskProtocol(wrongSubmittedAt)).toThrowError(expect.objectContaining({code: 'LIVE_TASK_REPLAY_CONFLICT'}));
   });
 
   it.each([

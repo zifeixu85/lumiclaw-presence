@@ -100,7 +100,7 @@ export function planLiveTaskProtocol(input) {
     if (planStatus === 'completed') {
       validateDelegatedMaterial(snapshot, binding, status);
       if (taskMeta.status !== 'submitted' || result === null || controlTask.state !== 'ACCEPTED') conflict(status);
-      validateAcceptedControlTask(controlTask, binding, result, status);
+      validateAcceptedControlTask(controlTask, binding, result, taskMeta, status);
       return decision('COMPLETE', status, binding);
     }
 
@@ -132,7 +132,7 @@ export function planLiveTaskProtocol(input) {
         return decision('CHECK_IMPORT', status, binding);
       }
       if (controlTask.state === 'ACCEPTED') {
-        validateAcceptedControlTask(controlTask, binding, result, status);
+        validateAcceptedControlTask(controlTask, binding, result, taskMeta, status);
         return decision('ACCEPT', status, binding);
       }
       conflict(status);
@@ -194,11 +194,11 @@ function validateControlAck(controlTask, binding, taskMeta, status) {
     || ack.inputProjectionSchema !== binding.contract.inputProjectionSchema
     || ack.inputProjectionDigest !== binding.contract.inputProjectionDigest
     || ack.runtimeState !== 'in_progress'
-    || ack.acknowledgedAt !== taskMeta.acknowledged_at
+    || !sameInstant(ack.acknowledgedAt, taskMeta.acknowledged_at)
     || !isDigest(ack.receiptDigest)) conflict(status);
 }
 
-function validateAcceptedControlTask(controlTask, binding, result, status) {
+function validateAcceptedControlTask(controlTask, binding, result, taskMeta, status) {
   const submission = controlTask.runtimeSubmission;
   if (!isRecord(result) || !isRecord(submission) || controlTask.runtimeAck === null || !isDigest(controlTask.acceptedOutputDigest)) conflict(status);
   validateControlAck({...controlTask, state: 'ACKNOWLEDGED'}, binding, {acknowledged_at: controlTask.runtimeAck.acknowledgedAt}, status);
@@ -220,6 +220,7 @@ function validateAcceptedControlTask(controlTask, binding, result, status) {
     || submission.inputProjectionSchema !== binding.contract.inputProjectionSchema
     || submission.inputProjectionDigest !== binding.contract.inputProjectionDigest
     || submission.runtimeState !== 'submitted'
+    || !sameInstant(submission.submittedAt, taskMeta.submitted_at)
     || !isDigest(submission.resultDigest)
     || !isDigest(submission.receiptDigest)) conflict(status);
 }
@@ -237,7 +238,12 @@ function conflict(status) { throw new LiveTaskProtocolError('LIVE_TASK_REPLAY_CO
 function stateInvalid(status) { throw new LiveTaskProtocolError('LIVE_TASK_STATE_INVALID', status); }
 function isRecord(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 function isDigest(value) { return typeof value === 'string' && digestPattern.test(value); }
-function isIso(value) { return typeof value === 'string' && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value; }
+function isIso(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/u.test(value) || !Number.isFinite(Date.parse(value))) return false;
+  const normalized = new Date(value).toISOString();
+  return normalized === value || normalized.replace('.000Z', 'Z') === value;
+}
+function sameInstant(left, right) { return isIso(left) && isIso(right) && Date.parse(left) === Date.parse(right); }
 function sameArray(left, right) { return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((value, index) => value === right[index]); }
 function sha256(value) { return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(canonical(value))).digest('hex'); }
 function canonical(value) { if (Array.isArray(value)) return value.map(canonical); if (isRecord(value)) return Object.fromEntries(Object.keys(value).sort().filter((key) => value[key] !== undefined).map((key) => [key, canonical(value[key])])); return value; }
