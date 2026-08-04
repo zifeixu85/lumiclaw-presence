@@ -43,6 +43,7 @@ import {PostgresCampaignRepository} from '@lumiclaw/db';
 import {timingSafeEqual} from 'node:crypto';
 import Fastify, {type FastifyInstance, type FastifyReply, type FastifyRequest} from 'fastify';
 import {MemoryCampaignRepository} from './memory-campaign-repository.js';
+import {liveTaskActionPhaseAllowed} from './live-ticket-policy.js';
 import {openApiDocument} from './openapi.js';
 import {LiveRuntimeTicketStore, LiveTicketError, readComposeSecret, type LiveTicketAction, type LiveTicketBinding} from './live-runtime-security.js';
 
@@ -422,9 +423,9 @@ function liveBindingFromRuntimeEvent(mission: NonNullable<Awaited<ReturnType<Sha
 
 function liveTicketActionAllowed(mission: NonNullable<Awaited<ReturnType<ShadowMissionRepository['get']>>>, action: LiveTicketAction, task: NonNullable<Awaited<ReturnType<ShadowMissionRepository['get']>>>['tasks'][number] | undefined): boolean {
   if (action === 'PROJECT_DISPATCH') return mission.state === 'WAITING_RUNTIME' && mission.runtimeProjectDispatch === null && task === undefined;
-  if (action === 'TASK_ACK') return mission.state === 'RUNNING' && task?.state === 'ASSIGNED';
-  if (action === 'MODEL_GENERATE') return mission.state === 'RUNNING' && task?.state === 'ACKNOWLEDGED' && task.roleId !== 'presence-mission-leader';
-  if (action === 'TASK_SUBMIT') return mission.state === 'RUNNING' || ['REVISION_REQUIRED', 'AUDIT_BLOCKED'].includes(mission.state) ? task?.state === 'ACKNOWLEDGED' && (task.roleId === 'presence-mission-leader' || mission.modelCalls.some((call) => call.taskId === task.id && call.outputDigest !== null && call.error === null)) : false;
+  if (action === 'TASK_ACK') return task !== undefined && liveTaskActionPhaseAllowed(action, mission.state, task.kind) && task.state === 'ASSIGNED';
+  if (action === 'MODEL_GENERATE') return task !== undefined && liveTaskActionPhaseAllowed(action, mission.state, task.kind) && task.state === 'ACKNOWLEDGED' && task.roleId !== 'presence-mission-leader';
+  if (action === 'TASK_SUBMIT') return task !== undefined && liveTaskActionPhaseAllowed(action, mission.state, task.kind) && task.state === 'ACKNOWLEDGED' && (task.roleId === 'presence-mission-leader' || mission.modelCalls.some((call) => call.taskId === task.id && call.outputDigest !== null && call.error === null));
   if (action === 'FINALIZE') return task === undefined && mission.tasks.every((candidate) => candidate.state === 'ACCEPTED');
   return action === 'FAIL' && !['AWAITING_OWNER_REVIEW', 'COMPLETED_SHADOW'].includes(mission.state);
 }

@@ -119,8 +119,8 @@ function liveConformanceValid(value) {
     && value?.maturity === 'ENGINEERING_VERIFIED'
     && value?.liveProviderVerified === false
     && value?.liveProviderStatus === 'NOT_RUN_NO_OWNER_SECRET'
-    && value?.targetedContracts?.testFiles === 10
-    && value?.targetedContracts?.tests === 176
+    && value?.targetedContracts?.testFiles === 11
+    && value?.targetedContracts?.tests === 181
     && value?.targetedContracts?.noKeyFailClosed === true
     && value?.targetedContracts?.mockFallback === false
     && value?.targetedContracts?.scopedSingleUseTickets === true
@@ -132,6 +132,8 @@ function liveConformanceValid(value) {
     && value?.targetedContracts?.frozenFounderPhraseBoundary === true
     && value?.targetedContracts?.frozenAuditSemanticBoundary === true
     && value?.targetedContracts?.fifthModelSubmissionImportCovered === true
+    && value?.targetedContracts?.phaseScopedTaskTickets === true
+    && value?.targetedContracts?.sevenReceiptPhaseFlowCovered === true
     && value?.targetedContracts?.firstDomainFixtureCovered === true
     && value?.targetedContracts?.workerBrokerOriginBound === true
     && value?.targetedContracts?.resumableAgentTeamsTaskProtocol === true
@@ -547,6 +549,8 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, frozenFounderPhraseBoundary: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, frozenAuditSemanticBoundary: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, fifthModelSubmissionImportCovered: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, phaseScopedTaskTickets: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, sevenReceiptPhaseFlowCovered: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, workerBrokerOriginBound: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, resumableAgentTeamsTaskProtocol: false}}),
     !liveConformanceValid({...liveConformance, providerOutcomeDiagnostics: {...liveConformance.providerOutcomeDiagnostics, outcomes: liveConformance.providerOutcomeDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, providerOutcomeCode: 'RAW_PROVIDER_FAILURE'} : entry)}}),

@@ -65,6 +65,11 @@ function liveFixtureValue(request: ModelGenerateRequest<unknown>, auditMode: 'EX
     const issue = {code: 'CLAIM_OVERREACH', severity: 'BLOCKING', path: '/content/posts/0', message: 'The frozen evidence does not support generally available.', evidenceRefIds, nextResponsibleRoleId: 'founder-identity-producer'};
     return {decisions: [...producerSummaries.founder.revisions, ...producerSummaries.product.revisions].map((revision) => ({platform: revision.platform, outcome: auditMode === 'EXACT_FROZEN_FAIL' && revision.platform === 'X' ? 'FAIL' : 'PASS', issues: auditMode === 'EXACT_FROZEN_FAIL' && revision.platform === 'X' ? [issue] : []}))};
   }
+  if (input.taskKind === 'PRODUCE_FOUNDER_CORRECTION') {
+    const source = (projection.sourceRevisions as {platform: string; content: Record<string, unknown>}[]).find((revision) => revision.platform === 'X')!;
+    return {revisions: [{platform: 'X', content: structuredClone(source.content)}]};
+  }
+  if (input.taskKind === 'REAUDIT_CORRECTION') return {decisions: [{platform: 'X', outcome: 'PASS', issues: []}]};
   throw new Error('PUBLIC_SAFE_LIVE_FIXTURE_TASK_UNEXPECTED');
 }
 
@@ -129,6 +134,10 @@ async function firstLiveDomainAttempt(provider: ModelProvider, suffix: string) {
   return {generated, reopened, task};
 }
 
+function requestLiveTicket(app: ReturnType<typeof buildApi>, headers: Record<string, string>, mission: ShadowMission, action: string, task?: TaskContract, overrides: Record<string, unknown> = {}) {
+  return app.inject({method: 'POST', url: `/api/v1/shadow-missions/${mission.id}/live-runner/tickets`, headers: {...headers, 'x-lumiclaw-runner-bootstrap': runtimeBootstrapTestSecret}, payload: {missionId: mission.id, campaignDigest: mission.sourceCampaignDigest, action, roleId: task?.roleId ?? null, taskId: task?.id ?? null, attempt: task?.attempt ?? null, agentTeamsSourceTarSha256: mission.runtimeExpectation.agentTeamsSourceTarSha256, agentTeamsBuildDigest: mission.runtimeExpectation.agentTeamsBuildDigest, imageDigests: mission.runtimeExpectation.imageDigests, ...overrides}});
+}
+
 afterEach(async () => { await Promise.all(apps.splice(0).map(async (app) => app.close())); });
 
 describe('M1 Campaign API contract', () => {
@@ -190,6 +199,72 @@ describe('M1 Campaign API contract', () => {
     const reopenedMission = reopened.json().mission;
     expect(reopenedMission.audits.find((audit: {revisionId: string}) => audit.revisionId === reopenedMission.fault.deniedRevisionId)).toMatchObject({outcome: 'FAIL', status: 'ACTIVE', issues: [{code: 'CLAIM_OVERREACH', nextResponsibleRoleId: 'founder-identity-producer'}]});
     expect(reopenedMission.audits.filter((audit: {revisionId: string}) => audit.revisionId !== reopenedMission.fault.deniedRevisionId).every((audit: {outcome: string; issues: unknown[]}) => audit.outcome === 'PASS' && audit.issues.length === 0)).toBe(true);
+  });
+
+  it('authorizes only the exact correction and re-audit phase tickets through seven accepted model receipts', async () => {
+    const {app, headers, missionId, reopened} = await liveInitialAuditAttempt('EXACT_FROZEN_FAIL', 'phase-policy');
+    let mission = reopened.json().mission as ShadowMission; let etag = reopened.headers.etag!;
+    expect(mission).toMatchObject({state: 'REVISION_REQUIRED', modelCalls: expect.any(Array), actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
+    expect(mission.modelCalls).toHaveLength(5); expect(mission.revisions).toHaveLength(4); expect(mission.audits).toHaveLength(4);
+
+    let correction = mission.tasks.find((task) => task.kind === 'PRODUCE_FOUNDER_CORRECTION')!;
+    const reAuditWaiting = mission.tasks.find((task) => task.kind === 'REAUDIT_CORRECTION')!;
+    const acceptedInitialAuditor = mission.tasks.find((task) => task.kind === 'AUDIT_REVISIONS')!;
+    expect(correction).toMatchObject({state: 'ASSIGNED', roleId: 'founder-identity-producer', attempt: 2});
+    const wrongAction = await requestLiveTicket(app, headers, mission, 'FINALIZE', correction);
+    expect(wrongAction.statusCode).toBe(409); expect(wrongAction.json().code).toBe('LIVE_RUNTIME_ACTION_NOT_READY');
+    const wrongRole = await requestLiveTicket(app, headers, mission, 'TASK_ACK', correction, {roleId: 'campaign-planner'});
+    expect(wrongRole.statusCode).toBe(422); expect(wrongRole.json().code).toBe('LIVE_RUNTIME_TASK_SCOPE_INVALID');
+    const wrongAttempt = await requestLiveTicket(app, headers, mission, 'TASK_ACK', correction, {attempt: 1});
+    expect(wrongAttempt.statusCode).toBe(422); expect(wrongAttempt.json().code).toBe('LIVE_RUNTIME_TASK_SCOPE_INVALID');
+    const reAuditWrongPhase = await requestLiveTicket(app, headers, mission, 'TASK_ACK', reAuditWaiting);
+    expect(reAuditWrongPhase.statusCode).toBe(409); expect(reAuditWrongPhase.json().code).toBe('LIVE_RUNTIME_ACTION_NOT_READY');
+    const initialTaskLaterPhase = await requestLiveTicket(app, headers, mission, 'TASK_ACK', acceptedInitialAuditor);
+    expect(initialTaskLaterPhase.statusCode).toBe(409); expect(initialTaskLaterPhase.json().code).toBe('LIVE_RUNTIME_ACTION_NOT_READY');
+    const prematureCorrectionModel = await requestLiveTicket(app, headers, mission, 'MODEL_GENERATE', correction);
+    expect(prematureCorrectionModel.statusCode).toBe(409); expect(prematureCorrectionModel.json().code).toBe('LIVE_RUNTIME_ACTION_NOT_READY');
+    const correctionAckTicket = await requestLiveTicket(app, headers, mission, 'TASK_ACK', correction);
+    expect(correctionAckTicket.statusCode).toBe(200);
+    const correctionAck = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': correctionAckTicket.json().ticket, 'idempotency-key': 'phase-correction-ack', 'if-match': etag}, payload: {kind: 'TASK_ACK', receipt: ackReceipt(mission, correction)}});
+    expect(correctionAck.statusCode).toBe(200); mission = correctionAck.json().mission; etag = correctionAck.headers.etag!; correction = mission.tasks.find((task) => task.id === correction.id)!;
+    expect(correction.state).toBe('ACKNOWLEDGED');
+
+    const correctionModelTicket = await requestLiveTicket(app, headers, mission, 'MODEL_GENERATE', correction);
+    expect(correctionModelTicket.statusCode).toBe(200);
+    const wrongDigest = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-model-generate`, headers: {...headers, 'x-lumiclaw-runtime-ticket': correctionModelTicket.json().ticket}, payload: {taskId: correction.id, roleId: correction.roleId, attempt: correction.attempt, inputProjectionDigest: 'f'.repeat(64)}});
+    expect(wrongDigest.statusCode).toBe(422); expect(wrongDigest.json().code).toBe('LIVE_MODEL_TASK_BINDING_INVALID');
+    const correctionGenerated = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-model-generate`, headers: {...headers, 'x-lumiclaw-runtime-ticket': correctionModelTicket.json().ticket}, payload: {taskId: correction.id, roleId: correction.roleId, attempt: correction.attempt, inputProjectionDigest: correction.inputProjectionDigest}});
+    expect(correctionGenerated.statusCode).toBe(200); mission = correctionGenerated.json().mission; etag = correctionGenerated.headers.etag!; correction = mission.tasks.find((task) => task.id === correction.id)!;
+    const reusedCorrectionModel = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-model-generate`, headers: {...headers, 'x-lumiclaw-runtime-ticket': correctionModelTicket.json().ticket}, payload: {taskId: correction.id, roleId: correction.roleId, attempt: correction.attempt, inputProjectionDigest: correction.inputProjectionDigest}});
+    expect(reusedCorrectionModel.statusCode).toBe(403); expect(reusedCorrectionModel.json().code).toBe('LIVE_RUNTIME_TICKET_REUSED');
+    const correctionSubmission = taskSubmission(mission, correction, correctionGenerated.json().payload, 'CANARY');
+    const correctionSubmitTicket = await requestLiveTicket(app, headers, mission, 'TASK_SUBMIT', correction); expect(correctionSubmitTicket.statusCode).toBe(200);
+    const correctionSubmit = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': correctionSubmitTicket.json().ticket, 'idempotency-key': 'phase-correction-submit', 'if-match': etag}, payload: {kind: 'TASK_SUBMIT', submission: correctionSubmission}});
+    expect(correctionSubmit.statusCode).toBe(200); mission = correctionSubmit.json().mission; etag = correctionSubmit.headers.etag!;
+    const replayedCorrectionSubmit = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': correctionSubmitTicket.json().ticket, 'idempotency-key': 'phase-correction-submit', 'if-match': etag}, payload: {kind: 'TASK_SUBMIT', submission: correctionSubmission}});
+    expect(replayedCorrectionSubmit.statusCode).toBe(403); expect(replayedCorrectionSubmit.json().code).toBe('LIVE_RUNTIME_TICKET_REUSED');
+    expect(mission).toMatchObject({state: 'AUDIT_BLOCKED', actionGrantCount: 0, connectorCount: 0, externalActionCount: 0}); expect(mission.revisions).toHaveLength(5); expect(mission.audits).toHaveLength(4);
+
+    let reAudit = mission.tasks.find((task) => task.kind === 'REAUDIT_CORRECTION')!;
+    expect(reAudit).toMatchObject({state: 'ASSIGNED', roleId: 'independent-auditor', attempt: 2});
+    const correctionAfterPhase = await requestLiveTicket(app, headers, mission, 'TASK_ACK', correction);
+    expect(correctionAfterPhase.statusCode).toBe(409); expect(correctionAfterPhase.json().code).toBe('LIVE_RUNTIME_ACTION_NOT_READY');
+    const prematureReAuditModel = await requestLiveTicket(app, headers, mission, 'MODEL_GENERATE', reAudit);
+    expect(prematureReAuditModel.statusCode).toBe(409); expect(prematureReAuditModel.json().code).toBe('LIVE_RUNTIME_ACTION_NOT_READY');
+    const reAuditAckTicket = await requestLiveTicket(app, headers, mission, 'TASK_ACK', reAudit); expect(reAuditAckTicket.statusCode).toBe(200);
+    const reAuditAck = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': reAuditAckTicket.json().ticket, 'idempotency-key': 'phase-reaudit-ack', 'if-match': etag}, payload: {kind: 'TASK_ACK', receipt: ackReceipt(mission, reAudit)}});
+    expect(reAuditAck.statusCode).toBe(200); mission = reAuditAck.json().mission; etag = reAuditAck.headers.etag!; reAudit = mission.tasks.find((task) => task.id === reAudit.id)!;
+    const reAuditModelTicket = await requestLiveTicket(app, headers, mission, 'MODEL_GENERATE', reAudit); expect(reAuditModelTicket.statusCode).toBe(200);
+    const reAuditGenerated = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-model-generate`, headers: {...headers, 'x-lumiclaw-runtime-ticket': reAuditModelTicket.json().ticket}, payload: {taskId: reAudit.id, roleId: reAudit.roleId, attempt: reAudit.attempt, inputProjectionDigest: reAudit.inputProjectionDigest}});
+    expect(reAuditGenerated.statusCode).toBe(200); mission = reAuditGenerated.json().mission; etag = reAuditGenerated.headers.etag!; reAudit = mission.tasks.find((task) => task.id === reAudit.id)!;
+    const reAuditSubmission = taskSubmission(mission, reAudit, reAuditGenerated.json().payload, 'CANARY');
+    const reAuditSubmitTicket = await requestLiveTicket(app, headers, mission, 'TASK_SUBMIT', reAudit); expect(reAuditSubmitTicket.statusCode).toBe(200);
+    const reAuditSubmit = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': reAuditSubmitTicket.json().ticket, 'idempotency-key': 'phase-reaudit-submit', 'if-match': etag}, payload: {kind: 'TASK_SUBMIT', submission: reAuditSubmission}});
+    expect(reAuditSubmit.statusCode).toBe(200); mission = reAuditSubmit.json().mission;
+    expect(mission).toMatchObject({state: 'AWAITING_OWNER_REVIEW', actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
+    expect(mission.modelCalls).toHaveLength(7); expect(mission.revisions).toHaveLength(5); expect(mission.audits).toHaveLength(5);
+    expect(mission.audits.find((audit) => audit.revisionId === mission.fault.deniedRevisionId)?.status).toBe('INVALIDATED');
+    expect(mission.audits.find((audit) => audit.revisionId === mission.fault.correctedRevisionId)).toMatchObject({outcome: 'PASS', status: 'ACTIVE'});
   });
 
   it('rejects a structurally closed all-PASS initial Audit before AgentTeams submission import', async () => {
