@@ -327,11 +327,14 @@ for (const node of dag) {
     if (completeDecision.action !== 'COMPLETE') throw new Error(`REAL_TASK_COMPLETE_STATE_INVALID:${node.taskId}:${completeDecision.action}`); stateActions.push(completeDecision.action);
   }
   taskEvidence.push({
+    projectId,
     taskId: node.taskId,
     roleId: node.assignedTo,
+    runtimeActorId: binding?.runtimeActorId,
     taskKind: node.taskKind,
     attempt: node.attempt,
     dependsOn: node.dependsOn,
+    contractDigest: binding?.contractDigest,
     protocol: ['DELEGATE', 'ACK', 'SUBMIT', 'CHECK', 'ACCEPT'],
     taskStatus: checked.task.status,
     resultStatus: checked.result.status,

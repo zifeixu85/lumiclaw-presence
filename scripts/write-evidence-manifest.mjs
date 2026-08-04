@@ -238,6 +238,12 @@ function liveNoSecretDiagnosticValid(value, currentHead, imageManifest) {
 }
 
 function digest(value) { return typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value); }
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().filter((key) => value[key] !== undefined).map((key) => [key, canonical(value[key])]));
+  return value;
+}
+function sha256Canonical(value) { return createHash('sha256').update(JSON.stringify(canonical(value))).digest('hex'); }
 function buildDigest(value) { return typeof value === 'string' && /^sha256:[a-f0-9]{64}$/u.test(value); }
 function zipLiteralPattern(value) { return value.replace(/([\\[\]*?])/gu, '\\$1'); }
 function exactStringSet(actual, expected) {
@@ -319,6 +325,8 @@ function exactTaskSet(tasks) {
       && task.stateActions?.join(',') === 'DELEGATE,ACK,IMPORT_ACK,RUN_DOMAIN,SUBMIT,CHECK_IMPORT,ACCEPT,COMPLETE'
       && exactRecord(task.preOperation, {planStatus: 'pending', taskStatus: null, selectedAction: 'DELEGATE', bindingDigest: task.preOperation?.bindingDigest})
       && digest(task.preOperation?.bindingDigest)
+      && digest(task.contractDigest)
+      && task.preOperation.bindingDigest === sha256Canonical({projectId: task.projectId, taskId: task.taskId, roleId: task.roleId, runtimeActorId: task.runtimeActorId, attempt: task.attempt, contractDigest: task.contractDigest})
       && task.inputProjectionSchema === `lumiclaw.shadow.task-input.${task.taskKind.toLowerCase().replaceAll('_', '-')}.v1`
       && digestFields.every((field) => digest(task[field]))
       && exactStringSet(task.inputProjectionKeys, expectedTaskByKind.get(task.taskKind)?.keys ?? []))
