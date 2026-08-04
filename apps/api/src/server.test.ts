@@ -287,7 +287,7 @@ describe('M1 Campaign API contract', () => {
     expect(reopened.json().mission.modelCalls).toHaveLength(3);
   });
 
-  it.each(['PROVIDER_HTTP_401', 'PROVIDER_HTTP_402', 'PROVIDER_HTTP_404', 'PROVIDER_HTTP_429', 'PROVIDER_HTTP_500', 'PROVIDER_HTTP_502', 'PROVIDER_HTTP_503', 'PROVIDER_HTTP_504', 'MODEL_TIMEOUT', 'PROVIDER_UNAVAILABLE', 'MODEL_RESPONSE_IDENTITY_INVALID', 'MODEL_RETURNED_MODEL_MISMATCH', 'MODEL_FINISH_REASON_INVALID', 'MODEL_USAGE_INVALID', 'PROVIDER_RESPONSE_INVALID', 'MODEL_JSON_MALFORMED', 'MODEL_SCHEMA_INVALID'])('persists only the allowlisted first-domain provider outcome %s', async (providerOutcomeCode) => {
+  it.each(['PROVIDER_HTTP_401', 'PROVIDER_HTTP_402', 'PROVIDER_HTTP_404', 'PROVIDER_HTTP_429', 'PROVIDER_HTTP_500', 'PROVIDER_HTTP_502', 'PROVIDER_HTTP_503', 'PROVIDER_HTTP_504', 'MODEL_TIMEOUT', 'PROVIDER_UNAVAILABLE', 'MODEL_RESPONSE_IDENTITY_INVALID', 'MODEL_RETURNED_MODEL_MISMATCH', 'MODEL_OUTPUT_TRUNCATED', 'MODEL_CONTENT_FILTERED', 'MODEL_TOOL_CALL_FORBIDDEN', 'MODEL_INFERENCE_RESOURCE_UNAVAILABLE', 'MODEL_FINISH_REASON_INVALID', 'MODEL_USAGE_INVALID', 'PROVIDER_RESPONSE_INVALID', 'MODEL_JSON_MALFORMED', 'MODEL_SCHEMA_INVALID'])('persists only the allowlisted first-domain provider outcome %s', async (providerOutcomeCode) => {
     const provider = {generateStructured: async (request: ModelGenerateRequest<unknown>) => ({ok: false as const, snapshot: liveSnapshot(request, providerOutcomeCode)})};
     const {generated, reopened, task} = await firstLiveDomainAttempt(provider, providerOutcomeCode.toLowerCase().replaceAll('_', '-'));
     expect(generated.statusCode).toBe(502); expect(generated.json()).toEqual({code: providerOutcomeCode, providerOutcomeCode, mockFallback: false, nextResponsible: 'COORDINATOR'});

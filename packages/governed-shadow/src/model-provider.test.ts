@@ -15,10 +15,13 @@ describe('DeepSeek ModelProvider conformance', () => {
     const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async (_url, init) => { providerBody = JSON.parse(String(init?.body)); return new Response(JSON.stringify(response()), {status: 200}); }});
     const result = await provider.generateStructured(request);
     expect(result.ok).toBe(true);
+    expect(providerBody?.thinking).toEqual({type: 'disabled'});
     const messages = providerBody?.messages as {role: string; content: string}[];
     expect(messages[0]?.content).toContain('outputSchema');
     expect(JSON.parse(messages[1]!.content)).toEqual({input: request.input, outputSchema: request.outputSchema});
-    expect(result.snapshot.inputDigest).toBe(sha256Digest({system: request.system, input: request.input, outputSchema: request.outputSchema}));
+    const normalizedConfig = {temperature: 0, maxTokens: 2_000, responseFormat: 'json_object', thinkingMode: 'disabled', timeoutMs: 50, maxAttempts: 3};
+    expect(result.snapshot.config).toEqual(normalizedConfig);
+    expect(result.snapshot.inputDigest).toBe(sha256Digest({system: request.system, input: request.input, outputSchema: request.outputSchema, config: normalizedConfig}));
     const changed = await provider.generateStructured({...request, outputSchema: {...request.outputSchema, properties: {copy: {type: 'string', minLength: 2}}}});
     expect(changed.snapshot.inputDigest).not.toBe(result.snapshot.inputDigest);
   });
@@ -62,20 +65,46 @@ describe('DeepSeek ModelProvider conformance', () => {
     const timeout = Object.assign(new Error('timeout'), {name: 'TimeoutError'}); let calls = 0;
     const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', delay: async () => {}, fetchImplementation: async () => { calls += 1; throw timeout; }});
     const result = await provider.generateStructured({...request, maxAttempts: 99, timeoutMs: 999_999, maxTokens: 999_999, temperature: 99});
-    expect(result.ok).toBe(false); expect(calls).toBe(3); expect(result.snapshot.config).toEqual({temperature: 2, maxTokens: 65_536, responseFormat: 'json_object', timeoutMs: 120_000, maxAttempts: 3});
+    expect(result.ok).toBe(false); expect(calls).toBe(3); expect(result.snapshot.config).toEqual({temperature: 2, maxTokens: 65_536, responseFormat: 'json_object', thinkingMode: 'disabled', timeoutMs: 120_000, maxAttempts: 3});
   });
   it('runs a clearly labeled no-key public-safe mock', async () => { const result = await new PublicSafeMockModelProvider({copy: 'fixture'}).generateStructured(request); expect(result.ok).toBe(true); expect(result.snapshot).toMatchObject({provider: 'PUBLIC_SAFE_MOCK', maturity: 'MOCK_CONFORMANCE', estimatedCostUsd: 0}); });
   it.each([
     ['MODEL_RETURNED_MODEL_MISMATCH', response(undefined, {model: 'deepseek-v4-pro'})],
-    ['MODEL_FINISH_REASON_INVALID', response(undefined, {choices: [{finish_reason: 'length', message: {content: '{"copy":"partial"}'}}]})],
-    ['MODEL_FINISH_REASON_INVALID', response(undefined, {choices: [{finish_reason: 'content_filter', message: {content: '{"copy":"partial"}'}}]})],
+    ['MODEL_OUTPUT_TRUNCATED', response(undefined, {choices: [{finish_reason: 'length', message: {content: '{"copy":"partial"}'}}]})],
+    ['MODEL_CONTENT_FILTERED', response(undefined, {choices: [{finish_reason: 'content_filter', message: {content: '{"copy":"partial"}'}}]})],
+    ['MODEL_TOOL_CALL_FORBIDDEN', response(undefined, {choices: [{finish_reason: 'tool_calls', message: {content: '{"copy":"partial"}'}}]})],
     ['MODEL_FINISH_REASON_INVALID', response(undefined, {choices: [{finish_reason: null, message: {content: '{"copy":"partial"}'}}]})],
+    ['MODEL_FINISH_REASON_INVALID', response(undefined, {choices: [{finish_reason: 'future_reason', message: {content: '{"copy":"partial"}'}}]})],
     ['MODEL_RESPONSE_IDENTITY_INVALID', response(undefined, {id: undefined})],
     ['MODEL_RESPONSE_IDENTITY_INVALID', response(undefined, {model: undefined})],
     ['MODEL_USAGE_INVALID', response(undefined, {usage: {prompt_tokens: -1, completion_tokens: 2}})]
   ])('rejects response provenance defect %s', async (code, payload) => {
     const result = await new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(payload), {status: 200})}).generateStructured(request);
     expect(result.ok).toBe(false); expect(result.snapshot.error?.code).toBe(code);
+  });
+  it('never parses or persists partial content for non-stop terminal reasons', async () => {
+    const rawMarker = 'DUMMY_RAW_PARTIAL_MODEL_MARKER';
+    const result = await new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(response(`{"copy":"${rawMarker}"}`, {choices: [{finish_reason: 'length', message: {content: `{"copy":"${rawMarker}"}`}}]})), {status: 200})}).generateStructured(request);
+    expect(result.ok).toBe(false); expect(result.snapshot).toMatchObject({outputDigest: null, attempts: 1, error: {code: 'MODEL_OUTPUT_TRUNCATED', retryable: false}});
+    expect(JSON.stringify(result.snapshot)).not.toContain(rawMarker);
+  });
+  it('retries insufficient inference resources with the identical request and then accepts stop', async () => {
+    const bodies: string[] = []; let calls = 0;
+    const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', delay: async () => {}, fetchImplementation: async (_url, init) => {
+      bodies.push(String(init?.body)); calls += 1;
+      const payload = calls === 1 ? response(undefined, {choices: [{finish_reason: 'insufficient_system_resource', message: {content: null}}]}) : response();
+      return new Response(JSON.stringify(payload), {status: 200});
+    }});
+    const result = await provider.generateStructured(request);
+    expect(result.ok).toBe(true); expect(result.snapshot.attempts).toBe(2); expect(bodies).toHaveLength(2); expect(bodies[1]).toBe(bodies[0]);
+    expect(JSON.parse(bodies[0]!)).toMatchObject({model: request.model, thinking: {type: 'disabled'}, max_tokens: 2_000, response_format: {type: 'json_object'}});
+  });
+  it('exhausts bounded inference-resource retries without changing the request', async () => {
+    const bodies: string[] = [];
+    const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', delay: async () => {}, fetchImplementation: async (_url, init) => { bodies.push(String(init?.body)); return new Response(JSON.stringify(response(undefined, {choices: [{finish_reason: 'insufficient_system_resource', message: {content: null}}]})), {status: 200}); }});
+    const result = await provider.generateStructured(request);
+    expect(result.ok).toBe(false); expect(result.snapshot).toMatchObject({attempts: 3, outputDigest: null, error: {code: 'MODEL_INFERENCE_RESOURCE_UNAVAILABLE', retryable: true}});
+    expect(bodies).toHaveLength(3); expect(new Set(bodies).size).toBe(1);
   });
   it.each([
     ['contradictory breakdown', {prompt_tokens: 100, completion_tokens: 50, prompt_cache_hit_tokens: 20, prompt_cache_miss_tokens: 79}],
