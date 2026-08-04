@@ -54,4 +54,4 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F5-01`: real public-safe six-member/eight-Task reproduction with exact correction pre-operation state; the proposed auto-delegate cause was disproved, while the historical suppressed operation remains unrecoverable and is explicitly not guessed.
 - [x] `CR2-F5-02`: closed, exact-binding resumable AgentTeams task-protocol state planner integrated into the Live Runner.
 - [x] `CR2-F5-03`: pending/delegated/advanced/unknown, wrong-scope/digest, replay, redaction and cleanup regression matrix, including 13 actual nested child outcomes.
-- [ ] `CR2-F5-04`: full AgentTeams/Live/provider/PostgreSQL/browser/security/evidence/report/clean-Head ZIP gates and seventh Coordinator Canary handoff. The real-key result remains external and is not claimed here.
+- [x] `CR2-F5-04`: full AgentTeams/Live/provider/PostgreSQL/browser/security/evidence/report/clean-Head ZIP gates and seventh Coordinator Canary handoff. The real-key result remains external and is not claimed here.
