@@ -69,3 +69,10 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F7-02`: shared frozen-fault phrase invariant across Founder generation schema, semantic normalization, Runtime Submit validation and final materialization, without coercion.
 - [x] `CR2-F7-03`: accepted case/order and omission/paraphrase/split/wrong-placement/Unicode/structural regression matrix plus preserved exact Audit import.
 - [x] `CR2-F7-04`: full Provider/PostgreSQL/AgentTeams/Live/browser/security/evidence/report/clean-Head ZIP gates and ninth Coordinator Canary handoff. Real-key verification remains external.
+
+## CR2 Fix 8 tasks
+
+- [ ] `CR2-F8-01`: production API reproduction of correction `REVISION_REQUIRED` and re-audit `AUDIT_BLOCKED` ACK-ticket denials on the Fix 7 baseline.
+- [ ] `CR2-F8-02`: explicit action + Task kind + Mission phase ticket policy with existing Task-state/role/attempt/projection/runtime/single-use bindings preserved.
+- [ ] `CR2-F8-03`: full legal/illegal phase matrix, stale/consumed/replay/overbroad negatives and seven-receipt exact correction/re-audit completion regression.
+- [ ] `CR2-F8-04`: full Provider/PostgreSQL/AgentTeams/Live/browser/Compose/security/build/evidence/report/clean-Head ZIP gates and eleventh Coordinator Canary handoff. Real-key verification remains external.

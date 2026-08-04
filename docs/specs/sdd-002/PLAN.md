@@ -81,3 +81,12 @@ Rollback uses local Git reverts and project-scoped test migrations. Cancellation
 - Exercise accepted case/order variants plus omission, paraphrase, split, wrong-field/platform, Unicode and structural negatives; retain existing exact Audit, ticket/ETag/digest/schema/replay and redaction coverage.
 - Rerun Provider/PostgreSQL/API/public-safe real AgentTeams/no-Secret Live/browser/Compose/security/evidence gates; update the Chinese report and clean-Head package.
 - Return a ninth Coordinator Canary protocol while leaving real-key verification and acceptance external.
+
+## CR2 Fix 8 plan
+
+- Drive the public-safe production API through initial Audit to `REVISION_REQUIRED`, then through correction to `AUDIT_BLOCKED`, and capture the current ticket denials at each exact assigned Task.
+- Define one explicit action + Task kind + Mission phase policy for `TASK_ACK` and `MODEL_GENERATE`; retain exact Task-state, non-Leader, identity, role, attempt, projection and single-use ticket gates.
+- Exercise the complete legal matrix and reject wrong phase, wrong Task kind, wrong action, initial Task reuse in later phases, stale/consumed tickets and replayed transitions.
+- Complete the deterministic seven-model-call correction/re-audit API flow to `AWAITING_OWNER_REVIEW` with five immutable revisions/audits and zero actions.
+- Rerun Provider/PostgreSQL/API/public-safe real AgentTeams/no-Secret Live/browser/Compose/security/build/evidence gates; update the Chinese report and clean-Head package.
+- Return an eleventh Coordinator Canary protocol while leaving real-key verification and acceptance external.
