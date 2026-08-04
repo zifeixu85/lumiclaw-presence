@@ -69,9 +69,11 @@ function projectState() {
   const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,parse_dag_tasks; s=FileSystemTaskStore(); m=s.read_project_meta(sys.argv[1]); p=s.read_project_plan(sys.argv[1]); print(json.dumps({"project":asdict(m),"tasks":[asdict(x) for x in parse_dag_tasks(p)]}))';
   return JSON.parse(run('docker', ['exec', '-w', workspace(leader), `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', code, projectId], 'project-state'));
 }
-function projectTaskState(taskId) {
-  const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,TaskflowError,parse_dag_tasks; s=FileSystemTaskStore(); m=s.read_project_meta(sys.argv[1]); p=s.read_project_plan(sys.argv[1]); t=next((x for x in parse_dag_tasks(p) if x.task_id==sys.argv[2]),None); meta=spec=result=None;\ntry: meta=asdict(s.read_task_meta(sys.argv[2]))\nexcept TaskflowError: pass\ntry: spec=s.read_task_spec(sys.argv[2])\nexcept TaskflowError: pass\ntry: result=asdict(s.read_task_result(sys.argv[2]))\nexcept TaskflowError: pass\nprint(json.dumps({"project":asdict(m),"task":{"plan":None if t is None else asdict(t),"meta":meta,"spec":spec,"result":result}}))';
-  return JSON.parse(run('docker', ['exec', '-w', workspace(leader), `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', code, projectId, taskId], 'project-task-state'));
+function projectTaskState(role, taskId) {
+  const project = projectState(); const plan = project.tasks.find((item) => item.task_id === taskId) ?? null;
+  const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,TaskflowError; s=FileSystemTaskStore(); meta=spec=result=None;\ntry: meta=asdict(s.read_task_meta(sys.argv[1]))\nexcept TaskflowError: pass\ntry: spec=s.read_task_spec(sys.argv[1])\nexcept TaskflowError: pass\ntry: result=asdict(s.read_task_result(sys.argv[1]))\nexcept TaskflowError: pass\nprint(json.dumps({"meta":meta,"spec":spec,"result":result}))';
+  const material = JSON.parse(run('docker', ['exec', '-w', workspace(role), `agentteams-worker-${role}`, '/opt/venv/standard/bin/python', '-c', code, taskId], `task-state:${role}`));
+  return {project: project.project, task: {plan, ...material}};
 }
 function acceptTask(taskId) {
   const code = 'import sys; from copaw_worker.task import FileSystemTaskStore,parse_dag_tasks,_replace_task_status,replace_dag_tasks; s=FileSystemTaskStore(); p=s.read_project_plan(sys.argv[1]); s.write_project_plan(sys.argv[1],replace_dag_tasks(p,_replace_task_status(parse_dag_tasks(p),sys.argv[2],"completed"))); print("accepted")';
@@ -152,7 +154,7 @@ try {
       const contract = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: task.outputSchemaVersion, executionMode: 'SHADOW_PREP_ONLY', externalActionAllowed: false};
       const binding = {projectId, taskId: node.taskId, roleId: node.assignedTo, roleIdentityId: task.roleIdentityId, runtimeActorId: worker.matrixUserID, attempt: task.attempt, dependsOn: node.dependsOn, roomId, contract, contractDigest: taskContractDigest(contract)};
       taskProtocolOutcomeCode = 'LIVE_TASK_INSPECT_FAILED'; let snapshot;
-      try { snapshot = projectTaskState(node.taskId); } catch { throw new Error('LIVE_TASK_INSPECT_FAILED'); }
+      try { snapshot = projectTaskState(node.assignedTo, node.taskId); } catch { throw new Error('LIVE_TASK_INSPECT_FAILED'); }
       taskProtocolStatus = safeTaskProtocolStatus(snapshot);
       const successfulCalls = mission.modelCalls.filter((call) => call.taskId === task.id && call.error === null && call.outputDigest !== null);
       let decision;
