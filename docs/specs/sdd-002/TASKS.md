@@ -62,3 +62,10 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F6-02`: exact frozen initial-audit/re-audit generation and semantic contracts, retaining server-derived digests and strict materialization.
 - [x] `CR2-F6-03`: allowlisted submission-import outcome propagation plus success, semantic, ticket/ETag/digest/schema/replay and redaction regressions.
 - [x] `CR2-F6-04`: full AgentTeams/Live/provider/PostgreSQL/browser/security/evidence/report/clean-Head ZIP gates and eighth Coordinator Canary handoff. Real-key verification remains external.
+
+## CR2 Fix 7 tasks
+
+- [ ] `CR2-F7-01`: deterministic legal-output enumeration and production API reproduction of the Founder phrase contract gap through fifth-receipt Auditor import.
+- [ ] `CR2-F7-02`: shared frozen-fault phrase invariant across Founder generation schema, semantic normalization and final materialization, without coercion.
+- [ ] `CR2-F7-03`: accepted case/order and omission/paraphrase/split/wrong-placement/Unicode/structural regression matrix plus preserved exact Audit import.
+- [ ] `CR2-F7-04`: full Provider/PostgreSQL/AgentTeams/Live/browser/security/evidence/report/clean-Head ZIP gates and ninth Coordinator Canary handoff. Real-key verification remains external.

@@ -72,3 +72,12 @@ Rollback uses local Git reverts and project-scoped test migrations. Cancellation
 - Cover successful fifth-receipt import, semantic-invalid output, ticket/ETag/digest/schema/replay and forbidden-marker cases.
 - Rerun public-safe real AgentTeams six/eight, no-Secret Live, Provider/PostgreSQL/API/browser/Compose/security/evidence gates; update the Chinese report and clean-Head source package.
 - Return an eighth Coordinator Canary protocol while leaving real-key verification and acceptance external.
+
+## CR2 Fix 7 plan
+
+- Enumerate every public-safe Founder X phrase placement admitted by the current generation schema and compare it with the downstream frozen-fault materializer predicate.
+- Add a production API fixture that demonstrates the baseline gap through deterministic Leader, four prior domain submissions, fifth independent Auditor model snapshot and exact `TASK_SUBMIT` import.
+- Introduce one shared frozen-phrase predicate, encode its case-insensitive exact phrase in the Founder generation schema, and enforce the predicate independently in normalization and materialization without rewriting model content.
+- Exercise accepted case/order variants plus omission, paraphrase, split, wrong-field/platform, Unicode and structural negatives; retain existing exact Audit, ticket/ETag/digest/schema/replay and redaction coverage.
+- Rerun Provider/PostgreSQL/API/public-safe real AgentTeams/no-Secret Live/browser/Compose/security/evidence gates; update the Chinese report and clean-Head package.
+- Return a ninth Coordinator Canary protocol while leaving real-key verification and acceptance external.
