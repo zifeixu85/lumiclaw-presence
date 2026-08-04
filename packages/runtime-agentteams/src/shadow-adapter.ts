@@ -6,7 +6,7 @@ import {
 
 export type AgentTeamsMember = {name: string; roleIdentityId: string; runtimeActorId: string; runtime: 'copaw'; state: 'READY' | 'UNKNOWN'};
 export type AgentTeamsProjectInput = {id: string; sourceDigest: string; leaderName: string; memberNames: string[]; executionMode: 'SHADOW_PREP_ONLY'; externalActionAllowed: false};
-export type AgentTeamsTaskInput = {id: string; projectId: string; assigneeName: string; inputDigest: string; prerequisiteTaskIds: string[]; skillLockDigest: string; outputSchema: string; timeoutMs: number};
+export type AgentTeamsTaskInput = {id: string; projectId: string; assigneeName: string; inputDigest: string; inputProjectionSchema: string; inputProjectionDigest: string | null; prerequisiteTaskIds: string[]; skillLockDigest: string; outputSchema: string; timeoutMs: number};
 export type AgentTeamsRuntimeSnapshot = {projectId: string; state: string; taskStates: Record<string, string>; capturedAt: string};
 
 export interface AgentTeamsV120Transport {
@@ -36,7 +36,7 @@ export class AgentTeamsV120ShadowAdapter {
     if (new Set(members.map((member) => member.roleIdentityId)).size !== members.length || new Set(members.map((member) => member.runtimeActorId)).size !== members.length || members.some((member) => member.runtimeActorId.length === 0)) codes.push('MEMBER_IDENTITY_COLLISION');
     if (codes.length > 0) return {mission, runtime: null, accepted: false, codes};
     await this.transport.createProject({id: mission.runtimeProjectId, sourceDigest: mission.sourceCampaignDigest, leaderName: 'presence-mission-leader', memberNames: mission.roleContexts.map((item) => item.roleId), executionMode: 'SHADOW_PREP_ONLY', externalActionAllowed: false});
-    for (const task of mission.tasks) await this.transport.createTask({id: task.id, projectId: mission.runtimeProjectId, assigneeName: task.roleId, inputDigest: task.inputDigest, prerequisiteTaskIds: task.prerequisiteTaskIds, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, timeoutMs: task.timeoutMs});
+    for (const task of mission.tasks) await this.transport.createTask({id: task.id, projectId: mission.runtimeProjectId, assigneeName: task.roleId, inputDigest: task.inputDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, prerequisiteTaskIds: task.prerequisiteTaskIds, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, timeoutMs: task.timeoutMs});
     await this.transport.markReady(mission.runtimeProjectId); const runtime = await this.transport.observe(mission.runtimeProjectId);
     const memberBindings = mission.roleContexts.map((context) => ({roleId: context.roleId, roleIdentityId: context.identityId, runtimeActorId: members.find((member) => member.name === context.roleId)!.runtimeActorId}));
     const receiptBase = {schemaVersion: 1 as const, projectId: mission.runtimeProjectId, runtimeVersion: 'v1.2.0' as const, buildDigest: identity.buildDigest, memberBindings, memberSetDigest: runtimeMemberSetDigest(memberBindings), dagDigest: runtimeDagDigest(mission), dispatchedAt: runtime.capturedAt};
@@ -50,7 +50,8 @@ export class AgentTeamsV120ShadowAdapter {
     if (task.roleId !== roleName) return {mission, runtime: null, accepted: false, codes: ['ACK_ROLE_MISMATCH']};
     if (!task.prerequisiteTaskIds.every((id) => mission.tasks.find((item) => item.id === id)?.state === 'ACCEPTED')) return {mission, runtime: null, accepted: false, codes: ['TASK_PREREQUISITE_NOT_ACCEPTED']};
     const observedAck = await this.transport.acknowledge(mission.runtimeProjectId, taskId, roleName); const runtime = await this.transport.observe(mission.runtimeProjectId);
-    const receiptBase = {schemaVersion: 1 as const, projectId: mission.runtimeProjectId, taskId, roleId: task.roleId, runtimeActorId: observedAck.runtimeActorId, attempt: task.attempt, runtimeState: observedAck.state, acknowledgedAt: observedAck.acknowledgedAt};
+    if (task.inputProjectionDigest === null) return {mission, runtime, accepted: false, codes: ['TASK_INPUT_PROJECTION_NOT_READY']};
+    const receiptBase = {schemaVersion: 1 as const, projectId: mission.runtimeProjectId, taskId, roleId: task.roleId, runtimeActorId: observedAck.runtimeActorId, attempt: task.attempt, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, runtimeState: observedAck.state, acknowledgedAt: observedAck.acknowledgedAt};
     const receipt = {...receiptBase, receiptDigest: runtimeTaskAckReceiptDigest(receiptBase)};
     return {mission: acknowledgeRuntimeTask(mission, receipt, this.now()), runtime, accepted: true, codes: []};
   }

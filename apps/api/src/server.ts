@@ -142,6 +142,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (typeof ifMatch !== 'string' || ifMatch.length === 0) return reply.status(428).send(errorBody('ETAG_REQUIRED'));
     const campaign = await repository.get(organizationId, request.params.campaignId); if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
     if (campaign.etag !== ifMatch) return reply.status(412).header('ETag', campaign.etag).send(errorBody('CAMPAIGN_VERSION_CONFLICT'));
+    if (campaign.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: campaign.digest, version: campaign.version, gapCodes: campaign.gapCodes});
     if (!isStartMissionBody(request.body)) return reply.status(422).send(errorBody('SHADOW_START_SCHEMA_INVALID'));
     if (request.body.sourceDigest !== campaign.digest) return reply.status(409).send(errorBody('MISSION_SOURCE_DIGEST_MISMATCH'));
     try {
@@ -173,7 +174,12 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     const ifMatch = request.headers['if-match']; if (typeof ifMatch !== 'string') return reply.status(428).send(errorBody('ETAG_REQUIRED')); if (ifMatch !== mission.etag) return reply.status(412).header('ETag', mission.etag).send(errorBody('MISSION_VERSION_CONFLICT'));
     try {
       let next; let accepted = true;
-      if (request.body.kind === 'PROJECT_DISPATCHED') next = recordRuntimeProjectDispatch(mission, request.body.receipt, now());
+      if (request.body.kind === 'PROJECT_DISPATCHED') {
+        const campaign = await repository.get(organizationId, mission.campaignId); if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+        if (campaign.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: campaign.digest, version: campaign.version, gapCodes: campaign.gapCodes});
+        if (campaign.version !== mission.sourceCampaignVersion || campaign.digest !== mission.sourceCampaignDigest) return reply.status(409).send(errorBody('MISSION_SOURCE_DIGEST_MISMATCH'));
+        next = recordRuntimeProjectDispatch(mission, request.body.receipt, now());
+      }
       else if (request.body.kind === 'TASK_ACK') next = acknowledgeRuntimeTask(mission, request.body.receipt, now());
       else if (request.body.kind === 'TASK_SUBMIT') {
         next = acceptRuntimeSubmission(mission, request.body.submission, now()); accepted = next.trace.at(-1)?.kind !== 'QUARANTINE';
@@ -253,12 +259,12 @@ function isRuntimeEventBody(value: unknown): value is RuntimeEventBody {
   }
   if (event.kind === 'TASK_ACK') {
     if (!isRecord(event.receipt)) return false; const receipt = event.receipt;
-    return receipt.schemaVersion === 1 && typeof receipt.projectId === 'string' && typeof receipt.taskId === 'string' && isRoleId(receipt.roleId) && typeof receipt.runtimeActorId === 'string' && Number.isInteger(receipt.attempt) && Number(receipt.attempt) >= 1 && receipt.runtimeState === 'in_progress' && typeof receipt.acknowledgedAt === 'string' && isDigest(receipt.receiptDigest);
+    return receipt.schemaVersion === 1 && typeof receipt.projectId === 'string' && typeof receipt.taskId === 'string' && isRoleId(receipt.roleId) && typeof receipt.runtimeActorId === 'string' && Number.isInteger(receipt.attempt) && Number(receipt.attempt) >= 1 && typeof receipt.inputProjectionSchema === 'string' && isDigest(receipt.inputProjectionDigest) && receipt.runtimeState === 'in_progress' && typeof receipt.acknowledgedAt === 'string' && isDigest(receipt.receiptDigest);
   }
   if (event.kind === 'TASK_SUBMIT') {
     if (!isRecord(event.submission)) return false; const submission = event.submission;
     if (!isRecord(submission.runtimeReceipt)) return false; const receipt = submission.runtimeReceipt;
-    return submission.schemaVersion === 1 && typeof submission.missionId === 'string' && typeof submission.taskId === 'string' && isRoleId(submission.roleId) && typeof submission.roleIdentityId === 'string' && isDigest(submission.inputDigest) && isDigest(submission.skillLockDigest) && typeof submission.outputSchema === 'string' && submission.outputSchemaVersion === 1 && 'payload' in submission && isDigest(submission.outputDigest) && ['MOCK_CONFORMANCE', 'CANARY'].includes(String(submission.runtimeResultMaturity)) && receipt.schemaVersion === 1 && typeof receipt.projectId === 'string' && typeof receipt.taskId === 'string' && isRoleId(receipt.roleId) && typeof receipt.runtimeActorId === 'string' && Number.isInteger(receipt.attempt) && Number(receipt.attempt) >= 1 && isDigest(receipt.ackReceiptDigest) && receipt.runtimeState === 'submitted' && typeof receipt.submittedAt === 'string' && isDigest(receipt.resultDigest) && receipt.resultSource === 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY' && isDigest(receipt.runtimeObservationId) && isDigest(receipt.receiptDigest);
+    return submission.schemaVersion === 1 && typeof submission.missionId === 'string' && typeof submission.taskId === 'string' && isRoleId(submission.roleId) && typeof submission.roleIdentityId === 'string' && isDigest(submission.inputDigest) && typeof submission.inputProjectionSchema === 'string' && isDigest(submission.inputProjectionDigest) && isDigest(submission.skillLockDigest) && typeof submission.outputSchema === 'string' && submission.outputSchemaVersion === 1 && 'payload' in submission && isDigest(submission.outputDigest) && ['MOCK_CONFORMANCE', 'CANARY'].includes(String(submission.runtimeResultMaturity)) && receipt.schemaVersion === 1 && typeof receipt.projectId === 'string' && typeof receipt.taskId === 'string' && isRoleId(receipt.roleId) && typeof receipt.runtimeActorId === 'string' && Number.isInteger(receipt.attempt) && Number(receipt.attempt) >= 1 && isDigest(receipt.ackReceiptDigest) && typeof receipt.inputProjectionSchema === 'string' && isDigest(receipt.inputProjectionDigest) && receipt.runtimeState === 'submitted' && typeof receipt.submittedAt === 'string' && isDigest(receipt.resultDigest) && receipt.resultSource === 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY' && isDigest(receipt.runtimeObservationId) && isDigest(receipt.receiptDigest);
   }
   return event.kind === 'FINALIZE_ACCEPTED_OUTPUTS';
 }
@@ -299,7 +305,7 @@ function sendMutation(reply: FastifyReply, result: MutationResult, status: 200 |
 function sendDomainOrUnavailable(reply: FastifyReply, error: unknown) {
   if (error instanceof CampaignPreparationError) return reply.status(422).send({...errorBody(error.code), details: error.details});
   if (error instanceof ScheduleContractError) return reply.status(422).send({...errorBody(error.code), details: error.message});
-  if (error instanceof ShadowContractError) return reply.status(['IDEMPOTENCY_KEY_REUSED', 'MISSION_VERSION_CONFLICT', 'MISSION_STATE_CONFLICT', 'OWNER_REVIEW_DUPLICATE', 'RUNTIME_PROJECT_ALREADY_DISPATCHED'].includes(error.code) ? 409 : 422).send({...errorBody(error.code), details: error.details ?? error.message});
+  if (error instanceof ShadowContractError) return reply.status(['IDEMPOTENCY_KEY_REUSED', 'IDEMPOTENT_RESPONSE_VERSION_ADVANCED', 'MISSION_VERSION_CONFLICT', 'MISSION_STATE_CONFLICT', 'OWNER_REVIEW_DUPLICATE', 'RUNTIME_PROJECT_ALREADY_DISPATCHED'].includes(error.code) ? 409 : 422).send({...errorBody(error.code), details: error.details ?? error.message});
   if (error !== null && typeof error === 'object' && 'statusCode' in error && typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 500) {
     const code = 'code' in error && typeof error.code === 'string' ? error.code : 'REQUEST_INVALID';
     return reply.status(error.statusCode).send(errorBody(code));

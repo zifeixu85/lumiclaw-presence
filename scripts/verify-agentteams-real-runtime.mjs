@@ -163,7 +163,7 @@ const dispatchBase = {
   buildDigest: `sha256:${manifest.sourceTarSha256}`,
   memberBindings,
   memberSetDigest: digest([...memberBindings].sort((left, right) => left.roleId.localeCompare(right.roleId))),
-  dagDigest: digest(productMission.tasks.map((task) => ({taskId: task.id, assignedTo: task.roleId, dependsOn: task.prerequisiteTaskIds}))),
+  dagDigest: digest(productMission.tasks.map((task) => ({taskId: task.id, assignedTo: task.roleId, taskKind: task.kind, attempt: task.attempt, inputProjectionSchema: task.inputProjectionSchema, dependsOn: task.prerequisiteTaskIds}))),
   dispatchedAt: new Date(plannedState.project.created_at).toISOString()
 };
 const dispatchReceipt = {...dispatchBase, receiptDigest: digest({...dispatchBase, memberBindings: [...memberBindings].sort((left, right) => left.roleId.localeCompare(right.roleId))})};
@@ -194,7 +194,9 @@ function roleScopedRuntimeInput(task) {
     if (!corrected || !failedAudit) throw new Error('ROLE_PROJECTION_CORRECTION_MISSING');
     projection = {failedAudit: {id: failedAudit.id, digest: failedAudit.digest}, correctedRevision: {id: corrected.id, digest: corrected.digest, content: corrected.content}};
   } else throw new Error(`ROLE_PROJECTION_UNKNOWN_TASK:${task.kind}`);
-  const input = {kind: 'LUMICLAW_PUBLIC_SAFE_SHADOW_TASK', projectId, taskId: task.id, taskKind: task.kind, roleId: task.roleId, roleContextDigest: productMission.roleContexts.find((context) => context.roleId === task.roleId)?.contextDigest, inputDigest: task.inputDigest, projection, externalActionAllowed: false};
+  const inputProjectionDigest = digest(projection);
+  if (task.inputProjectionDigest !== inputProjectionDigest) throw new Error(`ROLE_PROJECTION_CONTROL_PLANE_DIGEST_MISMATCH:${task.kind}`);
+  const input = {kind: 'LUMICLAW_PUBLIC_SAFE_SHADOW_TASK', projectId, taskId: task.id, taskKind: task.kind, roleId: task.roleId, roleContextDigest: productMission.roleContexts.find((context) => context.roleId === task.roleId)?.contextDigest, inputDigest: task.inputDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest, projection, externalActionAllowed: false};
   if ('campaign' in input || 'upstream' in input) throw new Error('ROLE_PROJECTION_WHOLE_CAMPAIGN_LEAK');
   return input;
 }
@@ -214,6 +216,8 @@ for (const node of dag) {
         roleId: node.assignedTo,
         roleIdentityId: productTask.roleIdentityId,
         inputDigest: productTask.inputDigest,
+        inputProjectionSchema: productTask.inputProjectionSchema,
+        inputProjectionDigest: productTask.inputProjectionDigest,
         skillLockDigest: productTask.skillLockDigest,
         outputSchema: productTask.outputSchema,
         outputSchemaVersion: productTask.outputSchemaVersion,
@@ -227,19 +231,19 @@ for (const node of dag) {
     }
     const runtimeWorker = workers.find((worker) => worker.name === node.assignedTo);
     if (!runtimeWorker?.matrixUserID) throw new Error(`REAL_WORKER_IDENTITY_MISSING:${node.assignedTo}`);
+    const productTaskBeforeAck = productMission.tasks.find((task) => task.id === node.taskId);
+    if (!productTaskBeforeAck || productTaskBeforeAck.inputProjectionDigest === null) throw new Error(`PRODUCT_TASK_PROJECTION_NOT_READY:${node.taskId}`);
+    const scopedInput = roleScopedRuntimeInput(productTaskBeforeAck);
+    inputProjectionDigest = productTaskBeforeAck.inputProjectionDigest; inputProjectionKeys = Object.keys(scopedInput.projection).sort();
     const acknowledged = callTool(node.assignedTo, 'taskflow', 'ack_task', {taskId: node.taskId}, runtimeWorker.matrixUserID);
     if (!acknowledged.ok || acknowledged.task.status !== 'in_progress' || !acknowledged.task.acknowledged_at) throw new Error(`REAL_TASK_ACK_FAILED:${node.taskId}:${acknowledged.error ?? ''}`);
-    const productTaskBeforeAck = productMission.tasks.find((task) => task.id === node.taskId);
-    if (!productTaskBeforeAck) throw new Error(`PRODUCT_TASK_CONTRACT_MISSING_AFTER_ACK:${node.taskId}`);
-    const ackBase = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTaskBeforeAck.attempt, runtimeState: 'in_progress', acknowledgedAt: new Date(acknowledged.task.acknowledged_at).toISOString()};
+    const ackBase = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTaskBeforeAck.attempt, inputProjectionSchema: productTaskBeforeAck.inputProjectionSchema, inputProjectionDigest: productTaskBeforeAck.inputProjectionDigest, runtimeState: 'in_progress', acknowledgedAt: new Date(acknowledged.task.acknowledged_at).toISOString()};
     const ackReceipt = {...ackBase, receiptDigest: digest(ackBase)}; ackReceiptDigest = ackReceipt.receiptDigest;
     await runtimeEvent({kind: 'TASK_ACK', receipt: ackReceipt});
     const productTask = productMission.tasks.find((task) => task.id === node.taskId);
     if (!productTask) throw new Error(`PRODUCT_TASK_NOT_REOPENED_AFTER_ACK:${node.taskId}`);
-    const scopedInput = roleScopedRuntimeInput(productTask);
-    inputProjectionDigest = digest(scopedInput); inputProjectionKeys = Object.keys(scopedInput.projection).sort();
     const generated = callPublicSafeModelFromWorker(node.assignedTo, scopedInput);
-    if (generated.taskId !== node.taskId || generated.roleId !== node.assignedTo || generated.maturity !== 'MOCK_CONFORMANCE' || generated.externalActionAllowed !== false || generated.outputDigest !== digest(generated.payload)) throw new Error(`PUBLIC_SAFE_WORKER_RESULT_INVALID:${node.taskId}`);
+    if (generated.taskId !== node.taskId || generated.roleId !== node.assignedTo || generated.inputProjectionSchema !== productTask.inputProjectionSchema || generated.inputProjectionDigest !== productTask.inputProjectionDigest || generated.maturity !== 'MOCK_CONFORMANCE' || generated.externalActionAllowed !== false || generated.outputDigest !== digest(generated.payload)) throw new Error(`PUBLIC_SAFE_WORKER_RESULT_INVALID:${node.taskId}`);
     const submitted = callTool(node.assignedTo, 'taskflow', 'submit_task', {taskId: node.taskId, status: 'SUCCESS', summary: JSON.stringify(generated), deliverables: [], notes: ['REAL_AGENTTEAMS_V1_2_0_TASK_PROTOCOL', 'PUBLIC_SAFE_MODEL_OUTPUT', 'NO_ACTION_GRANT', 'NO_CONNECTOR', 'NO_EXTERNAL_ACTION']}, runtimeWorker.matrixUserID);
     if (!submitted.ok || submitted.verified !== true || submitted.task.status !== 'submitted') throw new Error(`REAL_TASK_SUBMIT_FAILED:${node.taskId}:${submitted.error ?? ''}`);
     checked = callTool(leader, 'taskflow', 'check_task', {taskId: node.taskId});
@@ -247,9 +251,9 @@ for (const node of dag) {
     const runtimeResult = JSON.parse(checked.result.summary);
     if (digest(runtimeResult) !== digest(generated)) throw new Error(`REAL_TASK_RESULT_NOT_ROUND_TRIPPED:${node.taskId}`);
     runtimeResultDigest = digest(runtimeResult);
-    const submitBase = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTask.attempt, ackReceiptDigest: ackReceipt.receiptDigest, runtimeState: 'submitted', submittedAt: new Date(checked.task.submitted_at).toISOString(), resultDigest: runtimeResultDigest, resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY', runtimeObservationId: digest({projectId, taskId: node.taskId, submittedAt: checked.task.submitted_at, summaryDigest: runtimeResultDigest})};
+    const submitBase = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTask.attempt, ackReceiptDigest: ackReceipt.receiptDigest, inputProjectionSchema: productTask.inputProjectionSchema, inputProjectionDigest: productTask.inputProjectionDigest, runtimeState: 'submitted', submittedAt: new Date(checked.task.submitted_at).toISOString(), resultDigest: runtimeResultDigest, resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY', runtimeObservationId: digest({projectId, taskId: node.taskId, submittedAt: checked.task.submitted_at, summaryDigest: runtimeResultDigest, inputProjectionDigest: productTask.inputProjectionDigest})};
     const runtimeReceipt = {...submitBase, receiptDigest: digest(submitBase)}; submissionReceiptDigest = runtimeReceipt.receiptDigest;
-    const submission = {schemaVersion: 1, missionId: productMission.id, taskId: productTask.id, roleId: productTask.roleId, roleIdentityId: productTask.roleIdentityId, inputDigest: productTask.inputDigest, skillLockDigest: productTask.skillLockDigest, outputSchema: productTask.outputSchema, outputSchemaVersion: 1, payload: runtimeResult.payload, outputDigest: runtimeResult.outputDigest, runtimeResultMaturity: runtimeResult.maturity, runtimeReceipt};
+    const submission = {schemaVersion: 1, missionId: productMission.id, taskId: productTask.id, roleId: productTask.roleId, roleIdentityId: productTask.roleIdentityId, inputDigest: productTask.inputDigest, inputProjectionSchema: productTask.inputProjectionSchema, inputProjectionDigest: productTask.inputProjectionDigest, skillLockDigest: productTask.skillLockDigest, outputSchema: productTask.outputSchema, outputSchemaVersion: 1, payload: runtimeResult.payload, outputDigest: runtimeResult.outputDigest, runtimeResultMaturity: runtimeResult.maturity, runtimeReceipt};
     if (node.assignedTo === 'evidence-claim-steward') {
       const quarantined = await runtimeEvent({kind: 'TASK_SUBMIT', submission: {...submission, outputDigest: '0'.repeat(64)}}, 422);
       if (quarantined.body.code !== 'RUNTIME_SUBMISSION_QUARANTINED') throw new Error('PRODUCT_DIGEST_MISMATCH_NOT_QUARANTINED');
@@ -290,6 +294,7 @@ for (const node of dag) {
     runtimeResultDigest,
     resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY',
     inputProjectionDigest,
+    inputProjectionSchema: productMission.tasks.find((task) => task.id === node.taskId)?.inputProjectionSchema,
     inputProjectionKeys
   });
 }
@@ -351,12 +356,16 @@ if (normalizedDivergence.body.code !== 'CONTROL_PLANE_HISTORY_DIVERGED') throw n
 run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update agent_tasks set payload=jsonb_set(payload,'{acceptedOutputDigest}',to_jsonb(trim(accepted_output_digest)::text)) where id='${tamperedTaskId}'`], 'restore-normalized-task-history');
 const databaseCounts = JSON.parse(run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At', '-c', "select json_build_object('campaigns',(select count(*) from campaigns),'missions',(select count(*) from missions),'agent_runs',(select count(*) from agent_runs),'agent_tasks',(select count(*) from agent_tasks),'revisions',(select count(*) from governed_artifact_revisions),'audits',(select count(*) from audit_decisions),'owner_reviews',(select count(*) from owner_reviews),'action_tables',(select count(*) from information_schema.tables where table_schema='public' and table_name in ('action_grants','connectors','action_outbox')))"], 'product-database-counts'));
 if (databaseCounts.campaigns !== 1 || databaseCounts.missions !== 1 || databaseCounts.agent_runs !== 6 || databaseCounts.agent_tasks !== 8 || databaseCounts.revisions !== 5 || databaseCounts.audits !== 5 || databaseCounts.owner_reviews !== 1 || databaseCounts.action_tables !== 0) throw new Error('PRODUCT_CONTROL_PLANE_COUNTS_INVALID');
+const sourceHead = run('git', ['rev-parse', 'HEAD'], 'source-head');
+const sourceBranch = run('git', ['branch', '--show-current'], 'source-branch');
+if (run('git', ['status', '--porcelain'], 'source-clean-check') !== '') throw new Error('REAL_RUNTIME_EVIDENCE_REQUIRES_CLEAN_COMMITTED_SOURCE');
 
 const evidence = {
   schemaVersion: 1,
   status: 'PASS',
   maturity: 'ENGINEERING_VERIFIED',
   generatedAt: new Date().toISOString(),
+  sourceIdentity: {base: '4377103b3fea493a591af7f069fd697d9601f1ca', head: sourceHead, branch: sourceBranch},
   runtime: {
     name: 'AgentTeams',
     requestedVersion: 'v1.2.0',

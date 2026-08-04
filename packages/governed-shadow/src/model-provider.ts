@@ -24,6 +24,7 @@ export interface ModelProvider {
 
 type GatewayOptions = {
   apiKey: string;
+  executionClass: 'MOCK_CONFORMANCE' | 'CANARY';
   baseUrl?: string;
   fetchImplementation?: typeof fetch;
   now?: () => Date;
@@ -41,10 +42,14 @@ export class DeepSeekModelProvider implements ModelProvider {
   readonly #fetch: typeof fetch;
   readonly #now: () => Date;
   readonly #delay: (milliseconds: number) => Promise<void>;
+  readonly #executionClass: 'MOCK_CONFORMANCE' | 'CANARY';
 
   constructor(options: GatewayOptions) {
     if (options.apiKey.trim().length === 0) throw new Error('DEEPSEEK_API_KEY_REQUIRED');
-    this.#apiKey = options.apiKey; this.#baseUrl = options.baseUrl ?? 'https://api.deepseek.com'; this.#fetch = options.fetchImplementation ?? fetch; this.#now = options.now ?? (() => new Date());
+    this.#apiKey = options.apiKey; this.#baseUrl = options.baseUrl ?? 'https://api.deepseek.com'; this.#executionClass = options.executionClass;
+    if (this.#executionClass === 'CANARY' && (new URL(this.#baseUrl).origin !== 'https://api.deepseek.com' || options.fetchImplementation !== undefined)) throw new Error('DEEPSEEK_CANARY_REQUIRES_OFFICIAL_LIVE_TRANSPORT');
+    if (this.#executionClass === 'MOCK_CONFORMANCE' && options.fetchImplementation === undefined) throw new Error('DEEPSEEK_MOCK_CONFORMANCE_REQUIRES_INJECTED_TRANSPORT');
+    this.#fetch = options.fetchImplementation ?? fetch; this.#now = options.now ?? (() => new Date());
     this.#delay = options.delay ?? (async (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds)));
   }
 
@@ -62,22 +67,27 @@ export class DeepSeekModelProvider implements ModelProvider {
         if (!response.ok) {
           const retryable = response.status === 429 || response.status >= 500; lastError = {code: `PROVIDER_HTTP_${response.status}`, retryable};
           if (retryable && attempts < config.maxAttempts) { await this.#delay(25 * (2 ** (attempts - 1))); continue; }
-          return {ok: false, snapshot: snapshot(request, config, inputDigest, null, null, Date.now() - started, attempts, lastError, this.#now())};
+          return {ok: false, snapshot: snapshot(request, config, inputDigest, null, null, null, Date.now() - started, attempts, lastError, this.#now(), 'DEEPSEEK', this.#executionClass)};
         }
-        const payload = await response.json() as {choices?: {message?: {content?: string}}[]; usage?: {prompt_tokens?: number; completion_tokens?: number}};
+        const payload = await response.json() as DeepSeekResponse;
+        const responseIdentity = {id: typeof payload.id === 'string' ? payload.id : null, actualModel: typeof payload.model === 'string' ? payload.model : null, systemFingerprint: typeof payload.system_fingerprint === 'string' ? payload.system_fingerprint : null, finishReason: typeof payload.choices?.[0]?.finish_reason === 'string' ? payload.choices[0].finish_reason : null};
+        if (responseIdentity.id === null || responseIdentity.actualModel === null) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_RESPONSE_IDENTITY_INVALID', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
+        if (responseIdentity.actualModel !== request.model) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_RETURNED_MODEL_MISMATCH', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
+        if (responseIdentity.finishReason !== 'stop') return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_FINISH_REASON_INVALID', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
+        if (!validUsage(payload.usage)) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, null, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_USAGE_INVALID', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
         const raw = payload.choices?.[0]?.message?.content;
-        if (typeof raw !== 'string') return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, Date.now() - started, attempts, {code: 'PROVIDER_RESPONSE_INVALID', retryable: false}, this.#now())};
+        if (typeof raw !== 'string') return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'PROVIDER_RESPONSE_INVALID', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
         let value: unknown;
-        try { value = JSON.parse(raw); } catch { return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, Date.now() - started, attempts, {code: 'MODEL_JSON_MALFORMED', retryable: false}, this.#now())}; }
+        try { value = JSON.parse(raw); } catch { return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_JSON_MALFORMED', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)}; }
         const validate = new Ajv({allErrors: true, strict: false}).compile(request.outputSchema);
-        if (!validate(value)) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, Date.now() - started, attempts, {code: 'MODEL_SCHEMA_INVALID', retryable: false}, this.#now())};
-        return {ok: true, value: value as T, snapshot: snapshot(request, config, inputDigest, sha256Digest(value), payload.usage, Date.now() - started, attempts, null, this.#now())};
+        if (!validate(value)) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_SCHEMA_INVALID', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
+        return {ok: true, value: value as T, snapshot: snapshot(request, config, inputDigest, sha256Digest(value), payload.usage, responseIdentity, Date.now() - started, attempts, null, this.#now(), 'DEEPSEEK', this.#executionClass)};
       } catch (error) {
         const timedOut = error instanceof Error && ['TimeoutError', 'AbortError'].includes(error.name); lastError = {code: timedOut ? 'MODEL_TIMEOUT' : 'PROVIDER_UNAVAILABLE', retryable: true};
         if (attempts < config.maxAttempts) { await this.#delay(25 * (2 ** (attempts - 1))); continue; }
       }
     }
-    return {ok: false, snapshot: snapshot(request, config, inputDigest, null, null, Date.now() - started, attempts, lastError, this.#now())};
+    return {ok: false, snapshot: snapshot(request, config, inputDigest, null, null, null, Date.now() - started, attempts, lastError, this.#now(), 'DEEPSEEK', this.#executionClass)};
   }
 }
 
@@ -86,8 +96,9 @@ export class PublicSafeMockModelProvider implements ModelProvider {
   async generateStructured<T>(request: ModelGenerateRequest<T>): Promise<ModelGenerateResult<T>> {
     const config = normalizedConfig(request); const inputDigest = sha256Digest({system: request.system, input: request.input});
     const validate = new Ajv({allErrors: true, strict: false}).compile(request.outputSchema);
-    if (!validate(this.fixture)) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, {prompt_tokens: 0, completion_tokens: 0}, 0, 1, {code: 'MOCK_SCHEMA_INVALID', retryable: false}, this.now(), 'PUBLIC_SAFE_MOCK')};
-    return {ok: true, value: structuredClone(this.fixture) as T, snapshot: snapshot(request, config, inputDigest, sha256Digest(this.fixture), {prompt_tokens: 0, completion_tokens: 0}, 0, 1, null, this.now(), 'PUBLIC_SAFE_MOCK')};
+    const mockResponse = {id: `public-safe-${request.taskId}`, actualModel: request.model, systemFingerprint: null, finishReason: 'stop'};
+    if (!validate(this.fixture)) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, {prompt_tokens: 0, completion_tokens: 0}, mockResponse, 0, 1, {code: 'MOCK_SCHEMA_INVALID', retryable: false}, this.now(), 'PUBLIC_SAFE_MOCK', 'MOCK_CONFORMANCE')};
+    return {ok: true, value: structuredClone(this.fixture) as T, snapshot: snapshot(request, config, inputDigest, sha256Digest(this.fixture), {prompt_tokens: 0, completion_tokens: 0}, mockResponse, 0, 1, null, this.now(), 'PUBLIC_SAFE_MOCK', 'MOCK_CONFORMANCE')};
   }
 }
 
@@ -102,12 +113,22 @@ function normalizedConfig(request: ModelGenerateRequest<unknown>) {
   };
 }
 
-function snapshot(request: ModelGenerateRequest<unknown>, config: ReturnType<typeof normalizedConfig>, inputDigest: string, outputDigest: string | null, usage: {prompt_tokens?: number; completion_tokens?: number} | null | undefined, latencyMs: number, attempts: number, error: ModelCallSnapshot['error'], now: Date, provider: ModelCallSnapshot['provider'] = 'DEEPSEEK'): ModelCallSnapshot {
+type DeepSeekUsage = {prompt_tokens?: number; completion_tokens?: number; prompt_cache_hit_tokens?: number; prompt_cache_miss_tokens?: number; completion_tokens_details?: {reasoning_tokens?: number}};
+type DeepSeekResponse = {id?: string; model?: string; system_fingerprint?: string | null; choices?: {finish_reason?: string | null; message?: {content?: string}}[]; usage?: DeepSeekUsage};
+
+function validUsage(usage: DeepSeekUsage | undefined): usage is DeepSeekUsage & {prompt_tokens: number; completion_tokens: number} {
+  if (usage === undefined || !nonnegativeInteger(usage.prompt_tokens) || !nonnegativeInteger(usage.completion_tokens)) return false;
+  return [usage.prompt_cache_hit_tokens, usage.prompt_cache_miss_tokens, usage.completion_tokens_details?.reasoning_tokens].every((value) => value === undefined || nonnegativeInteger(value));
+}
+
+function nonnegativeInteger(value: unknown): value is number { return Number.isInteger(value) && Number(value) >= 0; }
+
+function snapshot(request: ModelGenerateRequest<unknown>, config: ReturnType<typeof normalizedConfig>, inputDigest: string, outputDigest: string | null, usage: DeepSeekUsage | null | undefined, response: ModelCallSnapshot['response'] | null, latencyMs: number, attempts: number, error: ModelCallSnapshot['error'], now: Date, provider: ModelCallSnapshot['provider'], maturity: ModelCallSnapshot['maturity']): ModelCallSnapshot {
   const input = usage?.prompt_tokens ?? 0; const output = usage?.completion_tokens ?? 0; const rate = RATES[request.model];
-  const tokenUsage = usage === null || usage === undefined ? null : {input, output};
+  const tokenUsage = usage === null || usage === undefined ? null : {input, output, cacheHit: usage.prompt_cache_hit_tokens ?? 0, cacheMiss: usage.prompt_cache_miss_tokens ?? input, reasoning: usage.completion_tokens_details?.reasoning_tokens ?? 0};
   return {
     schemaVersion: 1, id: id(now, sha256Digest({missionId: request.missionId, taskId: request.taskId, inputDigest, attempts})), missionId: request.missionId, taskId: request.taskId,
-    provider, maturity: provider === 'DEEPSEEK' ? 'CANARY' : 'MOCK_CONFORMANCE', model: request.model, config,
+    provider, maturity, model: request.model, response: response ?? {id: null, actualModel: null, systemFingerprint: null, finishReason: null}, config,
     pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheMissUsdPerMillion: rate.input, outputUsdPerMillion: rate.output, peakMultiplierNotApplied: true},
     inputDigest, outputDigest, tokenUsage, estimatedCostUsd: tokenUsage === null || provider === 'PUBLIC_SAFE_MOCK' ? provider === 'PUBLIC_SAFE_MOCK' ? 0 : null : Number(((input * rate.input + output * rate.output) / 1_000_000).toFixed(9)),
     latencyMs, attempts, error, secretPresent: false, createdAt: now.toISOString()

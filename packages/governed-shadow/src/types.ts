@@ -56,6 +56,8 @@ export type RuntimeTaskAckReceipt = {
   roleId: MissionRoleId;
   runtimeActorId: string;
   attempt: number;
+  inputProjectionSchema: string;
+  inputProjectionDigest: string;
   runtimeState: 'in_progress';
   acknowledgedAt: string;
   receiptDigest: string;
@@ -69,6 +71,8 @@ export type RuntimeTaskSubmissionReceipt = {
   runtimeActorId: string;
   attempt: number;
   ackReceiptDigest: string;
+  inputProjectionSchema: string;
+  inputProjectionDigest: string;
   runtimeState: 'submitted';
   submittedAt: string;
   resultDigest: string;
@@ -85,6 +89,9 @@ export type TaskContract = {
   roleIdentityId: string;
   kind: 'PROJECT_COORDINATION' | 'FREEZE_EVIDENCE' | 'PLAN_CAMPAIGN' | 'PRODUCE_FOUNDER' | 'PRODUCE_PRODUCT' | 'AUDIT_REVISIONS' | 'PRODUCE_FOUNDER_CORRECTION' | 'REAUDIT_CORRECTION';
   inputDigest: string;
+  inputProjectionSchema: string;
+  inputProjectionDigest: string | null;
+  inputProjectionKeys: string[];
   prerequisiteTaskIds: string[];
   skillLockDigest: string;
   outputSchema: string;
@@ -176,11 +183,12 @@ export type ModelCallSnapshot = {
   provider: 'DEEPSEEK' | 'PUBLIC_SAFE_MOCK';
   maturity: 'MOCK_CONFORMANCE' | 'CANARY';
   model: string;
+  response: {id: string | null; actualModel: string | null; systemFingerprint: string | null; finishReason: string | null};
   config: {temperature: number; maxTokens: number; responseFormat: 'json_object'; timeoutMs: number; maxAttempts: number};
   pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04'; inputCacheMissUsdPerMillion: number; outputUsdPerMillion: number; peakMultiplierNotApplied: true};
   inputDigest: string;
   outputDigest: string | null;
-  tokenUsage: {input: number; output: number} | null;
+  tokenUsage: {input: number; output: number; cacheHit: number; cacheMiss: number; reasoning: number} | null;
   estimatedCostUsd: number | null;
   latencyMs: number;
   attempts: number;
@@ -277,6 +285,8 @@ export type RuntimeSubmission = {
   roleId: MissionRoleId;
   roleIdentityId: string;
   inputDigest: string;
+  inputProjectionSchema: string;
+  inputProjectionDigest: string;
   skillLockDigest: string;
   outputSchema: string;
   outputSchemaVersion: 1;

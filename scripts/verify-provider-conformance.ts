@@ -27,6 +27,7 @@ const observedModels: string[] = [];
 let responseCount = 0;
 const gateway = new DeepSeekModelProvider({
   apiKey: fixtureCredential,
+  executionClass: 'MOCK_CONFORMANCE',
   delay: async () => {},
   now: () => new Date('2026-08-04T00:00:00.000Z'),
   fetchImplementation: async (_url, init) => {
@@ -35,17 +36,29 @@ const gateway = new DeepSeekModelProvider({
     responseCount += 1;
     if (responseCount === 1) return new Response('{}', {status: 429});
     if (responseCount === 2) return new Response('{}', {status: 503});
-    return new Response(JSON.stringify({choices: [{message: {content: '{"copy":"public-safe structured fixture"}'}}], usage: {prompt_tokens: 100, completion_tokens: 50}}), {status: 200, headers: {'content-type': 'application/json'}});
+    return new Response(JSON.stringify({id: 'chatcmpl-public-safe-conformance', model: request.model, system_fingerprint: 'public-safe-fixture', choices: [{finish_reason: 'stop', message: {content: '{"copy":"public-safe structured fixture"}'}}], usage: {prompt_tokens: 100, completion_tokens: 50, prompt_cache_hit_tokens: 20, prompt_cache_miss_tokens: 80, completion_tokens_details: {reasoning_tokens: 10}}}), {status: 200, headers: {'content-type': 'application/json'}});
   }
 });
 const retryResult = await gateway.generateStructured(request);
 if (!retryResult.ok || retryResult.snapshot.attempts !== 3 || observedModels.some((model) => model !== request.model) || JSON.stringify(retryResult.snapshot).includes(fixtureCredential)) throw new Error('DEEPSEEK_GATEWAY_RETRY_OR_REDACTION_CONFORMANCE_FAILED');
 
-const nonRetryable = await new DeepSeekModelProvider({apiKey: fixtureCredential, fetchImplementation: async () => new Response('{}', {status: 400})}).generateStructured(request);
+const nonRetryable = await new DeepSeekModelProvider({apiKey: fixtureCredential, executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response('{}', {status: 400})}).generateStructured(request);
 if (nonRetryable.ok || nonRetryable.snapshot.attempts !== 1 || nonRetryable.snapshot.error?.code !== 'PROVIDER_HTTP_400') throw new Error('DEEPSEEK_GATEWAY_NON_RETRYABLE_CONFORMANCE_FAILED');
 const timeoutError = Object.assign(new Error('fixture timeout'), {name: 'TimeoutError'});
-const timedOut = await new DeepSeekModelProvider({apiKey: fixtureCredential, delay: async () => {}, fetchImplementation: async () => { throw timeoutError; }}).generateStructured(request);
+const timedOut = await new DeepSeekModelProvider({apiKey: fixtureCredential, executionClass: 'MOCK_CONFORMANCE', delay: async () => {}, fetchImplementation: async () => { throw timeoutError; }}).generateStructured(request);
 if (timedOut.ok || timedOut.snapshot.attempts !== 3 || timedOut.snapshot.error?.code !== 'MODEL_TIMEOUT') throw new Error('DEEPSEEK_GATEWAY_TIMEOUT_CONFORMANCE_FAILED');
+const identityCases = [
+  ['MODEL_RETURNED_MODEL_MISMATCH', {id: 'fixture', model: 'deepseek-v4-pro', choices: [{finish_reason: 'stop', message: {content: '{"copy":"fixture"}'}}], usage: {prompt_tokens: 1, completion_tokens: 1}}],
+  ['MODEL_FINISH_REASON_INVALID', {id: 'fixture', model: request.model, choices: [{finish_reason: 'length', message: {content: '{"copy":"partial"}'}}], usage: {prompt_tokens: 1, completion_tokens: 1}}],
+  ['MODEL_RESPONSE_IDENTITY_INVALID', {model: request.model, choices: [{finish_reason: 'stop', message: {content: '{"copy":"fixture"}'}}], usage: {prompt_tokens: 1, completion_tokens: 1}}],
+  ['MODEL_USAGE_INVALID', {id: 'fixture', model: request.model, choices: [{finish_reason: 'stop', message: {content: '{"copy":"fixture"}'}}], usage: {prompt_tokens: -1, completion_tokens: 1}}]
+] as const;
+const identityRejections: string[] = [];
+for (const [expectedCode, payload] of identityCases) {
+  const rejected = await new DeepSeekModelProvider({apiKey: fixtureCredential, executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(payload), {status: 200})}).generateStructured(request);
+  if (rejected.ok || rejected.snapshot.error?.code !== expectedCode) throw new Error(`DEEPSEEK_RESPONSE_IDENTITY_CONFORMANCE_FAILED:${expectedCode}`);
+  identityRejections.push(expectedCode);
+}
 
 const mockModel = await new PublicSafeMockModelProvider({copy: 'public-safe mock'}, () => new Date('2026-08-04T00:00:00.000Z')).generateStructured(request);
 if (!mockModel.ok || mockModel.snapshot.provider !== 'PUBLIC_SAFE_MOCK' || mockModel.snapshot.maturity !== 'MOCK_CONFORMANCE') throw new Error('PUBLIC_SAFE_MODEL_CONFORMANCE_FAILED');
@@ -80,6 +93,11 @@ const evidence = {
       timeoutAttempts: timedOut.snapshot.attempts,
       observedModels,
       silentModelSwitch: false,
+      actualReturnedModel: retryResult.snapshot.response.actualModel,
+      finishReason: retryResult.snapshot.response.finishReason,
+      responseIdentityCaptured: retryResult.snapshot.response.id !== null,
+      executionClass: retryResult.snapshot.maturity,
+      responseIdentityRejections: identityRejections,
       snapshotSecretPresent: retryResult.snapshot.secretPresent,
       costSnapshotUsd: retryResult.snapshot.estimatedCostUsd,
       config: retryResult.snapshot.config

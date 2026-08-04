@@ -1,24 +1,16 @@
 import {createServer} from 'node:http';
-import {createHash} from 'node:crypto';
+import {digest, validateRoleProjectionInput} from './agentteams-role-projection-contract.mjs';
 
 const port = Number.parseInt(process.env.PORT ?? '28333', 10);
 const model = 'mock-agentteams-conformance';
 const genericResponse = {maturity: 'MOCK_CONFORMANCE', externalActionAllowed: false, message: 'Public-safe deterministic AgentTeams runtime fixture.'};
 const requestCounts = {models: 0, embeddings: 0, chatCompletions: 0, notFound: 0};
 
-function canonical(value) {
-  if (Array.isArray(value)) return value.map(canonical);
-  if (value !== null && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().filter((key) => value[key] !== undefined).map((key) => [key, canonical(value[key])]));
-  return value;
-}
-
-function digest(value) { return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(canonical(value))).digest('hex'); }
-
 function generatedTaskResult(body) {
   const message = [...(Array.isArray(body.messages) ? body.messages : [])].reverse().find((item) => item?.role === 'user' && typeof item.content === 'string');
   let input;
   try { input = JSON.parse(message?.content ?? ''); } catch { return genericResponse; }
-  if (input?.kind !== 'LUMICLAW_PUBLIC_SAFE_SHADOW_TASK' || input.externalActionAllowed !== false || typeof input.taskKind !== 'string' || input.campaign !== undefined || input.upstream !== undefined || input.projection === undefined) return genericResponse;
+  try { validateRoleProjectionInput(input); } catch { return {...genericResponse, code: 'ROLE_PROJECTION_CONTRACT_REJECTED'}; }
   const projection = input.projection;
   const byPlatform = new Map((projection.sourceRevisions ?? []).map((revision) => [revision.platform, revision]));
   const draft = (platform, revision, content) => ({platform, revision, sourceRevisionDigest: digest(byPlatform.get(platform)), contentDigest: digest(content), content});
@@ -45,7 +37,7 @@ function generatedTaskResult(body) {
     payload = {decisions: [{platform: 'X', revision: 2, revisionContentDigest: digest(projection.correctedRevision.content), outcome: 'PASS', issues: []}], failedAuditDigest: projection.failedAudit.digest};
   } else return genericResponse;
   const outputDigest = digest(payload);
-  return {schemaVersion: 1, taskId: input.taskId, roleId: input.roleId, payload, outputDigest, maturity: 'MOCK_CONFORMANCE', externalActionAllowed: false};
+  return {schemaVersion: 1, taskId: input.taskId, roleId: input.roleId, inputProjectionSchema: input.inputProjectionSchema, inputProjectionDigest: input.inputProjectionDigest, payload, outputDigest, maturity: 'MOCK_CONFORMANCE', externalActionAllowed: false};
 }
 
 const server = createServer((request, response) => {

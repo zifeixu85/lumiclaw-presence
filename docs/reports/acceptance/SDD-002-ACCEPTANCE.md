@@ -65,16 +65,16 @@ DeepSeek 官方 Gateway 与 MediaGenerationProvider 边界已实现并通过公�
 
 | 检查 | 命令或协议 | 期望 | 实际 | 结果 |
 |---|---|---|---|---|
-| Unit / Schema / Permission | `npm test` | 正反合同、六角色、权限、runtime/provider/media/audit/review/UI 全通过 | 21 个 test files、118 个 tests 全通过 | `PASS` |
+| Unit / Schema / Permission | `npm test` | 正反合同、六角色、权限、runtime/provider/media/audit/review/UI 全通过 | 21 个 test files、127 个 tests 全通过 | `PASS` |
 | Lint / Type | `npm run lint && npm run typecheck` | 所有 workspace 无错误 | 全部 workspace 无错误 | `PASS` |
-| PostgreSQL Mission | 临时 PostgreSQL + migrate + `npm run verify:shadow-postgres` | restart/idempotency/normalized history/revision/audit/no-action | `status=PASS`；Mission envelope 六类已检查历史数组均为 0；6 run/8 task/5 skill/5 revision/5 audit/31 trace/31 ledger；幂等 Replay 先验证 normalized authority；forbidden table 0 | `PASS` |
+| PostgreSQL Mission | 临时 PostgreSQL + migrate + `npm run verify:shadow-postgres` | restart/idempotency/normalized history/revision/audit/no-action | `status=PASS`；Mission envelope 六类已检查历史数组均为 0；6 run/8 task/5 skill/5 revision/5 audit/31 trace/31 ledger；幂等只存不可变 metadata，Replay 重构 current normalized authority，版本推进后的旧 checkpoint 被拒绝；forbidden table 0 | `PASS` |
 | Campaign/API | `npm run verify:campaign-api` | M1+M2 create/replay/scope/ETag/flight/review/restart/down-up/cleanup | `result=PASS`、`cleanup=PASS`；四个 exact review，state `SHADOW_COMPLETE`，forbidden action table 0 | `PASS` |
 | AgentTeams images | `npm run verify:agentteams-images` | 固定 v1.2.0 tag/source/image digest 与受控 smoke | `result=PASS`、`cleanup=PASS` | `PASS` |
 | 真实 AgentTeams | `npm run verify:agentteams-real` | 官方 source/installer 自举，真实六成员、八 Task Project/DAG/ACK/Submit/restart，与同一 PG Mission 链接并清理 | `status=PASS`、`realAgentTeamsAcceptance=true`、`realModelAcceptance=false`；8 个 Task 结果均来自 AgentTeams CHECK persisted summary；状态依次为 `REVISION_REQUIRED → AUDIT_BLOCKED → NEEDS_OWNER_REVIEW`；RoleContext projection、Project/actor/ACK/Submit/observation receipts 因果绑定；unauthenticated/digest mismatch/normalized tamper 拒绝；cleanup PASS | `PASS` |
-| Provider / Media | `npm run verify:providers` | structured/429/5xx/4xx/timeout/schema/no-switch/redaction/cost/media rights/no approval | `status=PASS`；DeepSeek/EvoLink `NOT_RUN_NO_KEY`；Mock `MOCK_CONFORMANCE`；Secret absent | `PASS` |
+| Provider / Media | `npm run verify:providers` | structured/429/5xx/4xx/timeout/schema/no-switch/redaction/cost/media rights/no approval | `status=PASS`；DeepSeek/EvoLink `NOT_RUN_NO_KEY`；Mock `MOCK_CONFORMANCE`；8 个合法 Role projection 通过、5 个越权/篡改输入拒绝；响应 model/finish/usage 身份负例通过；Secret absent | `PASS` |
 | Browser / Storybook | current Compose API + production Web + Storybook + `npm run verify:browser` | 14 状态、真实 Blink、zh/en、390px、UX-M1-001、四 Review | `status=PASS`；14 stories；desktop/mobile document width 等于 viewport；reviewed=4；5 张 screenshot；console error/warning 均为 0 | `PASS` |
 | Fresh Compose / Recovery | `npm run verify:compose` | broken migration/DB unavailable fail closed，fresh health，DB/blob restart/down-up，no action，cleanup | current-source `result=PASS`、`cleanup=PASS`；5 migration；forbidden action table 0 | `PASS` |
-| Build / Storybook / Static | `npm run verify` | lint/type/test/messages/status/report/secret/compose/profile/license/SBOM/build/Storybook | 21 files / 118 tests、99 message keys、13 个 Next 页面、Storybook static + browser-safety 全通过 | `PASS` |
+| Build / Storybook / Static | `npm run verify` | lint/type/test/messages/status/report/secret/compose/profile/license/SBOM/build/Storybook | 最终候选 Head 后重跑并回填 | `PENDING` |
 | Security / License / SBOM | `npm audit --audit-level=high --json`；`npm run verify:dependencies`；`npm run check:secrets` | 0 high/critical；无 disallowed license/Secret | Next `16.2.12` 升级到 `16.3.0` 后 audit 为 0；958 个 inventory packages、disallowed license 0、CycloneDX SBOM 已生成 | `PASS` |
 | Source ZIP / Evidence | `npm run evidence:package-source && npm run evidence:manifest` | clean committed Head；文件/bytes/SHA-256/Secret/path/CRC scan；必要 evidence 全 PASS | 最终 clean Head 后回填 | `PENDING` |
 
@@ -160,12 +160,15 @@ GitHub Actions 未 Push，因此远端 CI run 为 `NOT_CLAIMED`；这里只声�
 - Codex 二轮独立修正：删去 verifier 的 host `payloadByRole`；六个 Worker 容器分别调用公开安全 Provider，Auditor 从两个 Producer 的 AgentTeams persisted summary 计算 decisions；引入 Project/member/DAG、Task ACK、Task Submit/result receipt digest 因果链；Mission JSON 变为无历史 envelope，读取只从 normalized rows 重放并校验 ETag/Trace/Ledger/receipt；新增 aggregate poison 与 normalized tamper 正反证据。
 - Pro 三轮结论：`FAIL_NOT_EVIDENCE_READY`，无 P0，五个 P1：初版与修正版仍在同一次 Producer/Auditor 输出中、PostgreSQL 幂等 replay 未验证 normalized authority、Runtime receipt/API import 仍可能由普通调用者伪造、最终 manifest/CI 未强制因果来源且真实 verifier 依赖预置环境、所有 Worker 收到完整 Campaign 而非 RoleContext projection。
 - Codex 三轮独立修正：将 DAG 改为八 Task/三阶段持久化，首审 active FAIL 后才释放 Producer attempt 2，再释放 Auditor attempt 2；PG idempotent replay 重构并验证 normalized state，新增 row tamper replay negative；Runtime import 增加 ephemeral adapter authentication，receipt 固定 `AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY` 与 observation digest；manifest/CI 改为 SDD-002 并强制 8 Task/三状态/自举清理证据；新增官方 source digest + installer 的单命令环境自举；每个 Worker 只接收职责投影且 Provider 拒绝完整 Campaign/upstream。
-- 修正不是直接采纳 Pro 代码；每项由本地 unit/API/PG/真实 Runtime/浏览器/Compose 证据独立验证。第四轮定向终审将只复核上述五项。
-- 最终 clean Head 源码包：文件数/bytes/SHA-256/Secret/path/CRC scan 与 Pro 第四轮结论在 Closeout 回填。若终审仍发现有效问题，必须修复、重提包并重跑门禁；Pro 不能访问本地 Docker/浏览器，也不替代 Coordinator/Owner。
+- 第四轮候选包：Head `6a6aed1fac65d8e6e623373ced286587732d0368`，213 files，`1,019,194` bytes，SHA-256 `7491b577831db7b45d5216a958992a4a98a8d4e7768c41a94d6e0bae024a700e`；ZIP CRC/path/symlink/secret/license scan 均 `PASS`。
+- Pro 第四轮结论：`FAIL_NOT_EVIDENCE_READY`，无 P0，五个 P1：最终 manifest 对 malformed/contradictory evidence 仍可能 fail-open；幂等 replay 仍持有 mutable Mission snapshot；Campaign 在时间上变为 blocked 后仍可 create/dispatch Mission；Role projection 没有贯穿 Task/ACK/Submit/observation 且 Provider 可接受跨角色嵌套数据；DeepSeek response model/finish/usage 不一致或截断仍可接受，注入 fake fetch 还可能被标为 Canary。
+- Codex 四轮独立修正：幂等表只保留不可变 version/ETag/status metadata，从 normalized current state 重构 replay 并拒绝已推进 checkpoint；Mission create/Project dispatch 重读 current Campaign readiness/version/digest；闭合 Role projection schema/digest 贯穿 Task/ACK/Submit/result/observation，Mock Provider 增加 8 正例与 5 个越权/篡改负例；DeepSeek snapshot 绑定返回 ID/model/fingerprint/finish/usage，拒绝 model mismatch、length/content-filter/null finish/malformed usage，且 `CANARY` 只能访问官方 origin、注入 transport 只能是 `MOCK_CONFORMANCE`；final manifest 强制 source/runtime/provider/PG/no-action 一致性并自测 10 个负向 mutation。
+- 修正不是直接采纳 Pro 代码；每项由本地 unit/API/PG/真实 Runtime/浏览器/Compose 证据独立验证。第五轮终审将只复核第四轮五项及最终 fail-closed manifest。
+- 最终 clean Head 源码包：文件数/bytes/SHA-256/Secret/path/CRC scan 与 Pro 第五轮结论在 Closeout 回填。若终审仍发现有效问题，必须修复、重提包并重跑门禁；Pro 不能访问本地 Docker/浏览器，也不替代 Coordinator/Owner。
 
 ## 八、失败、限制与非声明
 
-- **已发现并修复：**Pro 首轮八项、二轮五项与三轮五项均已在源码与独立门禁中定向收口；Runtime quarantine 的幂等重放保持 422/`accepted=false`；Mission 只允许一个 Project dispatch，restart 必须 reconcile；普通 public API 调用者不能导入 Runtime success。
+- **已发现并修复：**Pro 首轮八项、二轮五项、三轮五项与四轮五项均已在源码与独立门禁中定向收口；Runtime quarantine 的幂等重放保持 422/`accepted=false`；Mission 只允许一个 Project dispatch，restart 必须 reconcile；普通 public API 调用者不能导入 Runtime success；旧幂等 checkpoint 不会返回 mutable Mission snapshot。
 - **已发现并修复：**`npm audit` 曾从 Next `16.2.12` 的 transitive `postcss/sharp` 报告 3 个 high；升级到 Next `16.3.0` 后 audit 为 0，生产 build/API/Browser/Compose 重新验证。
 - **已发现并修复：**最终真实浏览器门禁捕获 Storybook `/favicon.ico` 404；为 preview 注入内联公共安全 SVG icon，并把 CDP 错误证据扩展为具体 URL。重跑后 console error/warning 均为 0。
 - **Known limitations：**真实 AgentTeams v1.2.0 CLI 的 controller 显示 `dev`，源 tag commit、source tar SHA-256 与三个 OCI image digest 是验收身份；不能仅用 CLI label 证明版本。

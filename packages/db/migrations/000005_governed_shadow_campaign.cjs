@@ -53,15 +53,15 @@ exports.up = (pgm) => {
     organization_id: {type: 'uuid', notNull: true}, mission_id: {type: 'uuid', notNull: true}, id: {type: 'uuid', notNull: true}, content_digest: {type: 'char(64)', notNull: true}, provider: {type: 'text', notNull: true}, approval_state: {type: 'text', notNull: true, check: "approval_state = 'UNREVIEWED'"}, payload: {type: 'jsonb', notNull: true}, created_at: {type: 'timestamptz', notNull: true}
   }, {constraints: {primaryKey: ['organization_id', 'id'], unique: [['organization_id', 'content_digest']], foreignKeys: [{columns: ['organization_id', 'mission_id'], references: 'missions(organization_id,id)', onDelete: 'CASCADE'}]}});
   pgm.createTable('shadow_idempotency', {
-    organization_id: {type: 'uuid', notNull: true}, route: {type: 'text', notNull: true}, idempotency_key: {type: 'text', notNull: true}, request_digest: {type: 'char(64)', notNull: true}, mission_id: {type: 'uuid', notNull: true}, response_etag: {type: 'text', notNull: true}, response_payload: {type: 'jsonb', notNull: true}, created_at: {type: 'timestamptz', notNull: true, default: pgm.func('current_timestamp')}
+    organization_id: {type: 'uuid', notNull: true}, route: {type: 'text', notNull: true}, idempotency_key: {type: 'text', notNull: true}, request_digest: {type: 'char(64)', notNull: true}, mission_id: {type: 'uuid', notNull: true}, response_version: {type: 'integer', notNull: true}, response_etag: {type: 'text', notNull: true}, response_code: {type: 'text', notNull: true, default: 'MISSION_CHECKPOINT'}, created_at: {type: 'timestamptz', notNull: true, default: pgm.func('current_timestamp')}
   }, {constraints: {primaryKey: ['organization_id', 'route', 'idempotency_key'], foreignKeys: [{columns: ['organization_id', 'mission_id'], references: 'missions(organization_id,id)', onDelete: 'CASCADE'}]}});
 
   pgm.sql(`CREATE FUNCTION reject_governed_history_mutation() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'GOVERNED_HISTORY_IMMUTABLE'; END; $$ LANGUAGE plpgsql`);
-  for (const table of ['governed_artifact_revisions', 'audit_decisions', 'trace_events', 'ledger_entries', 'owner_reviews']) pgm.sql(`CREATE TRIGGER ${table}_immutable BEFORE UPDATE OR DELETE ON ${table} FOR EACH ROW EXECUTE FUNCTION reject_governed_history_mutation()`);
+  for (const table of ['governed_artifact_revisions', 'audit_decisions', 'trace_events', 'ledger_entries', 'owner_reviews', 'shadow_idempotency']) pgm.sql(`CREATE TRIGGER ${table}_immutable BEFORE UPDATE OR DELETE ON ${table} FOR EACH ROW EXECUTE FUNCTION reject_governed_history_mutation()`);
 };
 
 exports.down = (pgm) => {
-  for (const table of ['owner_reviews', 'ledger_entries', 'trace_events', 'audit_decisions', 'governed_artifact_revisions']) pgm.sql(`DROP TRIGGER IF EXISTS ${table}_immutable ON ${table}`);
+  for (const table of ['shadow_idempotency', 'owner_reviews', 'ledger_entries', 'trace_events', 'audit_decisions', 'governed_artifact_revisions']) pgm.sql(`DROP TRIGGER IF EXISTS ${table}_immutable ON ${table}`);
   pgm.dropFunction('reject_governed_history_mutation', [], {ifExists: true});
   for (const table of ['shadow_idempotency', 'media_assets', 'model_calls', 'ledger_entries', 'trace_events', 'owner_reviews', 'audit_decisions', 'governed_artifact_revisions', 'agent_tasks', 'skill_locks', 'agent_runs', 'missions']) pgm.dropTable(table, {ifExists: true});
 };
