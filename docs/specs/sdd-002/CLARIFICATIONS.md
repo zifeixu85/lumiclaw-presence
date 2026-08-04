@@ -15,3 +15,5 @@
 | CL-11 | CR2 Live is a Coordinator-started local UAT runner bound to one Mission; an always-on Web-triggered supervisor is deferred to another SDD. |
 | CL-12 | CR2 Key and bootstrap ingress are Compose secret files only; Workers/runner never receive the Key, and runtime tickets are short-lived, scoped and non-persistent. |
 | CL-13 | Leader coordination is deterministic. Only the seven domain Task attempts call the provider, with an independent Auditor prompt/schema and receipt. |
+| CL-14 | CR2 Fix 1 replaces the four-question non-TTY protocol with one strict four-field JSON document read once from fd 0 at each transport boundary; raw child output is never inherited. |
+| CL-15 | Live transport failures disclose only allowlisted stable codes. Bootstrap/ticket values remain in memory and captured pipes only, and never enter arguments, environment, logs, evidence or error text. |

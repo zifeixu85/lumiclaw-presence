@@ -1,7 +1,9 @@
-import {execFileSync} from 'node:child_process';
-import {mkdir, mkdtemp, rm, writeFile} from 'node:fs/promises';
+import {createHash} from 'node:crypto';
+import {execFileSync, spawnSync} from 'node:child_process';
+import {access, mkdir, mkdtemp, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {isRedactedTransportReceipt} from './live-uat-transport.mjs';
 
 const root = process.cwd();
 const project = 'lumiclaw-sdd002-live-conformance';
@@ -18,6 +20,69 @@ function run(executable, args, environment = process.env, timeout = 900_000) {
   return execFileSync(executable, args, {cwd: root, env: environment, encoding: 'utf8', timeout, stdio: ['ignore', 'pipe', 'pipe']}).trim();
 }
 
+function invokeTransport(input) {
+  return spawnSync(process.execPath, ['scripts/verify-agentteams-real-environment.mjs', '--live-stdin-transport-conformance'], {cwd: root, input, encoding: 'utf8', timeout: 10_000, stdio: ['pipe', 'pipe', 'pipe']});
+}
+
+function invokeOperationalFailure(input) {
+  return spawnSync(process.execPath, ['scripts/run-live-deepseek-uat.mjs'], {cwd: root, input, encoding: 'utf8', timeout: 10_000, stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, LUMICLAW_LIVE_API_URL: 'http://127.0.0.1:9'}});
+}
+
+function verifyStdinTransport() {
+  const organizationId = '019fcc41-dd89-70c1-ae55-c8e45b4aeb3f';
+  const missionId = '019fcc41-ddba-7897-a271-d0eda0c9a7fd';
+  const campaignDigest = 'b'.repeat(64);
+  const bootstrap = 'public-safe-dummy-bootstrap-live-conformance-0001';
+  const extraSecret = 'public-safe-dummy-extra-secret-conformance-0001';
+  const valid = {organizationId, missionId, campaignDigest, bootstrap};
+  const {bootstrap: omitted, ...partial} = valid; void omitted;
+  const cases = [
+    {name: 'valid', input: JSON.stringify(valid), expectedStatus: 0},
+    {name: 'partial', input: JSON.stringify(partial), expectedStatus: 1},
+    {name: 'malformed', input: `{"organizationId":"${organizationId}","bootstrap":"${bootstrap}","marker":"${extraSecret}"`, expectedStatus: 1},
+    {name: 'extra-field', input: JSON.stringify({...valid, extraSecret}), expectedStatus: 1}
+  ];
+  const results = cases.map((entry) => ({entry, result: invokeTransport(entry.input)}));
+  const operationalFailure = invokeOperationalFailure(JSON.stringify(valid));
+  const allResults = [...results.map(({result}) => result), operationalFailure];
+  const disclosure = allResults.some((result) => `${result.stdout}${result.stderr}`.includes(bootstrap) || `${result.stdout}${result.stderr}`.includes(extraSecret) || /x-lumiclaw-runner-bootstrap|x-lumiclaw-runtime-ticket|authorization|\bbearer\b/iu.test(`${result.stdout}${result.stderr}`));
+  if (disclosure || results.some(({entry, result}) => result.status !== entry.expectedStatus)) throw new Error('LIVE_STDIN_TRANSPORT_CONFORMANCE_FAILED');
+  const validReceipt = JSON.parse(results[0].result.stdout);
+  if (!isRedactedTransportReceipt(validReceipt)
+    || validReceipt.fieldDigests.organizationId !== createHash('sha256').update(organizationId).digest('hex')
+    || validReceipt.fieldDigests.missionId !== createHash('sha256').update(missionId).digest('hex')
+    || validReceipt.fieldDigests.campaignDigest !== createHash('sha256').update(campaignDigest).digest('hex')
+    || validReceipt.fieldDigests.bootstrap !== createHash('sha256').update(bootstrap).digest('hex')) throw new Error('LIVE_STDIN_TRANSPORT_RECEIPT_INVALID');
+  for (const {result} of results.slice(1)) {
+    const failure = JSON.parse(result.stderr);
+    if (result.stdout !== '' || failure.status !== 'FAIL' || failure.code !== 'LIVE_UAT_TRANSPORT_INVALID') throw new Error('LIVE_STDIN_TRANSPORT_NEGATIVE_CASE_INVALID');
+  }
+  if (operationalFailure.status === 0 || operationalFailure.stdout !== '' || JSON.parse(operationalFailure.stderr)?.code !== 'LIVE_UAT_RUNNER_FAILED') throw new Error('LIVE_STDIN_TRANSPORT_OPERATIONAL_FAILURE_INVALID');
+  return {status: 'PASS', protocol: 'STRICT_JSON_EXACT_FOUR_FIELDS_SINGLE_FD0_READ', nestedChildProcess: true, cases: 5, nestedTransportCases: 4, validFields: 4, partialRejected: true, malformedRejected: true, extraFieldRejected: true, operationalFailureRejected: true, stdoutStderrInherited: false, bootstrapOrSecretFinding: false, stableFailureCode: 'LIVE_UAT_TRANSPORT_INVALID', operationalFailureCode: 'LIVE_UAT_RUNNER_FAILED', receipt: validReceipt};
+}
+
+function infrastructureNames() {
+  return [
+    ...run('docker', ['ps', '-a', '--format', '{{.Names}}']).split('\n'),
+    ...run('docker', ['volume', 'ls', '--format', '{{.Name}}']).split('\n'),
+    ...run('docker', ['network', 'ls', '--format', '{{.Name}}']).split('\n')
+  ].filter(Boolean);
+}
+
+function exactProjectObjectsRemoved() {
+  const names = infrastructureNames();
+  return names.every((name) => !name.startsWith(`${project}-`) && !name.startsWith(`${project}_`));
+}
+
+function failedCanaryObjectsAbsent() {
+  const agentTeamsContainers = new Set(['agentteams-controller', 'agentteams-manager', 'agentteams-dashboard', 'agentteams-docker-proxy']);
+  return infrastructureNames().every((name) => !name.startsWith('lumiclaw-sdd002-live-uat-cr2-')
+    && !name.startsWith('lumiclaw-sdd002-live-uat-cr2_')
+    && !agentTeamsContainers.has(name)
+    && !name.startsWith('agentteams-worker-')
+    && name !== 'lumiclaw-sdd002-agentteams-data');
+}
+
 async function waitForApi() {
   const deadline = Date.now() + 180_000;
   while (Date.now() < deadline) {
@@ -28,10 +93,13 @@ async function waitForApi() {
 }
 
 try {
-  const tests = run(path.join(root, 'node_modules/.bin/vitest'), ['run', 'apps/api/src/live-runtime-security.test.ts', 'apps/api/src/server.test.ts']);
-  if (!/Test Files\s+2 passed \(2\)/u.test(tests) || !/Tests\s+16 passed \(16\)/u.test(tests)) throw new Error('LIVE_CONFORMANCE_TARGETED_TEST_COUNT_INVALID');
+  const tests = run(path.join(root, 'node_modules/.bin/vitest'), ['run', 'apps/api/src/live-runtime-security.test.ts', 'apps/api/src/server.test.ts', 'scripts/live-uat-transport.test.ts']);
+  if (!/Test Files\s+3 passed \(3\)/u.test(tests) || !/Tests\s+21 passed \(21\)/u.test(tests)) throw new Error('LIVE_CONFORMANCE_TARGETED_TEST_COUNT_INVALID');
+  const stdinTransport = verifyStdinTransport();
   const composePolicy = JSON.parse(run(process.execPath, ['scripts/check-compose-policy.mjs']));
   const clientBundle = JSON.parse(run(process.execPath, ['scripts/check-storybook-browser-safety.mjs']));
+  const currentFailedCanaryObjectsAbsentBeforeRun = failedCanaryObjectsAbsent();
+  if (!currentFailedCanaryObjectsAbsentBeforeRun) throw new Error('FAILED_CANARY_OBJECTS_STILL_PRESENT');
 
   secretRoot = await mkdtemp(path.join(tmpdir(), 'lumiclaw-live-conformance.'));
   const keyFile = path.join(secretRoot, 'deepseek'); const bootstrapFile = path.join(secretRoot, 'bootstrap');
@@ -51,6 +119,12 @@ try {
   const sensitiveLogFinding = logs.includes(keyValue) || logs.includes(bootstrapValue) || /authorization\s*[:=]|\bBearer\s+/iu.test(logs);
   if (secretInEnvironment || dockerSocketMounted || sensitiveLogFinding || secretMounts.length !== 2 || secretMounts.some((mount) => !mount.readOnly) || secretMounts.map((mount) => mount.destination).join(',') !== '/run/secrets/deepseek_api_key,/run/secrets/lumiclaw_runtime_broker_bootstrap') throw new Error('LIVE_CONFORMANCE_SECRET_BOUNDARY_FAILED');
   compose('down', '--volumes', '--remove-orphans'); composeStarted = false;
+  const exactComposeProjectRemoved = exactProjectObjectsRemoved();
+  await rm(secretRoot, {recursive: true, force: true});
+  let temporarySecretDirectoryRemoved = false;
+  try { await access(secretRoot); } catch { temporarySecretDirectoryRemoved = true; }
+  secretRoot = undefined;
+  if (!exactComposeProjectRemoved || !temporarySecretDirectoryRemoved) throw new Error('LIVE_CONFORMANCE_CLEANUP_FAILED');
 
   const evidence = {
     schemaVersion: 1,
@@ -59,17 +133,19 @@ try {
     liveProviderVerified: false,
     liveProviderStatus: 'NOT_RUN_NO_OWNER_SECRET',
     generatedAt: new Date().toISOString(),
-    targetedContracts: {testFiles: 2, tests: 16, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true},
+    targetedContracts: {testFiles: 3, tests: 21, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true},
+    stdinTransport,
     composePolicy,
     clientBundle: {status: clientBundle.status, bundleCount: clientBundle.bundles.length, forbidden: clientBundle.forbidden},
     composeInspect: {project, health, secretInEnvironment, secretMounts, dockerSocketMounted, sensitiveLogFinding},
     secretIngress: 'INTERACTIVE_TTY_TO_0600_TEMP_FILES_TO_READ_ONLY_COMPOSE_SECRETS',
     noAction: {externalActionAllowed: false, actionGrantCount: 0, connectorCount: 0, externalActionCount: 0},
+    cleanupEvidence: {exactComposeProjectRemoved, temporarySecretDirectoryRemoved, currentFailedCanaryObjectsAbsentBeforeRun},
     cleanup: 'PASS'
   };
   await mkdir(path.join(root, '.evidence/sdd-002'), {recursive: true});
   await writeFile(path.join(root, '.evidence/sdd-002/live-deepseek-conformance.json'), `${JSON.stringify(evidence, null, 2)}\n`);
-  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, liveProviderStatus: evidence.liveProviderStatus, tests: 16, secretInEnvironment, dockerSocketMounted, cleanup: evidence.cleanup, evidence: '.evidence/sdd-002/live-deepseek-conformance.json'}));
+  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, liveProviderStatus: evidence.liveProviderStatus, tests: 21, stdinTransportCases: 5, secretInEnvironment, dockerSocketMounted, cleanup: evidence.cleanup, evidence: '.evidence/sdd-002/live-deepseek-conformance.json'}));
 } finally {
   if (composeStarted && secretRoot !== undefined) {
     const environment = {...process.env, LUMICLAW_DEEPSEEK_SECRET_FILE: path.join(secretRoot, 'deepseek'), LUMICLAW_RUNTIME_BOOTSTRAP_FILE: path.join(secretRoot, 'bootstrap'), LUMICLAW_API_PORT: apiPort, LUMICLAW_WEB_PORT: webPort};

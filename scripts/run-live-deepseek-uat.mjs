@@ -1,8 +1,9 @@
 import {createHash} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
+import {readFileSync, writeSync} from 'node:fs';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
-import {createInterface} from 'node:readline/promises';
+import {createRedactedTransportReceipt, parseLiveUatTransport} from './live-uat-transport.mjs';
 
 const root = process.cwd();
 const api = process.env.LUMICLAW_LIVE_API_URL ?? 'http://127.0.0.1:4129';
@@ -12,13 +13,18 @@ const controller = 'agentteams-controller';
 const expectedRoles = [leader, 'evidence-claim-steward', 'campaign-planner', 'founder-identity-producer', 'product-account-producer', 'independent-auditor'];
 const titleByKind = {PROJECT_COORDINATION: 'Coordinate exact SHADOW Project', FREEZE_EVIDENCE: 'Freeze Claim and Evidence bindings', PLAN_CAMPAIGN: 'Allocate persisted activation plan', PRODUCE_FOUNDER: 'Produce initial X and Xiaohongshu revisions', PRODUCE_PRODUCT: 'Produce Bluesky and LinkedIn revisions', AUDIT_REVISIONS: 'Independently audit four initial revision digests', PRODUCE_FOUNDER_CORRECTION: 'Correct rejected X revision', REAUDIT_CORRECTION: 'Independently re-audit corrected X revision'};
 
-const rl = createInterface({input: process.stdin, output: process.stdout});
-const organizationId = (await rl.question('Organization ID: ')).trim();
-const missionId = (await rl.question('Live Mission ID: ')).trim();
-const campaignDigest = (await rl.question('Expected Campaign digest: ')).trim();
-const bootstrap = (await rl.question('Runtime broker bootstrap (input is not persisted): ')).trim();
-rl.close();
-if (!/^[a-f0-9]{64}$/u.test(campaignDigest) || bootstrap.length < 32) throw new Error('LIVE_UAT_INPUT_INVALID');
+function emitFailure(code) { writeSync(2, `${JSON.stringify({status: 'FAIL', code})}\n`); }
+process.once('uncaughtException', () => { emitFailure('LIVE_UAT_RUNNER_FAILED'); process.exit(1); });
+process.once('unhandledRejection', () => { emitFailure('LIVE_UAT_RUNNER_FAILED'); process.exit(1); });
+
+let transport;
+try { transport = parseLiveUatTransport(readFileSync(0, 'utf8')); }
+catch { emitFailure('LIVE_UAT_TRANSPORT_INVALID'); process.exit(1); }
+if (process.argv.includes('--transport-conformance')) {
+  writeSync(1, `${JSON.stringify(createRedactedTransportReceipt(transport))}\n`);
+  process.exit(0);
+}
+const {organizationId, missionId, campaignDigest, bootstrap} = transport;
 
 const organizationHeaders = {'x-lumiclaw-organization-id': organizationId};
 let mission; let etag; let projectId; let eventCounter = 0; let lastTaskId = null; const receipts = [];
@@ -26,8 +32,9 @@ let mission; let etag; let projectId; let eventCounter = 0; let lastTaskId = nul
 function digest(value) { return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(canonical(value))).digest('hex'); }
 function canonical(value) { if (Array.isArray(value)) return value.map(canonical); if (value !== null && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().filter((key) => value[key] !== undefined).map((key) => [key, canonical(value[key])])); return value; }
 function run(executable, args, label, input) {
+  void label;
   try { return execFileSync(executable, args, {cwd: root, encoding: 'utf8', timeout: 90_000, stdio: [input === undefined ? 'ignore' : 'pipe', 'pipe', 'pipe'], input}).trim(); }
-  catch (error) { throw new Error(`${label}:${String(error?.stderr ?? error?.message ?? 'FAILED').trim()}`); }
+  catch { throw new Error('LIVE_UAT_CHILD_PROCESS_FAILED'); }
 }
 function agt(resource) { return JSON.parse(run('docker', ['exec', controller, 'agt', 'get', resource, '-o', 'json'], `agt-get-${resource}`)); }
 function workspace(role) { return `/root/.copaw-worker/${role}/.copaw/workspaces/default`; }
@@ -46,8 +53,10 @@ function acceptTask(taskId) {
   run('docker', ['exec', '-w', workspace(leader), `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', code, projectId, taskId], `accept:${taskId}`);
 }
 async function request(pathname, init, expected = 200) {
-  const response = await fetch(`${api}${pathname}`, init); const body = await response.json();
-  if (response.status !== expected) throw new Error(`API_${response.status}_${body.code ?? 'FAILED'}`);
+  let response; let body;
+  try { response = await fetch(`${api}${pathname}`, init); body = await response.json(); }
+  catch { throw new Error('LIVE_UAT_API_RESPONSE_INVALID'); }
+  if (response.status !== expected) throw new Error('LIVE_UAT_API_REQUEST_REJECTED');
   return {body, etag: response.headers.get('etag')};
 }
 async function issue(action, task = null) {

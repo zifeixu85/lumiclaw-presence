@@ -19,3 +19,10 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 - [x] Persisted state, exact Mission/runtime binding, secret-file ingress, scoped tickets and model-task responsibilities are binary.
 - [x] Mock/no-key engineering gates are separated from Coordinator-only live Canary evidence.
 - [x] Zero ActionGrant/connector/external action, canonical-status ownership and M3 exclusion remain unchanged.
+
+## CR2 Fix 1 checklist
+
+- [x] Coordinator failure is reproduced as Node exit 13 at the second non-TTY `readline.question()`.
+- [x] Exact four-field JSON, one-read stdin, captured child output and stable-code boundaries are specified.
+- [x] Partial/malformed/extra input, marker non-disclosure and cleanup are binary acceptance conditions.
+- [x] Owner Key, provider semantics, AgentTeams internals, canonical status and M3 remain out of scope.

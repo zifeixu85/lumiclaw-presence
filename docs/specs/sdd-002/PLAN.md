@@ -20,3 +20,11 @@ Rollback uses local Git reverts and project-scoped test migrations. Cancellation
 - Persist every domain ModelCallSnapshot, runtime receipt and failure code; keep Leader deterministic and Producer/Auditor independent.
 - Add business-first zh-CN guidance with en parity, 390px behavior and folded technical evidence.
 - Verify Mock, no-secret and adversarial contracts automatically; reserve the real-key Canary and `LIVE_PROVIDER_VERIFIED` label for Coordinator execution.
+
+## CR2 Fix 1 plan
+
+- Replace line-oriented nested Runner input with one exact JSON document and a shared fail-closed parser.
+- Capture both child layers; reconstruct safe success output and stable failure codes instead of forwarding raw stdout/stderr.
+- Exercise the production nested child-process route for valid, partial, malformed and extra-field input, including stdout/stderr marker scans.
+- Bind transport results and cleanup into Live conformance, the Chinese acceptance report, final manifest and clean-Head source package.
+- Rerun the affected unit/type/full/Live/AgentTeams gates before returning the Canary to the Coordinator.

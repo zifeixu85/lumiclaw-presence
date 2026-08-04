@@ -1,8 +1,10 @@
 import {createHash} from 'node:crypto';
 import {execFileSync, spawn, spawnSync} from 'node:child_process';
+import {readFileSync, writeSync} from 'node:fs';
 import {mkdtemp, mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {isRedactedTransportReceipt, LiveUatTransportError, parseLiveUatTransport, serializeLiveUatTransport} from './live-uat-transport.mjs';
 
 const root = process.cwd();
 const expectedSourceDigest = 'a4a9d66fabc49e1d08246d9b8b65d2b67742b71b2b43d3dfc0d27e8861f0770c';
@@ -14,10 +16,47 @@ const roles = [leader, 'evidence-claim-steward', 'campaign-planner', 'founder-id
 const runtimeContainerNames = new Set(['agentteams-controller', 'agentteams-manager', 'agentteams-dashboard', 'agentteams-docker-proxy']);
 const lifecycle = [];
 const liveUat = process.argv.includes('--live-deepseek-uat');
+const transportConformance = process.argv.includes('--live-stdin-transport-conformance');
 const runtimeModel = liveUat ? 'lumiclaw-deepseek-broker-v1' : 'mock-agentteams-conformance';
 let temporaryRoot;
 let provider;
 let completed = false;
+let liveRunnerInput;
+let liveRunnerReceipt;
+let liveFailureCode;
+let runtimeOwnershipStarted = false;
+
+function stableError(code) { const error = new Error(code); error.code = code; return error; }
+function emitStableFailure(code) { writeSync(2, `${JSON.stringify({status: 'FAIL', code})}\n`); }
+function childOutput(result) { return {stdout: typeof result.stdout === 'string' ? result.stdout : '', stderr: typeof result.stderr === 'string' ? result.stderr : ''}; }
+function containsSensitiveOutput(stdout, stderr, bootstrap) {
+  const output = `${stdout}${stderr}`;
+  return output.includes(bootstrap) || /x-lumiclaw-runner-bootstrap|x-lumiclaw-runtime-ticket|authorization|\bbearer\b/iu.test(output);
+}
+async function readCanonicalLiveRunnerInput() {
+  const parsed = parseLiveUatTransport(readFileSync(0, 'utf8'));
+  return {parsed, serialized: serializeLiveUatTransport(parsed)};
+}
+function spawnLiveRunner(serialized, parsed, conformance = false) {
+  const result = spawnSync(process.execPath, ['scripts/run-live-deepseek-uat.mjs', ...(conformance ? ['--transport-conformance'] : [])], {
+    cwd: root, input: serialized, encoding: 'utf8', timeout: conformance ? 10_000 : 1_200_000, stdio: ['pipe', 'pipe', 'pipe']
+  });
+  const {stdout, stderr} = childOutput(result);
+  if (containsSensitiveOutput(stdout, stderr, parsed.bootstrap)) throw stableError('LIVE_UAT_TRANSPORT_DISCLOSURE_BLOCKED');
+  if (result.status !== 0) throw stableError('LIVE_DEEPSEEK_UAT_RUNNER_FAILED');
+  let receipt;
+  try { receipt = JSON.parse(stdout); } catch { throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID'); }
+  if (conformance && !isRedactedTransportReceipt(receipt)) throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID');
+  if (!conformance && (receipt?.status !== 'PASS'
+    || receipt?.maturity !== 'LIVE_PROVIDER_VERIFIED'
+    || receipt?.missionId !== parsed.missionId
+    || receipt?.state !== 'AWAITING_OWNER_REVIEW'
+    || receipt?.modelReceipts !== 7
+    || receipt?.ownerReviewRequired !== true
+    || receipt?.externalActionCount !== 0
+    || receipt?.evidence !== '.evidence/sdd-002/deepseek-live-canary.json')) throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID');
+  return receipt;
+}
 
 function run(executable, args, options = {}) {
   const startedAt = new Date().toISOString();
@@ -92,12 +131,23 @@ function cleanupRuntime() {
   if (remaining.length > 0 || volumeExists()) throw new Error('AGENTTEAMS_EPHEMERAL_CLEANUP_INCOMPLETE');
 }
 
-try {
+if (transportConformance) {
+  try {
+    const input = await readCanonicalLiveRunnerInput();
+    const receipt = spawnLiveRunner(input.serialized, input.parsed, true);
+    writeSync(1, `${JSON.stringify(receipt)}\n`);
+  } catch (error) {
+    emitStableFailure(error instanceof LiveUatTransportError ? error.code : 'LIVE_UAT_TRANSPORT_FAILED');
+    process.exitCode = 1;
+  }
+} else try {
+  if (liveUat) liveRunnerInput = await readCanonicalLiveRunnerInput();
   const preexisting = ownedContainers();
   if (preexisting.length > 0) throw new Error(`AGENTTEAMS_GLOBAL_CONTAINER_NAMES_IN_USE:${preexisting.join(',')}`);
   if (volumeExists()) throw new Error(`AGENTTEAMS_EPHEMERAL_VOLUME_ALREADY_EXISTS:${dataVolume}`);
   for (const port of [18080, 18001, 18088, 18888, 28333]) if (portInUse(port)) throw new Error(`AGENTTEAMS_ACCEPTANCE_PORT_IN_USE:${port}`);
   lifecycle.push({step: 'preflight-exclusive-runtime-names-ports-volume', startedAt: new Date().toISOString(), status: 'PASS'});
+  runtimeOwnershipStarted = true;
 
   temporaryRoot = await mkdtemp(path.join(tmpdir(), 'lumiclaw-sdd002-agentteams.'));
   const archive = path.join(temporaryRoot, 'agentteams-v1.2.0.tar.gz');
@@ -135,22 +185,50 @@ try {
   await waitForTopology(); lifecycle.push({step: 'wait-exact-six-member-team', startedAt: new Date().toISOString(), status: 'PASS'});
 
   if (liveUat) {
-    const result = spawnSync(process.execPath, ['scripts/run-live-deepseek-uat.mjs'], {cwd: root, stdio: 'inherit'});
-    lifecycle.push({step: 'run-live-deepseek-exact-mission', startedAt: new Date().toISOString(), status: result.status === 0 ? 'PASS' : 'FAIL'});
-    if (result.status !== 0) throw new Error('LIVE_DEEPSEEK_UAT_RUNNER_FAILED');
+    if (liveRunnerInput === undefined) throw stableError('LIVE_UAT_TRANSPORT_INVALID');
+    liveRunnerReceipt = spawnLiveRunner(liveRunnerInput.serialized, liveRunnerInput.parsed);
+    lifecycle.push({step: 'run-live-deepseek-exact-mission', startedAt: new Date().toISOString(), status: 'PASS'});
   } else run(process.execPath, ['scripts/verify-agentteams-real-runtime.mjs'], {label: 'verify-real-agentteams-causal-runtime', timeout: 900_000});
   cleanupRuntime();
+  runtimeOwnershipStarted = false;
   provider.kill('SIGTERM'); provider = undefined;
   const evidencePath = path.join(root, liveUat ? '.evidence/sdd-002/deepseek-live-canary.json' : '.evidence/sdd-002/agentteams-real-runtime.json');
   const evidence = JSON.parse(await readFile(evidencePath, 'utf8'));
   evidence.environmentLifecycle = {status: 'PASS', selfProvisioned: true, officialInstaller: true, sourceTarSha256: sourceDigest, exactRuntimeObjectsRemoved: true, sharedAgentTeamsNetworkPreserved: true, ephemeralCredentialsRemoved: true, steps: lifecycle};
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   completed = true;
-  console.info(JSON.stringify({status: 'PASS', selfProvisioned: true, realAgentTeamsAcceptance: true, realModelAcceptance: liveUat, memberCount: 6, taskCount: 8, cleanup: 'PASS', evidence: liveUat ? '.evidence/sdd-002/deepseek-live-canary.json' : '.evidence/sdd-002/agentteams-real-runtime.json'}));
+  console.info(JSON.stringify({
+    status: 'PASS',
+    selfProvisioned: true,
+    realAgentTeamsAcceptance: true,
+    realModelAcceptance: liveUat,
+    memberCount: 6,
+    taskCount: 8,
+    ...(liveUat ? {
+      maturity: liveRunnerReceipt.maturity,
+      missionId: liveRunnerReceipt.missionId,
+      state: liveRunnerReceipt.state,
+      modelReceipts: liveRunnerReceipt.modelReceipts,
+      ownerReviewRequired: liveRunnerReceipt.ownerReviewRequired,
+      externalActionCount: liveRunnerReceipt.externalActionCount
+    } : {}),
+    cleanup: 'PASS',
+    evidence: liveUat ? '.evidence/sdd-002/deepseek-live-canary.json' : '.evidence/sdd-002/agentteams-real-runtime.json'
+  }));
+} catch (error) {
+  if (liveUat) {
+    liveFailureCode = error instanceof LiveUatTransportError ? error.code : (typeof error?.code === 'string' ? error.code : 'LIVE_AGENTTEAMS_ENVIRONMENT_FAILED');
+    process.exitCode = 1;
+  } else throw error;
 } finally {
   if (provider !== undefined) provider.kill('SIGTERM');
-  if (!completed) {
-    try { cleanupRuntime(); } catch {}
+  if (!completed && runtimeOwnershipStarted) {
+    try { cleanupRuntime(); runtimeOwnershipStarted = false; }
+    catch { if (liveUat) liveFailureCode = 'LIVE_UAT_CLEANUP_FAILED'; }
   }
-  if (temporaryRoot !== undefined) await rm(temporaryRoot, {recursive: true, force: true});
+  if (temporaryRoot !== undefined) {
+    try { await rm(temporaryRoot, {recursive: true, force: true}); }
+    catch (error) { if (liveUat) { liveFailureCode = 'LIVE_UAT_CLEANUP_FAILED'; process.exitCode = 1; } else throw error; }
+  }
 }
+if (liveUat && liveFailureCode !== undefined) emitStableFailure(liveFailureCode);

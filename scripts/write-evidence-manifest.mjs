@@ -86,19 +86,42 @@ function exactBrowserNoAction(value) {
 
 function liveConformanceValid(value) {
   const mounts = value?.composeInspect?.secretMounts;
+  const transport = value?.stdinTransport;
+  const receipt = transport?.receipt;
   return value?.schemaVersion === 1
     && value?.status === 'PASS'
     && value?.maturity === 'ENGINEERING_VERIFIED'
     && value?.liveProviderVerified === false
     && value?.liveProviderStatus === 'NOT_RUN_NO_OWNER_SECRET'
-    && value?.targetedContracts?.testFiles === 2
-    && value?.targetedContracts?.tests === 16
+    && value?.targetedContracts?.testFiles === 3
+    && value?.targetedContracts?.tests === 21
     && value?.targetedContracts?.noKeyFailClosed === true
     && value?.targetedContracts?.mockFallback === false
     && value?.targetedContracts?.scopedSingleUseTickets === true
     && value?.targetedContracts?.wrongScopeBurnsTicket === true
     && value?.targetedContracts?.leaderModelCallForbidden === true
     && value?.targetedContracts?.independentAuditorReceiptRequired === true
+    && transport?.status === 'PASS'
+    && transport?.protocol === 'STRICT_JSON_EXACT_FOUR_FIELDS_SINGLE_FD0_READ'
+    && transport?.nestedChildProcess === true
+    && transport?.cases === 5
+    && transport?.nestedTransportCases === 4
+    && transport?.validFields === 4
+    && transport?.partialRejected === true
+    && transport?.malformedRejected === true
+    && transport?.extraFieldRejected === true
+    && transport?.operationalFailureRejected === true
+    && transport?.stdoutStderrInherited === false
+    && transport?.bootstrapOrSecretFinding === false
+    && transport?.stableFailureCode === 'LIVE_UAT_TRANSPORT_INVALID'
+    && transport?.operationalFailureCode === 'LIVE_UAT_RUNNER_FAILED'
+    && receipt?.status === 'PASS'
+    && receipt?.mode === 'LIVE_UAT_STDIN_TRANSPORT_CONFORMANCE'
+    && receipt?.fieldCount === 4
+    && receipt?.nestedChildProcess === true
+    && receipt?.secretPresent === false
+    && exactStringSet(Object.keys(receipt?.fieldDigests ?? {}), ['organizationId', 'missionId', 'campaignDigest', 'bootstrap'])
+    && Object.values(receipt.fieldDigests).every(digest)
     && value?.composePolicy?.status === 'PASS'
     && value?.composePolicy?.dockerSocketMounted === false
     && value?.composePolicy?.secretAsServiceEnvironment === false
@@ -113,6 +136,9 @@ function liveConformanceValid(value) {
     && Array.isArray(mounts) && mounts.length === 2
     && mounts.map((mount) => `${mount.destination}:${mount.readOnly}`).join(',') === '/run/secrets/deepseek_api_key:true,/run/secrets/lumiclaw_runtime_broker_bootstrap:true'
     && value?.secretIngress === 'INTERACTIVE_TTY_TO_0600_TEMP_FILES_TO_READ_ONLY_COMPOSE_SECRETS'
+    && value?.cleanupEvidence?.exactComposeProjectRemoved === true
+    && value?.cleanupEvidence?.temporarySecretDirectoryRemoved === true
+    && value?.cleanupEvidence?.currentFailedCanaryObjectsAbsentBeforeRun === true
     && exactNoAction(value?.noAction)
     && value?.cleanup === 'PASS';
 }
@@ -369,7 +395,11 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !liveConformanceValid({...liveConformance, liveProviderVerified: true}),
     !liveConformanceValid({...liveConformance, composeInspect: {...liveConformance.composeInspect, secretInEnvironment: true}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, mockFallback: true}}),
-    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, tests: 0}})
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, tests: 0}}),
+    !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, nestedChildProcess: false}}),
+    !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, bootstrapOrSecretFinding: true}}),
+    !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, extraFieldRejected: false}}),
+    !liveConformanceValid({...liveConformance, cleanupEvidence: {...liveConformance.cleanupEvidence, exactComposeProjectRemoved: false}})
   ];
   if (!mutationsRejected.every(Boolean)) throw new Error('EVIDENCE_NEGATIVE_SELF_TEST_FAILED');
   return mutationsRejected.length;

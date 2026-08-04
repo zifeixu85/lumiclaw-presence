@@ -18,3 +18,10 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-04`: zh-CN-first/en-parity Mission guidance, wait/failure responsibility, revisions/audit/re-audit/review and 390px UI.
 - [x] `CR2-05`: no-secret/adversarial/provider/compose/client-bundle/browser/PostgreSQL regression evidence.
 - [x] `CR2-06`: Chinese acceptance update, Coordinator-only Canary procedure, clean commit/source ZIP/structured handoff. Live Provider verification and Owner acceptance remain external gates and are not claimed here.
+
+## CR2 Fix 1 tasks
+
+- [x] `CR2-F1-01`: strict single-read four-field JSON parser and production launcher/environment/Runner pipe transport.
+- [x] `CR2-F1-02`: stable redacted child errors with no bootstrap/ticket/header/raw-output disclosure.
+- [x] `CR2-F1-03`: real nested child-process positive/partial/malformed/extra-field regression suite and cleanup assertions.
+- [x] `CR2-F1-04`: Live conformance/manifest/report update, full affected gates, clean commit and source package handoff.
