@@ -4,7 +4,7 @@ import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {spawnSync} from 'node:child_process';
 import {afterAll, describe, expect, it} from 'vitest';
-import {isProviderOutcomeCode, parseLiveFailureEnvelope, providerOutcomeFromMission} from './live-uat-diagnostics.mjs';
+import {isProviderOutcomeCode, parseLiveFailureEnvelope, providerOutcomeFromMission, providerOutcomeRetryable} from './live-uat-diagnostics.mjs';
 
 const organizationId = '019fcc41-dd89-70c1-ae55-c8e45b4aeb3f';
 const missionId = '019fcc41-ddba-7897-a271-d0eda0c9a7fd';
@@ -27,10 +27,11 @@ afterAll(() => rmSync(tempRoot, {recursive: true, force: true}));
 function missionFor(code: string) {
   const noSnapshot = ['DEEPSEEK_SECRET_FILE_UNAVAILABLE', 'LIVE_PROVIDER_BROKER_FAILED'].includes(code);
   const semantic = code === 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID';
+  const retryable = providerOutcomeRetryable(code);
   return {
     state: 'FAILED',
-    runtimeStatus: {failure: {code, failedTaskId, retryable: false}},
-    modelCalls: noSnapshot ? [] : [{taskId: failedTaskId, provider: 'DEEPSEEK', maturity: 'CANARY', secretPresent: false, response: {id: null}, outputDigest: semantic ? 'a'.repeat(64) : null, error: semantic ? null : {code, retryable: false}}]
+    runtimeStatus: {failure: {code, failedTaskId, retryable}},
+    modelCalls: noSnapshot ? [] : [{taskId: failedTaskId, provider: 'DEEPSEEK', maturity: 'CANARY', secretPresent: false, response: {id: null}, outputDigest: semantic ? 'a'.repeat(64) : null, error: semantic ? null : {code, retryable}}]
   };
 }
 
@@ -69,6 +70,7 @@ describe('Live provider outcome diagnostics', () => {
     expect(providerOutcomeFromMission({...valid, runtimeStatus: {failure: {...valid.runtimeStatus.failure, failedTaskId: 'other'}}}, failedTaskId)).toBe('LIVE_PROVIDER_BROKER_FAILED');
     expect(providerOutcomeFromMission({...valid, runtimeStatus: {failure: {...valid.runtimeStatus.failure, code: 'RAW_PROVIDER_MESSAGE'}}}, failedTaskId)).toBe('LIVE_PROVIDER_BROKER_FAILED');
     expect(providerOutcomeFromMission({...valid, modelCalls: [{...valid.modelCalls[0], error: {code: 'MODEL_TIMEOUT', retryable: true}}]}, failedTaskId)).toBe('LIVE_PROVIDER_BROKER_FAILED');
+    expect(providerOutcomeFromMission({...valid, runtimeStatus: {failure: {...valid.runtimeStatus.failure, retryable: true}}}, failedTaskId)).toBe('LIVE_PROVIDER_BROKER_FAILED');
   });
 
   it('rejects a non-allowlisted diagnostic code without reflecting input', () => {

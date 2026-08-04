@@ -54,14 +54,15 @@ export class DeepSeekModelProvider implements ModelProvider {
   }
 
   async generateStructured<T>(request: ModelGenerateRequest<T>): Promise<ModelGenerateResult<T>> {
-    const started = Date.now(); const config = normalizedConfig(request); const inputDigest = sha256Digest({system: request.system, input: request.input, outputSchema: request.outputSchema});
+    const started = Date.now(); const config = normalizedConfig(request); const inputDigest = sha256Digest({system: request.system, input: request.input, outputSchema: request.outputSchema, config});
+    const providerRequestBody = JSON.stringify({model: request.model, messages: [{role: 'system', content: `${request.system}\nThe user payload contains input and outputSchema. Return one JSON object that satisfies outputSchema exactly, including required fields and no additional fields.`}, {role: 'user', content: JSON.stringify({input: request.input, outputSchema: request.outputSchema})}], temperature: config.temperature, max_tokens: config.maxTokens, response_format: {type: config.responseFormat}, thinking: {type: config.thinkingMode}});
     let attempts = 0; let lastError = {code: 'PROVIDER_UNAVAILABLE', retryable: true};
     while (attempts < config.maxAttempts) {
       attempts += 1;
       try {
         const response = await this.#fetch(new URL('/chat/completions', this.#baseUrl), {
           method: 'POST', headers: {'content-type': 'application/json', authorization: `Bearer ${this.#apiKey}`},
-          body: JSON.stringify({model: request.model, messages: [{role: 'system', content: `${request.system}\nThe user payload contains input and outputSchema. Return one JSON object that satisfies outputSchema exactly, including required fields and no additional fields.`}, {role: 'user', content: JSON.stringify({input: request.input, outputSchema: request.outputSchema})}], temperature: config.temperature, max_tokens: config.maxTokens, response_format: {type: 'json_object'}}),
+          body: providerRequestBody,
           signal: AbortSignal.timeout(config.timeoutMs)
         });
         if (!response.ok) {
@@ -73,7 +74,12 @@ export class DeepSeekModelProvider implements ModelProvider {
         const responseIdentity = {id: typeof payload.id === 'string' ? payload.id : null, actualModel: typeof payload.model === 'string' ? payload.model : null, systemFingerprint: typeof payload.system_fingerprint === 'string' ? payload.system_fingerprint : null, finishReason: typeof payload.choices?.[0]?.finish_reason === 'string' ? payload.choices[0].finish_reason : null};
         if (responseIdentity.id === null || responseIdentity.actualModel === null) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_RESPONSE_IDENTITY_INVALID', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
         if (responseIdentity.actualModel !== request.model) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_RETURNED_MODEL_MISMATCH', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
-        if (responseIdentity.finishReason !== 'stop') return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_FINISH_REASON_INVALID', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
+        const finishError = finishReasonError(responseIdentity.finishReason);
+        if (finishError !== null) {
+          lastError = finishError;
+          if (finishError.retryable && attempts < config.maxAttempts) { await this.#delay(25 * (2 ** (attempts - 1))); continue; }
+          return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, finishError, this.#now(), 'DEEPSEEK', this.#executionClass)};
+        }
         if (!validUsage(payload.usage)) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, null, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_USAGE_INVALID', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
         const raw = payload.choices?.[0]?.message?.content;
         if (typeof raw !== 'string') return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'PROVIDER_RESPONSE_INVALID', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
@@ -94,7 +100,7 @@ export class DeepSeekModelProvider implements ModelProvider {
 export class PublicSafeMockModelProvider implements ModelProvider {
   constructor(private readonly fixture: unknown, private readonly now: () => Date = () => new Date()) {}
   async generateStructured<T>(request: ModelGenerateRequest<T>): Promise<ModelGenerateResult<T>> {
-    const config = normalizedConfig(request); const inputDigest = sha256Digest({system: request.system, input: request.input, outputSchema: request.outputSchema});
+    const config = normalizedConfig(request); const inputDigest = sha256Digest({system: request.system, input: request.input, outputSchema: request.outputSchema, config});
     const validate = new Ajv({allErrors: true, strict: false}).compile(request.outputSchema);
     const mockResponse = {id: `public-safe-${request.taskId}`, actualModel: request.model, systemFingerprint: null, finishReason: 'stop'};
     if (!validate(this.fixture)) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, {prompt_tokens: 0, completion_tokens: 0}, mockResponse, 0, 1, {code: 'MOCK_SCHEMA_INVALID', retryable: false}, this.now(), 'PUBLIC_SAFE_MOCK', 'MOCK_CONFORMANCE')};
@@ -108,6 +114,7 @@ function normalizedConfig(request: ModelGenerateRequest<unknown>) {
     temperature: Number.isFinite(request.temperature) ? Math.min(2, Math.max(0, request.temperature!)) : 0,
     maxTokens: bounded(request.maxTokens, 2_000, 1, 65_536),
     responseFormat: 'json_object' as const,
+    thinkingMode: 'disabled' as const,
     timeoutMs: bounded(request.timeoutMs, 30_000, 1, 120_000),
     maxAttempts: bounded(request.maxAttempts, 3, 1, 3)
   };
@@ -115,6 +122,17 @@ function normalizedConfig(request: ModelGenerateRequest<unknown>) {
 
 type DeepSeekUsage = {prompt_tokens?: number; completion_tokens?: number; prompt_cache_hit_tokens?: number; prompt_cache_miss_tokens?: number; completion_tokens_details?: {reasoning_tokens?: number}};
 type DeepSeekResponse = {id?: string; model?: string; system_fingerprint?: string | null; choices?: {finish_reason?: string | null; message?: {content?: string}}[]; usage?: DeepSeekUsage};
+
+function finishReasonError(finishReason: string | null): NonNullable<ModelCallSnapshot['error']> | null {
+  switch (finishReason) {
+    case 'stop': return null;
+    case 'length': return {code: 'MODEL_OUTPUT_TRUNCATED', retryable: false};
+    case 'content_filter': return {code: 'MODEL_CONTENT_FILTERED', retryable: false};
+    case 'tool_calls': return {code: 'MODEL_TOOL_CALL_FORBIDDEN', retryable: false};
+    case 'insufficient_system_resource': return {code: 'MODEL_INFERENCE_RESOURCE_UNAVAILABLE', retryable: true};
+    default: return {code: 'MODEL_FINISH_REASON_INVALID', retryable: false};
+  }
+}
 
 function validUsage(usage: DeepSeekUsage | undefined): usage is DeepSeekUsage & {prompt_tokens: number; completion_tokens: number} {
   if (usage === undefined || !nonnegativeInteger(usage.prompt_tokens) || !nonnegativeInteger(usage.completion_tokens)) return false;

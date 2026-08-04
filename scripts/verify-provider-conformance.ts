@@ -32,6 +32,7 @@ const expectedPricing = {
 } as const;
 const observedModels: string[] = [];
 let exactSchemaPromptBound = false;
+let explicitNonThinkingBound = true;
 let responseCount = 0;
 const gateway = new DeepSeekModelProvider({
   apiKey: fixtureCredential,
@@ -39,8 +40,9 @@ const gateway = new DeepSeekModelProvider({
   delay: async () => {},
   now: () => new Date('2026-08-04T00:00:00.000Z'),
   fetchImplementation: async (_url, init) => {
-    const body = JSON.parse(String(init?.body)) as {model: string; messages: {role: string; content: string}[]};
+    const body = JSON.parse(String(init?.body)) as {model: string; messages: {role: string; content: string}[]; thinking?: {type?: string}};
     observedModels.push(body.model);
+    explicitNonThinkingBound = explicitNonThinkingBound && body.thinking?.type === 'disabled';
     const userPayload = JSON.parse(body.messages[1]?.content ?? '{}') as {input?: unknown; outputSchema?: unknown};
     exactSchemaPromptBound = body.messages[0]?.content.includes('outputSchema') === true && JSON.stringify(userPayload.outputSchema) === JSON.stringify(request.outputSchema) && JSON.stringify(userPayload.input) === JSON.stringify(request.input);
     responseCount += 1;
@@ -50,7 +52,7 @@ const gateway = new DeepSeekModelProvider({
   }
 });
 const retryResult = await gateway.generateStructured(request);
-if (!retryResult.ok || retryResult.snapshot.attempts !== 3 || observedModels.some((model) => model !== request.model) || !exactSchemaPromptBound || JSON.stringify(retryResult.snapshot).includes(fixtureCredential)) throw new Error('DEEPSEEK_GATEWAY_RETRY_OR_REDACTION_CONFORMANCE_FAILED');
+if (!retryResult.ok || retryResult.snapshot.attempts !== 3 || observedModels.some((model) => model !== request.model) || !exactSchemaPromptBound || !explicitNonThinkingBound || retryResult.snapshot.config.thinkingMode !== 'disabled' || JSON.stringify(retryResult.snapshot).includes(fixtureCredential)) throw new Error('DEEPSEEK_GATEWAY_RETRY_OR_REDACTION_CONFORMANCE_FAILED');
 if (retryResult.snapshot.estimatedCostUsd !== 0.000025256 || JSON.stringify(retryResult.snapshot.pricing) !== JSON.stringify(expectedPricing.flash)) throw new Error('DEEPSEEK_FLASH_EXACT_COST_CONFORMANCE_FAILED');
 
 const proRequest = {...request, taskId: 'producer-task-pro', model: 'deepseek-v4-pro' as const};
@@ -67,9 +69,34 @@ if (nonRetryable.ok || nonRetryable.snapshot.attempts !== 1 || nonRetryable.snap
 const timeoutError = Object.assign(new Error('fixture timeout'), {name: 'TimeoutError'});
 const timedOut = await new DeepSeekModelProvider({apiKey: fixtureCredential, executionClass: 'MOCK_CONFORMANCE', delay: async () => {}, fetchImplementation: async () => { throw timeoutError; }}).generateStructured(request);
 if (timedOut.ok || timedOut.snapshot.attempts !== 3 || timedOut.snapshot.error?.code !== 'MODEL_TIMEOUT') throw new Error('DEEPSEEK_GATEWAY_TIMEOUT_CONFORMANCE_FAILED');
+const terminalFinishCases = [
+  ['length', 'MODEL_OUTPUT_TRUNCATED'],
+  ['content_filter', 'MODEL_CONTENT_FILTERED'],
+  ['tool_calls', 'MODEL_TOOL_CALL_FORBIDDEN'],
+  [null, 'MODEL_FINISH_REASON_INVALID'],
+  ['future_reason', 'MODEL_FINISH_REASON_INVALID']
+] as const;
+const finishReasonOutcomes: Record<string, string> = {};
+const rawPartialMarker = 'PUBLIC_SAFE_RAW_PARTIAL_MARKER';
+for (const [finishReason, expectedCode] of terminalFinishCases) {
+  const payload = {id: 'fixture', model: request.model, choices: [{finish_reason: finishReason, message: {content: `{"copy":"${rawPartialMarker}"}`}}], usage: {prompt_tokens: 1, completion_tokens: 1}};
+  const rejected = await new DeepSeekModelProvider({apiKey: fixtureCredential, executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(payload), {status: 200})}).generateStructured(request);
+  if (rejected.ok || rejected.snapshot.error?.code !== expectedCode || rejected.snapshot.error.retryable || rejected.snapshot.attempts !== 1 || rejected.snapshot.outputDigest !== null || JSON.stringify(rejected.snapshot).includes(rawPartialMarker)) throw new Error(`DEEPSEEK_FINISH_REASON_CONFORMANCE_FAILED:${String(finishReason)}`);
+  finishReasonOutcomes[finishReason === null ? 'null' : finishReason] = expectedCode;
+}
+const resourceBodies: string[] = []; let resourceCalls = 0;
+const resourceRecovered = await new DeepSeekModelProvider({apiKey: fixtureCredential, executionClass: 'MOCK_CONFORMANCE', delay: async () => {}, fetchImplementation: async (_url, init) => {
+  resourceBodies.push(String(init?.body)); resourceCalls += 1;
+  const finishReason = resourceCalls === 1 ? 'insufficient_system_resource' : 'stop';
+  return new Response(JSON.stringify({id: 'fixture-resource', model: request.model, choices: [{finish_reason: finishReason, message: {content: finishReason === 'stop' ? '{"copy":"resource recovered"}' : null}}], usage: {prompt_tokens: 1, completion_tokens: 1}}), {status: 200});
+}}).generateStructured(request);
+if (!resourceRecovered.ok || resourceRecovered.snapshot.attempts !== 2 || resourceBodies.length !== 2 || resourceBodies[0] !== resourceBodies[1] || JSON.parse(resourceBodies[0]!).thinking?.type !== 'disabled') throw new Error('DEEPSEEK_RESOURCE_RETRY_RECOVERY_FAILED');
+const exhaustedBodies: string[] = [];
+const resourceExhausted = await new DeepSeekModelProvider({apiKey: fixtureCredential, executionClass: 'MOCK_CONFORMANCE', delay: async () => {}, fetchImplementation: async (_url, init) => { exhaustedBodies.push(String(init?.body)); return new Response(JSON.stringify({id: 'fixture-resource', model: request.model, choices: [{finish_reason: 'insufficient_system_resource', message: {content: null}}], usage: {prompt_tokens: 1, completion_tokens: 1}}), {status: 200}); }}).generateStructured(request);
+if (resourceExhausted.ok || resourceExhausted.snapshot.error?.code !== 'MODEL_INFERENCE_RESOURCE_UNAVAILABLE' || resourceExhausted.snapshot.error.retryable !== true || resourceExhausted.snapshot.attempts !== 3 || exhaustedBodies.length !== 3 || new Set(exhaustedBodies).size !== 1) throw new Error('DEEPSEEK_RESOURCE_RETRY_EXHAUSTION_FAILED');
+finishReasonOutcomes.insufficient_system_resource = 'MODEL_INFERENCE_RESOURCE_UNAVAILABLE';
 const identityCases = [
   ['MODEL_RETURNED_MODEL_MISMATCH', {id: 'fixture', model: 'deepseek-v4-pro', choices: [{finish_reason: 'stop', message: {content: '{"copy":"fixture"}'}}], usage: {prompt_tokens: 1, completion_tokens: 1}}],
-  ['MODEL_FINISH_REASON_INVALID', {id: 'fixture', model: request.model, choices: [{finish_reason: 'length', message: {content: '{"copy":"partial"}'}}], usage: {prompt_tokens: 1, completion_tokens: 1}}],
   ['MODEL_RESPONSE_IDENTITY_INVALID', {model: request.model, choices: [{finish_reason: 'stop', message: {content: '{"copy":"fixture"}'}}], usage: {prompt_tokens: 1, completion_tokens: 1}}],
   ['MODEL_USAGE_INVALID', {id: 'fixture', model: request.model, choices: [{finish_reason: 'stop', message: {content: '{"copy":"fixture"}'}}], usage: {prompt_tokens: 100, completion_tokens: 1, prompt_cache_hit_tokens: 20, prompt_cache_miss_tokens: 79}}]
 ] as const;
@@ -82,6 +109,8 @@ for (const [expectedCode, payload] of identityCases) {
 
 const mockModel = await new PublicSafeMockModelProvider({copy: 'public-safe mock'}, () => new Date('2026-08-04T00:00:00.000Z')).generateStructured(request);
 if (!mockModel.ok || mockModel.snapshot.provider !== 'PUBLIC_SAFE_MOCK' || mockModel.snapshot.maturity !== 'MOCK_CONFORMANCE') throw new Error('PUBLIC_SAFE_MODEL_CONFORMANCE_FAILED');
+const configChangedMock = await new PublicSafeMockModelProvider({copy: 'public-safe mock'}, () => new Date('2026-08-04T00:00:00.000Z')).generateStructured({...request, maxTokens: 513});
+if (configChangedMock.snapshot.inputDigest === mockModel.snapshot.inputDigest) throw new Error('DEEPSEEK_NORMALIZED_CONFIG_DIGEST_BINDING_FAILED');
 const x = {kind: 'X', posts: ['Founder update.'], altText: 'Founder update card'};
 const frozenX = {kind: 'X', posts: ['LumiClaw Presence is generally available in every market today.'], altText: 'Founder update card'};
 const xhs = {kind: 'XIAOHONGSHU', title: '创始人动态', body: '公开安全本地草稿。', topics: ['品牌运营'], coverLabel: '合成封面'};
@@ -130,6 +159,8 @@ const evidence = {
     verifiedModels: ['deepseek-v4-flash', 'deepseek-v4-pro'],
     sources: [
       'https://api-docs.deepseek.com/api/list-models',
+      'https://api-docs.deepseek.com/api/create-chat-completion',
+      'https://api-docs.deepseek.com/guides/thinking_mode',
       'https://api-docs.deepseek.com/quick_start/pricing',
       'https://api-docs.deepseek.com/quick_start/rate_limit',
       'https://api-docs.deepseek.com/news/news260424/'
@@ -138,7 +169,13 @@ const evidence = {
     conformance: {
       structuredOutput: true,
       exactSchemaPromptBound,
+      explicitThinkingMode: 'disabled',
+      explicitNonThinkingBound,
       inputDigestIncludesOutputSchema: retryResult.snapshot.inputDigest !== (await new PublicSafeMockModelProvider({copy: 'public-safe structured fixture'}, () => new Date('2026-08-04T00:00:00.000Z')).generateStructured({...request, outputSchema: {...request.outputSchema, properties: {copy: {type: 'string', minLength: 2}}}})).snapshot.inputDigest,
+      inputDigestIncludesNormalizedConfig: configChangedMock.snapshot.inputDigest !== mockModel.snapshot.inputDigest,
+      finishReasonPolicy: {stop: 'ACCEPT', length: finishReasonOutcomes.length, content_filter: finishReasonOutcomes.content_filter, tool_calls: finishReasonOutcomes.tool_calls, insufficient_system_resource: finishReasonOutcomes.insufficient_system_resource, nullOrUnknown: finishReasonOutcomes.null},
+      partialOutputAccepted: false,
+      inferenceResourceRetry: {successAttempts: resourceRecovered.snapshot.attempts, exhaustedAttempts: resourceExhausted.snapshot.attempts, identicalRequest: resourceBodies[0] === resourceBodies[1] && new Set(exhaustedBodies).size === 1, sameModel: JSON.parse(resourceBodies[0]!).model === request.model},
       retries429And5xx: true,
       nonRetryable4xxAttempts: nonRetryable.snapshot.attempts,
       timeoutAttempts: timedOut.snapshot.attempts,

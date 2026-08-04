@@ -185,7 +185,7 @@ export type ModelCallSnapshot = {
   maturity: 'MOCK_CONFORMANCE' | 'CANARY';
   model: string;
   response: {id: string | null; actualModel: string | null; systemFingerprint: string | null; finishReason: string | null};
-  config: {temperature: number; maxTokens: number; responseFormat: 'json_object'; timeoutMs: number; maxAttempts: number};
+  config: {temperature: number; maxTokens: number; responseFormat: 'json_object'; thinkingMode: 'disabled'; timeoutMs: number; maxAttempts: number};
   pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04'; inputCacheHitUsdPerMillion: number; inputCacheMissUsdPerMillion: number; outputUsdPerMillion: number; peakMultiplierNotApplied: true};
   inputDigest: string;
   outputDigest: string | null;

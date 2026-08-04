@@ -21,7 +21,7 @@ let composeStarted = false;
 const providerOutcomes = [
   'DEEPSEEK_SECRET_FILE_UNAVAILABLE',
   'PROVIDER_HTTP_401', 'PROVIDER_HTTP_402', 'PROVIDER_HTTP_404', 'PROVIDER_HTTP_429', 'PROVIDER_HTTP_500', 'PROVIDER_HTTP_502', 'PROVIDER_HTTP_503', 'PROVIDER_HTTP_504',
-  'MODEL_TIMEOUT', 'PROVIDER_UNAVAILABLE', 'MODEL_RESPONSE_IDENTITY_INVALID', 'MODEL_RETURNED_MODEL_MISMATCH', 'MODEL_FINISH_REASON_INVALID', 'MODEL_USAGE_INVALID', 'PROVIDER_RESPONSE_INVALID', 'MODEL_JSON_MALFORMED', 'MODEL_SCHEMA_INVALID', 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', 'LIVE_PROVIDER_BROKER_FAILED'
+  'MODEL_TIMEOUT', 'PROVIDER_UNAVAILABLE', 'MODEL_RESPONSE_IDENTITY_INVALID', 'MODEL_RETURNED_MODEL_MISMATCH', 'MODEL_OUTPUT_TRUNCATED', 'MODEL_CONTENT_FILTERED', 'MODEL_TOOL_CALL_FORBIDDEN', 'MODEL_INFERENCE_RESOURCE_UNAVAILABLE', 'MODEL_FINISH_REASON_INVALID', 'MODEL_USAGE_INVALID', 'PROVIDER_RESPONSE_INVALID', 'MODEL_JSON_MALFORMED', 'MODEL_SCHEMA_INVALID', 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', 'LIVE_PROVIDER_BROKER_FAILED'
 ];
 
 function run(executable, args, environment = process.env, timeout = 900_000) {
@@ -175,7 +175,7 @@ async function waitForApi() {
 
 try {
   const tests = run(path.join(root, 'node_modules/.bin/vitest'), ['run', 'apps/api/src/live-runtime-security.test.ts', 'apps/api/src/live-ticket-policy.test.ts', 'apps/api/src/server.test.ts', 'packages/governed-shadow/src/model-provider.test.ts', 'packages/governed-shadow/src/live-model-generation-schema.test.ts', 'scripts/live-uat-transport.test.ts', 'scripts/live-uat-diagnostics.test.ts', 'scripts/live-provider-outcome.test.ts', 'scripts/live-agentteams-task-protocol.test.ts', 'scripts/live-task-protocol-diagnostics.test.ts', 'scripts/live-submission-import-outcome.test.ts']);
-  if (!/Test Files\s+11 passed \(11\)/u.test(tests) || !/Tests\s+181 passed \(181\)/u.test(tests)) throw new Error('LIVE_CONFORMANCE_TARGETED_TEST_COUNT_INVALID');
+  if (!/Test Files\s+11 passed \(11\)/u.test(tests) || !/Tests\s+199 passed \(199\)/u.test(tests)) throw new Error('LIVE_CONFORMANCE_TARGETED_TEST_COUNT_INVALID');
   const stdinTransport = verifyStdinTransport();
   const stageDiagnostics = await verifyStageDiagnostics();
   const providerOutcomeDiagnostics = await verifyProviderOutcomeDiagnostics();
@@ -218,7 +218,7 @@ try {
     liveProviderVerified: false,
     liveProviderStatus: 'NOT_RUN_NO_OWNER_SECRET',
     generatedAt: new Date().toISOString(),
-    targetedContracts: {testFiles: 11, tests: 181, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true, exactRoleSchemaPromptBound: true, taskSpecificSemanticSchemas: true, frozenFounderPhraseBoundary: true, frozenAuditSemanticBoundary: true, fifthModelSubmissionImportCovered: true, phaseScopedTaskTickets: true, sevenReceiptPhaseFlowCovered: true, firstDomainFixtureCovered: true, workerBrokerOriginBound: true, resumableAgentTeamsTaskProtocol: true},
+    targetedContracts: {testFiles: 11, tests: 199, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true, exactRoleSchemaPromptBound: true, taskSpecificSemanticSchemas: true, frozenFounderPhraseBoundary: true, frozenAuditSemanticBoundary: true, fifthModelSubmissionImportCovered: true, phaseScopedTaskTickets: true, sevenReceiptPhaseFlowCovered: true, firstDomainFixtureCovered: true, workerBrokerOriginBound: true, resumableAgentTeamsTaskProtocol: true, explicitNonThinkingProviderConfig: true, finishReasonPolicyBound: true, inferenceResourceRetryBound: true, liveMaxTokens4000: true},
     stdinTransport,
     stageDiagnostics,
     providerOutcomeDiagnostics,
@@ -234,7 +234,7 @@ try {
   };
   await mkdir(path.join(root, '.evidence/sdd-002'), {recursive: true});
   await writeFile(path.join(root, '.evidence/sdd-002/live-deepseek-conformance.json'), `${JSON.stringify(evidence, null, 2)}\n`);
-  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, liveProviderStatus: evidence.liveProviderStatus, tests: 181, stdinTransportCases: 5, stageDiagnosticCases: stageDiagnostics.cases, providerOutcomeCases: providerOutcomeDiagnostics.cases, taskProtocolOutcomeCases: taskProtocolDiagnostics.cases, submissionImportOutcomeCases: submissionImportDiagnostics.cases, secretInEnvironment, dockerSocketMounted, cleanup: evidence.cleanup, evidence: '.evidence/sdd-002/live-deepseek-conformance.json'}));
+  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, liveProviderStatus: evidence.liveProviderStatus, tests: 199, stdinTransportCases: 5, stageDiagnosticCases: stageDiagnostics.cases, providerOutcomeCases: providerOutcomeDiagnostics.cases, taskProtocolOutcomeCases: taskProtocolDiagnostics.cases, submissionImportOutcomeCases: submissionImportDiagnostics.cases, secretInEnvironment, dockerSocketMounted, cleanup: evidence.cleanup, evidence: '.evidence/sdd-002/live-deepseek-conformance.json'}));
 } finally {
   if (composeStarted && secretRoot !== undefined) {
     const environment = {...process.env, LUMICLAW_DEEPSEEK_SECRET_FILE: path.join(secretRoot, 'deepseek'), LUMICLAW_RUNTIME_BOOTSTRAP_FILE: path.join(secretRoot, 'bootstrap'), LUMICLAW_API_PORT: apiPort, LUMICLAW_WEB_PORT: webPort};

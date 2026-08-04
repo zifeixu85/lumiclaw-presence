@@ -25,7 +25,7 @@ const expectedLiveStageCodes = {
 const expectedProviderOutcomes = [
   'DEEPSEEK_SECRET_FILE_UNAVAILABLE',
   'PROVIDER_HTTP_401', 'PROVIDER_HTTP_402', 'PROVIDER_HTTP_404', 'PROVIDER_HTTP_429', 'PROVIDER_HTTP_500', 'PROVIDER_HTTP_502', 'PROVIDER_HTTP_503', 'PROVIDER_HTTP_504',
-  'MODEL_TIMEOUT', 'PROVIDER_UNAVAILABLE', 'MODEL_RESPONSE_IDENTITY_INVALID', 'MODEL_RETURNED_MODEL_MISMATCH', 'MODEL_FINISH_REASON_INVALID', 'MODEL_USAGE_INVALID', 'PROVIDER_RESPONSE_INVALID', 'MODEL_JSON_MALFORMED', 'MODEL_SCHEMA_INVALID', 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', 'LIVE_PROVIDER_BROKER_FAILED'
+  'MODEL_TIMEOUT', 'PROVIDER_UNAVAILABLE', 'MODEL_RESPONSE_IDENTITY_INVALID', 'MODEL_RETURNED_MODEL_MISMATCH', 'MODEL_OUTPUT_TRUNCATED', 'MODEL_CONTENT_FILTERED', 'MODEL_TOOL_CALL_FORBIDDEN', 'MODEL_INFERENCE_RESOURCE_UNAVAILABLE', 'MODEL_FINISH_REASON_INVALID', 'MODEL_USAGE_INVALID', 'PROVIDER_RESPONSE_INVALID', 'MODEL_JSON_MALFORMED', 'MODEL_SCHEMA_INVALID', 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', 'LIVE_PROVIDER_BROKER_FAILED'
 ];
 const expectedTaskProtocolOutcomes = [
   'LIVE_TASK_INSPECT_FAILED', 'LIVE_TASK_BINDING_INVALID', 'LIVE_TASK_STATE_INVALID', 'LIVE_TASK_DELEGATE_FAILED',
@@ -120,7 +120,7 @@ function liveConformanceValid(value) {
     && value?.liveProviderVerified === false
     && value?.liveProviderStatus === 'NOT_RUN_NO_OWNER_SECRET'
     && value?.targetedContracts?.testFiles === 11
-    && value?.targetedContracts?.tests === 181
+    && value?.targetedContracts?.tests === 199
     && value?.targetedContracts?.noKeyFailClosed === true
     && value?.targetedContracts?.mockFallback === false
     && value?.targetedContracts?.scopedSingleUseTickets === true
@@ -137,6 +137,10 @@ function liveConformanceValid(value) {
     && value?.targetedContracts?.firstDomainFixtureCovered === true
     && value?.targetedContracts?.workerBrokerOriginBound === true
     && value?.targetedContracts?.resumableAgentTeamsTaskProtocol === true
+    && value?.targetedContracts?.explicitNonThinkingProviderConfig === true
+    && value?.targetedContracts?.finishReasonPolicyBound === true
+    && value?.targetedContracts?.inferenceResourceRetryBound === true
+    && value?.targetedContracts?.liveMaxTokens4000 === true
     && transport?.status === 'PASS'
     && transport?.protocol === 'STRICT_JSON_EXACT_FOUR_FIELDS_SINGLE_FD0_READ'
     && transport?.nestedChildProcess === true
@@ -290,11 +294,18 @@ function providerEvidenceValid(providers) {
     && providers?.publicSafeMock?.maturity === 'MOCK_CONFORMANCE'
     && conformance?.executionClass === 'MOCK_CONFORMANCE'
     && conformance?.exactSchemaPromptBound === true
+    && conformance?.explicitThinkingMode === 'disabled'
+    && conformance?.explicitNonThinkingBound === true
     && conformance?.inputDigestIncludesOutputSchema === true
+    && conformance?.inputDigestIncludesNormalizedConfig === true
     && conformance?.actualReturnedModel === 'deepseek-v4-flash'
     && conformance?.finishReason === 'stop'
     && conformance?.responseIdentityCaptured === true
-    && conformance?.responseIdentityRejections?.join(',') === 'MODEL_RETURNED_MODEL_MISMATCH,MODEL_FINISH_REASON_INVALID,MODEL_RESPONSE_IDENTITY_INVALID,MODEL_USAGE_INVALID'
+    && conformance?.responseIdentityRejections?.join(',') === 'MODEL_RETURNED_MODEL_MISMATCH,MODEL_RESPONSE_IDENTITY_INVALID,MODEL_USAGE_INVALID'
+    && exactRecord(conformance?.finishReasonPolicy, {stop: 'ACCEPT', length: 'MODEL_OUTPUT_TRUNCATED', content_filter: 'MODEL_CONTENT_FILTERED', tool_calls: 'MODEL_TOOL_CALL_FORBIDDEN', insufficient_system_resource: 'MODEL_INFERENCE_RESOURCE_UNAVAILABLE', nullOrUnknown: 'MODEL_FINISH_REASON_INVALID'})
+    && conformance?.partialOutputAccepted === false
+    && exactRecord(conformance?.inferenceResourceRetry, {successAttempts: 2, exhaustedAttempts: 3, identicalRequest: true, sameModel: true})
+    && conformance?.config?.thinkingMode === 'disabled'
     && conformance?.usageBreakdownConsistencyRejected === true
     && conformance?.usageBreakdownPolicy === 'BOTH_OR_NONE_EXACT_SUM; ABSENT_MEANS_ALL_CACHE_MISS'
     && conformance?.costSnapshotUsd === 0.000025256
@@ -536,6 +547,11 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, pricingSnapshots: {...conformance.pricingSnapshots, flash: {...conformance.pricingSnapshots.flash, inputCacheHitUsdPerMillion: undefined}}}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, usageBreakdownConsistencyRejected: false}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, exactSchemaPromptBound: false}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, explicitThinkingMode: 'enabled'}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, inputDigestIncludesNormalizedConfig: false}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, finishReasonPolicy: {...conformance.finishReasonPolicy, length: 'ACCEPT'}}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, partialOutputAccepted: true}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, inferenceResourceRetry: {...conformance.inferenceResourceRetry, identicalRequest: false}}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, roleGenerationSchemas: {...conformance.roleGenerationSchemas, platformContentKindBound: false}}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, roleGenerationSchemas: {...conformance.roleGenerationSchemas, frozenFounderPhraseRequired: false}}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, roleGenerationSchemas: {...conformance.roleGenerationSchemas, frozenFounderPhraseAsciiCaseInsensitive: false}}))),
@@ -553,6 +569,10 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, sevenReceiptPhaseFlowCovered: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, workerBrokerOriginBound: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, resumableAgentTeamsTaskProtocol: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, explicitNonThinkingProviderConfig: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, finishReasonPolicyBound: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, inferenceResourceRetryBound: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, liveMaxTokens4000: false}}),
     !liveConformanceValid({...liveConformance, providerOutcomeDiagnostics: {...liveConformance.providerOutcomeDiagnostics, outcomes: liveConformance.providerOutcomeDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, providerOutcomeCode: 'RAW_PROVIDER_FAILURE'} : entry)}}),
     !liveConformanceValid({...liveConformance, taskProtocolDiagnostics: {...liveConformance.taskProtocolDiagnostics, outcomes: liveConformance.taskProtocolDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, taskProtocolOutcomeCode: 'RAW_TASK_EXCEPTION'} : entry)}}),
     !liveConformanceValid({...liveConformance, submissionImportDiagnostics: {...liveConformance.submissionImportDiagnostics, outcomes: liveConformance.submissionImportDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, submissionImportOutcomeCode: 'RAW_API_EXCEPTION'} : entry)}}),

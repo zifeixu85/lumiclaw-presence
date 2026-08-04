@@ -37,6 +37,10 @@ const exactProviderOutcomes = new Set([
   'PROVIDER_UNAVAILABLE',
   'MODEL_RESPONSE_IDENTITY_INVALID',
   'MODEL_RETURNED_MODEL_MISMATCH',
+  'MODEL_OUTPUT_TRUNCATED',
+  'MODEL_CONTENT_FILTERED',
+  'MODEL_TOOL_CALL_FORBIDDEN',
+  'MODEL_INFERENCE_RESOURCE_UNAVAILABLE',
   'MODEL_FINISH_REASON_INVALID',
   'MODEL_USAGE_INVALID',
   'PROVIDER_RESPONSE_INVALID',
@@ -59,6 +63,7 @@ export class LiveUatDiagnosticError extends Error {
 export function isLiveStage(value) { return typeof value === 'string' && stages.has(value); }
 export function isLiveStageCode(value) { return typeof value === 'string' && codes.has(value); }
 export function isProviderOutcomeCode(value) { return typeof value === 'string' && (exactProviderOutcomes.has(value) || providerHttpOutcomePattern.test(value)); }
+export function providerOutcomeRetryable(value) { return value === 'DEEPSEEK_SECRET_FILE_UNAVAILABLE' || value === 'MODEL_TIMEOUT' || value === 'PROVIDER_UNAVAILABLE' || value === 'MODEL_INFERENCE_RESOURCE_UNAVAILABLE' || value === 'PROVIDER_HTTP_429' || /^PROVIDER_HTTP_5\d\d$/u.test(String(value)); }
 export function liveStageCode(stage) {
   if (!isLiveStage(stage)) throw new Error('LIVE_DIAGNOSTIC_STAGE_INVALID');
   return LIVE_STAGE_CODE[stage];
@@ -101,7 +106,7 @@ export function conformanceProgressForStage(stage) {
 export function providerOutcomeFromMission(mission, failedTaskId) {
   if (!isRecord(mission) || mission.state !== 'FAILED' || typeof failedTaskId !== 'string' || failedTaskId.length === 0 || failedTaskId.length > 160) return 'LIVE_PROVIDER_BROKER_FAILED';
   const failure = mission.runtimeStatus?.failure;
-  if (!isRecord(failure) || failure.failedTaskId !== failedTaskId || !isProviderOutcomeCode(failure.code)) return 'LIVE_PROVIDER_BROKER_FAILED';
+  if (!isRecord(failure) || failure.failedTaskId !== failedTaskId || !isProviderOutcomeCode(failure.code) || failure.retryable !== providerOutcomeRetryable(failure.code)) return 'LIVE_PROVIDER_BROKER_FAILED';
   if (!Array.isArray(mission.modelCalls)) return 'LIVE_PROVIDER_BROKER_FAILED';
   const taskCalls = mission.modelCalls.filter((call) => isRecord(call) && call.taskId === failedTaskId);
   if (taskCalls.length > 1) return 'LIVE_PROVIDER_BROKER_FAILED';
@@ -110,7 +115,7 @@ export function providerOutcomeFromMission(mission, failedTaskId) {
     if (call.provider !== 'DEEPSEEK' || call.maturity !== 'CANARY' || call.secretPresent !== false || !isRecord(call.response)) return 'LIVE_PROVIDER_BROKER_FAILED';
     if (call.error === null) {
       if (failure.code !== 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID' || typeof call.outputDigest !== 'string' || !digestPattern.test(call.outputDigest)) return 'LIVE_PROVIDER_BROKER_FAILED';
-    } else if (!isRecord(call.error) || !isProviderOutcomeCode(call.error.code) || call.error.code !== failure.code || typeof call.error.retryable !== 'boolean') return 'LIVE_PROVIDER_BROKER_FAILED';
+    } else if (!isRecord(call.error) || !isProviderOutcomeCode(call.error.code) || call.error.code !== failure.code || call.error.retryable !== providerOutcomeRetryable(call.error.code)) return 'LIVE_PROVIDER_BROKER_FAILED';
   } else if (!['DEEPSEEK_SECRET_FILE_UNAVAILABLE', 'LIVE_PROVIDER_BROKER_FAILED'].includes(failure.code)) return 'LIVE_PROVIDER_BROKER_FAILED';
   return failure.code;
 }
