@@ -1,6 +1,6 @@
 import {createDemoCampaignDocument, sha256Digest} from '@lumiclaw/domain';
 import {PostgresCampaignRepository} from '@lumiclaw/db';
-import {PostgresShadowMissionRepository, PublicSafeMockMediaProvider, PublicSafeMockModelProvider, attachProviderEvidence, missionPublicEvidence, runPublicSafeFlight} from '@lumiclaw/governed-shadow';
+import {PostgresShadowMissionRepository, PublicSafeMockMediaProvider, PublicSafeMockModelProvider, attachProviderEvidence, missionPublicEvidence, reviewRevision, runPublicSafeFlight} from '@lumiclaw/governed-shadow';
 import {Pool} from 'pg';
 import {mkdir, writeFile} from 'node:fs/promises';
 
@@ -18,6 +18,9 @@ try {
   if (!model.ok) throw new Error('MODEL_MOCK_CONFORMANCE_FAILED');
   const media = await new PublicSafeMockMediaProvider(() => new Date(now.getTime() + 4_500)).generate({organizationId: campaign.organizationId, missionId: flight.id, prompt: 'PostgreSQL conformance media fixture', rightsConfirmedSynthetic: true});
   flight = attachProviderEvidence(flight, {modelCall: model.snapshot, mediaAsset: media.asset}, new Date(now.getTime() + 5_000));
+  const reviewableRevision = flight.revisions.find((revision) => revision.platform === 'X' && revision.revision === 2);
+  if (reviewableRevision === undefined) throw new Error('POSTGRES_REVIEWABLE_REVISION_MISSING');
+  flight = reviewRevision(flight, created.envelope.document, reviewableRevision.id, reviewableRevision.digest, 'READY_FOR_FUTURE_EXECUTION', new Date(now.getTime() + 5_500));
   const flightRoute = `/api/v1/shadow-missions/${flight.id}/public-safe-flight`; const flightRequestDigest = sha256Digest({operation: 'PUBLIC_SAFE_FLIGHT', missionId: flight.id});
   const flightSaved = await shadowRepository.replaceIdempotent(flight, started.mission.etag, flightRoute, 'shadow-db-flight', flightRequestDigest); flight = flightSaved.mission;
   const flightMutationReplay = await shadowRepository.replaceIdempotent(flight, started.mission.etag, flightRoute, 'shadow-db-flight', flightRequestDigest);
