@@ -1,6 +1,8 @@
 import {createHash, randomBytes} from 'node:crypto';
 import {execFileSync} from 'node:child_process';
+import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
 import path from 'node:path';
 
 const root = process.cwd();
@@ -8,11 +10,16 @@ const controller = 'agentteams-controller';
 const leader = 'presence-mission-leader';
 const teamName = 'sdd002-governed-shadow';
 const controlProject = 'lumiclaw-sdd002-agentteams-e2e';
+const compose = ['compose', '-f', 'compose.yml', '-f', 'compose.runtime-acceptance.yml', '--project-name', controlProject];
 const controlApi = 'http://127.0.0.1:4125';
 let projectId = '';
 let controlPlaneRunning = false;
 const runtimeModel = 'mock-agentteams-conformance';
 const runtimeImportToken = randomBytes(32).toString('base64url');
+const runtimeImportSecretRoot = mkdtempSync(path.join(tmpdir(), 'lumiclaw-runtime-import.'));
+const runtimeImportSecretFile = path.join(runtimeImportSecretRoot, 'runtime-import-token');
+writeFileSync(runtimeImportSecretFile, runtimeImportToken, {encoding: 'utf8', mode: 0o600});
+let runtimeImportSecretRemoved = false;
 const expectedRoles = [
   leader,
   'evidence-claim-steward',
@@ -24,7 +31,7 @@ const expectedRoles = [
 const events = [];
 process.env.LUMICLAW_API_PORT = '4125';
 process.env.LUMICLAW_WEB_PORT = '3125';
-process.env.LUMICLAW_RUNTIME_IMPORT_TOKEN = runtimeImportToken;
+process.env.LUMICLAW_RUNTIME_IMPORT_TOKEN_FILE = runtimeImportSecretFile;
 
 function run(executable, args, label, timeout = 30_000) {
   const startedAt = new Date().toISOString();
@@ -103,14 +110,23 @@ async function waitForControlApi() {
 
 function cleanupControlPlane() {
   if (!controlPlaneRunning) return;
-  try { execFileSync('docker', ['compose', '--project-name', controlProject, 'down', '--volumes', '--remove-orphans'], {cwd: root, encoding: 'utf8', stdio: 'ignore'}); } catch {}
+  try { execFileSync('docker', [...compose, 'down', '--volumes', '--remove-orphans'], {cwd: root, encoding: 'utf8', stdio: 'ignore'}); } catch {}
   controlPlaneRunning = false;
 }
-process.on('exit', cleanupControlPlane);
+function cleanupLocalSecret() {
+  if (runtimeImportSecretRemoved) return;
+  delete process.env.LUMICLAW_RUNTIME_IMPORT_TOKEN_FILE;
+  rmSync(runtimeImportSecretRoot, {recursive: true, force: true});
+  runtimeImportSecretRemoved = true;
+}
+process.on('exit', () => {
+  cleanupControlPlane();
+  cleanupLocalSecret();
+});
 
-run('docker', ['compose', '--project-name', controlProject, 'down', '--volumes', '--remove-orphans'], 'control-plane-clean-start', 60_000);
+run('docker', [...compose, 'down', '--volumes', '--remove-orphans'], 'control-plane-clean-start', 60_000);
 controlPlaneRunning = true;
-run('docker', ['compose', '--project-name', controlProject, 'up', '--build', '--detach', 'api'], 'control-plane-fresh-build', 420_000);
+run('docker', [...compose, 'up', '--build', '--detach', 'api'], 'control-plane-fresh-build', 420_000);
 await waitForControlApi();
 
 const template = await request('/api/v1/campaigns/demo-template', undefined, 200);
@@ -339,22 +355,22 @@ if (providerRuntimeProbe.status !== 200 || providerRuntimeProbe.maturity !== 'MO
 const mockHealth = await fetch('http://127.0.0.1:28333/health', {signal: AbortSignal.timeout(3_000)}).then((response) => response.json());
 if (mockHealth.provider !== 'PUBLIC_SAFE_MOCK' || mockHealth.maturity !== 'MOCK_CONFORMANCE' || mockHealth.realModelClaim !== false || mockHealth.requestCounts?.chatCompletions < 9) throw new Error('PUBLIC_SAFE_RUNTIME_MODEL_MATURITY_INVALID');
 
-run('docker', ['compose', '--project-name', controlProject, 'restart', 'api'], 'product-api-restart', 60_000);
+run('docker', [...compose, 'restart', 'api'], 'product-api-restart', 60_000);
 await waitForControlApi();
 const reopenedProduct = await request(`/api/v1/shadow-missions/${productMission.id}`, {headers: organizationHeaders}, 200);
 if (reopenedProduct.body.mission.etag !== productMission.etag || reopenedProduct.body.mission.revisions.length !== 5 || reopenedProduct.body.mission.audits.length !== 5 || reopenedProduct.body.mission.reviews.length !== 1) throw new Error('PRODUCT_POSTGRES_RESTART_RECOVERY_FAILED');
 const publicEvidence = await request(`/api/v1/shadow-missions/${productMission.id}/evidence`, {headers: organizationHeaders}, 200);
 if (publicEvidence.body.evidence.noAction.actionGrantCount !== 0 || publicEvidence.body.evidence.noAction.connectorCount !== 0 || publicEvidence.body.evidence.noAction.externalActionCount !== 0) throw new Error('PRODUCT_PUBLIC_EVIDENCE_NO_ACTION_FAILED');
-run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update missions set payload=jsonb_set(payload,'{state}',to_jsonb('FAILED'::text)) where id='${productMission.id}'`], 'tamper-aggregate-state');
+run('docker', [...compose, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update missions set payload=jsonb_set(payload,'{state}',to_jsonb('FAILED'::text)) where id='${productMission.id}'`], 'tamper-aggregate-state');
 const normalizedRecovery = await request(`/api/v1/shadow-missions/${productMission.id}`, {headers: organizationHeaders}, 200);
 if (normalizedRecovery.body.mission.state !== productMission.state || normalizedRecovery.body.mission.etag !== productMission.etag || normalizedRecovery.body.mission.revisions.length !== 5) throw new Error('NORMALIZED_HISTORY_NOT_AUTHORITATIVE');
-run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update missions set payload=jsonb_set(payload,'{state}',to_jsonb(state)) where id='${productMission.id}'`], 'restore-aggregate-state');
+run('docker', [...compose, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update missions set payload=jsonb_set(payload,'{state}',to_jsonb(state)) where id='${productMission.id}'`], 'restore-aggregate-state');
 const tamperedTaskId = productMission.tasks[0].id;
-run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update agent_tasks set payload=jsonb_set(payload,'{acceptedOutputDigest}',to_jsonb('${'0'.repeat(64)}'::text)) where id='${tamperedTaskId}'`], 'tamper-normalized-task-history');
+run('docker', [...compose, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update agent_tasks set payload=jsonb_set(payload,'{acceptedOutputDigest}',to_jsonb('${'0'.repeat(64)}'::text)) where id='${tamperedTaskId}'`], 'tamper-normalized-task-history');
 const normalizedDivergence = await request(`/api/v1/shadow-missions/${productMission.id}`, {headers: organizationHeaders}, 422);
 if (normalizedDivergence.body.code !== 'CONTROL_PLANE_HISTORY_DIVERGED') throw new Error('NORMALIZED_HISTORY_TAMPER_NOT_REJECTED');
-run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update agent_tasks set payload=jsonb_set(payload,'{acceptedOutputDigest}',to_jsonb(trim(accepted_output_digest)::text)) where id='${tamperedTaskId}'`], 'restore-normalized-task-history');
-const databaseCounts = JSON.parse(run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At', '-c', "select json_build_object('campaigns',(select count(*) from campaigns),'missions',(select count(*) from missions),'agent_runs',(select count(*) from agent_runs),'agent_tasks',(select count(*) from agent_tasks),'revisions',(select count(*) from governed_artifact_revisions),'audits',(select count(*) from audit_decisions),'owner_reviews',(select count(*) from owner_reviews),'action_tables',(select count(*) from information_schema.tables where table_schema='public' and table_name in ('action_grants','connectors','action_outbox')))"], 'product-database-counts'));
+run('docker', [...compose, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update agent_tasks set payload=jsonb_set(payload,'{acceptedOutputDigest}',to_jsonb(trim(accepted_output_digest)::text)) where id='${tamperedTaskId}'`], 'restore-normalized-task-history');
+const databaseCounts = JSON.parse(run('docker', [...compose, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At', '-c', "select json_build_object('campaigns',(select count(*) from campaigns),'missions',(select count(*) from missions),'agent_runs',(select count(*) from agent_runs),'agent_tasks',(select count(*) from agent_tasks),'revisions',(select count(*) from governed_artifact_revisions),'audits',(select count(*) from audit_decisions),'owner_reviews',(select count(*) from owner_reviews),'action_tables',(select count(*) from information_schema.tables where table_schema='public' and table_name in ('action_grants','connectors','action_outbox')))"], 'product-database-counts'));
 if (databaseCounts.campaigns !== 1 || databaseCounts.missions !== 1 || databaseCounts.agent_runs !== 6 || databaseCounts.agent_tasks !== 8 || databaseCounts.revisions !== 5 || databaseCounts.audits !== 5 || databaseCounts.owner_reviews !== 1 || databaseCounts.action_tables !== 0) throw new Error('PRODUCT_CONTROL_PLANE_COUNTS_INVALID');
 const sourceHead = run('git', ['rev-parse', 'HEAD'], 'source-head');
 const sourceBranch = run('git', ['branch', '--show-current'], 'source-branch');
@@ -438,7 +454,7 @@ const evidence = {
   events
 };
 cleanupControlPlane();
-delete process.env.LUMICLAW_RUNTIME_IMPORT_TOKEN;
+cleanupLocalSecret();
 if (JSON.stringify(evidence).includes(runtimeImportToken)) throw new Error('RUNTIME_IMPORT_TOKEN_LEAKED_TO_EVIDENCE');
 await mkdir(path.join(root, '.evidence/sdd-002'), {recursive: true});
 await writeFile(path.join(root, '.evidence/sdd-002/agentteams-real-runtime.json'), `${JSON.stringify(evidence, null, 2)}\n`);

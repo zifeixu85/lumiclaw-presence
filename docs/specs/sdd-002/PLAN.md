@@ -11,3 +11,12 @@
 
 Rollback uses local Git reverts and project-scoped test migrations. Cancellation and retry preserve append-only history. No external compensation exists because M2 has no external action.
 
+## Change Request 2 plan
+
+- Persist the explicit provider mode/model and the recoverable local-UAT state machine in the existing PostgreSQL Mission aggregate.
+- Mount DeepSeek and runner-bootstrap values as Compose secret files and expose a redacting, fail-closed provider broker.
+- Exchange the bootstrap credential for in-memory single-use Project/ACK/model/Submit/finalize tickets bound to one Mission, role, Task and attempt.
+- Extend the pinned host acceptance runner so it executes only the supplied Mission/digest/runtime identities and sends role-scoped model calls through the broker.
+- Persist every domain ModelCallSnapshot, runtime receipt and failure code; keep Leader deterministic and Producer/Auditor independent.
+- Add business-first zh-CN guidance with en parity, 390px behavior and folded technical evidence.
+- Verify Mock, no-secret and adversarial contracts automatically; reserve the real-key Canary and `LIVE_PROVIDER_VERIFIED` label for Coordinator execution.

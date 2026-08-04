@@ -1,11 +1,12 @@
 import {createDemoCampaignDocument, createUuidV7, sha256Digest} from '@lumiclaw/domain';
-import {AGENTTEAMS_V120_BUILD_DIGEST, runtimeDagDigest, runtimeMemberSetDigest, runtimeProjectDispatchReceiptDigest, runtimeTaskAckReceiptDigest, runtimeTaskSubmissionReceiptDigest, type ShadowMission, type TaskContract} from '@lumiclaw/governed-shadow';
+import {AGENTTEAMS_V120_BUILD_DIGEST, runtimeDagDigest, runtimeMemberSetDigest, runtimeProjectDispatchReceiptDigest, runtimeTaskAckReceiptDigest, runtimeTaskSubmissionReceiptDigest, type ModelGenerateRequest, type ModelProvider, type ShadowMission, type TaskContract} from '@lumiclaw/governed-shadow';
 import {afterEach, describe, expect, it} from 'vitest';
 import {buildApi} from './server.js';
 
 const apps = [] as ReturnType<typeof buildApi>[];
 const now = () => new Date('2026-08-03T12:00:00.000Z');
 const runtimeImportTestToken = 'public-safe-runtime-import-test-token-v1';
+const runtimeBootstrapTestSecret = 'public-safe-runtime-bootstrap-conformance-v1';
 
 function projectReceipt(mission: ShadowMission) {
   const memberBindings = mission.roleContexts.map((context) => ({roleId: context.roleId, roleIdentityId: context.identityId, runtimeActorId: `@${context.roleId}:runtime.test`}));
@@ -19,16 +20,62 @@ function ackReceipt(mission: ShadowMission, task: TaskContract) {
   return {...base, receiptDigest: runtimeTaskAckReceiptDigest(base)};
 }
 
-function taskSubmission(mission: ShadowMission, task: TaskContract, payload: unknown) {
+function taskSubmission(mission: ShadowMission, task: TaskContract, payload: unknown, maturity: 'MOCK_CONFORMANCE' | 'CANARY' = 'MOCK_CONFORMANCE') {
   const current = mission.tasks.find((item) => item.id === task.id)!; const outputDigest = sha256Digest(payload);
-  const resultDigest = sha256Digest({schemaVersion: 1, taskId: task.id, roleId: task.roleId, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, payload, outputDigest, maturity: 'MOCK_CONFORMANCE', externalActionAllowed: false});
+  const resultDigest = sha256Digest({schemaVersion: 1, taskId: task.id, roleId: task.roleId, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, payload, outputDigest, maturity, externalActionAllowed: false});
   const base = {schemaVersion: 1 as const, projectId: mission.runtimeProjectId, taskId: task.id, roleId: task.roleId, runtimeActorId: current.runtimeAck!.runtimeActorId, attempt: task.attempt, ackReceiptDigest: current.runtimeAck!.receiptDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest!, runtimeState: 'submitted' as const, submittedAt: now().toISOString(), resultDigest, resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY' as const, runtimeObservationId: sha256Digest({taskId: task.id, resultDigest, inputProjectionDigest: task.inputProjectionDigest, source: 'test-persisted-summary'})};
-  return {schemaVersion: 1 as const, missionId: mission.id, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest!, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1 as const, payload, outputDigest, runtimeResultMaturity: 'MOCK_CONFORMANCE' as const, runtimeReceipt: {...base, receiptDigest: runtimeTaskSubmissionReceiptDigest(base)}};
+  return {schemaVersion: 1 as const, missionId: mission.id, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest!, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1 as const, payload, outputDigest, runtimeResultMaturity: maturity, runtimeReceipt: {...base, receiptDigest: runtimeTaskSubmissionReceiptDigest(base)}};
 }
 
 afterEach(async () => { await Promise.all(apps.splice(0).map(async (app) => app.close())); });
 
 describe('M1 Campaign API contract', () => {
+  it('persists explicit Live UAT state and fails closed without the Compose secret, with no Mock fallback', async () => {
+    const app = buildApi({now, runtimeBootstrapSecret: runtimeBootstrapTestSecret}); apps.push(app); const document = createDemoCampaignDocument();
+    const base = {'x-lumiclaw-organization-id': document.organizationId, 'idempotency-key': 'live-campaign-001'};
+    const created = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers: base, payload: document});
+    const started = await app.inject({method: 'POST', url: `/api/v1/campaigns/${document.id}/shadow-missions`, headers: {...base, 'idempotency-key': 'live-start-00001', 'if-match': created.headers.etag!}, payload: {sourceDigest: created.json().digest, fault: 'BETA_TO_GA', providerMode: 'LIVE_DEEPSEEK_UAT', providerModel: 'deepseek-v4-flash'}});
+    expect(started.statusCode).toBe(201); expect(started.json().mission).toMatchObject({state: 'WAITING_RUNTIME', providerMode: 'LIVE_DEEPSEEK_UAT', providerMaturity: 'LIVE_PROVIDER_CANARY', live: false, runtimeStatus: {nextResponsible: 'COORDINATOR'}});
+    const missionId = started.json().mission.id; let mission = started.json().mission as ShadowMission; let etag = started.headers.etag!;
+    const ticket = async (action: string, task?: TaskContract) => app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-runner/tickets`, headers: {'x-lumiclaw-organization-id': document.organizationId, 'x-lumiclaw-runner-bootstrap': runtimeBootstrapTestSecret}, payload: {missionId, campaignDigest: mission.sourceCampaignDigest, action, roleId: task?.roleId ?? null, taskId: task?.id ?? null, attempt: task?.attempt ?? null, agentTeamsSourceTarSha256: mission.runtimeExpectation.agentTeamsSourceTarSha256, agentTeamsBuildDigest: mission.runtimeExpectation.agentTeamsBuildDigest, imageDigests: mission.runtimeExpectation.imageDigests}});
+    const projectTicket = await ticket('PROJECT_DISPATCH'); expect(projectTicket.statusCode).toBe(200);
+    const dispatched = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {'x-lumiclaw-organization-id': document.organizationId, 'x-lumiclaw-runtime-ticket': projectTicket.json().ticket, 'idempotency-key': 'live-dispatch-001', 'if-match': etag}, payload: {kind: 'PROJECT_DISPATCHED', receipt: projectReceipt(mission)}});
+    expect(dispatched.statusCode).toBe(200); mission = dispatched.json().mission; etag = dispatched.headers.etag!;
+    const steward = mission.tasks.find((task) => task.kind === 'FREEZE_EVIDENCE')!;
+    const ackTicket = await ticket('TASK_ACK', steward); expect(ackTicket.statusCode).toBe(200);
+    const acked = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {'x-lumiclaw-organization-id': document.organizationId, 'x-lumiclaw-runtime-ticket': ackTicket.json().ticket, 'idempotency-key': 'live-ack-0000001', 'if-match': etag}, payload: {kind: 'TASK_ACK', receipt: ackReceipt(mission, steward)}});
+    expect(acked.statusCode).toBe(200); mission = acked.json().mission;
+    const modelTicket = await ticket('MODEL_GENERATE', mission.tasks.find((task) => task.id === steward.id)!); expect(modelTicket.statusCode).toBe(200);
+    const missingSecret = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-model-generate`, headers: {'x-lumiclaw-organization-id': document.organizationId, 'x-lumiclaw-runtime-ticket': modelTicket.json().ticket}, payload: {taskId: steward.id, roleId: steward.roleId, attempt: steward.attempt, inputProjectionDigest: steward.inputProjectionDigest}});
+    expect(missingSecret.statusCode).toBe(503); expect(missingSecret.json()).toMatchObject({code: 'DEEPSEEK_SECRET_FILE_UNAVAILABLE', mockFallback: false, nextResponsible: 'COORDINATOR'});
+    const reopened = await app.inject({method: 'GET', url: `/api/v1/shadow-missions/${missionId}`, headers: {'x-lumiclaw-organization-id': document.organizationId}});
+    expect(reopened.json().mission).toMatchObject({state: 'FAILED', modelCalls: [], actionGrantCount: 0, connectorCount: 0, externalActionCount: 0, runtimeStatus: {failure: {code: 'DEEPSEEK_SECRET_FILE_UNAVAILABLE'}}});
+    const reuse = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-model-generate`, headers: {'x-lumiclaw-organization-id': document.organizationId, 'x-lumiclaw-runtime-ticket': modelTicket.json().ticket}, payload: {taskId: steward.id, roleId: steward.roleId, attempt: steward.attempt, inputProjectionDigest: steward.inputProjectionDigest}});
+    expect(reuse.statusCode).toBe(403); expect(reuse.json().code).toBe('LIVE_RUNTIME_TICKET_REUSED');
+    const forbiddenFallback = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/public-safe-flight`, headers: {...base, 'idempotency-key': 'live-no-fallback', 'if-match': reopened.headers.etag!}});
+    expect(forbiddenFallback.statusCode).toBe(422); expect(forbiddenFallback.json().code).toBe('MOCK_FALLBACK_FORBIDDEN');
+  });
+
+  it('binds a redacted Live provider receipt to the exact domain Task before accepting its Runtime Submit', async () => {
+    const app = buildApi({now, runtimeBootstrapSecret: runtimeBootstrapTestSecret, deepseekApiKey: 'conformance-key-that-never-leaves-memory-0001', liveModelProviderFactory: () => ({generateStructured: async (request: ModelGenerateRequest<unknown>) => {
+      const value = {frozen: true, assessment: 'Approved Claim and Evidence bindings are frozen for SHADOW review.'}; const inputDigest = sha256Digest({system: request.system, input: request.input}); const outputDigest = sha256Digest(value);
+      return {ok: true as const, value, snapshot: {schemaVersion: 1 as const, id: createUuidV7(now().getTime(), new Uint8Array(10)), missionId: request.missionId, taskId: request.taskId, provider: 'DEEPSEEK' as const, maturity: 'CANARY' as const, model: request.model, response: {id: 'redacted-conformance-response', actualModel: request.model, systemFingerprint: null, finishReason: 'stop'}, config: {temperature: 0, maxTokens: 4000, responseFormat: 'json_object' as const, timeoutMs: 120000, maxAttempts: 3}, pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04' as const, inputCacheHitUsdPerMillion: 0.0028, inputCacheMissUsdPerMillion: 0.14, outputUsdPerMillion: 0.28, peakMultiplierNotApplied: true as const}, inputDigest, outputDigest, tokenUsage: {input: 20, output: 10, cacheHit: 5, cacheMiss: 15, reasoning: 0}, estimatedCostUsd: 0.000004914, latencyMs: 23, attempts: 1, error: null, secretPresent: false as const, createdAt: now().toISOString()}};
+    }} as unknown as ModelProvider)}); apps.push(app); const document = createDemoCampaignDocument(); const headers = {'x-lumiclaw-organization-id': document.organizationId};
+    const created = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers: {...headers, 'idempotency-key': 'live-success-campaign'}, payload: document});
+    const started = await app.inject({method: 'POST', url: `/api/v1/campaigns/${document.id}/shadow-missions`, headers: {...headers, 'idempotency-key': 'live-success-start', 'if-match': created.headers.etag!}, payload: {sourceDigest: created.json().digest, fault: 'BETA_TO_GA', providerMode: 'LIVE_DEEPSEEK_UAT', providerModel: 'deepseek-v4-flash'}});
+    let mission = started.json().mission as ShadowMission; let etag = started.headers.etag!; const missionId = mission.id;
+    const issue = async (action: string, task?: TaskContract) => (await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-runner/tickets`, headers: {...headers, 'x-lumiclaw-runner-bootstrap': runtimeBootstrapTestSecret}, payload: {missionId, campaignDigest: mission.sourceCampaignDigest, action, roleId: task?.roleId ?? null, taskId: task?.id ?? null, attempt: task?.attempt ?? null, agentTeamsSourceTarSha256: mission.runtimeExpectation.agentTeamsSourceTarSha256, agentTeamsBuildDigest: mission.runtimeExpectation.agentTeamsBuildDigest, imageDigests: mission.runtimeExpectation.imageDigests}})).json().ticket as string;
+    const dispatch = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('PROJECT_DISPATCH'), 'idempotency-key': 'live-success-dispatch', 'if-match': etag}, payload: {kind: 'PROJECT_DISPATCHED', receipt: projectReceipt(mission)}}); mission = dispatch.json().mission; etag = dispatch.headers.etag!;
+    let task = mission.tasks.find((item) => item.kind === 'FREEZE_EVIDENCE')!;
+    const ack = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('TASK_ACK', task), 'idempotency-key': 'live-success-ack', 'if-match': etag}, payload: {kind: 'TASK_ACK', receipt: ackReceipt(mission, task)}}); mission = ack.json().mission;
+    task = mission.tasks.find((item) => item.kind === 'FREEZE_EVIDENCE')!;
+    const generated = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-model-generate`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('MODEL_GENERATE', task)}, payload: {taskId: task.id, roleId: task.roleId, attempt: task.attempt, inputProjectionDigest: task.inputProjectionDigest}});
+    expect(generated.statusCode).toBe(200); expect(generated.json()).toMatchObject({maturity: 'LIVE_PROVIDER_CANARY', receipt: {provider: 'DEEPSEEK', maturity: 'CANARY', secretPresent: false}, mission: {modelCalls: [{taskId: task.id, runtimeOutputDigest: sha256Digest(generated.json().payload)}]}}); mission = generated.json().mission; etag = generated.headers.etag!; task = mission.tasks.find((item) => item.kind === 'FREEZE_EVIDENCE')!;
+    const submit = taskSubmission(mission, task, generated.json().payload, 'CANARY');
+    const accepted = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('TASK_SUBMIT', task), 'idempotency-key': 'live-success-submit', 'if-match': etag}, payload: {kind: 'TASK_SUBMIT', submission: submit}});
+    expect(accepted.statusCode).toBe(200); expect(accepted.json().mission.tasks.find((item: {id: string}) => item.id === task.id).state).toBe('ACCEPTED'); expect(accepted.json().mission.modelCalls).toHaveLength(1); expect(accepted.json().mission.actionGrantCount).toBe(0);
+  });
+
   it('returns explicit PostgreSQL/non-live health and OpenAPI', async () => {
     const app = buildApi({now}); apps.push(app);
     expect((await app.inject({method: 'GET', url: '/health'})).json()).toEqual({service: 'api', status: 'ok', mode: 'DEMO_SEED', live: false, controlPlane: 'POSTGRESQL'});

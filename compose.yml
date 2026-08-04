@@ -63,7 +63,6 @@ services:
       PORT: "4000"
       DATABASE_URL: postgres://postgres@postgres:5432/lumiclaw
       BLOB_ROOT: /var/lib/lumiclaw/blobs
-      LUMICLAW_RUNTIME_IMPORT_TOKEN: "${LUMICLAW_RUNTIME_IMPORT_TOKEN:-}"
     ports:
       - target: 4000
         published: "${LUMICLAW_API_PORT:-4100}"

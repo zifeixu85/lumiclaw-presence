@@ -41,6 +41,7 @@ class CdpPage {
       const pending = this.pending.get(message.id);
       if (pending === undefined) return;
       this.pending.delete(message.id);
+      clearTimeout(pending.timeout);
       if (message.error !== undefined) pending.reject(new Error(`${pending.method}: ${message.error.message}`));
       else pending.resolve(message.result ?? {});
     });
@@ -49,7 +50,8 @@ class CdpPage {
   send(method, params = {}) {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {
-      this.pending.set(id, {resolve, reject, method});
+      const timeout = setTimeout(() => { this.pending.delete(id); reject(new Error(`${method}: Chrome DevTools response timed out`)); }, 15_000);
+      this.pending.set(id, {resolve, reject, method, timeout});
       this.socket.send(JSON.stringify({id, method, params}));
     });
   }
@@ -73,7 +75,24 @@ class CdpPage {
 
   async navigate(url) {
     await this.send('Page.navigate', {url});
-    await this.waitFor("document.readyState === 'complete'", `page load ${url}`);
+    await this.waitFor(`location.href === ${JSON.stringify(url)} && document.readyState !== 'loading'`, `page DOM ready ${url}`);
+  }
+
+  async navigateUntil(url, expression, description, timeoutMs = 10_000) {
+    let lastError;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      const target = new URL(url);
+      if (attempt > 0) target.searchParams.set('_sdd002_retry', String(attempt));
+      try {
+        await this.navigate(target.href);
+        await this.waitFor(expression, description, timeoutMs);
+        return;
+      } catch (error) {
+        lastError = error;
+        if (attempt < 2) await this.navigate('about:blank');
+      }
+    }
+    throw new Error(`${description} failed after three full navigations: ${lastError instanceof Error ? lastError.message : 'unknown browser failure'}`);
   }
 
   async viewport(width, height, mobile = false) {
@@ -108,13 +127,13 @@ try {
 
   const index = await fetch(`${storybookBase}/index.json`).then((response) => response.json());
   const stories = Object.values(index.entries).filter((entry) => entry.type === 'story' && entry.title === 'M2/Governed SHADOW Mission States');
-  if (stories.length !== 14) throw new Error(`Expected 14 governed SHADOW state stories, received ${stories.length}.`);
+  if (stories.length !== 16) throw new Error(`Expected 16 governed SHADOW state stories, received ${stories.length}.`);
   const renderedStates = [];
   for (const story of stories) {
-    const mobile = story.id.endsWith('--english-queued-390-px');
+    console.info(`BROWSER_STORY:${story.id}`);
+    const mobile = story.id.endsWith('--english-queued-390-px') || story.id.endsWith('--chinese-live-waiting-390-px');
     await cdp.viewport(mobile ? 390 : 1280, mobile ? 844 : 900, mobile);
-    await cdp.navigate(`${storybookBase}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`);
-    await cdp.waitFor("document.querySelector('.shadow-console,.mission-empty,.review-desk') !== null", `Storybook story ${story.id}`);
+    await cdp.navigateUntil(`${storybookBase}/iframe.html?id=${encodeURIComponent(story.id)}&viewMode=story`, "document.querySelector('.shadow-console,.mission-empty,.review-desk,.mode-choice') !== null", `Storybook story ${story.id}`);
     const state = await cdp.evaluate(`(() => ({
       id: ${JSON.stringify(story.id)},
       roles: document.querySelectorAll('.role-card').length,
@@ -129,15 +148,14 @@ try {
   }
   const queuedStory = renderedStates.find((story) => story.id.endsWith('--queued'));
   const englishMobileStory = renderedStates.find((story) => story.id.endsWith('--english-queued-390-px'));
-  if (queuedStory?.roles !== 6 || queuedStory.tasks !== 8 || englishMobileStory?.width !== 390) throw new Error('Storybook six-member/eight-Task or 390px acceptance failed.');
+  const liveMobileStory = renderedStates.find((story) => story.id.endsWith('--chinese-live-waiting-390-px'));
+  if (queuedStory?.roles !== 6 || queuedStory.tasks !== 8 || englishMobileStory?.width !== 390 || liveMobileStory?.roles !== 6 || liveMobileStory.tasks !== 8 || liveMobileStory.width !== 390) throw new Error('Storybook six-member/eight-Task or 390px Live/Mock acceptance failed.');
   checks.storybookRealBrowserStateMatrix = {count: renderedStates.length, renderedStates};
-  await cdp.navigate(`${storybookBase}/iframe.html?id=${encodeURIComponent(englishMobileStory.id)}&viewMode=story`);
-  await cdp.waitFor("document.querySelectorAll('.role-card').length === 6", 'mobile Storybook six-role roster');
+  await cdp.navigateUntil(`${storybookBase}/iframe.html?id=${encodeURIComponent(englishMobileStory.id)}&viewMode=story`, "document.querySelectorAll('.role-card').length === 6", 'mobile Storybook six-role roster');
   await cdp.screenshot('storybook-en-queued-390');
 
   await cdp.viewport(1440, 1000, false);
-  await cdp.navigate(`${appBase}/mission`);
-  await cdp.waitFor("document.querySelector('.campaign-control button.primary-action') !== null", 'hydrated empty Campaign');
+  await cdp.navigateUntil(`${appBase}/mission`, "document.querySelector('.campaign-control button.primary-action') !== null", 'hydrated empty Campaign', 20_000);
   const initialBoundary = await cdp.evaluate(`(() => ({
     text: document.body.innerText,
     boundaries: document.querySelectorAll('.governance-boundaries article').length,
@@ -146,7 +164,16 @@ try {
   if (initialBoundary.boundaries !== 2 || !initialBoundary.text.includes('Claim / Evidence 只约束未来执行') || !initialBoundary.text.includes('排程按钮是独立校验')) throw new Error('UX-M1-001 governance boundary separation is missing.');
   if (initialBoundary.createText !== '创建并保存') throw new Error('Fresh product route did not hydrate the zh-CN Campaign state.');
   await cdp.evaluate("document.querySelector('button.primary-action').click(); true");
-  await cdp.waitFor("document.body.innerText.includes('数据库版本') && [...document.querySelectorAll('button')].some((button) => button.textContent.includes('启动六成员 SHADOW'))", 'saved Campaign and SHADOW start control');
+  await cdp.waitFor("document.body.innerText.includes('数据库版本') && document.querySelector('.mode-choice') !== null", 'saved Campaign and SHADOW mode choice');
+  const modeChoice = await cdp.evaluate(`(() => ({
+    mock: [...document.querySelectorAll('.mode-choice button')].some((button) => button.textContent.includes('创建 Mock Mission')),
+    live: [...document.querySelectorAll('.mode-choice button')].some((button) => button.textContent.includes('创建真实模型 UAT')),
+    maturity: document.body.innerText.includes('MOCK_CONFORMANCE') && document.body.innerText.includes('LIVE_PROVIDER_CANARY'),
+    coordinator: document.body.innerText.includes('Coordinator 启动固定版本六成员 Runner'),
+    unpublished: document.body.innerText.includes('未发布草稿'),
+    noAction: document.body.innerText.includes('0 ActionGrant · 0 Connector · 0 External action')
+  }))()`);
+  if (!modeChoice.mock || !modeChoice.live || !modeChoice.maturity || !modeChoice.coordinator || !modeChoice.unpublished || !modeChoice.noAction) throw new Error('Explicit Mock/Live maturity, Coordinator, unpublished, or no-action mode guidance is missing.');
   await cdp.evaluate("document.querySelector('.m1-editor-disclosure summary').click(); true");
   await cdp.waitFor("document.querySelector('.schedule-editor .secondary-action') !== null", 'M1 schedule disclosure');
   const foldReason = await scheduleReason(cdp);
@@ -165,7 +192,7 @@ try {
   await cdp.waitFor("!document.body.innerText.includes('有未保存修改') && document.querySelector('#schedule-disabled-reason')?.textContent.includes('DST 重叠')", 'saved draft returns to fold reason');
   checks.uxM1001DistinctBoundariesAndDisabledReasons = {boundaryCards: initialBoundary.boundaries, foldReason: foldReason.reason, unsavedReason: unsavedReason.reason};
 
-  await cdp.evaluate("[...document.querySelectorAll('button')].find((button) => button.textContent.includes('启动六成员 SHADOW')).click(); true");
+  await cdp.evaluate("[...document.querySelectorAll('.mode-choice button')].find((button) => button.textContent.includes('创建 Mock Mission')).click(); true");
   await cdp.waitFor("[...document.querySelectorAll('button')].some((button) => button.textContent.includes('运行公开安全故障演练'))", 'queued SHADOW Mission');
   await cdp.evaluate("[...document.querySelectorAll('button')].find((button) => button.textContent.includes('运行公开安全故障演练')).click(); true");
   await cdp.waitFor("document.querySelectorAll('.role-card').length === 6 && document.querySelectorAll('.task-node').length === 8 && document.body.innerText.includes('等待 Owner 精确确认')", 'fault flight awaiting exact Owner Review', 60_000);
@@ -192,7 +219,7 @@ try {
     noGrantBoundary: document.body.innerText.includes('Owner Review ≠ ActionGrant')
   }))()`);
   if (review.reviewed !== 4 || !review.noGrantBoundary || review.grants.slice(0, 3).some((value) => value !== '0')) throw new Error('Exact non-executable Owner Review boundary failed.');
-  checks.productHydratedMissionAndReview = {mission, rejected, review};
+  checks.productHydratedMissionAndReview = {modeChoice, mission, rejected, review};
   await cdp.screenshot('product-zh-review-desktop');
 
   await cdp.navigate(`${appBase}/en/mission`);
@@ -222,8 +249,14 @@ try {
   console.info(JSON.stringify({status: 'PASS', storyCount: stories.length, screenshots: screenshots.length, evidence: '.evidence/sdd-002/browser-verification.json'}));
 } finally {
   cdp?.socket.close();
-  chrome?.kill('SIGTERM');
-  await rm(profile, {recursive: true, force: true});
+  if (chrome !== undefined) {
+    chrome.kill('SIGTERM');
+    await Promise.race([new Promise((resolve) => chrome.once('exit', resolve)), delay(2_000)]);
+  }
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    try { await rm(profile, {recursive: true, force: true}); break; }
+    catch (error) { if (attempt === 4) throw error; await delay(150); }
+  }
 }
 
 async function waitForChrome(debugPort) {

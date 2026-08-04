@@ -2,7 +2,7 @@ import {campaignDocumentSchema, organizationGraphSchema} from '@lumiclaw/domain'
 
 export const openApiDocument = {
   openapi: '3.1.0',
-  info: {title: 'LumiClaw Presence Control API', version: '0.2.0-m2', description: 'DEMO_SEED / NOT_LIVE governed SHADOW Campaign. No ActionGrant, connector, schedule execution, or external action endpoint exists.'},
+  info: {title: 'LumiClaw Presence Control API', version: '0.2.0-m2-cr2', description: 'Governed SHADOW Campaign with explicit public-safe Mock and local Live DeepSeek UAT modes. No ActionGrant, connector, schedule execution, or external platform action endpoint exists.'},
   servers: [{url: '/'}],
   paths: {
     '/api/v1/campaigns': {
@@ -21,6 +21,9 @@ export const openApiDocument = {
       post: {summary: 'Queue an exact-digest six-member SHADOW Mission', parameters: [organizationHeader(), idempotencyHeader(), ifMatchHeader(), campaignId()], responses: {'201': {description: 'Queued; no external action'}}}
     },
     '/api/v1/shadow-missions/{missionId}': {get: {summary: 'Reopen a governed Mission with business state and progressively disclosed evidence', parameters: [organizationHeader()], responses: {'200': {description: 'Mission'}}}},
+    '/api/v1/shadow-missions/{missionId}/live-runner/tickets': {post: {summary: 'Exchange a secret-file bootstrap for one short-lived, single-Mission/role/Task/attempt/action ticket', parameters: [organizationHeader()], responses: {'200': {description: 'Single-use scoped ticket; no-store'}, '403': {description: 'Bootstrap unavailable or invalid'}, '409': {description: 'Persisted Mission/Task state is not ready'}, '422': {description: 'Runtime source/image/Mission binding mismatch'}}}},
+    '/api/v1/shadow-missions/{missionId}/live-model-generate': {post: {summary: 'Generate one non-Leader domain result through the server-only DeepSeek broker and persist a redacted receipt', parameters: [organizationHeader(), runtimeTicketHeader()], responses: {'200': {description: 'Normalized role output and redacted Canary receipt'}, '403': {description: 'Scoped ticket invalid/reused/expired'}, '502': {description: 'Provider/schema/semantic failure; no Mock fallback'}, '503': {description: 'Compose secret file unavailable; no Mock fallback'}}}},
+    '/api/v1/shadow-missions/{missionId}/live-runner/fail': {post: {summary: 'Persist a fail-closed local Runner interruption without fallback', parameters: [organizationHeader(), runtimeTicketHeader()], responses: {'200': {description: 'FAILED state persisted'}}}},
     '/api/v1/shadow-missions/{missionId}/runtime-events': {post: {summary: 'Import exact Project dispatch, Task ACK/Submit, and finalization events from the authenticated AgentTeams adapter; digest/schema/role validation is authoritative in PostgreSQL', parameters: [organizationHeader(), idempotencyHeader(), ifMatchHeader(), runtimeImportHeader()], responses: {'200': {description: 'Runtime event accepted'}, '403': {description: 'Runtime adapter authentication failed'}, '422': {description: 'Runtime submission quarantined or schema rejected'}, '503': {description: 'Runtime import disabled until an ephemeral token is configured'}}}},
     '/api/v1/shadow-missions/{missionId}/public-safe-flight': {post: {summary: 'Run deterministic MOCK_CONFORMANCE fault/re-audit flight; never claims real AgentTeams', parameters: [organizationHeader(), idempotencyHeader(), ifMatchHeader()], responses: {'200': {description: 'Public-safe conformance result'}}}},
     '/api/v1/shadow-missions/{missionId}/owner-reviews': {post: {summary: 'Record exact NON_EXECUTABLE Owner Review; never creates ActionGrant', parameters: [organizationHeader(), idempotencyHeader(), ifMatchHeader()], responses: {'200': {description: 'Review recorded'}}}},
@@ -33,4 +36,5 @@ function organizationHeader() { return {name: 'X-LumiClaw-Organization-Id', in: 
 function idempotencyHeader() { return {name: 'Idempotency-Key', in: 'header', required: true, schema: {type: 'string', minLength: 8, maxLength: 128}} as const; }
 function ifMatchHeader() { return {name: 'If-Match', in: 'header', required: true, schema: {type: 'string'}} as const; }
 function runtimeImportHeader() { return {name: 'X-LumiClaw-Runtime-Import-Token', in: 'header', required: true, schema: {type: 'string', minLength: 32}, description: 'Ephemeral adapter-to-control-plane credential; never persisted in Mission, trace, ledger, evidence, or source packages.'} as const; }
+function runtimeTicketHeader() { return {name: 'X-LumiClaw-Runtime-Ticket', in: 'header', required: true, schema: {type: 'string', minLength: 32}, description: 'Ten-minute single-use ticket bound to one local UAT Mission, role, Task, attempt and action; never persisted or logged.'} as const; }
 function campaignId() { return {name: 'campaignId', in: 'path', required: true, schema: {type: 'string', format: 'uuid'}} as const; }

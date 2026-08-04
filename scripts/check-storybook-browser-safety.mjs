@@ -12,7 +12,11 @@ for (const candidate of candidates) {
   const forbidden = [
     ['NODE_CRYPTO', /node:crypto/u],
     ['NODE_BUFFER', /\bBuffer\.(?:alloc|from)\b/u],
-    ['NODE_DIGEST_FIXTURE', /createDemoCampaignDocument|digestCampaign/u]
+    ['NODE_DIGEST_FIXTURE', /createDemoCampaignDocument|digestCampaign/u],
+    ['DEEPSEEK_SECRET_NAME', /DEEPSEEK_API_KEY|deepseek_api_key/u],
+    ['RUNTIME_BROKER_SECRET', /LUMICLAW_RUNTIME_BROKER_BOOTSTRAP|lumiclaw_runtime_broker_bootstrap/u],
+    ['SERVER_SECRET_PATH', /\/run\/secrets\//u],
+    ['AUTHORIZATION_BEARER', /authorization.{0,20}Bearer/iu]
   ].filter(([, pattern]) => pattern.test(bundle)).map(([code]) => code);
   if (forbidden.length > 0) throw new Error(`STORYBOOK_BROWSER_UNSAFE_BUNDLE:${candidate}:${forbidden.join(',')}`);
   bundles.push({bundle: path.relative(root, bundlePath), bytes: (await stat(bundlePath)).size});

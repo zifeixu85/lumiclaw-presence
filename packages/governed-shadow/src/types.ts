@@ -1,9 +1,10 @@
 import type {CampaignDocument, MissionRoleId, Platform, PlatformArtifact} from '@lumiclaw/domain';
 
 export type ShadowMissionState =
-  | 'QUEUED' | 'RUNNING' | 'WAITING_DEPENDENCY' | 'NEEDS_OWNER_REVIEW'
+  | 'QUEUED' | 'WAITING_RUNTIME' | 'RUNNING' | 'WAITING_DEPENDENCY' | 'NEEDS_OWNER_REVIEW' | 'AWAITING_OWNER_REVIEW'
   | 'FAILED' | 'TIMED_OUT' | 'CANCELLED' | 'UNKNOWN_RECOVERY'
-  | 'AUDIT_BLOCKED' | 'REVISION_REQUIRED' | 'SHADOW_COMPLETE';
+  | 'AUDIT_BLOCKED' | 'REVISION_REQUIRED' | 'SHADOW_COMPLETE' | 'COMPLETED_SHADOW';
+export type ShadowProviderMode = 'PUBLIC_SAFE_MOCK' | 'LIVE_DEEPSEEK_UAT';
 export type AgentTaskState = 'ASSIGNED' | 'ACKNOWLEDGED' | 'RUNNING' | 'SUBMITTED' | 'ACCEPTED' | 'REJECTED' | 'WAITING_DEPENDENCY' | 'TIMED_OUT' | 'CANCELLED' | 'UNKNOWN';
 export type MissionPermission = 'ORCHESTRATE' | 'READ_EVIDENCE' | 'PLAN' | 'PRODUCE_FOUNDER' | 'PRODUCE_PRODUCT' | 'AUDIT';
 export type AllowedTool = 'TASK_READ' | 'TASK_ACK' | 'TASK_SUBMIT' | 'EVIDENCE_READ' | 'MODEL_GENERATE' | 'REVISION_READ' | 'AUDIT_SUBMIT' | 'TRACE_APPEND';
@@ -188,6 +189,7 @@ export type ModelCallSnapshot = {
   pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04'; inputCacheHitUsdPerMillion: number; inputCacheMissUsdPerMillion: number; outputUsdPerMillion: number; peakMultiplierNotApplied: true};
   inputDigest: string;
   outputDigest: string | null;
+  runtimeOutputDigest?: string | null;
   tokenUsage: {input: number; output: number; cacheHit: number; cacheMiss: number; reasoning: number} | null;
   estimatedCostUsd: number | null;
   latencyMs: number;
@@ -250,6 +252,19 @@ export type ShadowMission = {
   runtimeVersion: 'v1.2.0';
   runtimeProjectId: string;
   runtimeProjectDispatch: RuntimeProjectDispatchReceipt | null;
+  providerMode: ShadowProviderMode;
+  providerModel: 'deepseek-v4-flash' | 'deepseek-v4-pro';
+  providerMaturity: 'MOCK_CONFORMANCE' | 'LIVE_PROVIDER_CANARY';
+  runtimeExpectation: {
+    agentTeamsSourceTarSha256: string;
+    agentTeamsBuildDigest: string;
+    imageDigests: {component: 'embedded-controller' | 'manager-copaw' | 'worker'; digest: string}[];
+  };
+  runtimeStatus: {
+    nextResponsible: 'CONTROL_PLANE' | 'COORDINATOR' | MissionRoleId | 'OWNER';
+    failure: {code: string; retryable: boolean; failedTaskId: string | null; at: string} | null;
+    lastHeartbeatAt: string | null;
+  };
   executionMode: 'SHADOW_PREP_ONLY';
   dataMode: 'DEMO_SEED';
   live: false;
@@ -276,7 +291,7 @@ export type ShadowMission = {
   fault: {kind: 'BETA_TO_GA'; frozenClaimStatement: string; injectedPath: string; deniedRevisionId: string | null; correctedRevisionId: string | null};
 };
 
-export type StartShadowMissionInput = {campaign: CampaignDocument; campaignVersion: number; campaignDigest: string; now: Date};
+export type StartShadowMissionInput = {campaign: CampaignDocument; campaignVersion: number; campaignDigest: string; providerMode?: ShadowProviderMode; providerModel?: 'deepseek-v4-flash' | 'deepseek-v4-pro'; now: Date};
 
 export type RuntimeSubmission = {
   schemaVersion: 1;

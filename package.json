@@ -43,6 +43,8 @@
     "verify:agentteams-images": "node scripts/verify-agentteams-images.mjs",
     "verify:agentteams-real:inner": "node scripts/verify-agentteams-real-runtime.mjs",
     "verify:agentteams-real": "node scripts/verify-agentteams-real-environment.mjs",
+    "uat:live-deepseek": "node scripts/start-live-deepseek-uat.mjs",
+    "verify:live-conformance": "node scripts/verify-live-deepseek-conformance.mjs",
     "verify:providers": "tsx scripts/verify-provider-conformance.ts && node scripts/verify-agentteams-role-projection.mjs",
     "verify:browser": "node scripts/verify-browser-runtime.mjs",
     "evidence:package-source": "node scripts/package-source-evidence.mjs",

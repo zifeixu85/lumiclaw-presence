@@ -16,7 +16,8 @@ export class MemoryShadowMissionRepository implements ShadowMissionRepository {
       validateMemoryReplay(current, previous);
       return {mission: structuredClone(current), replayed: true};
     }
-    const existing = [...this.#missions.values()].find((item) => item.organizationId === input.campaign.organizationId && item.campaignId === input.campaign.id && item.sourceCampaignDigest === input.campaignDigest);
+    const providerMode = input.providerMode ?? 'PUBLIC_SAFE_MOCK';
+    const existing = [...this.#missions.values()].find((item) => item.organizationId === input.campaign.organizationId && item.campaignId === input.campaign.id && item.sourceCampaignDigest === input.campaignDigest && item.providerMode === providerMode);
     const mission = existing ?? createShadowMission(input); this.#missions.set(mission.id, structuredClone(mission)); this.#idempotency.set(key, {requestDigest, missionId: mission.id, responseVersion: mission.version, responseEtag: mission.etag});
     return {mission: structuredClone(mission), replayed: existing !== undefined};
   }
@@ -58,7 +59,8 @@ export class PostgresShadowMissionRepository implements ShadowMissionRepository 
         if (String(replay.rows[0].request_digest).trim() !== requestDigest) throw new ShadowContractError('IDEMPOTENCY_KEY_REUSED', 'Idempotency key was reused with a different body.');
         return {mission: await validateIdempotentReplay(client, input.campaign.organizationId, replay.rows[0]), replayed: true};
       }
-      const existing = await client.query('select id from missions where organization_id=$1 and campaign_id=$2 and source_campaign_digest=$3', [input.campaign.organizationId, input.campaign.id, input.campaignDigest]);
+      const providerMode = input.providerMode ?? 'PUBLIC_SAFE_MOCK';
+      const existing = await client.query('select id from missions where organization_id=$1 and campaign_id=$2 and source_campaign_digest=$3 and provider_mode=$4', [input.campaign.organizationId, input.campaign.id, input.campaignDigest, providerMode]);
       const mission = existing.rowCount === 0 ? createShadowMission(input) : (await readMission(client, input.campaign.organizationId, existing.rows[0].id as string))!;
       if (existing.rowCount === 0) await persistMission(client, mission, true);
       await client.query('insert into shadow_idempotency(organization_id,route,idempotency_key,request_digest,mission_id,response_version,response_etag) values($1,$2,$3,$4,$5,$6,$7)', [mission.organizationId, route, idempotencyKey, requestDigest, mission.id, mission.version, mission.etag]);
@@ -172,8 +174,8 @@ function validateReconstructedMission(mission: ShadowMission): void {
 
 async function persistMission(client: PoolClient, mission: ShadowMission, insert: boolean): Promise<void> {
   const envelope = missionEnvelope(mission);
-  const values = [mission.organizationId, mission.id, mission.campaignId, mission.sourceCampaignVersion, mission.sourceCampaignDigest, mission.runtime, mission.runtimeVersion, mission.runtimeProjectId, mission.state, mission.version, mission.etag, envelope, mission.createdAt, mission.updatedAt];
-  if (insert) await client.query('insert into missions(organization_id,id,campaign_id,source_campaign_version,source_campaign_digest,runtime,runtime_version,runtime_project_id,state,version,etag,payload,live,external_action_allowed,created_at,updated_at) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,false,$13,$14)', values);
+  const values = [mission.organizationId, mission.id, mission.campaignId, mission.sourceCampaignVersion, mission.sourceCampaignDigest, mission.runtime, mission.runtimeVersion, mission.runtimeProjectId, mission.providerMode, mission.providerModel, mission.state, mission.version, mission.etag, envelope, mission.createdAt, mission.updatedAt];
+  if (insert) await client.query('insert into missions(organization_id,id,campaign_id,source_campaign_version,source_campaign_digest,runtime,runtime_version,runtime_project_id,provider_mode,provider_model,state,version,etag,payload,live,external_action_allowed,created_at,updated_at) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,false,false,$15,$16)', values);
   else await client.query('update missions set state=$3,version=$4,etag=$5,payload=$6,updated_at=$7 where organization_id=$1 and id=$2', [mission.organizationId, mission.id, mission.state, mission.version, mission.etag, envelope, mission.updatedAt]);
   for (const context of mission.roleContexts) await client.query('insert into agent_runs(organization_id,mission_id,role_id,identity_id,context_digest,permissions,payload,created_at) values($1,$2,$3,$4,$5,$6,$7,$8) on conflict(organization_id,mission_id,role_id) do update set payload=excluded.payload', [mission.organizationId, mission.id, context.roleId, context.identityId, context.contextDigest, JSON.stringify(context.permissions), context, mission.createdAt]);
   for (const lock of mission.skillLocks) await client.query('insert into skill_locks(organization_id,mission_id,id,name,version,digest,payload) values($1,$2,$3,$4,$5,$6,$7) on conflict do nothing', [mission.organizationId, mission.id, lock.id, lock.name, lock.version, lock.digest, lock]);

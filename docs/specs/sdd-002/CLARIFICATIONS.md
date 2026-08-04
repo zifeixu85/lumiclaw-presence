@@ -12,4 +12,6 @@
 | CL-08 | Fault denial requires no external action path to exist, not merely a mocked connector returning failure. |
 | CL-09 | AgentTeams internal state is never the only copy; restart recovery begins from PostgreSQL and reconciles runtime state. |
 | CL-10 | Executor proposes `EVIDENCE_READY`; Coordinator/Owner decide canonical acceptance. |
-
+| CL-11 | CR2 Live is a Coordinator-started local UAT runner bound to one Mission; an always-on Web-triggered supervisor is deferred to another SDD. |
+| CL-12 | CR2 Key and bootstrap ingress are Compose secret files only; Workers/runner never receive the Key, and runtime tickets are short-lived, scoped and non-persistent. |
+| CL-13 | Leader coordination is deterministic. Only the seven domain Task attempts call the provider, with an independent Auditor prompt/schema and receipt. |

@@ -11,6 +11,12 @@ const ROLE_IDS = [
 ] as const satisfies readonly MissionRoleId[];
 
 export const AGENTTEAMS_V120_BUILD_DIGEST = 'sha256:a4a9d66fabc49e1d08246d9b8b65d2b67742b71b2b43d3dfc0d27e8861f0770c';
+export const AGENTTEAMS_V120_SOURCE_TAR_SHA256 = 'a4a9d66fabc49e1d08246d9b8b65d2b67742b71b2b43d3dfc0d27e8861f0770c';
+export const AGENTTEAMS_V120_IMAGE_DIGESTS = [
+  {component: 'embedded-controller', digest: 'sha256:c0de550018e51b36138a5990b1e8095eacc9d44cc7cbdb36a697785ba02c9be4'},
+  {component: 'manager-copaw', digest: 'sha256:29429e47118f859191fa133f8d617434019c0f03221b405474be7e467bad87b4'},
+  {component: 'worker', digest: 'sha256:dcdd9103535cfac247267e0f69661820c801396d58e2c8e0c14eefd40b63b7bc'}
+] as const;
 
 const ROLE_DEFINITIONS = {
   'presence-mission-leader': {responsibility: 'Coordinate the AgentTeams Project/DAG and release or escalate tasks.', permissions: ['ORCHESTRATE'], tools: ['TASK_READ', 'TRACE_APPEND'], visible: ['MISSION'], prohibited: ['claim', 'plan', 'platform artifact', 'audit', 'approval'], orchestrationOnly: true},
@@ -41,7 +47,9 @@ export class ShadowContractError extends Error {
 export function createShadowMission(input: StartShadowMissionInput): ShadowMission {
   if (input.campaign.missionContract.sourceDigest !== input.campaignDigest) throw new ShadowContractError('MISSION_SOURCE_DIGEST_MISMATCH', 'Campaign MissionContract digest does not match the persisted source digest.');
   if (input.campaign.live || input.campaign.missionContract.externalActionAllowed) throw new ShadowContractError('SHADOW_BOUNDARY_VIOLATION', 'A SHADOW Mission must be NOT_LIVE with no external action.');
-  const missionId = stableId(input.now, input.campaignDigest, 1);
+  const providerMode = input.providerMode ?? 'PUBLIC_SAFE_MOCK';
+  const providerModel = input.providerModel ?? 'deepseek-v4-flash';
+  const missionId = stableId(input.now, `${input.campaignDigest}:${providerMode}`, 1);
   const locks = SKILLS.map((skill, index) => ({id: stableId(input.now, input.campaignDigest, 10 + index), name: skill.name, version: '1.0.0', digest: skill.digest, source: `skills/${skill.name}/SKILL.md`})) as unknown as ShadowMission['skillLocks'];
   const roleContexts = ROLE_IDS.map((roleId, index) => roleContext(missionId, roleId, stableId(input.now, input.campaignDigest, 30 + index), locks)) as ShadowMission['roleContexts'];
   const tasks = taskContracts(missionId, input.campaignDigest, roleContexts, locks, input.now);
@@ -50,14 +58,17 @@ export function createShadowMission(input: StartShadowMissionInput): ShadowMissi
     schemaVersion: 1, id: missionId, organizationId: input.campaign.organizationId, campaignId: input.campaign.id,
     sourceCampaignVersion: input.campaignVersion, sourceCampaignDigest: input.campaignDigest,
     runtime: 'agentteams', runtimeVersion: 'v1.2.0', runtimeProjectId: `presence-${missionId}`, runtimeProjectDispatch: null,
+    providerMode, providerModel, providerMaturity: providerMode === 'PUBLIC_SAFE_MOCK' ? 'MOCK_CONFORMANCE' : 'LIVE_PROVIDER_CANARY',
+    runtimeExpectation: {agentTeamsSourceTarSha256: AGENTTEAMS_V120_SOURCE_TAR_SHA256, agentTeamsBuildDigest: AGENTTEAMS_V120_BUILD_DIGEST, imageDigests: AGENTTEAMS_V120_IMAGE_DIGESTS.map((item) => ({...item}))},
+    runtimeStatus: {nextResponsible: providerMode === 'PUBLIC_SAFE_MOCK' ? 'CONTROL_PLANE' : 'COORDINATOR', failure: null, lastHeartbeatAt: null},
     executionMode: 'SHADOW_PREP_ONLY', dataMode: 'DEMO_SEED', live: false, externalActionAllowed: false,
-    actionGrantCount: 0, connectorCount: 0, externalActionCount: 0, state: 'QUEUED', version: 1, etag: '', createdAt, updatedAt: createdAt,
+    actionGrantCount: 0, connectorCount: 0, externalActionCount: 0, state: providerMode === 'PUBLIC_SAFE_MOCK' ? 'QUEUED' : 'WAITING_RUNTIME', version: 1, etag: '', createdAt, updatedAt: createdAt,
     roleContexts, skillLocks: locks, tasks, revisions: [], audits: [], reviews: [], modelCalls: [], mediaAssets: [], trace: [], ledger: [],
     recovery: {status: 'NOT_REQUIRED', recoveredAt: null, duplicateSubmissionsRejected: 0},
     fault: {kind: 'BETA_TO_GA', frozenClaimStatement: input.campaign.claims.find((claim) => claim.status === 'APPROVED')?.statement ?? '', injectedPath: '/content/posts/0', deniedRevisionId: null, correctedRevisionId: null}
   };
   finalizeAssignableTaskProjections(mission, input.campaign);
-  appendEvent(mission, 'MISSION', 'SHADOW Mission 已排队', {runtime: 'agentteams', runtimeVersion: 'v1.2.0', externalActionAllowed: false}, 'CONTROL_PLANE', input.campaignDigest, sha256Digest({missionId, state: 'QUEUED'}), input.now);
+  appendEvent(mission, 'MISSION', providerMode === 'PUBLIC_SAFE_MOCK' ? '公开安全 Mock Mission 已排队' : '真实 DeepSeek 本地 UAT 已排队，等待 Coordinator 启动 Runner', {runtime: 'agentteams', runtimeVersion: 'v1.2.0', providerMode, providerModel, externalActionAllowed: false}, 'CONTROL_PLANE', input.campaignDigest, sha256Digest({missionId, state: mission.state}), input.now);
   return seal(mission, input.now);
 }
 
@@ -114,6 +125,7 @@ function projectionSchema(kind: TaskContract['kind']): string { return `lumiclaw
 export function runPublicSafeFlight(missionValue: ShadowMission, campaign: CampaignDocument, now = new Date()): ShadowMission {
   const mission = structuredClone(missionValue);
   assertCampaignBinding(mission, campaign);
+  if (mission.providerMode !== 'PUBLIC_SAFE_MOCK') throw new ShadowContractError('MOCK_FALLBACK_FORBIDDEN', 'A LIVE_DEEPSEEK_UAT Mission cannot enter the public-safe Mock Flight.');
   if (!['QUEUED', 'UNKNOWN_RECOVERY', 'RUNNING'].includes(mission.state)) throw new ShadowContractError('MISSION_STATE_CONFLICT', `Cannot run a flight from ${mission.state}.`);
   mission.state = 'RUNNING';
   appendEvent(mission, 'PROJECT', 'AgentTeams Project/DAG 已导入', {projectId: mission.runtimeProjectId, memberCount: 6, taskCount: mission.tasks.length}, 'presence-mission-leader', mission.sourceCampaignDigest, sha256Digest(mission.tasks), now);
@@ -184,10 +196,66 @@ export function attachProviderEvidence(
   return seal(mission, new Date(now.getTime() + 1));
 }
 
+export function recordLiveModelCall(missionValue: ShadowMission, snapshot: ModelCallSnapshot, now = new Date()): ShadowMission {
+  const mission = structuredClone(missionValue);
+  const task = mission.tasks.find((item) => item.id === snapshot.taskId);
+  if (mission.providerMode !== 'LIVE_DEEPSEEK_UAT' || snapshot.missionId !== mission.id || task === undefined || task.roleId === 'presence-mission-leader') {
+    throw new ShadowContractError('LIVE_MODEL_CALL_BINDING_MISMATCH', 'A live receipt must bind one non-Leader domain Task in this LIVE_DEEPSEEK_UAT Mission.');
+  }
+  if (snapshot.provider !== 'DEEPSEEK' || snapshot.maturity !== 'CANARY' || snapshot.model !== mission.providerModel || snapshot.secretPresent || mission.modelCalls.some((item) => item.id === snapshot.id || (item.taskId === task.id && item.outputDigest !== null))) {
+    throw new ShadowContractError('LIVE_MODEL_CALL_RECEIPT_INVALID', 'Live model receipt maturity/model/uniqueness/redaction validation failed.');
+  }
+  mission.modelCalls.push(structuredClone(snapshot));
+  mission.runtimeStatus.lastHeartbeatAt = now.toISOString();
+  if (snapshot.error !== null || snapshot.outputDigest === null) {
+    const failure = {code: snapshot.error?.code ?? 'LIVE_MODEL_OUTPUT_MISSING', retryable: snapshot.error?.retryable ?? false, failedTaskId: task.id, at: now.toISOString()};
+    mission.state = 'FAILED';
+    mission.runtimeStatus.nextResponsible = 'COORDINATOR';
+    mission.runtimeStatus.failure = failure;
+    appendEvent(mission, 'MODEL', '真实模型调用失败，已关闭执行且未回退 Mock', {provider: 'DEEPSEEK', maturity: 'CANARY', taskId: task.id, errorCode: failure.code, secretPresent: false}, task.roleId, snapshot.inputDigest, sha256Digest(failure), now);
+  } else {
+    mission.runtimeStatus.nextResponsible = task.roleId;
+    appendEvent(mission, 'MODEL', '真实模型结构化收据已记录', {provider: 'DEEPSEEK', maturity: 'CANARY', model: snapshot.model, taskId: task.id, inputTokens: snapshot.tokenUsage?.input ?? 0, outputTokens: snapshot.tokenUsage?.output ?? 0, estimatedCostUsd: snapshot.estimatedCostUsd ?? 0, latencyMs: snapshot.latencyMs, secretPresent: false}, task.roleId, snapshot.inputDigest, snapshot.outputDigest, now);
+  }
+  return seal(mission, now);
+}
+
+export function failLiveMission(missionValue: ShadowMission, code: string, failedTaskId: string | null, retryable: boolean, now = new Date()): ShadowMission {
+  const mission = structuredClone(missionValue);
+  if (mission.providerMode !== 'LIVE_DEEPSEEK_UAT') throw new ShadowContractError('LIVE_FAILURE_MODE_MISMATCH', 'Only a Live UAT Mission can record a Live runner failure.');
+  const failure = {code: code.replace(/[^A-Z0-9_]/gu, '_').slice(0, 80) || 'LIVE_RUNTIME_FAILED', retryable, failedTaskId, at: now.toISOString()};
+  mission.state = 'FAILED';
+  mission.runtimeStatus = {nextResponsible: 'COORDINATOR', failure, lastHeartbeatAt: now.toISOString()};
+  appendEvent(mission, 'RECOVERY', '本地真实模型 UAT 已失败并关闭执行', {code: failure.code, failedTaskId, retryable, mockFallback: false, externalActionCount: 0}, 'CONTROL_PLANE', sha256Digest({failedTaskId, code}), sha256Digest(failure), now);
+  return seal(mission, now);
+}
+
+export function liveModelTaskOutputSchema(task: TaskContract): Record<string, unknown> {
+  const digest = {type: 'string', pattern: '^[a-f0-9]{64}$'};
+  const issue = {type: 'object', additionalProperties: false, required: ['code', 'severity', 'path', 'message', 'evidenceRefIds', 'nextResponsibleRoleId'], properties: {code: {enum: ['CLAIM_OVERREACH', 'CAPABILITY_CONSTRAINT', 'EVIDENCE_MISSING', 'ROLE_PERMISSION', 'DIGEST_MISMATCH']}, severity: {enum: ['BLOCKING', 'ESCALATE']}, path: {type: 'string'}, message: {type: 'string'}, evidenceRefIds: {type: 'array', items: {type: 'string'}}, nextResponsibleRoleId: {enum: ROLE_IDS}}};
+  const content = {oneOf: [
+    {type: 'object', additionalProperties: false, required: ['kind', 'posts', 'altText'], properties: {kind: {const: 'X'}, posts: {type: 'array', minItems: 1, items: {type: 'string'}}, altText: {type: 'string'}}},
+    {type: 'object', additionalProperties: false, required: ['kind', 'posts', 'embedUrl', 'altText'], properties: {kind: {const: 'BLUESKY'}, posts: {type: 'array', minItems: 1, items: {type: 'string'}}, embedUrl: {type: 'string'}, altText: {type: 'string'}}},
+    {type: 'object', additionalProperties: false, required: ['kind', 'commentary', 'authorKind', 'linkTitle', 'linkUrl'], properties: {kind: {const: 'LINKEDIN'}, commentary: {type: 'string'}, authorKind: {enum: ['PERSON', 'COMPANY']}, linkTitle: {type: 'string'}, linkUrl: {type: 'string'}}},
+    {type: 'object', additionalProperties: false, required: ['kind', 'title', 'body', 'topics', 'coverLabel'], properties: {kind: {const: 'XIAOHONGSHU'}, title: {type: 'string'}, body: {type: 'string'}, topics: {type: 'array', minItems: 1, items: {type: 'string'}}, coverLabel: {type: 'string'}}}
+  ]};
+  const revision = {type: 'object', additionalProperties: false, required: ['platform', 'revision', 'sourceRevisionDigest', 'contentDigest', 'content'], properties: {platform: {enum: ['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU']}, revision: {type: 'integer', minimum: 1, maximum: 2}, sourceRevisionDigest: digest, contentDigest: digest, content}};
+  const decision = {type: 'object', additionalProperties: false, required: ['platform', 'revision', 'revisionContentDigest', 'outcome', 'issues'], properties: {platform: {enum: ['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU']}, revision: {type: 'integer', minimum: 1, maximum: 2}, revisionContentDigest: digest, outcome: {enum: ['PASS', 'FAIL', 'ESCALATE']}, issues: {type: 'array', items: issue}}};
+  if (task.kind === 'FREEZE_EVIDENCE') return {type: 'object', additionalProperties: false, required: ['frozen', 'claimEvidenceDigest'], properties: {frozen: {const: true}, claimEvidenceDigest: digest}};
+  if (task.kind === 'PLAN_CAMPAIGN') return {type: 'object', additionalProperties: false, required: ['activationPlanDigest'], properties: {activationPlanDigest: digest}};
+  if (['PRODUCE_FOUNDER', 'PRODUCE_PRODUCT'].includes(task.kind)) return {type: 'object', additionalProperties: false, required: ['revisions'], properties: {revisions: {type: 'array', minItems: 2, maxItems: 2, items: revision}}};
+  if (task.kind === 'AUDIT_REVISIONS') return {type: 'object', additionalProperties: false, required: ['decisions'], properties: {decisions: {type: 'array', minItems: 4, maxItems: 4, items: decision}}};
+  if (task.kind === 'PRODUCE_FOUNDER_CORRECTION') return {type: 'object', additionalProperties: false, required: ['revisions', 'failedAuditDigest'], properties: {revisions: {type: 'array', minItems: 1, maxItems: 1, items: revision}, failedAuditDigest: digest}};
+  if (task.kind === 'REAUDIT_CORRECTION') return {type: 'object', additionalProperties: false, required: ['decisions', 'failedAuditDigest'], properties: {decisions: {type: 'array', minItems: 1, maxItems: 1, items: decision}, failedAuditDigest: digest}};
+  throw new ShadowContractError('LEADER_MODEL_CALL_FORBIDDEN', 'PROJECT_COORDINATION is deterministic and must not call a model.');
+}
+
+export function validateLiveModelTaskOutput(task: TaskContract, payload: unknown): boolean { return task.kind !== 'PROJECT_COORDINATION' && validateSubmissionPayload(task, payload); }
+
 export function reviewRevision(missionValue: ShadowMission, campaign: CampaignDocument, revisionId: string, revisionDigestValue: string, decision: OwnerReview['decision'], now = new Date()): ShadowMission {
   const mission = structuredClone(missionValue);
   assertCampaignBinding(mission, campaign);
-  if (mission.state !== 'NEEDS_OWNER_REVIEW') throw new ShadowContractError('MISSION_STATE_CONFLICT', `Owner Review is not allowed from ${mission.state}.`);
+  if (!['NEEDS_OWNER_REVIEW', 'AWAITING_OWNER_REVIEW'].includes(mission.state)) throw new ShadowContractError('MISSION_STATE_CONFLICT', `Owner Review is not allowed from ${mission.state}.`);
   const revision = mission.revisions.find((item) => item.id === revisionId);
   if (revision === undefined || revision.digest !== revisionDigestValue) throw new ShadowContractError('REVIEW_REVISION_DIGEST_MISMATCH', 'Owner Review must bind the exact immutable Revision digest.');
   const audit = mission.audits.find((item) => item.revisionId === revision.id && item.status === 'ACTIVE');
@@ -201,7 +269,7 @@ export function reviewRevision(missionValue: ShadowMission, campaign: CampaignDo
   const allReviewed = reviewable.length === 4 && reviewable.every((item) => mission.reviews.some((reviewItem) => reviewItem.revisionId === item.id));
   const allReady = allReviewed && reviewable.every((item) => mission.reviews.some((reviewItem) => reviewItem.revisionId === item.id && reviewItem.decision === 'READY_FOR_FUTURE_EXECUTION'));
   if (allReady) {
-    mission.state = 'SHADOW_COMPLETE';
+    mission.state = mission.providerMode === 'LIVE_DEEPSEEK_UAT' ? 'COMPLETED_SHADOW' : 'SHADOW_COMPLETE';
     appendEvent(mission, 'MISSION', 'SHADOW Mission 已完成（无外部动作）', {actionGrantCount: 0, connectorCount: 0, externalActionCount: 0}, 'CONTROL_PLANE', sha256Digest(mission.reviews), sha256Digest({state: 'SHADOW_COMPLETE'}), now);
   } else if (allReviewed) {
     mission.state = 'REVISION_REQUIRED';
@@ -240,6 +308,7 @@ export function acceptRuntimeSubmission(missionValue: ShadowMission, submission:
     validateRuntimeSubmissionReceipt(mission, task, submission, errors);
   }
   if (submission.outputDigest !== sha256Digest(submission.payload)) errors.push('OUTPUT_DIGEST_MISMATCH');
+  if (mission.providerMode === 'LIVE_DEEPSEEK_UAT' && task?.roleId !== 'presence-mission-leader' && !mission.modelCalls.some((call) => call.taskId === task?.id && call.provider === 'DEEPSEEK' && call.maturity === 'CANARY' && (call.runtimeOutputDigest ?? call.outputDigest) === submission.outputDigest && call.error === null)) errors.push('LIVE_MODEL_RECEIPT_REQUIRED');
   if (task?.acceptedOutputDigest !== null && task?.acceptedOutputDigest !== undefined) {
     mission.recovery.duplicateSubmissionsRejected += 1;
     errors.push(task.acceptedOutputDigest === submission.outputDigest ? 'DUPLICATE_ACCEPTED_SUBMISSION' : 'ACCEPTED_OUTPUT_CONFLICT');
@@ -323,7 +392,8 @@ export function materializeAcceptedRuntimeProgress(missionValue: ShadowMission, 
     const correctedAudit = createAudit(mission, campaign, corrected, 'PASS', now, decisions[0].issues, failedAudit.id);
     mission.audits.push(correctedAudit);
     failedAudit.status = 'INVALIDATED'; failedAudit.invalidatedByRevisionId = corrected.id; failedAudit.digest = auditDigest(failedAudit);
-    mission.state = 'NEEDS_OWNER_REVIEW';
+    mission.state = mission.providerMode === 'LIVE_DEEPSEEK_UAT' ? 'AWAITING_OWNER_REVIEW' : 'NEEDS_OWNER_REVIEW';
+    mission.runtimeStatus.nextResponsible = 'OWNER';
     appendEvent(mission, 'AUDIT', 'X v2 已由独立 Auditor 重审通过，旧 Audit 由不可变 supersession 失效', {revisionId: corrected.id, supersededAuditId: correctedAudit.supersedesAuditId, outcome: 'PASS'}, 'independent-auditor', corrected.digest, correctedAudit.digest, now);
     appendEvent(mission, 'MISSION', '真实 AgentTeams 因果修订链完成；四平台精确 Revision 等待 Owner Review', {reviewableRevisionCount: 4, createsActionGrant: false, externalActionCount: 0}, 'CONTROL_PLANE', correctedAudit.digest, sha256Digest({state: 'NEEDS_OWNER_REVIEW'}), new Date(now.getTime() + 1000));
     return seal(mission, new Date(now.getTime() + 1000));
@@ -334,7 +404,7 @@ export function materializeAcceptedRuntimeProgress(missionValue: ShadowMission, 
 
 export function materializeAcceptedRuntimeMission(missionValue: ShadowMission, campaign: CampaignDocument, now = new Date()): ShadowMission {
   const mission = materializeAcceptedRuntimeProgress(missionValue, campaign, now);
-  if (!mission.tasks.every((task) => task.state === 'ACCEPTED' && task.acceptedPayload !== undefined) || mission.state !== 'NEEDS_OWNER_REVIEW' || mission.revisions.length !== 5 || mission.audits.length !== 5) throw new ShadowContractError('RUNTIME_TASKS_NOT_ACCEPTED', 'All eight causal Task submissions and three persisted materialization phases must complete before finalization.');
+  if (!mission.tasks.every((task) => task.state === 'ACCEPTED' && task.acceptedPayload !== undefined) || !['NEEDS_OWNER_REVIEW', 'AWAITING_OWNER_REVIEW'].includes(mission.state) || mission.revisions.length !== 5 || mission.audits.length !== 5) throw new ShadowContractError('RUNTIME_TASKS_NOT_ACCEPTED', 'All eight causal Task submissions and three persisted materialization phases must complete before finalization.');
   return mission;
 }
 
@@ -364,7 +434,7 @@ export function acknowledgeRuntimeTask(missionValue: ShadowMission, receipt: Run
 
 export function recordRuntimeProjectDispatch(missionValue: ShadowMission, receipt: RuntimeProjectDispatchReceipt, now = new Date()): ShadowMission {
   const mission = structuredClone(missionValue);
-  if (mission.state !== 'QUEUED') throw new ShadowContractError('RUNTIME_PROJECT_ALREADY_DISPATCHED', 'A Mission can bind exactly one AgentTeams Project dispatch. Restart recovery must reconcile that Project instead of dispatching another.');
+  if (!['QUEUED', 'WAITING_RUNTIME'].includes(mission.state)) throw new ShadowContractError('RUNTIME_PROJECT_ALREADY_DISPATCHED', 'A Mission can bind exactly one AgentTeams Project dispatch. Restart recovery must reconcile that Project instead of dispatching another.');
   const bindings = [...receipt.memberBindings].sort((left, right) => left.roleId.localeCompare(right.roleId));
   const expectedRoles = [...ROLE_IDS].sort();
   if (receipt.projectId !== mission.runtimeProjectId || receipt.runtimeVersion !== mission.runtimeVersion || receipt.buildDigest !== AGENTTEAMS_V120_BUILD_DIGEST) throw new ShadowContractError('RUNTIME_PROJECT_BINDING_MISMATCH', 'Project dispatch does not bind the exact Mission Project/version/build.');
@@ -372,6 +442,7 @@ export function recordRuntimeProjectDispatch(missionValue: ShadowMission, receip
   if (receipt.memberSetDigest !== runtimeMemberSetDigest(receipt.memberBindings) || receipt.dagDigest !== runtimeDagDigest(mission) || !isIsoInstant(receipt.dispatchedAt) || receipt.receiptDigest !== runtimeProjectDispatchReceiptDigest(receipt)) throw new ShadowContractError('RUNTIME_PROJECT_RECEIPT_INVALID', 'Project member/DAG/timestamp/receipt digest validation failed.');
   mission.runtimeProjectDispatch = structuredClone(receipt);
   mission.state = 'RUNNING';
+  mission.runtimeStatus = {nextResponsible: 'presence-mission-leader', failure: null, lastHeartbeatAt: now.toISOString()};
   appendEvent(mission, 'PROJECT', 'AgentTeams v1.2.0 Project/DAG 已派发并验证运行时成员凭据', {projectId: mission.runtimeProjectId, memberCount: 6, taskCount: mission.tasks.length, buildDigest: receipt.buildDigest, receiptDigest: receipt.receiptDigest, externalActionAllowed: false}, 'presence-mission-leader', mission.sourceCampaignDigest, receipt.dagDigest, now);
   return seal(mission, now);
 }
@@ -489,14 +560,14 @@ export function markTimedOut(missionValue: ShadowMission, taskId: string, now = 
 
 export function missionPublicEvidence(mission: ShadowMission): object {
   return {
-    schemaVersion: 1, maturity: 'MOCK_CONFORMANCE', realAgentTeamsAcceptance: false, missionId: mission.id, campaignId: mission.campaignId,
-    runtime: {name: mission.runtime, version: mission.runtimeVersion, memberCount: mission.roleContexts.length, assertion: 'CONTROL_PLANE_CONTRACT_ONLY'},
-    state: mission.state, sourceCampaignDigest: mission.sourceCampaignDigest,
+    schemaVersion: 1, maturity: mission.providerMaturity, realAgentTeamsAcceptance: mission.providerMode === 'LIVE_DEEPSEEK_UAT' && mission.runtimeProjectDispatch !== null, missionId: mission.id, campaignId: mission.campaignId,
+    runtime: {name: mission.runtime, version: mission.runtimeVersion, memberCount: mission.roleContexts.length, assertion: mission.runtimeProjectDispatch === null ? 'CONTROL_PLANE_CONTRACT_ONLY' : 'PINNED_RUNTIME_DISPATCH_RECEIPT_BOUND', expectation: mission.runtimeExpectation},
+    state: mission.state, sourceCampaignDigest: mission.sourceCampaignDigest, providerMode: mission.providerMode, providerModel: mission.providerModel, runtimeStatus: mission.runtimeStatus,
     roles: mission.roleContexts.map(({roleId, identityId, responsibility, permissions, orchestrationOnly, contextDigest}) => ({roleId, identityId, responsibility, permissions, orchestrationOnly, contextDigest})),
     tasks: mission.tasks.map(({id, roleId, state, inputDigest, inputProjectionSchema, inputProjectionDigest, acceptedOutputDigest, prerequisiteTaskIds}) => ({id, roleId, state, inputDigest, inputProjectionSchema, inputProjectionDigest, acceptedOutputDigest, prerequisiteTaskIds})),
     revisions: mission.revisions.map(({id, platform, revision, digest, producerRoleId, immutable}) => ({id, platform, revision, digest, producerRoleId, immutable})),
     audits: mission.audits.map(({id, revisionId, outcome, status, digest, issues}) => ({id, revisionId, outcome, status, digest, issues})),
-    modelCalls: mission.modelCalls.map(({id, taskId, provider, maturity, model, inputDigest, outputDigest, estimatedCostUsd, latencyMs, attempts, error, secretPresent}) => ({id, taskId, provider, maturity, model, inputDigest, outputDigest, estimatedCostUsd, latencyMs, attempts, error, secretPresent})),
+    modelCalls: mission.modelCalls.map(({id, taskId, provider, maturity, model, response, pricing, inputDigest, outputDigest, runtimeOutputDigest, tokenUsage, estimatedCostUsd, latencyMs, attempts, error, secretPresent}) => ({id, taskId, provider, maturity, model, response, pricing, inputDigest, outputDigest, runtimeOutputDigest, tokenUsage, estimatedCostUsd, latencyMs, attempts, error, secretPresent})),
     mediaAssets: mission.mediaAssets.map(({id, contentDigest, provider, maturity, rights, costReceipt, approvalState}) => ({id, contentDigest, provider, maturity, rights, costReceipt, approvalState})),
     noAction: {externalActionAllowed: false, actionGrantCount: mission.actionGrantCount, connectorCount: mission.connectorCount, externalActionCount: mission.externalActionCount},
     trace: mission.trace, ledgerHead: mission.ledger.at(-1)?.entryDigest ?? null

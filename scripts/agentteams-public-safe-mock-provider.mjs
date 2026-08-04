@@ -2,7 +2,7 @@ import {createServer} from 'node:http';
 import {digest, validateRoleProjectionInput} from './agentteams-role-projection-contract.mjs';
 
 const port = Number.parseInt(process.env.PORT ?? '28333', 10);
-const model = 'mock-agentteams-conformance';
+const model = process.env.MODEL_NAME ?? 'mock-agentteams-conformance';
 const genericResponse = {maturity: 'MOCK_CONFORMANCE', externalActionAllowed: false, message: 'Public-safe deterministic AgentTeams runtime fixture.'};
 const requestCounts = {models: 0, embeddings: 0, chatCompletions: 0, notFound: 0};
 

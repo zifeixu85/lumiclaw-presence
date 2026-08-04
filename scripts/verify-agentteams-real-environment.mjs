@@ -1,5 +1,5 @@
 import {createHash} from 'node:crypto';
-import {execFileSync, spawn} from 'node:child_process';
+import {execFileSync, spawn, spawnSync} from 'node:child_process';
 import {mkdtemp, mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
@@ -13,6 +13,8 @@ const leader = 'presence-mission-leader';
 const roles = [leader, 'evidence-claim-steward', 'campaign-planner', 'founder-identity-producer', 'product-account-producer', 'independent-auditor'];
 const runtimeContainerNames = new Set(['agentteams-controller', 'agentteams-manager', 'agentteams-dashboard', 'agentteams-docker-proxy']);
 const lifecycle = [];
+const liveUat = process.argv.includes('--live-deepseek-uat');
+const runtimeModel = liveUat ? 'lumiclaw-deepseek-broker-v1' : 'mock-agentteams-conformance';
 let temporaryRoot;
 let provider;
 let completed = false;
@@ -75,7 +77,7 @@ async function waitForTopology() {
       const workers = agtJson('workers'); const teams = agtJson('teams');
       const exactWorkers = workers.workers.filter((worker) => roles.includes(worker.name));
       const team = teams.teams.find((candidate) => candidate.name === teamName);
-      if (workers.total === 6 && exactWorkers.length === 6 && exactWorkers.every((worker) => worker.phase === 'Running' && worker.runtime === 'copaw' && worker.model === 'mock-agentteams-conformance' && worker.matrixUserID) && team?.phase === 'Active' && team.leaderReady === true && team.readyWorkers === 5 && team.totalWorkers === 5) return;
+      if (workers.total === 6 && exactWorkers.length === 6 && exactWorkers.every((worker) => worker.phase === 'Running' && worker.runtime === 'copaw' && worker.model === runtimeModel && worker.matrixUserID) && team?.phase === 'Active' && team.leaderReady === true && team.readyWorkers === 5 && team.totalWorkers === 5) return;
     } catch {}
     await new Promise((resolve) => setTimeout(resolve, 2_000));
   }
@@ -106,7 +108,7 @@ try {
   const workspace = path.join(temporaryRoot, 'manager-workspace'); const hostShare = path.join(temporaryRoot, 'host-share');
   await Promise.all([mkdir(workspace, {recursive: true}), mkdir(hostShare, {recursive: true})]);
 
-  provider = spawn(process.execPath, ['scripts/agentteams-public-safe-mock-provider.mjs'], {cwd: root, stdio: 'ignore', env: {...process.env, PORT: '28333'}});
+  provider = spawn(process.execPath, ['scripts/agentteams-public-safe-mock-provider.mjs'], {cwd: root, stdio: 'ignore', env: {...process.env, PORT: '28333', MODEL_NAME: runtimeModel}});
   await waitForProvider(); lifecycle.push({step: 'start-public-safe-model-provider', startedAt: new Date().toISOString(), status: 'PASS'});
   const manifest = JSON.parse(await readFile(path.join(root, 'infra/agentteams/image-manifest.json'), 'utf8'));
   const imageByComponent = new Map(manifest.images.map((image) => [image.component, `${image.repository}:${image.tag}`]));
@@ -117,7 +119,7 @@ try {
     AGENTTEAMS_INSTALL_EMBEDDED_IMAGE: imageByComponent.get('embedded-controller'),
     AGENTTEAMS_INSTALL_MANAGER_COPAW_IMAGE: imageByComponent.get('manager-copaw'),
     AGENTTEAMS_INSTALL_COPAW_WORKER_IMAGE: imageByComponent.get('worker'),
-    AGENTTEAMS_LLM_PROVIDER: 'openai-compat', AGENTTEAMS_DEFAULT_MODEL: 'mock-agentteams-conformance',
+    AGENTTEAMS_LLM_PROVIDER: 'openai-compat', AGENTTEAMS_DEFAULT_MODEL: runtimeModel,
     AGENTTEAMS_OPENAI_BASE_URL: 'http://host.docker.internal:28333/v1', AGENTTEAMS_LLM_API_KEY: 'public-safe-mock-not-a-secret', AGENTTEAMS_EMBEDDING_MODEL: '',
     AGENTTEAMS_ADMIN_USER: 'public-safe-admin', AGENTTEAMS_ADMIN_PASSWORD: 'public-safe-local-admin-v1',
     AGENTTEAMS_LOCAL_ONLY: '1', AGENTTEAMS_PORT_GATEWAY: '18080', AGENTTEAMS_PORT_CONSOLE: '18001', AGENTTEAMS_PORT_ELEMENT_WEB: '18088', AGENTTEAMS_PORT_MANAGER_CONSOLE: '18888',
@@ -128,19 +130,23 @@ try {
   };
   run('bash', [path.join(temporaryRoot, 'AgentTeams-1.2.0/install/agentteams-install.sh'), 'manager'], {label: 'official-agentteams-v1.2.0-installer', timeout: 600_000, env: installerEnvironment});
 
-  for (const role of roles) agt(['create', 'worker', '--name', role, '--runtime', 'copaw', '--model', 'mock-agentteams-conformance', '--no-wait'], `create-worker-${role}`);
+  for (const role of roles) agt(['create', 'worker', '--name', role, '--runtime', 'copaw', '--model', runtimeModel, '--no-wait'], `create-worker-${role}`);
   agt(['create', 'team', '--name', teamName, '--leader-name', leader, '--workers', roles.slice(1).join(',')], 'create-exact-six-member-team');
   await waitForTopology(); lifecycle.push({step: 'wait-exact-six-member-team', startedAt: new Date().toISOString(), status: 'PASS'});
 
-  run(process.execPath, ['scripts/verify-agentteams-real-runtime.mjs'], {label: 'verify-real-agentteams-causal-runtime', timeout: 900_000});
+  if (liveUat) {
+    const result = spawnSync(process.execPath, ['scripts/run-live-deepseek-uat.mjs'], {cwd: root, stdio: 'inherit'});
+    lifecycle.push({step: 'run-live-deepseek-exact-mission', startedAt: new Date().toISOString(), status: result.status === 0 ? 'PASS' : 'FAIL'});
+    if (result.status !== 0) throw new Error('LIVE_DEEPSEEK_UAT_RUNNER_FAILED');
+  } else run(process.execPath, ['scripts/verify-agentteams-real-runtime.mjs'], {label: 'verify-real-agentteams-causal-runtime', timeout: 900_000});
   cleanupRuntime();
   provider.kill('SIGTERM'); provider = undefined;
-  const evidencePath = path.join(root, '.evidence/sdd-002/agentteams-real-runtime.json');
+  const evidencePath = path.join(root, liveUat ? '.evidence/sdd-002/deepseek-live-canary.json' : '.evidence/sdd-002/agentteams-real-runtime.json');
   const evidence = JSON.parse(await readFile(evidencePath, 'utf8'));
   evidence.environmentLifecycle = {status: 'PASS', selfProvisioned: true, officialInstaller: true, sourceTarSha256: sourceDigest, exactRuntimeObjectsRemoved: true, sharedAgentTeamsNetworkPreserved: true, ephemeralCredentialsRemoved: true, steps: lifecycle};
   await writeFile(evidencePath, `${JSON.stringify(evidence, null, 2)}\n`);
   completed = true;
-  console.info(JSON.stringify({status: 'PASS', selfProvisioned: true, realAgentTeamsAcceptance: true, realModelAcceptance: false, memberCount: 6, taskCount: 8, cleanup: 'PASS', evidence: '.evidence/sdd-002/agentteams-real-runtime.json'}));
+  console.info(JSON.stringify({status: 'PASS', selfProvisioned: true, realAgentTeamsAcceptance: true, realModelAcceptance: liveUat, memberCount: 6, taskCount: 8, cleanup: 'PASS', evidence: liveUat ? '.evidence/sdd-002/deepseek-live-canary.json' : '.evidence/sdd-002/agentteams-real-runtime.json'}));
 } finally {
   if (provider !== undefined) provider.kill('SIGTERM');
   if (!completed) {

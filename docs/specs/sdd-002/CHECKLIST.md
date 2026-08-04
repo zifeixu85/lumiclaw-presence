@@ -12,3 +12,10 @@
 - [x] Failure, recovery, rollback, dependency/license, secret, evidence, report, handoff, and Coordinator-owned progress are complete.
 
 No unresolved clarification remains. M1 acceptance and Coordinator assignment satisfied the entry gate; the dedicated M2 Executor implemented the bounded slice without changing these requirements. Machine evidence supports an `EVIDENCE_READY` recommendation only; Owner UAT and Coordinator acceptance remain external gates.
+
+## Change Request 2 checklist
+
+- [x] Coordinator authorized only the bounded host-runner architecture; fake sequential Live and privileged always-on supervisor are excluded.
+- [x] Persisted state, exact Mission/runtime binding, secret-file ingress, scoped tickets and model-task responsibilities are binary.
+- [x] Mock/no-key engineering gates are separated from Coordinator-only live Canary evidence.
+- [x] Zero ActionGrant/connector/external action, canonical-status ownership and M3 exclusion remain unchanged.
