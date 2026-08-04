@@ -17,3 +17,5 @@
 | CL-13 | Leader coordination is deterministic. Only the seven domain Task attempts call the provider, with an independent Auditor prompt/schema and receipt. |
 | CL-14 | CR2 Fix 1 replaces the four-question non-TTY protocol with one strict four-field JSON document read once from fd 0 at each transport boundary; raw child output is never inherited. |
 | CL-15 | Live transport failures disclose only allowlisted stable codes. Bootstrap/ticket values remain in memory and captured pipes only, and never enter arguments, environment, logs, evidence or error text. |
+| CL-16 | CR2 Fix 2 persists an allowlisted stage failure receipt on the host before ephemeral cleanup; it contains only clean-Head/Mission/runtime/progress/no-action metadata and is excluded from public source/evidence packages. |
+| CL-17 | A no-Owner-Key controlled run may prove Project/DAG/dispatch and then stop at the unavailable provider broker. It is infrastructure diagnosis, not `LIVE_PROVIDER_VERIFIED`, and cannot silently fall back to Mock. |

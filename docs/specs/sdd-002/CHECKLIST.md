@@ -26,3 +26,10 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 - [x] Exact four-field JSON, one-read stdin, captured child output and stable-code boundaries are specified.
 - [x] Partial/malformed/extra input, marker non-disclosure and cleanup are binary acceptance conditions.
 - [x] Owner Key, provider semantics, AgentTeams internals, canonical status and M3 remain out of scope.
+
+## CR2 Fix 2 checklist
+
+- [x] Coordinator evidence freezes the failure before Control Plane dispatch and explicitly rejects any Live Provider claim.
+- [x] Stage/code/progress/receipt fields are allowlisted and exclude all raw child/provider/security material.
+- [x] Host receipt persistence precedes cleanup, while normal public packages continue to exclude local `.evidence` state.
+- [x] No-Secret controlled diagnosis, nested child stage tests, cleanup and zero-action conditions are binary.

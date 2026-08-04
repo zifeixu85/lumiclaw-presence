@@ -4,6 +4,7 @@ import {readFileSync, writeSync} from 'node:fs';
 import {mkdtemp, mkdir, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {createLiveFailureEnvelope, createLiveFailureReceipt, defaultLiveProgress, isLiveStage, LiveUatDiagnosticError, parseLiveFailureEnvelope, readLiveFailureReceipt, readSourceIdentity, updateLiveFailureCleanup, writeLiveFailureReceipt} from './live-uat-diagnostics.mjs';
 import {isRedactedTransportReceipt, LiveUatTransportError, parseLiveUatTransport, serializeLiveUatTransport} from './live-uat-transport.mjs';
 
 const root = process.cwd();
@@ -17,6 +18,7 @@ const runtimeContainerNames = new Set(['agentteams-controller', 'agentteams-mana
 const lifecycle = [];
 const liveUat = process.argv.includes('--live-deepseek-uat');
 const transportConformance = process.argv.includes('--live-stdin-transport-conformance');
+const diagnosticStageConformance = process.argv.find((value) => value.startsWith('--live-stage-diagnostic-conformance='))?.split('=', 2)[1];
 const runtimeModel = liveUat ? 'lumiclaw-deepseek-broker-v1' : 'mock-agentteams-conformance';
 let temporaryRoot;
 let provider;
@@ -24,10 +26,12 @@ let completed = false;
 let liveRunnerInput;
 let liveRunnerReceipt;
 let liveFailureCode;
+let liveFailureEnvelope;
 let runtimeOwnershipStarted = false;
 
 function stableError(code) { const error = new Error(code); error.code = code; return error; }
 function emitStableFailure(code) { writeSync(2, `${JSON.stringify({status: 'FAIL', code})}\n`); }
+function emitDiagnosticFailure(envelope) { writeSync(2, `${JSON.stringify(envelope)}\n`); }
 function childOutput(result) { return {stdout: typeof result.stdout === 'string' ? result.stdout : '', stderr: typeof result.stderr === 'string' ? result.stderr : ''}; }
 function containsSensitiveOutput(stdout, stderr, bootstrap) {
   const output = `${stdout}${stderr}`;
@@ -37,17 +41,26 @@ async function readCanonicalLiveRunnerInput() {
   const parsed = parseLiveUatTransport(readFileSync(0, 'utf8'));
   return {parsed, serialized: serializeLiveUatTransport(parsed)};
 }
-function spawnLiveRunner(serialized, parsed, conformance = false) {
-  const result = spawnSync(process.execPath, ['scripts/run-live-deepseek-uat.mjs', ...(conformance ? ['--transport-conformance'] : [])], {
-    cwd: root, input: serialized, encoding: 'utf8', timeout: conformance ? 10_000 : 1_200_000, stdio: ['pipe', 'pipe', 'pipe']
+async function spawnLiveRunner(serialized, parsed, options = {}) {
+  const transportOnly = options.transportConformance === true; const diagnosticStage = options.diagnosticStage;
+  const result = spawnSync(process.execPath, ['scripts/run-live-deepseek-uat.mjs', ...(transportOnly ? ['--transport-conformance'] : []), ...(diagnosticStage === undefined ? [] : [`--diagnostic-stage-conformance=${diagnosticStage}`])], {
+    cwd: root, input: serialized, encoding: 'utf8', timeout: transportOnly || diagnosticStage !== undefined ? 10_000 : 1_200_000, stdio: ['pipe', 'pipe', 'pipe'],
+    env: diagnosticStage === undefined ? process.env : {...process.env, LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH: process.env.LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH}
   });
   const {stdout, stderr} = childOutput(result);
   if (containsSensitiveOutput(stdout, stderr, parsed.bootstrap)) throw stableError('LIVE_UAT_TRANSPORT_DISCLOSURE_BLOCKED');
-  if (result.status !== 0) throw stableError('LIVE_DEEPSEEK_UAT_RUNNER_FAILED');
+  if (result.status !== 0) {
+    let envelope;
+    try {
+      envelope = parseLiveFailureEnvelope(stderr, {missionId: parsed.missionId});
+      await readLiveFailureReceipt(root, {organizationId: parsed.organizationId, missionId: parsed.missionId, campaignDigest: parsed.campaignDigest, stage: envelope.stage, code: envelope.code}, {targetPath: diagnosticStage === undefined ? undefined : process.env.LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH});
+    } catch { throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID'); }
+    throw new LiveUatDiagnosticError(envelope);
+  }
   let receipt;
   try { receipt = JSON.parse(stdout); } catch { throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID'); }
-  if (conformance && !isRedactedTransportReceipt(receipt)) throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID');
-  if (!conformance && (receipt?.status !== 'PASS'
+  if (transportOnly && !isRedactedTransportReceipt(receipt)) throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID');
+  if (!transportOnly && (receipt?.status !== 'PASS'
     || receipt?.maturity !== 'LIVE_PROVIDER_VERIFIED'
     || receipt?.missionId !== parsed.missionId
     || receipt?.state !== 'AWAITING_OWNER_REVIEW'
@@ -134,10 +147,21 @@ function cleanupRuntime() {
 if (transportConformance) {
   try {
     const input = await readCanonicalLiveRunnerInput();
-    const receipt = spawnLiveRunner(input.serialized, input.parsed, true);
+    const receipt = await spawnLiveRunner(input.serialized, input.parsed, {transportConformance: true});
     writeSync(1, `${JSON.stringify(receipt)}\n`);
   } catch (error) {
     emitStableFailure(error instanceof LiveUatTransportError ? error.code : 'LIVE_UAT_TRANSPORT_FAILED');
+    process.exitCode = 1;
+  }
+} else if (diagnosticStageConformance !== undefined) {
+  try {
+    if (!isLiveStage(diagnosticStageConformance)) throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID');
+    const input = await readCanonicalLiveRunnerInput();
+    await spawnLiveRunner(input.serialized, input.parsed, {diagnosticStage: diagnosticStageConformance});
+    throw stableError('LIVE_UAT_RUNNER_RECEIPT_INVALID');
+  } catch (error) {
+    if (error instanceof LiveUatDiagnosticError) emitDiagnosticFailure(error.envelope);
+    else emitStableFailure(error instanceof LiveUatTransportError ? error.code : (typeof error?.code === 'string' ? error.code : 'LIVE_UAT_TRANSPORT_FAILED'));
     process.exitCode = 1;
   }
 } else try {
@@ -186,7 +210,7 @@ if (transportConformance) {
 
   if (liveUat) {
     if (liveRunnerInput === undefined) throw stableError('LIVE_UAT_TRANSPORT_INVALID');
-    liveRunnerReceipt = spawnLiveRunner(liveRunnerInput.serialized, liveRunnerInput.parsed);
+    liveRunnerReceipt = await spawnLiveRunner(liveRunnerInput.serialized, liveRunnerInput.parsed);
     lifecycle.push({step: 'run-live-deepseek-exact-mission', startedAt: new Date().toISOString(), status: 'PASS'});
   } else run(process.execPath, ['scripts/verify-agentteams-real-runtime.mjs'], {label: 'verify-real-agentteams-causal-runtime', timeout: 900_000});
   cleanupRuntime();
@@ -217,18 +241,33 @@ if (transportConformance) {
   }));
 } catch (error) {
   if (liveUat) {
-    liveFailureCode = error instanceof LiveUatTransportError ? error.code : (typeof error?.code === 'string' ? error.code : 'LIVE_AGENTTEAMS_ENVIRONMENT_FAILED');
+    if (error instanceof LiveUatDiagnosticError) liveFailureEnvelope = error.envelope;
+    else {
+      liveFailureCode = error instanceof LiveUatTransportError ? error.code : (typeof error?.code === 'string' ? error.code : 'LIVE_AGENTTEAMS_ENVIRONMENT_FAILED');
+      if (liveRunnerInput !== undefined && liveFailureCode === 'LIVE_AGENTTEAMS_ENVIRONMENT_FAILED') {
+        try {
+          const receipt = createLiveFailureReceipt({source: readSourceIdentity(root), ...liveRunnerInput.parsed, stage: 'AGENTTEAMS_PROVISION', progress: defaultLiveProgress()});
+          await writeLiveFailureReceipt(root, receipt); liveFailureEnvelope = createLiveFailureEnvelope(receipt); liveFailureCode = undefined;
+        } catch { liveFailureCode = 'LIVE_FAILURE_RECEIPT_WRITE_FAILED'; }
+      }
+    }
     process.exitCode = 1;
   } else throw error;
 } finally {
   if (provider !== undefined) provider.kill('SIGTERM');
   if (!completed && runtimeOwnershipStarted) {
     try { cleanupRuntime(); runtimeOwnershipStarted = false; }
-    catch { if (liveUat) liveFailureCode = 'LIVE_UAT_CLEANUP_FAILED'; }
+    catch { if (liveUat) { liveFailureCode = 'LIVE_UAT_CLEANUP_FAILED'; liveFailureEnvelope = undefined; } }
   }
   if (temporaryRoot !== undefined) {
     try { await rm(temporaryRoot, {recursive: true, force: true}); }
     catch (error) { if (liveUat) { liveFailureCode = 'LIVE_UAT_CLEANUP_FAILED'; process.exitCode = 1; } else throw error; }
   }
+  if (liveUat && liveFailureEnvelope !== undefined && liveFailureCode === undefined) {
+    try {
+      await updateLiveFailureCleanup(root, {agentTeams: 'PASS'}, {missionId: liveFailureEnvelope.missionId, stage: liveFailureEnvelope.stage, code: liveFailureEnvelope.code});
+    } catch { liveFailureCode = 'LIVE_FAILURE_RECEIPT_WRITE_FAILED'; liveFailureEnvelope = undefined; process.exitCode = 1; }
+  }
 }
-if (liveUat && liveFailureCode !== undefined) emitStableFailure(liveFailureCode);
+if (liveUat && liveFailureEnvelope !== undefined) emitDiagnosticFailure(liveFailureEnvelope);
+else if (liveUat && liveFailureCode !== undefined) emitStableFailure(liveFailureCode);

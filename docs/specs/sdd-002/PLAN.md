@@ -28,3 +28,12 @@ Rollback uses local Git reverts and project-scoped test migrations. Cancellation
 - Exercise the production nested child-process route for valid, partial, malformed and extra-field input, including stdout/stderr marker scans.
 - Bind transport results and cleanup into Live conformance, the Chinese acceptance report, final manifest and clean-Head source package.
 - Rerun the affected unit/type/full/Live/AgentTeams gates before returning the Canary to the Coordinator.
+
+## CR2 Fix 2 plan
+
+- Introduce one shared allowlist for Runner stages, stable codes, strict failure envelopes and atomic host receipts.
+- Set the stage before each Mission/runtime/topology/Project/DAG/member/dispatch/task/provider/finalize boundary and persist bounded progress booleans on failure.
+- Validate and reconstruct the failure at both nested child boundaries; never forward raw child output or arbitrary exception text.
+- Exercise every stable stage through the production nested stdin path, including forbidden-marker and contradictory-receipt negatives.
+- Run the pinned six-member environment without an Owner Secret and require it to reach a diagnosed fail-closed boundary; minimally correct any concrete pre-dispatch defect found.
+- Rebuild Live conformance, the Chinese report, full gates, clean commit and source package before returning an exact Coordinator retry protocol.

@@ -1,8 +1,9 @@
 import {createHash} from 'node:crypto';
 import {execFileSync, spawnSync} from 'node:child_process';
-import {access, mkdir, mkdtemp, rm, writeFile} from 'node:fs/promises';
+import {access, mkdir, mkdtemp, readFile, rm, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
+import {isLiveFailureReceipt, LIVE_STAGE_CODE, parseLiveFailureEnvelope} from './live-uat-diagnostics.mjs';
 import {isRedactedTransportReceipt} from './live-uat-transport.mjs';
 
 const root = process.cwd();
@@ -57,8 +58,27 @@ function verifyStdinTransport() {
     const failure = JSON.parse(result.stderr);
     if (result.stdout !== '' || failure.status !== 'FAIL' || failure.code !== 'LIVE_UAT_TRANSPORT_INVALID') throw new Error('LIVE_STDIN_TRANSPORT_NEGATIVE_CASE_INVALID');
   }
-  if (operationalFailure.status === 0 || operationalFailure.stdout !== '' || JSON.parse(operationalFailure.stderr)?.code !== 'LIVE_UAT_RUNNER_FAILED') throw new Error('LIVE_STDIN_TRANSPORT_OPERATIONAL_FAILURE_INVALID');
-  return {status: 'PASS', protocol: 'STRICT_JSON_EXACT_FOUR_FIELDS_SINGLE_FD0_READ', nestedChildProcess: true, cases: 5, nestedTransportCases: 4, validFields: 4, partialRejected: true, malformedRejected: true, extraFieldRejected: true, operationalFailureRejected: true, stdoutStderrInherited: false, bootstrapOrSecretFinding: false, stableFailureCode: 'LIVE_UAT_TRANSPORT_INVALID', operationalFailureCode: 'LIVE_UAT_RUNNER_FAILED', receipt: validReceipt};
+  const operationalEnvelope = parseLiveFailureEnvelope(operationalFailure.stderr, {missionId});
+  if (operationalFailure.status === 0 || operationalFailure.stdout !== '' || operationalEnvelope.code !== 'LIVE_MISSION_OPEN_FAILED' || operationalEnvelope.stage !== 'MISSION_OPEN') throw new Error('LIVE_STDIN_TRANSPORT_OPERATIONAL_FAILURE_INVALID');
+  return {status: 'PASS', protocol: 'STRICT_JSON_EXACT_FOUR_FIELDS_SINGLE_FD0_READ', nestedChildProcess: true, cases: 5, nestedTransportCases: 4, validFields: 4, partialRejected: true, malformedRejected: true, extraFieldRejected: true, operationalFailureRejected: true, stdoutStderrInherited: false, bootstrapOrSecretFinding: false, stableFailureCode: 'LIVE_UAT_TRANSPORT_INVALID', operationalFailureCode: 'LIVE_MISSION_OPEN_FAILED', receipt: validReceipt};
+}
+
+async function verifyStageDiagnostics() {
+  const organizationId = '019fcc41-dd89-70c1-ae55-c8e45b4aeb3f'; const missionId = '019fcc41-ddba-7897-a271-d0eda0c9a7fd'; const campaignDigest = 'c'.repeat(64);
+  const bootstrap = 'public-safe-dummy-bootstrap-stage-evidence-0001'; const dummySecret = 'dummy-secret-never-output-stage-evidence-0001'; const dummyTicket = 'dummy-ticket-never-output-stage-evidence-0001'; const rawResponse = 'raw-response-never-output-stage-evidence-0001';
+  const diagnosticRoot = await mkdtemp(path.join(tmpdir(), 'lumiclaw-live-stage-evidence.')); const stageReceipts = [];
+  try {
+    for (const [stage, code] of Object.entries(LIVE_STAGE_CODE)) {
+      const evidencePath = path.join(diagnosticRoot, `${stage}.json`);
+      const result = spawnSync(process.execPath, ['scripts/verify-agentteams-real-environment.mjs', `--live-stage-diagnostic-conformance=${stage}`], {cwd: root, input: JSON.stringify({organizationId, missionId, campaignDigest, bootstrap}), encoding: 'utf8', timeout: 15_000, stdio: ['pipe', 'pipe', 'pipe'], env: {...process.env, LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH: evidencePath, DUMMY_SECRET_MARKER: dummySecret, DUMMY_TICKET_MARKER: dummyTicket, DUMMY_RAW_RESPONSE_MARKER: rawResponse}});
+      const output = `${result.stdout}${result.stderr}`;
+      if (result.status === 0 || result.stdout !== '' || [bootstrap, dummySecret, dummyTicket, rawResponse].some((marker) => output.includes(marker)) || /x-lumiclaw-runner-bootstrap|x-lumiclaw-runtime-ticket|authorization|\bbearer\b/iu.test(output)) throw new Error('LIVE_STAGE_DIAGNOSTIC_DISCLOSURE_OR_STATUS_INVALID');
+      const envelope = parseLiveFailureEnvelope(result.stderr, {missionId}); const receipt = JSON.parse(await readFile(evidencePath, 'utf8'));
+      if (envelope.stage !== stage || envelope.code !== code || !isLiveFailureReceipt(receipt, {organizationId, missionId, campaignDigest, stage, code})) throw new Error('LIVE_STAGE_DIAGNOSTIC_RECEIPT_INVALID');
+      stageReceipts.push({stage, code, progress: receipt.progress});
+    }
+    return {status: 'PASS', actualNestedChildProcess: true, cases: stageReceipts.length, stages: stageReceipts, arbitraryExceptionTextForwarded: false, rawChildOutputForwarded: false, bootstrapTicketHeaderRawResponseFinding: false, receiptBeforeCleanup: true, publicPackageIncludesFailureReceipt: false};
+  } finally { await rm(diagnosticRoot, {recursive: true, force: true}); }
 }
 
 function infrastructureNames() {
@@ -93,9 +113,10 @@ async function waitForApi() {
 }
 
 try {
-  const tests = run(path.join(root, 'node_modules/.bin/vitest'), ['run', 'apps/api/src/live-runtime-security.test.ts', 'apps/api/src/server.test.ts', 'scripts/live-uat-transport.test.ts']);
-  if (!/Test Files\s+3 passed \(3\)/u.test(tests) || !/Tests\s+21 passed \(21\)/u.test(tests)) throw new Error('LIVE_CONFORMANCE_TARGETED_TEST_COUNT_INVALID');
+  const tests = run(path.join(root, 'node_modules/.bin/vitest'), ['run', 'apps/api/src/live-runtime-security.test.ts', 'apps/api/src/server.test.ts', 'scripts/live-uat-transport.test.ts', 'scripts/live-uat-diagnostics.test.ts']);
+  if (!/Test Files\s+4 passed \(4\)/u.test(tests) || !/Tests\s+35 passed \(35\)/u.test(tests)) throw new Error('LIVE_CONFORMANCE_TARGETED_TEST_COUNT_INVALID');
   const stdinTransport = verifyStdinTransport();
+  const stageDiagnostics = await verifyStageDiagnostics();
   const composePolicy = JSON.parse(run(process.execPath, ['scripts/check-compose-policy.mjs']));
   const clientBundle = JSON.parse(run(process.execPath, ['scripts/check-storybook-browser-safety.mjs']));
   const currentFailedCanaryObjectsAbsentBeforeRun = failedCanaryObjectsAbsent();
@@ -133,8 +154,9 @@ try {
     liveProviderVerified: false,
     liveProviderStatus: 'NOT_RUN_NO_OWNER_SECRET',
     generatedAt: new Date().toISOString(),
-    targetedContracts: {testFiles: 3, tests: 21, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true},
+    targetedContracts: {testFiles: 4, tests: 35, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true},
     stdinTransport,
+    stageDiagnostics,
     composePolicy,
     clientBundle: {status: clientBundle.status, bundleCount: clientBundle.bundles.length, forbidden: clientBundle.forbidden},
     composeInspect: {project, health, secretInEnvironment, secretMounts, dockerSocketMounted, sensitiveLogFinding},
@@ -145,7 +167,7 @@ try {
   };
   await mkdir(path.join(root, '.evidence/sdd-002'), {recursive: true});
   await writeFile(path.join(root, '.evidence/sdd-002/live-deepseek-conformance.json'), `${JSON.stringify(evidence, null, 2)}\n`);
-  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, liveProviderStatus: evidence.liveProviderStatus, tests: 21, stdinTransportCases: 5, secretInEnvironment, dockerSocketMounted, cleanup: evidence.cleanup, evidence: '.evidence/sdd-002/live-deepseek-conformance.json'}));
+  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, liveProviderStatus: evidence.liveProviderStatus, tests: 35, stdinTransportCases: 5, stageDiagnosticCases: stageDiagnostics.cases, secretInEnvironment, dockerSocketMounted, cleanup: evidence.cleanup, evidence: '.evidence/sdd-002/live-deepseek-conformance.json'}));
 } finally {
   if (composeStarted && secretRoot !== undefined) {
     const environment = {...process.env, LUMICLAW_DEEPSEEK_SECRET_FILE: path.join(secretRoot, 'deepseek'), LUMICLAW_RUNTIME_BOOTSTRAP_FILE: path.join(secretRoot, 'bootstrap'), LUMICLAW_API_PORT: apiPort, LUMICLAW_WEB_PORT: webPort};

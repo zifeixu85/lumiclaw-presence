@@ -16,6 +16,12 @@ const expectedProviderPricing = {
   flash: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheHitUsdPerMillion: 0.0028, inputCacheMissUsdPerMillion: 0.14, outputUsdPerMillion: 0.28, peakMultiplierNotApplied: true},
   pro: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheHitUsdPerMillion: 0.003625, inputCacheMissUsdPerMillion: 0.435, outputUsdPerMillion: 0.87, peakMultiplierNotApplied: true}
 };
+const expectedLiveStageCodes = {
+  MISSION_OPEN: 'LIVE_MISSION_OPEN_FAILED', RUNTIME_IDENTITY: 'LIVE_RUNTIME_IDENTITY_FAILED', TOPOLOGY: 'LIVE_AGENTTEAMS_TOPOLOGY_INVALID',
+  PROJECT_CREATE: 'LIVE_PROJECT_CREATE_FAILED', DAG_PLAN: 'LIVE_DAG_PLAN_FAILED', MEMBER_BINDING: 'LIVE_MEMBER_BINDING_MISSING',
+  PROJECT_DISPATCH: 'LIVE_PROJECT_DISPATCH_REJECTED', TASK_PROTOCOL: 'LIVE_TASK_PROTOCOL_FAILED', PROVIDER_REQUEST: 'LIVE_PROVIDER_REQUEST_FAILED',
+  FINALIZE: 'LIVE_FINALIZE_FAILED', AGENTTEAMS_PROVISION: 'LIVE_AGENTTEAMS_ENVIRONMENT_FAILED', CLEANUP: 'LIVE_UAT_CLEANUP_FAILED'
+};
 const expectedRoleContracts = [
   {id: 'presence-mission-leader', orchestrationOnly: true, permissions: ['ORCHESTRATE'], skillLocks: ['trace-safe-escalation@1.0.0']},
   {id: 'evidence-claim-steward', orchestrationOnly: false, permissions: ['READ_EVIDENCE'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'trace-safe-escalation@1.0.0']},
@@ -87,14 +93,15 @@ function exactBrowserNoAction(value) {
 function liveConformanceValid(value) {
   const mounts = value?.composeInspect?.secretMounts;
   const transport = value?.stdinTransport;
+  const diagnostics = value?.stageDiagnostics;
   const receipt = transport?.receipt;
   return value?.schemaVersion === 1
     && value?.status === 'PASS'
     && value?.maturity === 'ENGINEERING_VERIFIED'
     && value?.liveProviderVerified === false
     && value?.liveProviderStatus === 'NOT_RUN_NO_OWNER_SECRET'
-    && value?.targetedContracts?.testFiles === 3
-    && value?.targetedContracts?.tests === 21
+    && value?.targetedContracts?.testFiles === 4
+    && value?.targetedContracts?.tests === 35
     && value?.targetedContracts?.noKeyFailClosed === true
     && value?.targetedContracts?.mockFallback === false
     && value?.targetedContracts?.scopedSingleUseTickets === true
@@ -114,7 +121,7 @@ function liveConformanceValid(value) {
     && transport?.stdoutStderrInherited === false
     && transport?.bootstrapOrSecretFinding === false
     && transport?.stableFailureCode === 'LIVE_UAT_TRANSPORT_INVALID'
-    && transport?.operationalFailureCode === 'LIVE_UAT_RUNNER_FAILED'
+    && transport?.operationalFailureCode === 'LIVE_MISSION_OPEN_FAILED'
     && receipt?.status === 'PASS'
     && receipt?.mode === 'LIVE_UAT_STDIN_TRANSPORT_CONFORMANCE'
     && receipt?.fieldCount === 4
@@ -122,6 +129,17 @@ function liveConformanceValid(value) {
     && receipt?.secretPresent === false
     && exactStringSet(Object.keys(receipt?.fieldDigests ?? {}), ['organizationId', 'missionId', 'campaignDigest', 'bootstrap'])
     && Object.values(receipt.fieldDigests).every(digest)
+    && diagnostics?.status === 'PASS'
+    && diagnostics?.actualNestedChildProcess === true
+    && diagnostics?.cases === 12
+    && Array.isArray(diagnostics?.stages) && diagnostics.stages.length === 12
+    && diagnostics.stages.every((entry) => expectedLiveStageCodes[entry.stage] === entry.code && entry.progress !== null && typeof entry.progress === 'object')
+    && exactStringSet(diagnostics.stages.map((entry) => entry.stage), Object.keys(expectedLiveStageCodes))
+    && diagnostics?.arbitraryExceptionTextForwarded === false
+    && diagnostics?.rawChildOutputForwarded === false
+    && diagnostics?.bootstrapTicketHeaderRawResponseFinding === false
+    && diagnostics?.receiptBeforeCleanup === true
+    && diagnostics?.publicPackageIncludesFailureReceipt === false
     && value?.composePolicy?.status === 'PASS'
     && value?.composePolicy?.dockerSocketMounted === false
     && value?.composePolicy?.secretAsServiceEnvironment === false

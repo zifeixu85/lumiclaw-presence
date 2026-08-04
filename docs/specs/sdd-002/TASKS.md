@@ -25,3 +25,11 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F1-02`: stable redacted child errors with no bootstrap/ticket/header/raw-output disclosure.
 - [x] `CR2-F1-03`: real nested child-process positive/partial/malformed/extra-field regression suite and cleanup assertions.
 - [x] `CR2-F1-04`: Live conformance/manifest/report update, full affected gates, clean commit and source package handoff.
+
+## CR2 Fix 2 tasks
+
+- [ ] `CR2-F2-01`: shared allowlisted stage/code/envelope and atomic failure receipt contract.
+- [ ] `CR2-F2-02`: Runner, environment verifier and launcher propagation with exact owned cleanup updates.
+- [ ] `CR2-F2-03`: real nested child-process stage/non-disclosure/contradiction regressions and Live conformance evidence.
+- [ ] `CR2-F2-04`: no-Owner-Key pinned AgentTeams diagnosis and any resulting minimal functional correction.
+- [ ] `CR2-F2-05`: Chinese acceptance update, full gates, clean commit, public-safe ZIP and Coordinator retry handoff.
