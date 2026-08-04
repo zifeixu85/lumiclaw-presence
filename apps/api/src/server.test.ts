@@ -32,7 +32,9 @@ function liveSnapshot(request: ModelGenerateRequest<unknown>, errorCode: string 
   return {schemaVersion: 1 as const, id: createUuidV7(now().getTime(), new Uint8Array(10)), missionId: request.missionId, taskId: request.taskId, provider: 'DEEPSEEK' as const, maturity: 'CANARY' as const, model: request.model, response: {id: 'redacted-fixture-response', actualModel: request.model, systemFingerprint: null, finishReason: 'stop'}, config: {temperature: 0, maxTokens: 4000, responseFormat: 'json_object' as const, timeoutMs: 120000, maxAttempts: 3}, pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04' as const, inputCacheHitUsdPerMillion: 0.0028, inputCacheMissUsdPerMillion: 0.14, outputUsdPerMillion: 0.28, peakMultiplierNotApplied: true as const}, inputDigest, outputDigest: errorCode === null ? sha256Digest(value) : null, tokenUsage: {input: 20, output: 10, cacheHit: 5, cacheMiss: 15, reasoning: 0}, estimatedCostUsd: 0.000004914, latencyMs: 23, attempts: 1, error: errorCode === null ? null : {code: errorCode, retryable: errorCode === 'MODEL_TIMEOUT' || errorCode === 'PROVIDER_UNAVAILABLE' || /^(?:PROVIDER_HTTP_(?:429|5\d\d))$/u.test(errorCode)}, secretPresent: false as const, createdAt: now().toISOString()};
 }
 
-function liveFixtureValue(request: ModelGenerateRequest<unknown>, auditMode: 'EXACT_FROZEN_FAIL' | 'INVALID_ALL_PASS'): unknown {
+type FounderFaultMode = 'EXACT_FROZEN_PHRASE' | 'OMIT_FROZEN_PHRASE' | 'PARAPHRASE_FROZEN_PHRASE' | 'REVERSE_FROZEN_PHRASE' | 'PUNCTUATE_FROZEN_PHRASE' | 'SPLIT_FROZEN_PHRASE' | 'ALT_TEXT_ONLY' | 'XIAOHONGSHU_ONLY' | 'UNICODE_LOOKALIKE';
+
+function liveFixtureValue(request: ModelGenerateRequest<unknown>, auditMode: 'EXACT_FROZEN_FAIL' | 'INVALID_ALL_PASS', founderFaultMode: FounderFaultMode): unknown {
   const input = request.input as {taskKind: TaskContract['kind']; projection: Record<string, unknown>};
   const projection = input.projection;
   if (input.taskKind === 'FREEZE_EVIDENCE') return {frozen: true, assessment: 'Public-safe deterministic Claim/Evidence freeze.'};
@@ -43,7 +45,17 @@ function liveFixtureValue(request: ModelGenerateRequest<unknown>, auditMode: 'EX
     return {revisions: platforms.map((platform) => {
       const source = sourceRevisions.find((revision) => revision.platform === platform)!;
       const content = structuredClone(source.content);
-      if (platform === 'X') content.posts = ['LumiClaw Presence is generally available in every market today.'];
+      if (platform === 'X') {
+        if (founderFaultMode === 'EXACT_FROZEN_PHRASE') content.posts = ['LumiClaw Presence is generally available in every market today.'];
+        else if (founderFaultMode === 'OMIT_FROZEN_PHRASE' || founderFaultMode === 'XIAOHONGSHU_ONLY') content.posts = ['LumiClaw Presence remains in governed beta.'];
+        else if (founderFaultMode === 'PARAPHRASE_FROZEN_PHRASE') content.posts = ['LumiClaw Presence is broadly available.'];
+        else if (founderFaultMode === 'REVERSE_FROZEN_PHRASE') content.posts = ['LumiClaw Presence is available generally.'];
+        else if (founderFaultMode === 'PUNCTUATE_FROZEN_PHRASE') content.posts = ['LumiClaw Presence is generally-available.'];
+        else if (founderFaultMode === 'SPLIT_FROZEN_PHRASE') content.posts = ['generally', 'available'];
+        else if (founderFaultMode === 'ALT_TEXT_ONLY') { content.posts = ['LumiClaw Presence remains in governed beta.']; content.altText = 'generally available'; }
+        else content.posts = ['LumiClaw Presence is generаlly available.'];
+      }
+      if (platform === 'XIAOHONGSHU' && founderFaultMode === 'XIAOHONGSHU_ONLY') content.body = 'generally available';
       return {platform, content};
     })};
   }
@@ -56,10 +68,10 @@ function liveFixtureValue(request: ModelGenerateRequest<unknown>, auditMode: 'EX
   throw new Error('PUBLIC_SAFE_LIVE_FIXTURE_TASK_UNEXPECTED');
 }
 
-async function liveInitialAuditAttempt(auditMode: 'EXACT_FROZEN_FAIL' | 'INVALID_ALL_PASS', suffix: string) {
+async function liveInitialAuditAttempt(auditMode: 'EXACT_FROZEN_FAIL' | 'INVALID_ALL_PASS', suffix: string, founderFaultMode: FounderFaultMode = 'EXACT_FROZEN_PHRASE') {
   let callIndex = 0;
   const provider = {generateStructured: async (request: ModelGenerateRequest<unknown>) => {
-    const value = liveFixtureValue(request, auditMode);
+    const value = liveFixtureValue(request, auditMode, founderFaultMode);
     const snapshot = liveSnapshot(request, null, value);
     snapshot.id = createUuidV7(now().getTime() + callIndex, new Uint8Array(10).fill(callIndex + 1));
     callIndex += 1;
@@ -186,6 +198,18 @@ describe('M1 Campaign API contract', () => {
     expect(initialAuditSubmit).toBeUndefined();
     expect(reopened.json().mission).toMatchObject({state: 'FAILED', modelCalls: expect.any(Array), revisions: [], audits: [], actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
     expect(reopened.json().mission.modelCalls).toHaveLength(5);
+  });
+
+  it.each([
+    'OMIT_FROZEN_PHRASE', 'PARAPHRASE_FROZEN_PHRASE', 'REVERSE_FROZEN_PHRASE', 'PUNCTUATE_FROZEN_PHRASE',
+    'SPLIT_FROZEN_PHRASE', 'ALT_TEXT_ONLY', 'XIAOHONGSHU_ONLY', 'UNICODE_LOOKALIKE'
+  ] as const)('rejects Founder frozen-fault mutation %s before the independent Auditor model call', async (founderFaultMode) => {
+    const suffix = founderFaultMode.toLowerCase().replaceAll('_', '-');
+    const {lastGenerated, initialAuditSubmit, reopened} = await liveInitialAuditAttempt('EXACT_FROZEN_FAIL', suffix, founderFaultMode);
+    expect(lastGenerated?.statusCode).toBe(502); expect(lastGenerated?.json()).toMatchObject({code: 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', providerOutcomeCode: 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', mockFallback: false});
+    expect(initialAuditSubmit).toBeUndefined();
+    expect(reopened.json().mission).toMatchObject({state: 'FAILED', modelCalls: expect.any(Array), revisions: [], audits: [], actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
+    expect(reopened.json().mission.modelCalls).toHaveLength(3);
   });
 
   it.each(['PROVIDER_HTTP_401', 'PROVIDER_HTTP_402', 'PROVIDER_HTTP_404', 'PROVIDER_HTTP_429', 'PROVIDER_HTTP_500', 'PROVIDER_HTTP_502', 'PROVIDER_HTTP_503', 'PROVIDER_HTTP_504', 'MODEL_TIMEOUT', 'PROVIDER_UNAVAILABLE', 'MODEL_RESPONSE_IDENTITY_INVALID', 'MODEL_RETURNED_MODEL_MISMATCH', 'MODEL_FINISH_REASON_INVALID', 'MODEL_USAGE_INVALID', 'PROVIDER_RESPONSE_INVALID', 'MODEL_JSON_MALFORMED', 'MODEL_SCHEMA_INVALID'])('persists only the allowlisted first-domain provider outcome %s', async (providerOutcomeCode) => {

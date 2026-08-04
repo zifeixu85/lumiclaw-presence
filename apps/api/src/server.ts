@@ -15,6 +15,7 @@ import {
   attachProviderEvidence,
   DeepSeekModelProvider,
   failLiveMission,
+  hasFrozenFounderFault,
   liveModelGenerationSchema,
   materializeAcceptedRuntimeMission,
   materializeAcceptedRuntimeProgress,
@@ -449,6 +450,7 @@ function normalizeLiveRoleOutput(task: TaskContract, raw: unknown, input: Record
     const revisions = expected.map((platform) => {
       const candidate = rawRevisions.find((value) => isRecord(value) && value.platform === platform); const source = sourceRevisions.find((value) => isRecord(value) && value.platform === platform);
       if (!isRecord(candidate) || !isRecord(source) || !isRecord(candidate.content) || candidate.content.kind !== platform) return undefined;
+      if (task.kind === 'PRODUCE_FOUNDER' && platform === 'X' && !hasFrozenFounderFault(candidate.content)) return undefined;
       if (task.kind === 'PRODUCE_FOUNDER_CORRECTION' && sha256Digest(candidate.content) !== sha256Digest(source.content)) return undefined;
       return {platform, revision: task.kind === 'PRODUCE_FOUNDER_CORRECTION' ? 2 : 1, sourceRevisionDigest: sha256Digest(source), contentDigest: sha256Digest(candidate.content), content: candidate.content};
     });

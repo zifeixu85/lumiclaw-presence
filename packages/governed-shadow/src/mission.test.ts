@@ -112,6 +112,28 @@ describe('M2 governed SHADOW Mission', () => {
     expect(mission.revisions.find((item) => item.platform === 'X' && item.revision === 2)?.content).toEqual(sourceByPlatform.get('X')!.content);
   });
 
+  it('quarantines a phrase-less Founder Runtime Submit before the independent Auditor can become assignable', () => {
+    let mission = dispatch(createShadowMission(source()));
+    const submit = (kind: TaskContract['kind'], payload: unknown) => {
+      const task = mission.tasks.find((item) => item.kind === kind)!; mission = acknowledge(mission, task);
+      mission = acceptRuntimeSubmission(mission, runtimeSubmission(mission, task, payload), now);
+      mission = materializeAcceptedRuntimeProgress(mission, campaign, now);
+    };
+    submit('PROJECT_COORDINATION', {projectId: mission.runtimeProjectId, externalActionAllowed: false});
+    submit('FREEZE_EVIDENCE', {frozen: true, claimEvidenceDigest: sha256Digest({claims: campaign.claims, evidence: campaign.evidenceRefs})});
+    submit('PLAN_CAMPAIGN', {activationPlanDigest: sha256Digest(campaign.activationPlan)});
+    const sourceByPlatform = new Map(campaign.artifactRevisions.map((revision) => [revision.platform, revision]));
+    const draft = (platform: 'X' | 'XIAOHONGSHU') => {
+      const sourceRevision = sourceByPlatform.get(platform)!; const content = structuredClone(sourceRevision.content);
+      return {platform, revision: 1, sourceRevisionDigest: sha256Digest(sourceRevision), contentDigest: sha256Digest(content), content};
+    };
+    submit('PRODUCE_FOUNDER', {revisions: [draft('X'), draft('XIAOHONGSHU')]});
+    expect(mission.trace.at(-1)).toMatchObject({kind: 'QUARANTINE', detail: {errors: expect.stringContaining('OUTPUT_PAYLOAD_SCHEMA_INVALID')}});
+    expect(mission.tasks.find((item) => item.kind === 'PRODUCE_FOUNDER')).toMatchObject({state: 'ACKNOWLEDGED', acceptedOutputDigest: null});
+    expect(mission.tasks.find((item) => item.kind === 'AUDIT_REVISIONS')).toMatchObject({state: 'WAITING_DEPENDENCY'});
+    expect(mission).toMatchObject({actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
+  });
+
   it('quarantines digest/schema/identity mismatch and duplicate accepted Submit', () => {
     let mission = dispatch(createShadowMission(source())); const task = mission.tasks[1]!; mission = acknowledge(mission, task); const payload = {frozen: true, claimEvidenceDigest: 'c'.repeat(64)};
     const base = runtimeSubmission(mission, task, payload);

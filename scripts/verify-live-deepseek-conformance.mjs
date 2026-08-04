@@ -175,7 +175,7 @@ async function waitForApi() {
 
 try {
   const tests = run(path.join(root, 'node_modules/.bin/vitest'), ['run', 'apps/api/src/live-runtime-security.test.ts', 'apps/api/src/server.test.ts', 'packages/governed-shadow/src/model-provider.test.ts', 'packages/governed-shadow/src/live-model-generation-schema.test.ts', 'scripts/live-uat-transport.test.ts', 'scripts/live-uat-diagnostics.test.ts', 'scripts/live-provider-outcome.test.ts', 'scripts/live-agentteams-task-protocol.test.ts', 'scripts/live-task-protocol-diagnostics.test.ts', 'scripts/live-submission-import-outcome.test.ts']);
-  if (!/Test Files\s+10 passed \(10\)/u.test(tests) || !/Tests\s+167 passed \(167\)/u.test(tests)) throw new Error('LIVE_CONFORMANCE_TARGETED_TEST_COUNT_INVALID');
+  if (!/Test Files\s+10 passed \(10\)/u.test(tests) || !/Tests\s+176 passed \(176\)/u.test(tests)) throw new Error('LIVE_CONFORMANCE_TARGETED_TEST_COUNT_INVALID');
   const stdinTransport = verifyStdinTransport();
   const stageDiagnostics = await verifyStageDiagnostics();
   const providerOutcomeDiagnostics = await verifyProviderOutcomeDiagnostics();
@@ -218,7 +218,7 @@ try {
     liveProviderVerified: false,
     liveProviderStatus: 'NOT_RUN_NO_OWNER_SECRET',
     generatedAt: new Date().toISOString(),
-    targetedContracts: {testFiles: 10, tests: 167, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true, exactRoleSchemaPromptBound: true, taskSpecificSemanticSchemas: true, frozenAuditSemanticBoundary: true, fifthModelSubmissionImportCovered: true, firstDomainFixtureCovered: true, workerBrokerOriginBound: true, resumableAgentTeamsTaskProtocol: true},
+    targetedContracts: {testFiles: 10, tests: 176, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true, exactRoleSchemaPromptBound: true, taskSpecificSemanticSchemas: true, frozenFounderPhraseBoundary: true, frozenAuditSemanticBoundary: true, fifthModelSubmissionImportCovered: true, firstDomainFixtureCovered: true, workerBrokerOriginBound: true, resumableAgentTeamsTaskProtocol: true},
     stdinTransport,
     stageDiagnostics,
     providerOutcomeDiagnostics,
@@ -234,7 +234,7 @@ try {
   };
   await mkdir(path.join(root, '.evidence/sdd-002'), {recursive: true});
   await writeFile(path.join(root, '.evidence/sdd-002/live-deepseek-conformance.json'), `${JSON.stringify(evidence, null, 2)}\n`);
-  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, liveProviderStatus: evidence.liveProviderStatus, tests: 167, stdinTransportCases: 5, stageDiagnosticCases: stageDiagnostics.cases, providerOutcomeCases: providerOutcomeDiagnostics.cases, taskProtocolOutcomeCases: taskProtocolDiagnostics.cases, submissionImportOutcomeCases: submissionImportDiagnostics.cases, secretInEnvironment, dockerSocketMounted, cleanup: evidence.cleanup, evidence: '.evidence/sdd-002/live-deepseek-conformance.json'}));
+  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, liveProviderStatus: evidence.liveProviderStatus, tests: 176, stdinTransportCases: 5, stageDiagnosticCases: stageDiagnostics.cases, providerOutcomeCases: providerOutcomeDiagnostics.cases, taskProtocolOutcomeCases: taskProtocolDiagnostics.cases, submissionImportOutcomeCases: submissionImportDiagnostics.cases, secretInEnvironment, dockerSocketMounted, cleanup: evidence.cleanup, evidence: '.evidence/sdd-002/live-deepseek-conformance.json'}));
 } finally {
   if (composeStarted && secretRoot !== undefined) {
     const environment = {...process.env, LUMICLAW_DEEPSEEK_SECRET_FILE: path.join(secretRoot, 'deepseek'), LUMICLAW_RUNTIME_BOOTSTRAP_FILE: path.join(secretRoot, 'bootstrap'), LUMICLAW_API_PORT: apiPort, LUMICLAW_WEB_PORT: webPort};

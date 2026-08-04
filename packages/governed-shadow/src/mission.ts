@@ -18,6 +18,9 @@ export const AGENTTEAMS_V120_IMAGE_DIGESTS = [
   {component: 'worker', digest: 'sha256:dcdd9103535cfac247267e0f69661820c801396d58e2c8e0c14eefd40b63b7bc'}
 ] as const;
 
+export const FROZEN_FOUNDER_FAULT_PHRASE = 'generally available';
+const FROZEN_FOUNDER_FAULT_PATTERN = [...FROZEN_FOUNDER_FAULT_PHRASE].map((character) => character >= 'a' && character <= 'z' ? `[${character}${character.toUpperCase()}]` : character).join('');
+
 const ROLE_DEFINITIONS = {
   'presence-mission-leader': {responsibility: 'Coordinate the AgentTeams Project/DAG and release or escalate tasks.', permissions: ['ORCHESTRATE'], tools: ['TASK_READ', 'TRACE_APPEND'], visible: ['MISSION'], prohibited: ['claim', 'plan', 'platform artifact', 'audit', 'approval'], orchestrationOnly: true},
   'evidence-claim-steward': {responsibility: 'Freeze approved Claim/Evidence bindings and identify gaps.', permissions: ['READ_EVIDENCE'], tools: ['TASK_READ', 'TASK_ACK', 'TASK_SUBMIT', 'EVIDENCE_READ', 'TRACE_APPEND'], visible: ['MISSION', 'FROZEN_EVIDENCE'], prohibited: ['platform artifact', 'audit', 'approval'], orchestrationOnly: false},
@@ -246,6 +249,21 @@ function livePlatformContentSchema(platform?: GovernedArtifactRevision['platform
   return platform === undefined ? {oneOf: Object.values(byPlatform)} : byPlatform[platform];
 }
 
+function frozenFounderXContentSchema(): LiveJsonSchema {
+  return {
+    type: 'object', additionalProperties: false, required: ['kind', 'posts', 'altText'],
+    properties: {
+      kind: {const: 'X'},
+      posts: {type: 'array', minItems: 1, items: {type: 'string'}, contains: {type: 'string', pattern: FROZEN_FOUNDER_FAULT_PATTERN}},
+      altText: {type: 'string'}
+    }
+  };
+}
+
+export function hasFrozenFounderFault(value: unknown): boolean {
+  return isRecord(value) && value.kind === 'X' && Array.isArray(value.posts) && value.posts.some((post) => typeof post === 'string' && post.toLowerCase().includes(FROZEN_FOUNDER_FAULT_PHRASE));
+}
+
 function generationRevisionSchema(platform: GovernedArtifactRevision['platform'], exactContent?: PlatformArtifact): LiveJsonSchema {
   return {type: 'object', additionalProperties: false, required: ['platform', 'content'], properties: {platform: {const: platform}, content: exactContent === undefined ? livePlatformContentSchema(platform) : {const: structuredClone(exactContent)}}};
 }
@@ -283,8 +301,11 @@ export function liveModelGenerationSchema(task: TaskContract, input: Record<stri
   if (task.kind === 'FREEZE_EVIDENCE') return {type: 'object', additionalProperties: false, required: ['frozen', 'assessment'], properties: {frozen: {const: true}, assessment: {type: 'string', minLength: 1}}};
   if (task.kind === 'PLAN_CAMPAIGN') return {type: 'object', additionalProperties: false, required: ['rationale'], properties: {rationale: {type: 'string', minLength: 1}}};
   if (task.kind === 'PRODUCE_FOUNDER') {
-    const platforms = ['X', 'XIAOHONGSHU'] as const;
-    return {type: 'object', additionalProperties: false, required: ['revisions'], properties: {revisions: exactUnorderedPlatformArray(platforms.map((platform) => ({platform, schema: generationRevisionSchema(platform)})))}};
+    const entries = [
+      {platform: 'X' as const, schema: {type: 'object', additionalProperties: false, required: ['platform', 'content'], properties: {platform: {const: 'X'}, content: frozenFounderXContentSchema()}}},
+      {platform: 'XIAOHONGSHU' as const, schema: generationRevisionSchema('XIAOHONGSHU')}
+    ];
+    return {type: 'object', additionalProperties: false, required: ['revisions'], properties: {revisions: exactUnorderedPlatformArray(entries)}};
   }
   if (task.kind === 'PRODUCE_PRODUCT') {
     const platforms = ['BLUESKY', 'LINKEDIN'] as const;
@@ -431,8 +452,7 @@ export function materializeAcceptedRuntimeProgress(missionValue: ShadowMission, 
     const denied = mission.revisions.find((revision) => revision.platform === 'X' && revision.revision === 1)!;
     const deniedAudit = mission.audits.find((audit) => audit.revisionId === denied.id)!;
     const faultIssue = deniedAudit.issues.find((issue) => issue.code === 'CLAIM_OVERREACH' && issue.evidenceRefIds.length > 0 && issue.nextResponsibleRoleId === 'founder-identity-producer');
-    const deniedText = denied.content.kind === 'X' ? denied.content.posts.join('\n').toLowerCase() : '';
-    if (!deniedText.includes('generally available') || deniedAudit.outcome !== 'FAIL' || faultIssue === undefined) throw new ShadowContractError('RUNTIME_FROZEN_FAULT_INVALID', 'X v1 must persist as an active evidence-bound FAIL before correction.');
+    if (!hasFrozenFounderFault(denied.content) || deniedAudit.outcome !== 'FAIL' || faultIssue === undefined) throw new ShadowContractError('RUNTIME_FROZEN_FAULT_INVALID', 'X v1 must persist as an active evidence-bound FAIL before correction.');
     mission.fault.deniedRevisionId = denied.id;
     mission.state = 'REVISION_REQUIRED';
     finalizeAssignableTaskProjections(mission, campaign);
@@ -684,7 +704,10 @@ function validateSubmissionPayload(task: TaskContract, payload: unknown): boolea
     case 'PROJECT_COORDINATION': return typeof payload.projectId === 'string' && payload.projectId.length > 0 && payload.externalActionAllowed === false;
     case 'FREEZE_EVIDENCE': return payload.frozen === true && digestString(payload.claimEvidenceDigest);
     case 'PLAN_CAMPAIGN': return digestString(payload.activationPlanDigest);
-    case 'PRODUCE_FOUNDER': { const revisions = runtimeRevisions(payload); return Array.isArray(payload.revisions) && payload.revisions.length === 2 && revisions.length === 2 && revisions.every((draft) => ['X', 'XIAOHONGSHU'].includes(draft.platform) && draft.revision === 1); }
+    case 'PRODUCE_FOUNDER': {
+      const revisions = runtimeRevisions(payload); const platforms = new Set(revisions.map((draft) => draft.platform)); const xRevision = revisions.find((draft) => draft.platform === 'X');
+      return Array.isArray(payload.revisions) && payload.revisions.length === 2 && revisions.length === 2 && platforms.size === 2 && platforms.has('X') && platforms.has('XIAOHONGSHU') && revisions.every((draft) => draft.revision === 1) && hasFrozenFounderFault(xRevision?.content);
+    }
     case 'PRODUCE_PRODUCT': { const revisions = runtimeRevisions(payload); return Array.isArray(payload.revisions) && payload.revisions.length === 2 && revisions.length === 2 && revisions.every((draft) => ['BLUESKY', 'LINKEDIN'].includes(draft.platform)); }
     case 'AUDIT_REVISIONS': { const decisions = runtimeDecisions(payload); return Array.isArray(payload.decisions) && payload.decisions.length === 4 && decisions.length === 4 && decisions.every((decision) => decision.revision === 1); }
     case 'PRODUCE_FOUNDER_CORRECTION': { const revisions = runtimeRevisions(payload); return Array.isArray(payload.revisions) && payload.revisions.length === 1 && revisions.length === 1 && revisions[0]?.platform === 'X' && revisions[0]?.revision === 2 && digestString(payload.failedAuditDigest); }

@@ -120,7 +120,7 @@ function liveConformanceValid(value) {
     && value?.liveProviderVerified === false
     && value?.liveProviderStatus === 'NOT_RUN_NO_OWNER_SECRET'
     && value?.targetedContracts?.testFiles === 10
-    && value?.targetedContracts?.tests === 167
+    && value?.targetedContracts?.tests === 176
     && value?.targetedContracts?.noKeyFailClosed === true
     && value?.targetedContracts?.mockFallback === false
     && value?.targetedContracts?.scopedSingleUseTickets === true
@@ -129,6 +129,7 @@ function liveConformanceValid(value) {
     && value?.targetedContracts?.independentAuditorReceiptRequired === true
     && value?.targetedContracts?.exactRoleSchemaPromptBound === true
     && value?.targetedContracts?.taskSpecificSemanticSchemas === true
+    && value?.targetedContracts?.frozenFounderPhraseBoundary === true
     && value?.targetedContracts?.frozenAuditSemanticBoundary === true
     && value?.targetedContracts?.fifthModelSubmissionImportCovered === true
     && value?.targetedContracts?.firstDomainFixtureCovered === true
@@ -298,16 +299,18 @@ function providerEvidenceValid(providers) {
     && exactRecord(conformance?.costSnapshotsUsd, {flash: 0.000025256, pro: 0.0000783725})
     && exactRecord(conformance?.pricingSnapshots?.flash, expectedProviderPricing.flash)
     && exactRecord(conformance?.pricingSnapshots?.pro, expectedProviderPricing.pro)
-    && roleSchemas?.version === 'TASK_SPECIFIC_CLOSED_V1'
+    && roleSchemas?.version === 'TASK_SPECIFIC_CLOSED_V2'
     && exactStringSet(roleSchemas?.taskKinds, ['PRODUCE_FOUNDER', 'PRODUCE_PRODUCT', 'PRODUCE_FOUNDER_CORRECTION', 'AUDIT_REVISIONS', 'REAUDIT_CORRECTION'])
     && roleSchemas?.exactUnorderedPlatformSets === true
     && roleSchemas?.platformContentKindBound === true
+    && roleSchemas?.frozenFounderPhraseRequired === true
+    && roleSchemas?.frozenFounderPhraseAsciiCaseInsensitive === true
     && roleSchemas?.correctionSourceContentConst === true
     && roleSchemas?.frozenInitialAuditFailRequired === true
     && roleSchemas?.reAuditPassRequired === true
     && roleSchemas?.serverDerivedFieldsRejected === true
     && roleSchemas?.acceptedCases === 8
-    && roleSchemas?.rejectedCases === 18
+    && roleSchemas?.rejectedCases === 20
     && exactNoAction(providers?.noAction);
 }
 function roleContractIdentity(role) {
@@ -532,6 +535,8 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, usageBreakdownConsistencyRejected: false}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, exactSchemaPromptBound: false}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, roleGenerationSchemas: {...conformance.roleGenerationSchemas, platformContentKindBound: false}}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, roleGenerationSchemas: {...conformance.roleGenerationSchemas, frozenFounderPhraseRequired: false}}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, roleGenerationSchemas: {...conformance.roleGenerationSchemas, frozenFounderPhraseAsciiCaseInsensitive: false}}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, roleGenerationSchemas: {...conformance.roleGenerationSchemas, frozenInitialAuditFailRequired: false}}))),
     !liveConformanceValid({...liveConformance, liveProviderVerified: true}),
     !liveConformanceValid({...liveConformance, composeInspect: {...liveConformance.composeInspect, secretInEnvironment: true}}),
@@ -539,6 +544,7 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, tests: 0}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, exactRoleSchemaPromptBound: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, taskSpecificSemanticSchemas: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, frozenFounderPhraseBoundary: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, frozenAuditSemanticBoundary: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, fifthModelSubmissionImportCovered: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, workerBrokerOriginBound: false}}),

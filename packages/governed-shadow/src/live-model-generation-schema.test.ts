@@ -1,9 +1,10 @@
 import {Ajv, type ValidateFunction} from 'ajv';
 import {describe, expect, it} from 'vitest';
-import {liveModelGenerationSchema, ShadowContractError} from './mission.js';
+import {hasFrozenFounderFault, liveModelGenerationSchema, ShadowContractError} from './mission.js';
 import type {TaskContract} from './types.js';
 
-const x = {kind: 'X', posts: ['Founder update.'], altText: 'Founder update card'};
+const x = {kind: 'X', posts: ['LumiClaw Presence is generally available in every market today.'], altText: 'Founder update card'};
+const sourceX = {kind: 'X', posts: ['Founder update.'], altText: 'Founder update card'};
 const xiaohongshu = {kind: 'XIAOHONGSHU', title: '创始人动态', body: '公开安全的本地演练草稿。', topics: ['品牌运营'], coverLabel: '合成封面'};
 const bluesky = {kind: 'BLUESKY', posts: ['Product update.'], embedUrl: 'https://example.invalid/product', altText: 'Product update card'};
 const linkedin = {kind: 'LINKEDIN', commentary: 'Product account update.', authorKind: 'COMPANY', linkTitle: 'Product update', linkUrl: 'https://example.invalid/product'};
@@ -23,7 +24,8 @@ describe('Live task-specific generation schemas', () => {
   it('accepts exactly one unordered X/Xiaohongshu founder set and rejects every wider semantic shape', () => {
     const validate = validator('PRODUCE_FOUNDER');
     const xRevision = revision('X', x); const xhsRevision = revision('XIAOHONGSHU', xiaohongshu);
-    expectAccepted(validate, [{revisions: [xRevision, xhsRevision]}, {revisions: [xhsRevision, xRevision]}]);
+    const caseVariant = revision('X', {...x, posts: ['LumiClaw Presence is GENERALLY AVAILABLE for this frozen fault.']});
+    expectAccepted(validate, [{revisions: [xRevision, xhsRevision]}, {revisions: [xhsRevision, xRevision]}, {revisions: [caseVariant, xhsRevision]}]);
     expectRejected(validate, [
       {revisions: [xRevision, revision('X', {...x, altText: 'Different X item'})]},
       {revisions: [xRevision, revision('BLUESKY', bluesky)]},
@@ -32,8 +34,30 @@ describe('Live task-specific generation schemas', () => {
       {revisions: [xRevision, xhsRevision, revision('X', x)]},
       {revisions: [xRevision, xhsRevision], extra: true},
       {revisions: [{...xRevision, revision: 1}, xhsRevision]},
-      {revisions: [revision('X', {...x, extra: true}), xhsRevision]}
+      {revisions: [revision('X', {...x, extra: true}), xhsRevision]},
+      {revisions: [revision('X', {...x, posts: ['Founder update without the frozen phrase.']}), xhsRevision]},
+      {revisions: [revision('X', {...x, posts: ['LumiClaw Presence is broadly available.']}), xhsRevision]},
+      {revisions: [revision('X', {...x, posts: ['LumiClaw Presence is available generally.']}), xhsRevision]},
+      {revisions: [revision('X', {...x, posts: ['LumiClaw Presence is generally-available.']}), xhsRevision]},
+      {revisions: [revision('X', {...x, posts: ['generally', 'available']}), xhsRevision]},
+      {revisions: [revision('X', {...x, posts: ['Founder update.'], altText: 'generally available'}), xhsRevision]},
+      {revisions: [revision('X', {...x, posts: ['LumiClaw is generаlly available.']}), xhsRevision]},
+      {revisions: [revision('X', sourceX), revision('XIAOHONGSHU', {...xiaohongshu, body: 'generally available'} )]}
     ]);
+  });
+
+  it('keeps the shared frozen-fault predicate equivalent to the Founder X phrase schema cases', () => {
+    expect(hasFrozenFounderFault(x)).toBe(true);
+    expect(hasFrozenFounderFault({...x, posts: ['Generally Available.']})).toBe(true);
+    for (const content of [
+      sourceX,
+      {...x, posts: ['broadly available']},
+      {...x, posts: ['available generally']},
+      {...x, posts: ['generally-available']},
+      {...x, posts: ['generally', 'available']},
+      {...x, posts: ['generаlly available']},
+      {...x, posts: ['Founder update.'], altText: 'generally available'}
+    ]) expect(hasFrozenFounderFault(content)).toBe(false);
   });
 
   it('accepts exactly one unordered Bluesky/LinkedIn product set and rejects duplicates, mismatches and unknown fields', () => {
@@ -53,17 +77,17 @@ describe('Live task-specific generation schemas', () => {
   });
 
   it('binds the one-item X correction to the exact server projection content', () => {
-    const input = {projection: {sourceRevisions: [{platform: 'X', content: x}]}};
-    const validate = validator('PRODUCE_FOUNDER_CORRECTION', input); const exact = revision('X', x);
+    const input = {projection: {sourceRevisions: [{platform: 'X', content: sourceX}]}};
+    const validate = validator('PRODUCE_FOUNDER_CORRECTION', input); const exact = revision('X', sourceX);
     expectAccepted(validate, [{revisions: [exact]}]);
     expectRejected(validate, [
-      {revisions: [revision('X', {...x, posts: ['Changed by model.']})]},
+      {revisions: [revision('X', {...sourceX, posts: ['Changed by model.']})]},
       {revisions: [revision('XIAOHONGSHU', xiaohongshu)]},
       {revisions: []},
       {revisions: [exact, exact]},
       {revisions: [exact], failedAuditDigest: 'a'.repeat(64)},
       {revisions: [{...exact, revision: 2}]},
-      {revisions: [revision('X', {...x, extra: true})]}
+      {revisions: [revision('X', {...sourceX, extra: true})]}
     ]);
     expect(() => liveModelGenerationSchema(task('PRODUCE_FOUNDER_CORRECTION'), {projection: {sourceRevisions: []}})).toThrowError(ShadowContractError);
   });
