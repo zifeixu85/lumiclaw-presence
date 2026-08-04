@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {LiveTaskProtocolError, planLiveTaskProtocol, safeTaskProtocolStatus, taskContractDigest} from './live-agentteams-task-protocol.mjs';
+import {LiveTaskProtocolError, planLiveTaskProtocol, safeTaskProtocolStatus, selectRuntimeTaskMaterial, taskContractDigest} from './live-agentteams-task-protocol.mjs';
 
 const marker = 'dummy-secret-ticket-authorization-bearer-raw-response-never-leak';
 const now = '2026-08-04T00:00:00.000Z';
@@ -46,6 +46,13 @@ describe('Live AgentTeams exact task protocol planner', () => {
     expect(planLiveTaskProtocol(pending)).toMatchObject({action: 'DELEGATE', status: {planStatus: 'pending', taskStatus: null}});
     const secondTask = {...pending, snapshot: delegated('assigned')};
     expect(planLiveTaskProtocol(secondTask)).toMatchObject({action: 'ACK', status: {planStatus: 'delegated', taskStatus: 'assigned'}});
+    const leaderMaterial = {meta: secondTask.snapshot.task.meta, spec: secondTask.snapshot.task.spec, result: secondTask.snapshot.task.result};
+    expect(selectRuntimeTaskMaterial({meta: null, spec: null, result: null}, leaderMaterial)).toBe(leaderMaterial);
+    const memberInProgress = {meta: {...secondTask.snapshot.task.meta, status: 'in_progress'}, spec: secondTask.snapshot.task.spec, result: null};
+    expect(selectRuntimeTaskMaterial(memberInProgress, leaderMaterial)).toBe(memberInProgress);
+    const partial = selectRuntimeTaskMaterial({meta: null, spec: marker, result: null}, leaderMaterial);
+    expect(() => planLiveTaskProtocol({...secondTask, snapshot: {...secondTask.snapshot, task: {...secondTask.snapshot.task, ...partial}}})).toThrowError(expect.objectContaining({code: 'LIVE_TASK_BINDING_INVALID'}));
+    expect(() => selectRuntimeTaskMaterial({meta: null, spec: 1, result: null}, leaderMaterial)).toThrowError(expect.objectContaining({code: 'LIVE_TASK_BINDING_INVALID'}));
   });
 
   it('plans exact ACK import, domain execution and in-memory submit without replaying an accepted model call', () => {

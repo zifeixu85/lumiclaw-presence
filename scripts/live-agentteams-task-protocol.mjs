@@ -72,6 +72,12 @@ export function taskProtocolDiagnosticStatus(outcome) {
   return Object.freeze({...diagnosticStatusByOutcome[outcome]});
 }
 
+export function selectRuntimeTaskMaterial(memberMaterial, leaderMaterial) {
+  if (!isTaskMaterial(memberMaterial) || !isTaskMaterial(leaderMaterial)) throw new LiveTaskProtocolError('LIVE_TASK_BINDING_INVALID');
+  const memberMissing = memberMaterial.meta === null && memberMaterial.spec === null && memberMaterial.result === null;
+  return memberMissing ? leaderMaterial : memberMaterial;
+}
+
 export function taskContractDigest(contract) {
   return sha256(contract);
 }
@@ -245,5 +251,6 @@ function isIso(value) {
 }
 function sameInstant(left, right) { return isIso(left) && isIso(right) && Date.parse(left) === Date.parse(right); }
 function sameArray(left, right) { return Array.isArray(left) && Array.isArray(right) && left.length === right.length && left.every((value, index) => value === right[index]); }
+function isTaskMaterial(value) { return isRecord(value) && Object.keys(value).sort().join(',') === 'meta,result,spec' && (value.meta === null || isRecord(value.meta)) && (value.spec === null || typeof value.spec === 'string') && (value.result === null || isRecord(value.result)); }
 function sha256(value) { return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(canonical(value))).digest('hex'); }
 function canonical(value) { if (Array.isArray(value)) return value.map(canonical); if (isRecord(value)) return Object.fromEntries(Object.keys(value).sort().filter((key) => value[key] !== undefined).map((key) => [key, canonical(value[key])])); return value; }

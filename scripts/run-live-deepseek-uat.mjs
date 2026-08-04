@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync, writeSync} from 'node:fs';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
-import {isLiveTaskProtocolOutcome, LiveTaskProtocolError, planLiveTaskProtocol, safeTaskProtocolStatus, taskContractDigest, taskProtocolDiagnosticStatus} from './live-agentteams-task-protocol.mjs';
+import {isLiveTaskProtocolOutcome, LiveTaskProtocolError, planLiveTaskProtocol, safeTaskProtocolStatus, selectRuntimeTaskMaterial, taskContractDigest, taskProtocolDiagnosticStatus} from './live-agentteams-task-protocol.mjs';
 import {conformanceProgressForStage, createLiveFailureEnvelope, createLiveFailureReceipt, defaultLiveProgress, isLiveStage, isProviderOutcomeCode, liveStageCode, providerOutcomeFromMission, readSourceIdentity, writeLiveFailureReceipt} from './live-uat-diagnostics.mjs';
 import {createRedactedTransportReceipt, deriveWorkerBrokerUrl, parseLiveUatTransport} from './live-uat-transport.mjs';
 
@@ -72,7 +72,9 @@ function projectState() {
 function projectTaskState(role, taskId) {
   const project = projectState(); const plan = project.tasks.find((item) => item.task_id === taskId) ?? null;
   const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,TaskflowError; s=FileSystemTaskStore(); meta=spec=result=None;\ntry: meta=asdict(s.read_task_meta(sys.argv[1]))\nexcept TaskflowError: pass\ntry: spec=s.read_task_spec(sys.argv[1])\nexcept TaskflowError: pass\ntry: result=asdict(s.read_task_result(sys.argv[1]))\nexcept TaskflowError: pass\nprint(json.dumps({"meta":meta,"spec":spec,"result":result}))';
-  const material = JSON.parse(run('docker', ['exec', '-w', workspace(role), `agentteams-worker-${role}`, '/opt/venv/standard/bin/python', '-c', code, taskId], `task-state:${role}`));
+  const readMaterial = (materialRole) => JSON.parse(run('docker', ['exec', '-w', workspace(materialRole), `agentteams-worker-${materialRole}`, '/opt/venv/standard/bin/python', '-c', code, taskId], `task-state:${materialRole}`));
+  const memberMaterial = readMaterial(role); const leaderMaterial = role === leader ? memberMaterial : readMaterial(leader);
+  const material = selectRuntimeTaskMaterial(memberMaterial, leaderMaterial);
   return {project: project.project, task: {plan, ...material}};
 }
 function acceptTask(taskId) {
