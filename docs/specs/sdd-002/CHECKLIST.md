@@ -41,3 +41,10 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 - [x] The missing role-schema prompt binding is a verified concrete contract defect, not an assumed provider outage.
 - [x] Worker broker URL is derived only from local HTTP loopback and reaches the Compose API from the actual AgentTeams container network.
 - [x] HTTP/model/schema/semantic/broker/success fixtures, child non-disclosure, cleanup and zero-action are binary acceptance conditions.
+
+## CR2 Fix 4 checklist
+
+- [x] Fourth Canary evidence freezes the failure after three accepted model receipts at `PRODUCE_FOUNDER`; it is explicitly not a completed Live Provider verification.
+- [x] Exact task-specific unordered platform sets, platform/content binding, correction source equality and closed audit issue shape are binary.
+- [x] Server-derived revision/digest fields, normalize/audit strictness, Producer/Auditor separation and zero-action boundaries remain unchanged.
+- [x] Positive order permutations and duplicate/wrong/mismatch/missing/extra/unknown-field negatives are required before the fifth Canary.

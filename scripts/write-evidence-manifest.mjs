@@ -107,8 +107,8 @@ function liveConformanceValid(value) {
     && value?.maturity === 'ENGINEERING_VERIFIED'
     && value?.liveProviderVerified === false
     && value?.liveProviderStatus === 'NOT_RUN_NO_OWNER_SECRET'
-    && value?.targetedContracts?.testFiles === 6
-    && value?.targetedContracts?.tests === 126
+    && value?.targetedContracts?.testFiles === 7
+    && value?.targetedContracts?.tests === 131
     && value?.targetedContracts?.noKeyFailClosed === true
     && value?.targetedContracts?.mockFallback === false
     && value?.targetedContracts?.scopedSingleUseTickets === true
@@ -116,6 +116,7 @@ function liveConformanceValid(value) {
     && value?.targetedContracts?.leaderModelCallForbidden === true
     && value?.targetedContracts?.independentAuditorReceiptRequired === true
     && value?.targetedContracts?.exactRoleSchemaPromptBound === true
+    && value?.targetedContracts?.taskSpecificSemanticSchemas === true
     && value?.targetedContracts?.firstDomainFixtureCovered === true
     && value?.targetedContracts?.workerBrokerOriginBound === true
     && transport?.status === 'PASS'
@@ -237,6 +238,7 @@ function exactRecord(actual, expected) {
 }
 function providerEvidenceValid(providers) {
   const conformance = providers?.deepSeek?.conformance;
+  const roleSchemas = conformance?.roleGenerationSchemas;
   return providers?.status === 'PASS'
     && providers?.deepSeek?.canary === 'NOT_RUN_NO_KEY'
     && providers?.evoLink?.canary === 'NOT_RUN_NO_KEY'
@@ -254,6 +256,14 @@ function providerEvidenceValid(providers) {
     && exactRecord(conformance?.costSnapshotsUsd, {flash: 0.000025256, pro: 0.0000783725})
     && exactRecord(conformance?.pricingSnapshots?.flash, expectedProviderPricing.flash)
     && exactRecord(conformance?.pricingSnapshots?.pro, expectedProviderPricing.pro)
+    && roleSchemas?.version === 'TASK_SPECIFIC_CLOSED_V1'
+    && exactStringSet(roleSchemas?.taskKinds, ['PRODUCE_FOUNDER', 'PRODUCE_PRODUCT', 'PRODUCE_FOUNDER_CORRECTION', 'AUDIT_REVISIONS', 'REAUDIT_CORRECTION'])
+    && roleSchemas?.exactUnorderedPlatformSets === true
+    && roleSchemas?.platformContentKindBound === true
+    && roleSchemas?.correctionSourceContentConst === true
+    && roleSchemas?.serverDerivedFieldsRejected === true
+    && roleSchemas?.acceptedCases === 8
+    && roleSchemas?.rejectedCases === 15
     && exactNoAction(providers?.noAction);
 }
 function roleContractIdentity(role) {
@@ -469,11 +479,13 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, pricingSnapshots: {...conformance.pricingSnapshots, flash: {...conformance.pricingSnapshots.flash, inputCacheHitUsdPerMillion: undefined}}}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, usageBreakdownConsistencyRejected: false}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, exactSchemaPromptBound: false}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, roleGenerationSchemas: {...conformance.roleGenerationSchemas, platformContentKindBound: false}}))),
     !liveConformanceValid({...liveConformance, liveProviderVerified: true}),
     !liveConformanceValid({...liveConformance, composeInspect: {...liveConformance.composeInspect, secretInEnvironment: true}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, mockFallback: true}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, tests: 0}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, exactRoleSchemaPromptBound: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, taskSpecificSemanticSchemas: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, workerBrokerOriginBound: false}}),
     !liveConformanceValid({...liveConformance, providerOutcomeDiagnostics: {...liveConformance.providerOutcomeDiagnostics, outcomes: liveConformance.providerOutcomeDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, providerOutcomeCode: 'RAW_PROVIDER_FAILURE'} : entry)}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, nestedChildProcess: false}}),

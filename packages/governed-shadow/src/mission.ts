@@ -230,15 +230,69 @@ export function failLiveMission(missionValue: ShadowMission, code: string, faile
   return seal(mission, now);
 }
 
+type LiveJsonSchema = Record<string, unknown>;
+
+function liveAuditIssueSchema(): LiveJsonSchema {
+  return {type: 'object', additionalProperties: false, required: ['code', 'severity', 'path', 'message', 'evidenceRefIds', 'nextResponsibleRoleId'], properties: {code: {enum: ['CLAIM_OVERREACH', 'CAPABILITY_CONSTRAINT', 'EVIDENCE_MISSING', 'ROLE_PERMISSION', 'DIGEST_MISMATCH']}, severity: {enum: ['BLOCKING', 'ESCALATE']}, path: {type: 'string'}, message: {type: 'string'}, evidenceRefIds: {type: 'array', items: {type: 'string'}}, nextResponsibleRoleId: {enum: ROLE_IDS}}};
+}
+
+function livePlatformContentSchema(platform?: GovernedArtifactRevision['platform']): LiveJsonSchema {
+  const byPlatform: Record<GovernedArtifactRevision['platform'], LiveJsonSchema> = {
+    X: {type: 'object', additionalProperties: false, required: ['kind', 'posts', 'altText'], properties: {kind: {const: 'X'}, posts: {type: 'array', minItems: 1, items: {type: 'string'}}, altText: {type: 'string'}}},
+    BLUESKY: {type: 'object', additionalProperties: false, required: ['kind', 'posts', 'embedUrl', 'altText'], properties: {kind: {const: 'BLUESKY'}, posts: {type: 'array', minItems: 1, items: {type: 'string'}}, embedUrl: {type: 'string'}, altText: {type: 'string'}}},
+    LINKEDIN: {type: 'object', additionalProperties: false, required: ['kind', 'commentary', 'authorKind', 'linkTitle', 'linkUrl'], properties: {kind: {const: 'LINKEDIN'}, commentary: {type: 'string'}, authorKind: {enum: ['PERSON', 'COMPANY']}, linkTitle: {type: 'string'}, linkUrl: {type: 'string'}}},
+    XIAOHONGSHU: {type: 'object', additionalProperties: false, required: ['kind', 'title', 'body', 'topics', 'coverLabel'], properties: {kind: {const: 'XIAOHONGSHU'}, title: {type: 'string'}, body: {type: 'string'}, topics: {type: 'array', minItems: 1, items: {type: 'string'}}, coverLabel: {type: 'string'}}}
+  };
+  return platform === undefined ? {oneOf: Object.values(byPlatform)} : byPlatform[platform];
+}
+
+function generationRevisionSchema(platform: GovernedArtifactRevision['platform'], exactContent?: PlatformArtifact): LiveJsonSchema {
+  return {type: 'object', additionalProperties: false, required: ['platform', 'content'], properties: {platform: {const: platform}, content: exactContent === undefined ? livePlatformContentSchema(platform) : {const: structuredClone(exactContent)}}};
+}
+
+function generationDecisionSchema(platform: GovernedArtifactRevision['platform']): LiveJsonSchema {
+  return {type: 'object', additionalProperties: false, required: ['platform', 'outcome', 'issues'], properties: {platform: {const: platform}, outcome: {enum: ['PASS', 'FAIL', 'ESCALATE']}, issues: {type: 'array', items: liveAuditIssueSchema()}}};
+}
+
+function exactUnorderedPlatformArray(entries: {platform: GovernedArtifactRevision['platform']; schema: LiveJsonSchema}[]): LiveJsonSchema {
+  return {
+    type: 'array', minItems: entries.length, maxItems: entries.length,
+    items: {oneOf: entries.map((entry) => entry.schema)},
+    allOf: entries.map((entry) => ({contains: {type: 'object', required: ['platform'], properties: {platform: {const: entry.platform}}}}))
+  };
+}
+
+function correctionSourceContent(input: Record<string, unknown>): PlatformArtifact {
+  if (!isRecord(input.projection) || !Array.isArray(input.projection.sourceRevisions)) throw new ShadowContractError('LIVE_MODEL_GENERATION_SCHEMA_INPUT_INVALID', 'Correction generation requires exact source revisions.');
+  const source = input.projection.sourceRevisions.find((candidate) => isRecord(candidate) && candidate.platform === 'X');
+  if (!isRecord(source) || !isPlatformArtifact(source.content, 'X')) throw new ShadowContractError('LIVE_MODEL_GENERATION_SCHEMA_INPUT_INVALID', 'Correction generation requires exact X source content.');
+  return structuredClone(source.content);
+}
+
+export function liveModelGenerationSchema(task: TaskContract, input: Record<string, unknown> = {}): Record<string, unknown> {
+  if (task.kind === 'PROJECT_COORDINATION') throw new ShadowContractError('LEADER_MODEL_CALL_FORBIDDEN', 'PROJECT_COORDINATION is deterministic and must not call a model.');
+  if (task.kind === 'FREEZE_EVIDENCE') return {type: 'object', additionalProperties: false, required: ['frozen', 'assessment'], properties: {frozen: {const: true}, assessment: {type: 'string', minLength: 1}}};
+  if (task.kind === 'PLAN_CAMPAIGN') return {type: 'object', additionalProperties: false, required: ['rationale'], properties: {rationale: {type: 'string', minLength: 1}}};
+  if (task.kind === 'PRODUCE_FOUNDER') {
+    const platforms = ['X', 'XIAOHONGSHU'] as const;
+    return {type: 'object', additionalProperties: false, required: ['revisions'], properties: {revisions: exactUnorderedPlatformArray(platforms.map((platform) => ({platform, schema: generationRevisionSchema(platform)})))}};
+  }
+  if (task.kind === 'PRODUCE_PRODUCT') {
+    const platforms = ['BLUESKY', 'LINKEDIN'] as const;
+    return {type: 'object', additionalProperties: false, required: ['revisions'], properties: {revisions: exactUnorderedPlatformArray(platforms.map((platform) => ({platform, schema: generationRevisionSchema(platform)})))}};
+  }
+  if (task.kind === 'PRODUCE_FOUNDER_CORRECTION') {
+    const platform = 'X' as const;
+    return {type: 'object', additionalProperties: false, required: ['revisions'], properties: {revisions: exactUnorderedPlatformArray([{platform, schema: generationRevisionSchema(platform, correctionSourceContent(input))}])}};
+  }
+  const platforms = task.kind === 'AUDIT_REVISIONS' ? ['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU'] as const : ['X'] as const;
+  return {type: 'object', additionalProperties: false, required: ['decisions'], properties: {decisions: exactUnorderedPlatformArray(platforms.map((platform) => ({platform, schema: generationDecisionSchema(platform)})))}};
+}
+
 export function liveModelTaskOutputSchema(task: TaskContract): Record<string, unknown> {
   const digest = {type: 'string', pattern: '^[a-f0-9]{64}$'};
-  const issue = {type: 'object', additionalProperties: false, required: ['code', 'severity', 'path', 'message', 'evidenceRefIds', 'nextResponsibleRoleId'], properties: {code: {enum: ['CLAIM_OVERREACH', 'CAPABILITY_CONSTRAINT', 'EVIDENCE_MISSING', 'ROLE_PERMISSION', 'DIGEST_MISMATCH']}, severity: {enum: ['BLOCKING', 'ESCALATE']}, path: {type: 'string'}, message: {type: 'string'}, evidenceRefIds: {type: 'array', items: {type: 'string'}}, nextResponsibleRoleId: {enum: ROLE_IDS}}};
-  const content = {oneOf: [
-    {type: 'object', additionalProperties: false, required: ['kind', 'posts', 'altText'], properties: {kind: {const: 'X'}, posts: {type: 'array', minItems: 1, items: {type: 'string'}}, altText: {type: 'string'}}},
-    {type: 'object', additionalProperties: false, required: ['kind', 'posts', 'embedUrl', 'altText'], properties: {kind: {const: 'BLUESKY'}, posts: {type: 'array', minItems: 1, items: {type: 'string'}}, embedUrl: {type: 'string'}, altText: {type: 'string'}}},
-    {type: 'object', additionalProperties: false, required: ['kind', 'commentary', 'authorKind', 'linkTitle', 'linkUrl'], properties: {kind: {const: 'LINKEDIN'}, commentary: {type: 'string'}, authorKind: {enum: ['PERSON', 'COMPANY']}, linkTitle: {type: 'string'}, linkUrl: {type: 'string'}}},
-    {type: 'object', additionalProperties: false, required: ['kind', 'title', 'body', 'topics', 'coverLabel'], properties: {kind: {const: 'XIAOHONGSHU'}, title: {type: 'string'}, body: {type: 'string'}, topics: {type: 'array', minItems: 1, items: {type: 'string'}}, coverLabel: {type: 'string'}}}
-  ]};
+  const issue = liveAuditIssueSchema();
+  const content = livePlatformContentSchema();
   const revision = {type: 'object', additionalProperties: false, required: ['platform', 'revision', 'sourceRevisionDigest', 'contentDigest', 'content'], properties: {platform: {enum: ['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU']}, revision: {type: 'integer', minimum: 1, maximum: 2}, sourceRevisionDigest: digest, contentDigest: digest, content}};
   const decision = {type: 'object', additionalProperties: false, required: ['platform', 'revision', 'revisionContentDigest', 'outcome', 'issues'], properties: {platform: {enum: ['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU']}, revision: {type: 'integer', minimum: 1, maximum: 2}, revisionContentDigest: digest, outcome: {enum: ['PASS', 'FAIL', 'ESCALATE']}, issues: {type: 'array', items: issue}}};
   if (task.kind === 'FREEZE_EVIDENCE') return {type: 'object', additionalProperties: false, required: ['frozen', 'claimEvidenceDigest'], properties: {frozen: {const: true}, claimEvidenceDigest: digest}};

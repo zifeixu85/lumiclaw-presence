@@ -46,3 +46,11 @@ Rollback uses local Git reverts and project-scoped test migrations. Cancellation
 - Cover HTTP/provider/model/schema/semantic/broker/success cases at provider, API and actual child-process layers.
 - Keep host Control Plane calls on loopback while deriving a strict container-reachable Worker broker origin; verify it with the real six-member no-Secret run rather than a synthetic networking claim.
 - Rerun full Live/AgentTeams/PostgreSQL/Compose/browser/security/evidence gates, update the Chinese report, commit cleanly and return a one-attempt Coordinator retry protocol.
+
+## CR2 Fix 4 plan
+
+- Replace the generic clone/delete generation schema with closed task-specific revision and audit schemas.
+- Require each exact unordered platform set and bind each platform to its own content schema; bind correction content dynamically to the exact source X projection.
+- Keep normalize and persisted-output validation as independent gates, including a strict X re-audit boundary.
+- Exercise accepted order permutations plus duplicate/wrong/mismatched/missing/extra/unknown-field negatives for founder, product, correction, audit and re-audit.
+- Rerun full Live/AgentTeams/PostgreSQL/Compose/browser/security/evidence gates, update the Chinese report, commit cleanly and return the fifth Coordinator Canary protocol.

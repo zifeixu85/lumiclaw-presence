@@ -41,3 +41,10 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F3-03`: HTTP/provider/model/schema/semantic/broker/success API and actual child-process regression suite with forbidden-marker scans.
 - [x] `CR2-F3-03A`: strict host-loopback to Worker broker origin mapping and real six-member no-Secret reachability proof.
 - [x] `CR2-F3-04`: Live conformance/evidence/report update, full gates, clean commit, public-safe ZIP and Coordinator retry handoff. The real-key Canary remains Coordinator-owned and is not claimed by this task.
+
+## CR2 Fix 4 tasks
+
+- [x] `CR2-F4-01`: closed task-specific generation schemas for founder/product/correction/audit/re-audit with exact unordered platform sets and platform/content binding.
+- [x] `CR2-F4-02`: dynamic correction source-content binding, deterministic server digest/revision derivation and strict re-audit normalization.
+- [x] `CR2-F4-03`: schema positive/order and duplicate/wrong/mismatch/missing/extra/unknown-field regression matrix.
+- [ ] `CR2-F4-04`: full Live/AgentTeams/security/evidence/report/clean-Head ZIP gates and fifth Coordinator Canary handoff. The real-key result remains external and is not claimed here.

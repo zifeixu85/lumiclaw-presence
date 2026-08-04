@@ -22,3 +22,5 @@
 | CL-18 | CR2 Fix 3 may expose one nullable allowlisted `providerOutcomeCode` derived from the exact persisted Task failure before cleanup; raw HTTP/model/security material remains forbidden. |
 | CL-19 | The exact role output schema must be present in the DeepSeek prompt and input digest. Local validation against a schema that the model never received is not a valid structured-output contract. |
 | CL-20 | A Coordinator local loopback Control Plane URL is host-only; the Runner derives a Worker-only `host.docker.internal` origin from a strict HTTP loopback URL. Arbitrary remote origins, credentials, paths, query strings and fragments fail closed. |
+| CL-21 | CR2 Fix 4 replaces clone/delete generation schemas with closed task-specific schemas that encode exact unordered platform sets and platform/content-kind binding before a Provider result can reach normalization. |
+| CL-22 | The correction generation schema binds content to the exact source X content in the server-owned task projection; revision numbers and all digests remain deterministic server derivations and are invalid model fields. |

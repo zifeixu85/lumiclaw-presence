@@ -3,10 +3,12 @@ import path from 'node:path';
 import {
   DeepSeekModelProvider,
   EvoLinkMediaProvider,
+  liveModelGenerationSchema,
   PublicSafeMockMediaProvider,
   PublicSafeMockModelProvider,
   verifyContentAddressedIngest,
-  type ModelGenerateRequest
+  type ModelGenerateRequest,
+  type TaskContract
 } from '../packages/governed-shadow/src/index.js';
 
 const root = process.cwd();
@@ -80,6 +82,34 @@ for (const [expectedCode, payload] of identityCases) {
 
 const mockModel = await new PublicSafeMockModelProvider({copy: 'public-safe mock'}, () => new Date('2026-08-04T00:00:00.000Z')).generateStructured(request);
 if (!mockModel.ok || mockModel.snapshot.provider !== 'PUBLIC_SAFE_MOCK' || mockModel.snapshot.maturity !== 'MOCK_CONFORMANCE') throw new Error('PUBLIC_SAFE_MODEL_CONFORMANCE_FAILED');
+const x = {kind: 'X', posts: ['Founder update.'], altText: 'Founder update card'};
+const xhs = {kind: 'XIAOHONGSHU', title: '创始人动态', body: '公开安全本地草稿。', topics: ['品牌运营'], coverLabel: '合成封面'};
+const bluesky = {kind: 'BLUESKY', posts: ['Product update.'], embedUrl: 'https://example.invalid/product', altText: 'Product update card'};
+const linkedin = {kind: 'LINKEDIN', commentary: 'Product update.', authorKind: 'COMPANY', linkTitle: 'Product update', linkUrl: 'https://example.invalid/product'};
+const issue = {code: 'CLAIM_OVERREACH', severity: 'BLOCKING', path: '/content/posts/0', message: 'Unsupported claim.', evidenceRefIds: ['evidence-public-safe'], nextResponsibleRoleId: 'founder-identity-producer'};
+const revision = (platform: string, content: unknown) => ({platform, content});
+const decision = (platform: string, outcome = 'PASS', issues: unknown[] = []) => ({platform, outcome, issues});
+const schemaCases = [
+  {kind: 'PRODUCE_FOUNDER', input: {}, accepted: [{revisions: [revision('X', x), revision('XIAOHONGSHU', xhs)]}, {revisions: [revision('XIAOHONGSHU', xhs), revision('X', x)]}], rejected: [{revisions: [revision('X', x), revision('X', {...x, altText: 'duplicate'} )]}, {revisions: [revision('X', xhs), revision('XIAOHONGSHU', xhs)]}, {revisions: [revision('X', x), revision('XIAOHONGSHU', xhs)], extra: true}]},
+  {kind: 'PRODUCE_PRODUCT', input: {}, accepted: [{revisions: [revision('BLUESKY', bluesky), revision('LINKEDIN', linkedin)]}, {revisions: [revision('LINKEDIN', linkedin), revision('BLUESKY', bluesky)]}], rejected: [{revisions: [revision('BLUESKY', bluesky), revision('BLUESKY', {...bluesky, altText: 'duplicate'})]}, {revisions: [revision('BLUESKY', linkedin), revision('LINKEDIN', linkedin)]}, {revisions: [revision('BLUESKY', bluesky), {...revision('LINKEDIN', linkedin), revision: 1}]}]},
+  {kind: 'PRODUCE_FOUNDER_CORRECTION', input: {projection: {sourceRevisions: [{platform: 'X', content: x}]}}, accepted: [{revisions: [revision('X', x)]}], rejected: [{revisions: [revision('X', {...x, posts: ['Changed.']})]}, {revisions: [revision('XIAOHONGSHU', xhs)]}, {revisions: [{...revision('X', x), contentDigest: 'a'.repeat(64)}]}]},
+  {kind: 'AUDIT_REVISIONS', input: {}, accepted: [{decisions: [decision('X', 'FAIL', [issue]), decision('BLUESKY'), decision('LINKEDIN'), decision('XIAOHONGSHU')]}, {decisions: [decision('XIAOHONGSHU'), decision('LINKEDIN'), decision('BLUESKY'), decision('X', 'FAIL', [issue])]}], rejected: [{decisions: [decision('X'), decision('X'), decision('LINKEDIN'), decision('XIAOHONGSHU')]}, {decisions: [decision('X', 'FAIL', [{...issue, message: undefined}]), decision('BLUESKY'), decision('LINKEDIN'), decision('XIAOHONGSHU')]}, {decisions: [decision('X'), decision('BLUESKY'), decision('LINKEDIN'), {...decision('XIAOHONGSHU'), revision: 1}]}]},
+  {kind: 'REAUDIT_CORRECTION', input: {}, accepted: [{decisions: [decision('X')]}], rejected: [{decisions: [decision('BLUESKY')]}, {decisions: [decision('X', 'FAIL', [{...issue, extra: true}])]}, {decisions: [{...decision('X'), failedAuditDigest: 'a'.repeat(64)}]}]}
+] as const satisfies readonly {kind: TaskContract['kind']; input: Record<string, unknown>; accepted: readonly unknown[]; rejected: readonly unknown[]}[];
+let acceptedGenerationSchemaCases = 0; let rejectedGenerationSchemaCases = 0;
+for (const entry of schemaCases) {
+  const outputSchema = liveModelGenerationSchema({kind: entry.kind} as TaskContract, entry.input);
+  for (const fixture of entry.accepted) {
+    const result = await new PublicSafeMockModelProvider(fixture).generateStructured({...request, taskId: `schema-${entry.kind.toLowerCase()}-accepted`, outputSchema});
+    if (!result.ok) throw new Error(`LIVE_GENERATION_SCHEMA_VALID_CASE_REJECTED:${entry.kind}`);
+    acceptedGenerationSchemaCases += 1;
+  }
+  for (const fixture of entry.rejected) {
+    const result = await new PublicSafeMockModelProvider(fixture).generateStructured({...request, taskId: `schema-${entry.kind.toLowerCase()}-rejected`, outputSchema});
+    if (result.ok || result.snapshot.error?.code !== 'MOCK_SCHEMA_INVALID') throw new Error(`LIVE_GENERATION_SCHEMA_INVALID_CASE_ACCEPTED:${entry.kind}`);
+    rejectedGenerationSchemaCases += 1;
+  }
+}
 const media = await new PublicSafeMockMediaProvider(() => new Date('2026-08-04T00:00:00.000Z')).generate({organizationId: 'public-safe-org', missionId: request.missionId, prompt: 'Synthetic governed SHADOW fixture', rightsConfirmedSynthetic: true});
 if (!verifyContentAddressedIngest(media.asset, media.content) || media.asset.approvalState !== 'UNREVIEWED' || media.asset.rights.ownerApprovalRequired !== true) throw new Error('PUBLIC_SAFE_MEDIA_CONFORMANCE_FAILED');
 let evoLinkStatus = 'UNEXPECTED';
@@ -124,6 +154,7 @@ const evidence = {
       costSnapshotUsd: retryResult.snapshot.estimatedCostUsd,
       costSnapshotsUsd: {flash: retryResult.snapshot.estimatedCostUsd, pro: proResult.snapshot.estimatedCostUsd},
       pricingSnapshots: {flash: retryResult.snapshot.pricing, pro: proResult.snapshot.pricing},
+      roleGenerationSchemas: {version: 'TASK_SPECIFIC_CLOSED_V1', taskKinds: schemaCases.map((entry) => entry.kind), exactUnorderedPlatformSets: true, platformContentKindBound: true, correctionSourceContentConst: true, serverDerivedFieldsRejected: true, acceptedCases: acceptedGenerationSchemaCases, rejectedCases: rejectedGenerationSchemaCases},
       config: retryResult.snapshot.config
     }
   },

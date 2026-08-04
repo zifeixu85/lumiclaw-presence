@@ -15,7 +15,7 @@ import {
   attachProviderEvidence,
   DeepSeekModelProvider,
   failLiveMission,
-  liveModelTaskOutputSchema,
+  liveModelGenerationSchema,
   materializeAcceptedRuntimeMission,
   materializeAcceptedRuntimeProgress,
   MemoryShadowMissionRepository,
@@ -204,7 +204,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     }
     try {
       const input = runtimeTaskInputProjection(mission, campaign.document, task);
-      const result = await liveModelProviderFactory(deepseekApiKey).generateStructured<unknown>({missionId: mission.id, taskId: task.id, model: mission.providerModel, system: liveSystemPrompt(task.kind, task.roleId), input, outputSchema: liveModelGenerationSchema(task), temperature: 0, maxTokens: 4_000, timeoutMs: task.timeoutMs, maxAttempts: 3});
+      const result = await liveModelProviderFactory(deepseekApiKey).generateStructured<unknown>({missionId: mission.id, taskId: task.id, model: mission.providerModel, system: liveSystemPrompt(task.kind, task.roleId), input, outputSchema: liveModelGenerationSchema(task, input), temperature: 0, maxTokens: 4_000, timeoutMs: task.timeoutMs, maxAttempts: 3});
       const normalized = result.ok ? normalizeLiveRoleOutput(task, result.value, input) : undefined;
       if (normalized !== undefined) result.snapshot.runtimeOutputDigest = sha256Digest(normalized);
       let next = recordLiveModelCall(mission, result.snapshot, now());
@@ -433,25 +433,6 @@ function liveSystemPrompt(kind: string, roleId: string): string {
   return `You are the ${roleId} domain member in a governed local SHADOW UAT. Return JSON only, exactly matching the supplied role schema. The control plane binds cryptographic digests after your structured role output; do not invent digests. Never publish, comment, reply, DM, scrape, create a connector or ActionGrant. ${special}`.trim();
 }
 
-function liveModelGenerationSchema(task: TaskContract): Record<string, unknown> {
-  if (task.kind === 'FREEZE_EVIDENCE') return {type: 'object', additionalProperties: false, required: ['frozen', 'assessment'], properties: {frozen: {const: true}, assessment: {type: 'string', minLength: 1}}};
-  if (task.kind === 'PLAN_CAMPAIGN') return {type: 'object', additionalProperties: false, required: ['rationale'], properties: {rationale: {type: 'string', minLength: 1}}};
-  const schema = structuredClone(liveModelTaskOutputSchema(task)) as Record<string, unknown>;
-  const properties = schema.properties as Record<string, unknown>;
-  const collectionName = 'revisions' in properties ? 'revisions' : 'decisions';
-  const collection = properties[collectionName] as Record<string, unknown>; const item = collection.items as Record<string, unknown>; const itemProperties = item.properties as Record<string, unknown>;
-  if (collectionName === 'revisions') {
-    delete itemProperties.sourceRevisionDigest; delete itemProperties.contentDigest; delete itemProperties.revision;
-    item.required = (item.required as string[]).filter((key) => !['sourceRevisionDigest', 'contentDigest', 'revision'].includes(key));
-  } else {
-    delete itemProperties.revisionContentDigest; delete itemProperties.revision;
-    item.required = (item.required as string[]).filter((key) => !['revisionContentDigest', 'revision'].includes(key));
-  }
-  delete properties.failedAuditDigest;
-  schema.required = (schema.required as string[]).filter((key) => key !== 'failedAuditDigest');
-  return schema;
-}
-
 function normalizeLiveRoleOutput(task: TaskContract, raw: unknown, input: Record<string, unknown>): Record<string, unknown> | undefined {
   if (!isRecord(raw) || !isRecord(input.projection)) return undefined;
   const projection = input.projection;
@@ -487,6 +468,7 @@ function normalizeLiveRoleOutput(task: TaskContract, raw: unknown, input: Record
   }
   if (!isRecord(projection.correctedRevision) || !isRecord(projection.failedAudit) || rawDecisions.length !== 1 || !isRecord(rawDecisions[0])) return undefined;
   const candidate = rawDecisions[0];
+  if (candidate.platform !== 'X' || !['PASS', 'FAIL', 'ESCALATE'].includes(String(candidate.outcome)) || !Array.isArray(candidate.issues)) return undefined;
   return {decisions: [{platform: 'X', revision: 2, revisionContentDigest: sha256Digest(projection.correctedRevision.content), outcome: candidate.outcome, issues: candidate.issues}], failedAuditDigest: projection.failedAudit.digest};
 }
 
