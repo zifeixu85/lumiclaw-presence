@@ -65,7 +65,9 @@ function agtJson(resource) {
 }
 
 async function waitForTopology() {
-  const deadline = Date.now() + 300_000;
+  // A cold six-worker CoPaw bootstrap can exceed five minutes while Matrix
+  // serially provisions rooms. The acceptance still fails closed at ten.
+  const deadline = Date.now() + 600_000;
   while (Date.now() < deadline) {
     try {
       const workers = agtJson('workers'); const teams = agtJson('teams');
@@ -80,7 +82,7 @@ async function waitForTopology() {
 
 function cleanupRuntime() {
   const containers = ownedContainers();
-  if (containers.length > 0) run('docker', ['rm', '--force', ...containers], {label: 'cleanup-exact-runtime-containers', timeout: 120_000});
+  if (containers.length > 0) run('docker', ['rm', '--force', ...containers], {label: 'cleanup-exact-runtime-containers', timeout: 300_000});
   if (volumeExists()) run('docker', ['volume', 'rm', dataVolume], {label: 'cleanup-exact-runtime-volume', timeout: 30_000});
   const remaining = ownedContainers();
   if (remaining.length > 0 || volumeExists()) throw new Error('AGENTTEAMS_EPHEMERAL_CLEANUP_INCOMPLETE');
