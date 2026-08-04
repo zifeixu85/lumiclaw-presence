@@ -38,6 +38,7 @@ The historical fifth/sixth Canary operation cannot be reconstructed because the 
 - State planner: `pending → DELEGATE`, exact `delegated/assigned → ACK`, exact `delegated/in_progress → IMPORT_ACK or RUN_DOMAIN/SUBMIT`, exact `delegated/submitted → CHECK_IMPORT or ACCEPT`, exact `completed/submitted → COMPLETE`; contradictions, wrong bindings and unsafe model replay fail closed.
 - Diagnostics: 13 task-protocol outcomes traverse the real environment-verifier/Runner child pipe and persist only stable outcome, safe `planStatus/taskStatus`, exact failed Task binding, zero-action and cleanup fields. Forbidden marker finding is zero.
 - Timestamp reconciliation: pinned Runtime whole-second UTC and Control Plane millisecond UTC are accepted only as strict canonical forms and compared by instant; a one-second mismatch fails as replay conflict. The first no-Secret run exposed this contract mismatch at `delegated/assigned`, and the receipt/cleanup behaved fail closed.
+- Replica reconciliation: Project/DAG state is read from Leader; TaskMeta/spec/result is read from the assigned Worker. Only an entirely absent Worker replica may use the exact Leader material created by delegate before ACK; partial material fails closed. After ACK, the assigned Worker state is authoritative, so stale Leader `assigned` state cannot cause a repeated ACK.
 - Maturity remains `ENGINEERING_VERIFIED`; the seventh real-key Canary and `LIVE_PROVIDER_VERIFIED` are external Coordinator gates.
 
 ## Out of scope

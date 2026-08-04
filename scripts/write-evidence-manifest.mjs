@@ -316,6 +316,7 @@ function exactTaskSet(tasks) {
     && new Set(tasks.map((task) => task.taskId)).size === 8
     && tasks.every((task) => task.resultSource === 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY'
       && task.protocol?.join(',') === 'DELEGATE,ACK,SUBMIT,CHECK,ACCEPT'
+      && task.stateActions?.join(',') === 'DELEGATE,ACK,IMPORT_ACK,RUN_DOMAIN,SUBMIT,CHECK_IMPORT,ACCEPT,COMPLETE'
       && exactRecord(task.preOperation, {planStatus: 'pending', taskStatus: null, selectedAction: 'DELEGATE', bindingDigest: task.preOperation?.bindingDigest})
       && digest(task.preOperation?.bindingDigest)
       && task.inputProjectionSchema === `lumiclaw.shadow.task-input.${task.taskKind.toLowerCase().replaceAll('_', '-')}.v1`
@@ -489,6 +490,7 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !exactTaskSet(tasks.map((task, index) => index === 0 ? {...task, inputProjectionKeys: ['x']} : task)),
     !exactTaskSet(tasks.map((task) => task.taskKind === 'PRODUCE_FOUNDER_CORRECTION' ? {...task, preOperation: {...task.preOperation, selectedAction: 'ACK'}} : task)),
     !exactTaskSet(tasks.map((task) => task.taskKind === 'REAUDIT_CORRECTION' ? {...task, preOperation: {...task.preOperation, bindingDigest: '0'.repeat(64)}} : task)),
+    !exactTaskSet(tasks.map((task) => task.taskKind === 'PRODUCE_FOUNDER_CORRECTION' ? {...task, stateActions: task.stateActions.slice(0, -1)} : task)),
     !sourceIdentityMatches({...sourcePackage, fileCount: 0, files: []}, runtimeSource, currentHead, sourceArchive, currentGitFiles),
     !sourceIdentityMatches({...sourcePackage, archive: '.evidence/sdd-002/source-packages/not-the-evidence.zip'}, runtimeSource, currentHead, sourceArchive, currentGitFiles),
     !sourceIdentityMatches(sourcePackage, runtimeSource, currentHead, {...sourceArchive, zipValid: false}, currentGitFiles),

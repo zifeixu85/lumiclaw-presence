@@ -4,7 +4,7 @@ import {mkdtempSync, rmSync, writeFileSync} from 'node:fs';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
-import {planLiveTaskProtocol, safeTaskProtocolStatus, taskContractDigest} from './live-agentteams-task-protocol.mjs';
+import {planLiveTaskProtocol, safeTaskProtocolStatus, selectRuntimeTaskMaterial, taskContractDigest} from './live-agentteams-task-protocol.mjs';
 
 const root = process.cwd();
 const controller = 'agentteams-controller';
@@ -74,9 +74,12 @@ function projectState() {
   const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,parse_dag_tasks; s=FileSystemTaskStore(); m=s.read_project_meta(sys.argv[1]); p=s.read_project_plan(sys.argv[1]); print(json.dumps({"project":asdict(m),"tasks":[asdict(x) for x in parse_dag_tasks(p)]}))';
   return JSON.parse(run('docker', ['exec', '-w', workspace(leader), `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', code, projectId], 'project-state'));
 }
-function projectTaskState(taskId) {
-  const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,TaskflowError,parse_dag_tasks; s=FileSystemTaskStore(); m=s.read_project_meta(sys.argv[1]); p=s.read_project_plan(sys.argv[1]); t=next((x for x in parse_dag_tasks(p) if x.task_id==sys.argv[2]),None); meta=spec=result=None;\ntry: meta=asdict(s.read_task_meta(sys.argv[2]))\nexcept TaskflowError: pass\ntry: spec=s.read_task_spec(sys.argv[2])\nexcept TaskflowError: pass\ntry: result=asdict(s.read_task_result(sys.argv[2]))\nexcept TaskflowError: pass\nprint(json.dumps({"project":asdict(m),"task":{"plan":None if t is None else asdict(t),"meta":meta,"spec":spec,"result":result}}))';
-  return JSON.parse(run('docker', ['exec', '-w', workspace(leader), `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', code, projectId, taskId], `project-task-state:${taskId}`));
+function projectTaskState(role, taskId) {
+  const project = projectState(); const plan = project.tasks.find((item) => item.task_id === taskId) ?? null;
+  const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,TaskflowError; s=FileSystemTaskStore(); meta=spec=result=None;\ntry: meta=asdict(s.read_task_meta(sys.argv[1]))\nexcept TaskflowError: pass\ntry: spec=s.read_task_spec(sys.argv[1])\nexcept TaskflowError: pass\ntry: result=asdict(s.read_task_result(sys.argv[1]))\nexcept TaskflowError: pass\nprint(json.dumps({"meta":meta,"spec":spec,"result":result}))';
+  const readMaterial = (materialRole) => JSON.parse(run('docker', ['exec', '-w', workspace(materialRole), `agentteams-worker-${materialRole}`, '/opt/venv/standard/bin/python', '-c', code, taskId], `task-state:${materialRole}:${taskId}`));
+  const memberMaterial = readMaterial(role); const leaderMaterial = role === leader ? memberMaterial : readMaterial(leader);
+  return {project: project.project, task: {plan, ...selectRuntimeTaskMaterial(memberMaterial, leaderMaterial)}};
 }
 
 function acceptSubmittedTask(taskId) {
@@ -226,6 +229,7 @@ for (const node of dag) {
   if (!current) throw new Error(`REAL_DAG_NODE_MISSING:${node.taskId}`);
   let checked = callTool(leader, 'taskflow', 'check_task', {taskId: node.taskId});
   let ackReceiptDigest = null; let submissionReceiptDigest = null; let runtimeResultDigest = null; let inputProjectionDigest = null; let inputProjectionKeys = [];
+  let binding = null; const stateActions = [];
   let preOperation = {planStatus: current.status, taskStatus: null, selectedAction: checked.ok && checked.effective ? 'RECOVER_CHECKED' : null, bindingDigest: null};
   if (!(checked.ok && checked.effective)) {
     const productTaskBeforeProtocol = productMission.tasks.find((task) => task.id === node.taskId);
@@ -247,29 +251,41 @@ for (const node of dag) {
       executionMode: 'SHADOW_PREP_ONLY',
       externalActionAllowed: false
     };
-    const binding = {projectId, taskId: node.taskId, roleId: node.assignedTo, roleIdentityId: productTaskBeforeProtocol.roleIdentityId, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTaskBeforeProtocol.attempt, dependsOn: node.dependsOn, roomId, contract, contractDigest: taskContractDigest(contract)};
-    const snapshot = projectTaskState(node.taskId);
+    binding = {projectId, taskId: node.taskId, roleId: node.assignedTo, roleIdentityId: productTaskBeforeProtocol.roleIdentityId, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTaskBeforeProtocol.attempt, dependsOn: node.dependsOn, roomId, contract, contractDigest: taskContractDigest(contract)};
+    const snapshot = projectTaskState(node.assignedTo, node.taskId);
     const decision = planLiveTaskProtocol({snapshot, binding, controlTask: productTaskBeforeProtocol, modelCallCount: 0});
     preOperation = {...safeTaskProtocolStatus(snapshot), selectedAction: decision.action, bindingDigest: decision.bindingDigest};
+    stateActions.push(decision.action);
     if (decision.action === 'DELEGATE') {
       const delegated = callTool(leader, 'taskflow', 'delegate_task', {projectId, taskId: node.taskId, roomId, spec: JSON.stringify(contract)});
       if (!delegated.ok || delegated.task.status !== 'assigned') throw new Error(`REAL_TASK_DELEGATE_FAILED:${node.taskId}`);
     } else if (decision.action !== 'ACK') throw new Error(`REAL_TASK_STATE_NOT_RESUMABLE:${node.taskId}:${decision.action}`);
+    const beforeAck = planLiveTaskProtocol({snapshot: projectTaskState(node.assignedTo, node.taskId), binding, controlTask: productTaskBeforeProtocol, modelCallCount: 0});
+    if (beforeAck.action !== 'ACK') throw new Error(`REAL_TASK_ACK_STATE_INVALID:${node.taskId}:${beforeAck.action}`);
+    if (stateActions.at(-1) !== 'ACK') stateActions.push(beforeAck.action);
     const productTaskBeforeAck = productMission.tasks.find((task) => task.id === node.taskId);
     if (!productTaskBeforeAck || productTaskBeforeAck.inputProjectionDigest === null) throw new Error(`PRODUCT_TASK_PROJECTION_NOT_READY:${node.taskId}`);
     const scopedInput = roleScopedRuntimeInput(productTaskBeforeAck);
     inputProjectionDigest = productTaskBeforeAck.inputProjectionDigest; inputProjectionKeys = Object.keys(scopedInput.projection).sort();
     const acknowledged = callTool(node.assignedTo, 'taskflow', 'ack_task', {taskId: node.taskId}, runtimeWorker.matrixUserID);
     if (!acknowledged.ok || acknowledged.task.status !== 'in_progress' || !acknowledged.task.acknowledged_at) throw new Error(`REAL_TASK_ACK_FAILED:${node.taskId}:${acknowledged.error ?? ''}`);
+    const importAck = planLiveTaskProtocol({snapshot: projectTaskState(node.assignedTo, node.taskId), binding, controlTask: productTaskBeforeAck, modelCallCount: 0});
+    if (importAck.action !== 'IMPORT_ACK') throw new Error(`REAL_TASK_ACK_IMPORT_STATE_INVALID:${node.taskId}:${importAck.action}`); stateActions.push(importAck.action);
     const ackBase = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTaskBeforeAck.attempt, inputProjectionSchema: productTaskBeforeAck.inputProjectionSchema, inputProjectionDigest: productTaskBeforeAck.inputProjectionDigest, runtimeState: 'in_progress', acknowledgedAt: new Date(acknowledged.task.acknowledged_at).toISOString()};
     const ackReceipt = {...ackBase, receiptDigest: digest(ackBase)}; ackReceiptDigest = ackReceipt.receiptDigest;
     await runtimeEvent({kind: 'TASK_ACK', receipt: ackReceipt});
     const productTask = productMission.tasks.find((task) => task.id === node.taskId);
     if (!productTask) throw new Error(`PRODUCT_TASK_NOT_REOPENED_AFTER_ACK:${node.taskId}`);
+    const runDomain = planLiveTaskProtocol({snapshot: projectTaskState(node.assignedTo, node.taskId), binding, controlTask: productTask, modelCallCount: 0});
+    if (runDomain.action !== 'RUN_DOMAIN') throw new Error(`REAL_TASK_DOMAIN_STATE_INVALID:${node.taskId}:${runDomain.action}`); stateActions.push(runDomain.action);
     const generated = callPublicSafeModelFromWorker(node.assignedTo, scopedInput);
     if (generated.taskId !== node.taskId || generated.roleId !== node.assignedTo || generated.inputProjectionSchema !== productTask.inputProjectionSchema || generated.inputProjectionDigest !== productTask.inputProjectionDigest || generated.maturity !== 'MOCK_CONFORMANCE' || generated.externalActionAllowed !== false || generated.outputDigest !== digest(generated.payload)) throw new Error(`PUBLIC_SAFE_WORKER_RESULT_INVALID:${node.taskId}`);
+    const submitDecision = planLiveTaskProtocol({snapshot: projectTaskState(node.assignedTo, node.taskId), binding, controlTask: productTask, modelCallCount: 1, modelOutputDigest: generated.outputDigest, preparedOutputDigest: generated.outputDigest});
+    if (submitDecision.action !== 'SUBMIT') throw new Error(`REAL_TASK_SUBMIT_STATE_INVALID:${node.taskId}:${submitDecision.action}`); stateActions.push(submitDecision.action);
     const submitted = callTool(node.assignedTo, 'taskflow', 'submit_task', {taskId: node.taskId, status: 'SUCCESS', summary: JSON.stringify(generated), deliverables: [], notes: ['REAL_AGENTTEAMS_V1_2_0_TASK_PROTOCOL', 'PUBLIC_SAFE_MODEL_OUTPUT', 'NO_ACTION_GRANT', 'NO_CONNECTOR', 'NO_EXTERNAL_ACTION']}, runtimeWorker.matrixUserID);
     if (!submitted.ok || submitted.verified !== true || submitted.task.status !== 'submitted') throw new Error(`REAL_TASK_SUBMIT_FAILED:${node.taskId}:${submitted.error ?? ''}`);
+    const checkImport = planLiveTaskProtocol({snapshot: projectTaskState(node.assignedTo, node.taskId), binding, controlTask: productTask, modelCallCount: 1, modelOutputDigest: generated.outputDigest, preparedOutputDigest: generated.outputDigest});
+    if (checkImport.action !== 'CHECK_IMPORT') throw new Error(`REAL_TASK_CHECK_STATE_INVALID:${node.taskId}:${checkImport.action}`); stateActions.push(checkImport.action);
     checked = callTool(leader, 'taskflow', 'check_task', {taskId: node.taskId});
     if (!checked.ok || checked.effective !== true || checked.task.status !== 'submitted' || !checked.task.submitted_at) throw new Error(`REAL_TASK_CHECK_FAILED:${node.taskId}`);
     const runtimeResult = JSON.parse(checked.result.summary);
@@ -283,6 +299,10 @@ for (const node of dag) {
       if (quarantined.body.code !== 'RUNTIME_SUBMISSION_QUARANTINED') throw new Error('PRODUCT_DIGEST_MISMATCH_NOT_QUARANTINED');
     }
     await runtimeEvent({kind: 'TASK_SUBMIT', submission});
+    const productTaskAfterSubmit = productMission.tasks.find((task) => task.id === node.taskId);
+    if (!productTaskAfterSubmit) throw new Error(`PRODUCT_TASK_NOT_REOPENED_AFTER_SUBMIT:${node.taskId}`);
+    const acceptDecision = planLiveTaskProtocol({snapshot: projectTaskState(node.assignedTo, node.taskId), binding, controlTask: productTaskAfterSubmit, modelCallCount: 1, modelOutputDigest: generated.outputDigest, preparedOutputDigest: generated.outputDigest});
+    if (acceptDecision.action !== 'ACCEPT') throw new Error(`REAL_TASK_ACCEPT_STATE_INVALID:${node.taskId}:${acceptDecision.action}`); stateActions.push(acceptDecision.action);
     acceptedRuntimePayloads[productTask.kind] = structuredClone(runtimeResult.payload);
     if (productTask.kind === 'AUDIT_REVISIONS') {
       const failed = productMission.audits.find((audit) => audit.outcome === 'FAIL' && audit.status === 'ACTIVE');
@@ -300,6 +320,12 @@ for (const node of dag) {
   if (!checked.ok || checked.effective !== true || checked.task.status !== 'submitted') throw new Error(`REAL_TASK_CHECK_FAILED:${node.taskId}`);
   current = projectState().tasks.find((item) => item.task_id === node.taskId);
   if (current?.status !== 'completed') acceptSubmittedTask(node.taskId);
+  if (binding !== null) {
+    const completedTask = productMission.tasks.find((task) => task.id === node.taskId);
+    if (!completedTask) throw new Error(`PRODUCT_TASK_NOT_REOPENED_AFTER_ACCEPT:${node.taskId}`);
+    const completeDecision = planLiveTaskProtocol({snapshot: projectTaskState(node.assignedTo, node.taskId), binding, controlTask: completedTask, modelCallCount: 1});
+    if (completeDecision.action !== 'COMPLETE') throw new Error(`REAL_TASK_COMPLETE_STATE_INVALID:${node.taskId}:${completeDecision.action}`); stateActions.push(completeDecision.action);
+  }
   taskEvidence.push({
     taskId: node.taskId,
     roleId: node.assignedTo,
@@ -320,7 +346,8 @@ for (const node of dag) {
     inputProjectionDigest,
     inputProjectionSchema: productMission.tasks.find((task) => task.id === node.taskId)?.inputProjectionSchema,
     inputProjectionKeys,
-    preOperation
+    preOperation,
+    stateActions
   });
 }
 
