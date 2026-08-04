@@ -64,7 +64,7 @@ const manifest = {
   sourceRevision: head,
   workingTreeSnapshot: false,
   branch: execFileSync('git', ['branch', '--show-current'], {cwd: root, encoding: 'utf8'}).trim(),
-  worktree: root,
+  worktree: '<local-ephemeral-worktree>',
   generatedAt: new Date().toISOString(),
   publicSafe: true,
   secretScan: 'PASS',

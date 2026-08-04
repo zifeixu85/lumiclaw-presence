@@ -22,9 +22,12 @@ const disallowedExpressions = [/\bAGPL(?:-|\b)/iu, /\bGPL(?:-|\b)/iu, /\bSSPL(?:
 const disallowed = packages.filter(({license}) => disallowedExpressions.some((expression) => expression.test(license)));
 const inventory = {
   schemaVersion: '1.0.0',
+  status: disallowed.length === 0 ? 'PASS' : 'FAIL',
   generatedAt: new Date().toISOString(),
   source: 'package-lock.json',
+  sourceLockSha256,
   packageCount: packages.length,
+  disallowedCount: disallowed.length,
   policy: 'docs/DEPENDENCY-POLICY.md',
   disallowed,
   packages

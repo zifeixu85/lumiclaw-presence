@@ -90,9 +90,10 @@ function validEvidenceRef(value) {
 }
 
 function validActivationPlan(value) {
-  return closed(value, ['schemaVersion', 'summary', 'units']) && value.schemaVersion === 1
+  if (!(closed(value, ['schemaVersion', 'summary', 'units']) && value.schemaVersion === 1
     && nonEmptyString(value.summary) && Array.isArray(value.units) && value.units.length === 4
-    && value.units.every(validActivationUnit);
+    && value.units.every(validActivationUnit))) return false;
+  return exactStringSet(value.units.map((unit) => unit.platform), ['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU']);
 }
 
 function validActivationUnit(value) {
@@ -148,5 +149,6 @@ function stringArray(value) { return Array.isArray(value) && value.every(nonEmpt
 function nonEmptyString(value) { return typeof value === 'string' && value.length > 0; }
 function closed(value, keys) { return isRecord(value) && exactKeys(value, keys); }
 function exactKeys(value, expected) { const actual = Object.keys(value).sort(); const wanted = [...expected].sort(); return actual.length === wanted.length && actual.every((key, index) => key === wanted[index]); }
+function exactStringSet(actual, expected) { const values = [...actual].sort(); const wanted = [...expected].sort(); return values.length === wanted.length && values.every((value, index) => value === wanted[index]); }
 function hex(value) { return typeof value === 'string' && /^[a-f0-9]{64}$/u.test(value); }
 function isRecord(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }

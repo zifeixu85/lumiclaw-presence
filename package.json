@@ -33,7 +33,7 @@
     "check:runtime-profile": "tsx scripts/check-agentteams-profile.ts",
     "check:storybook-browser-safety": "node scripts/check-storybook-browser-safety.mjs",
     "dependencies:inventory": "node scripts/dependency-inventory.mjs",
-    "dependencies:sbom": "mkdir -p .evidence/sdd-002 && cyclonedx-npm --output-file .evidence/sdd-002/sbom.cdx.json --output-format JSON",
+    "dependencies:sbom": "node scripts/sbom-evidence.mjs",
     "verify:dependencies": "npm run dependencies:inventory && npm run dependencies:sbom",
     "verify:static": "npm run lint && npm run typecheck && npm run test && npm run check:messages && npm run check:status && npm run check:report && npm run check:secrets && npm run check:compose && npm run check:runtime-profile && npm run verify:dependencies",
     "verify": "npm run verify:static && npm run build && npm run storybook:build",

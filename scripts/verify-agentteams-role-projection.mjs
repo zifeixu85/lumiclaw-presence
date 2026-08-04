@@ -40,6 +40,8 @@ const nestedFounderSource = structuredClone(founderSources); nestedFounderSource
 const nestedProductSource = structuredClone(productSources); nestedProductSource[0].founderSources = founderSources;
 const nestedAuditorSummary = structuredClone(founderSummary); nestedAuditorSummary.wholeCampaign = {customerData: 'leak'};
 const nestedPlan = structuredClone(activationPlan); nestedPlan.wholeCampaign = {customerData: 'leak'};
+const duplicateXPlan = {...activationPlan, units: ['X', 'X', 'X', 'X'].map(unit)};
+const missingXiaohongshuPlan = {...activationPlan, units: ['X', 'BLUESKY', 'LINKEDIN', 'LINKEDIN'].map(unit)};
 const invalid = [
   input('PRODUCE_FOUNDER', 'founder-identity-producer', {sourceRevisions: [sourceRevision('X', 0), sourceRevision('LINKEDIN', 2)], evidenceRefIds: [evidenceRef.id]}),
   input('PRODUCE_PRODUCT', 'product-account-producer', {sourceRevisions: [sourceRevision('BLUESKY', 1), sourceRevision('X', 0)], evidenceRefIds: [evidenceRef.id]}),
@@ -53,7 +55,9 @@ const invalid = [
   input('AUDIT_REVISIONS', 'independent-auditor', {evidenceRefIds: [evidenceRef.id], producerSummaries: {founder: nestedAuditorSummary, product: productSummary}}),
   input('FREEZE_EVIDENCE', 'evidence-claim-steward', {claimEvidence: {claims: [{...claim, editorState: {wholeCampaign: true}}], evidenceRefs: [evidenceRef]}}),
   input('PRODUCE_FOUNDER_CORRECTION', 'founder-identity-producer', {sourceRevisions: [founderSources[0]], failedAudit: {id: 'audit', digest: '4'.repeat(64), issues: [{...issue, customerData: 'leak'}]}, deniedRevision: {id: 'revision-x-v1', digest: '5'.repeat(64)}}),
-  input('REAUDIT_CORRECTION', 'independent-auditor', {failedAudit: {id: 'audit', digest: '4'.repeat(64)}, correctedRevision: {id: 'revision-x-v2', digest: '6'.repeat(64), content: {...platformContent.X, wholeCampaign: {customerData: 'leak'}}}})
+  input('REAUDIT_CORRECTION', 'independent-auditor', {failedAudit: {id: 'audit', digest: '4'.repeat(64)}, correctedRevision: {id: 'revision-x-v2', digest: '6'.repeat(64), content: {...platformContent.X, wholeCampaign: {customerData: 'leak'}}}}),
+  input('PLAN_CAMPAIGN', 'campaign-planner', {frozenClaimEvidenceDigest: '3'.repeat(64), activationPlan: duplicateXPlan}),
+  input('PLAN_CAMPAIGN', 'campaign-planner', {frozenClaimEvidenceDigest: '3'.repeat(64), activationPlan: missingXiaohongshuPlan})
 ];
 let rejected = 0;
 for (const candidate of invalid) {
@@ -61,4 +65,4 @@ for (const candidate of invalid) {
   catch { rejected += 1; }
 }
 if (rejected !== invalid.length) throw new Error('ROLE_PROJECTION_NEGATIVE_CONFORMANCE_FAILED');
-console.info(JSON.stringify({status: 'PASS', validTaskKinds: valid.length, overbroadOrTamperedRejected: rejected, recursiveNestedAttacksRejected: invalid.length - 5}));
+console.info(JSON.stringify({status: 'PASS', validTaskKinds: valid.length, overbroadOrTamperedRejected: rejected, recursiveNestedAttacksRejected: 8, semanticPlatformSetAttacksRejected: 2}));
