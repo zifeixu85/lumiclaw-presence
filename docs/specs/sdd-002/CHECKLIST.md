@@ -63,5 +63,5 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 - [x] Structurally closed but frozen-invariant-invalid initial audit and re-audit outputs fail at the semantic Provider boundary without coercion.
 - [x] Duplicate/replay, stale ETag, ticket scope, Task/role/attempt/digest/schema and persistence boundaries fail closed.
 - [x] Only an allowlisted submission-import category may cross child/host diagnostics; forbidden raw/security/model markers remain absent.
-- [ ] Public-safe real AgentTeams six/eight, no-Secret Live, full verification, report, manifest and clean-Head ZIP pass with all action counts zero.
+- [x] Public-safe real AgentTeams six/eight, no-Secret Live, full verification, report, manifest and clean-Head ZIP pass with all action counts zero.
 - [x] The eighth real-key Canary remains Coordinator-owned and is not represented as `LIVE_PROVIDER_VERIFIED` or `ACCEPTED`.

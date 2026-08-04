@@ -61,4 +61,4 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F6-01`: public-safe deterministic fifth-model-receipt initial-audit reproduction through the production API ticket/model/runtime-event import path.
 - [x] `CR2-F6-02`: exact frozen initial-audit/re-audit generation and semantic contracts, retaining server-derived digests and strict materialization.
 - [x] `CR2-F6-03`: allowlisted submission-import outcome propagation plus success, semantic, ticket/ETag/digest/schema/replay and redaction regressions.
-- [ ] `CR2-F6-04`: full AgentTeams/Live/provider/PostgreSQL/browser/security/evidence/report/clean-Head ZIP gates and eighth Coordinator Canary handoff. Real-key verification remains external.
+- [x] `CR2-F6-04`: full AgentTeams/Live/provider/PostgreSQL/browser/security/evidence/report/clean-Head ZIP gates and eighth Coordinator Canary handoff. Real-key verification remains external.
