@@ -52,6 +52,6 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 ## CR2 Fix 5 checklist
 
 - [x] Fifth and sixth Canary evidence freezes one repeated failure after five accepted model receipts and before the correction provider call; it is explicitly not a transient or Live Provider verification.
-- [x] The unconditional Live delegate path and the state-aware passing real-Runtime path are identified, while the exact correction pre-state remains a runtime fact to prove rather than an assumption.
+- [x] Pinned source and real Runtime evidence record correction as `pending/null/DELEGATE` and disprove the proposed auto-delegation cause; the old suppressed operation is explicitly left unrecoverable rather than guessed.
 - [x] Pending/delegated/advanced/unknown transitions, exact Project/Task/member/attempt/digest binding, duplicate replay and stable redaction are binary.
 - [x] Real six-member/eight-Task correction/re-audit, zero action, exact cleanup, full gates and Coordinator-only seventh Canary are mandatory.

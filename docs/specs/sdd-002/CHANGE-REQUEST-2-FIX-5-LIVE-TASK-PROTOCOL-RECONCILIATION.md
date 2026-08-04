@@ -6,7 +6,11 @@ Status: `SPEC_READY` after Coordinator evidence `COORDINATOR_FIX_REQUEST_5` on 2
 
 The fifth and same-Head sixth Coordinator Canaries both reached the exact six-member AgentTeams Project and persisted five accepted DeepSeek `ModelCallSnapshot` records. Both then failed closed at `TASK_PROTOCOL`, before the sixth provider request, while `PRODUCE_FOUNDER_CORRECTION` was assigned to `founder-identity-producer` for that member's second Task and `REAUDIT_CORRECTION` remained dependency-blocked. The sixth Mission was `FAILED` at version 27 with four revisions, four audits, five model receipts and zero ActionGrant, Connector or external action. Both owned environments cleaned successfully. This repeated boundary is not a transient and is not `LIVE_PROVIDER_VERIFIED`.
 
-Source comparison finds one bounded protocol divergence. `scripts/run-live-deepseek-uat.mjs` calls `delegate_task` unconditionally for every DAG node, then requires an assigned response before ACK. `scripts/verify-agentteams-real-runtime.mjs`, which already completes the same six-member/eight-Task graph with a public-safe provider, first reads the persisted AgentTeams Task, delegates only a `pending` Task and accepts a `delegated` Task before ACK. The hypothesis is that completing the initial audit makes the dependent correction ready and AgentTeams has already moved it to `delegated`; a second delegation is then rejected. This remains a hypothesis until a real public-safe Runtime observation records the exact pre-operation state and failed/suppressed operation.
+Source comparison found one bounded protocol divergence. `scripts/run-live-deepseek-uat.mjs` called `delegate_task` unconditionally for every DAG node, then required an assigned response before ACK. `scripts/verify-agentteams-real-runtime.mjs`, which already completes the same six-member/eight-Task graph with a public-safe provider, was state-aware. The initial hypothesis was that completing the audit auto-delegated the dependent correction, making the Live Runner's second delegate fail.
+
+That hypothesis is now disproved, not promoted to a root-cause claim. Inspection of the pinned v1.2.0 source shows that `ready_nodes` returns only dependency-ready `pending` nodes and does not mutate or delegate them; only `delegate_task` changes the DAG node to `delegated` and creates assigned Task metadata. A real public-safe six-member/eight-Task execution on candidate `07516646248750ebdfe5e0ed13f8548cc3a328bf` recorded all eight initial pre-operation snapshots as `planStatus=pending`, `taskStatus=null`, `selectedAction=DELEGATE`, including `PRODUCE_FOUNDER_CORRECTION` attempt 2 on the same Producer and `REAUDIT_CORRECTION` attempt 2 on the same Auditor. Both completed real ACK/Submit/Check/Accept with zero actions and exact cleanup.
+
+The historical fifth/sixth Canary operation cannot be reconstructed because the old runner exported only the generic stage code and cleanup removed its Runtime/DB state. The confirmed implementation defect is therefore the blind, non-resumable transition sequence plus loss of operation/state diagnostics—not the unproven auto-delegate scenario. The correction preserves the passing pending path, supports exact delegated/advanced reconciliation, and makes a further failure identify one allowlisted operation outcome plus the observed safe state pair in a single attempt.
 
 ## Bounded correction
 
@@ -26,6 +30,14 @@ Source comparison finds one bounded protocol divergence. `scripts/run-live-deeps
 5. The real public-safe flow reaches correction, re-audit and exact Owner Review with mandatory ACK/Submit/Check evidence, while ActionGrant, Connector and external action remain zero.
 6. Targeted/full tests, provider conformance, PostgreSQL, browser, Compose, real AgentTeams, no-Secret Live, security, cleanup, evidence manifest and clean-Head source package pass.
 7. The seventh real-key Canary remains Coordinator-owned. Until seven accepted domain receipts reach `AWAITING_OWNER_REVIEW`, `LIVE_PROVIDER_VERIFIED` remains false and no acceptance claim is made.
+
+## Engineering verification result
+
+- Pinned AgentTeams source semantics: `pending` remains pending until explicit delegate; ACK changes Task metadata to `in_progress`; submit changes it to `submitted`; the checked-result bridge completes the DAG node.
+- Real public-safe runtime: exact 6 members / 8 Tasks; the same Producer and Auditor each completed attempt 1 and dependent attempt 2; all eight pre-operations were recorded and no runtime auto-delegation was observed.
+- State planner: `pending → DELEGATE`, exact `delegated/assigned → ACK`, exact `delegated/in_progress → IMPORT_ACK or RUN_DOMAIN/SUBMIT`, exact `delegated/submitted → CHECK_IMPORT or ACCEPT`, exact `completed/submitted → COMPLETE`; contradictions, wrong bindings and unsafe model replay fail closed.
+- Diagnostics: 13 task-protocol outcomes traverse the real environment-verifier/Runner child pipe and persist only stable outcome, safe `planStatus/taskStatus`, exact failed Task binding, zero-action and cleanup fields. Forbidden marker finding is zero.
+- Maturity remains `ENGINEERING_VERIFIED`; the seventh real-key Canary and `LIVE_PROVIDER_VERIFIED` are external Coordinator gates.
 
 ## Out of scope
 

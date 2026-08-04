@@ -27,6 +27,11 @@ const expectedProviderOutcomes = [
   'PROVIDER_HTTP_401', 'PROVIDER_HTTP_402', 'PROVIDER_HTTP_404', 'PROVIDER_HTTP_429', 'PROVIDER_HTTP_500', 'PROVIDER_HTTP_502', 'PROVIDER_HTTP_503', 'PROVIDER_HTTP_504',
   'MODEL_TIMEOUT', 'PROVIDER_UNAVAILABLE', 'MODEL_RESPONSE_IDENTITY_INVALID', 'MODEL_RETURNED_MODEL_MISMATCH', 'MODEL_FINISH_REASON_INVALID', 'MODEL_USAGE_INVALID', 'PROVIDER_RESPONSE_INVALID', 'MODEL_JSON_MALFORMED', 'MODEL_SCHEMA_INVALID', 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', 'LIVE_PROVIDER_BROKER_FAILED'
 ];
+const expectedTaskProtocolOutcomes = [
+  'LIVE_TASK_INSPECT_FAILED', 'LIVE_TASK_BINDING_INVALID', 'LIVE_TASK_STATE_INVALID', 'LIVE_TASK_DELEGATE_FAILED',
+  'LIVE_TASK_DELEGATE_RECONCILE_FAILED', 'LIVE_TASK_ACK_FAILED', 'LIVE_TASK_ACK_IMPORT_FAILED', 'LIVE_TASK_DOMAIN_RESUME_UNSAFE',
+  'LIVE_TASK_SUBMIT_FAILED', 'LIVE_TASK_CHECK_FAILED', 'LIVE_TASK_SUBMISSION_IMPORT_FAILED', 'LIVE_TASK_ACCEPT_FAILED', 'LIVE_TASK_REPLAY_CONFLICT'
+];
 const expectedRoleContracts = [
   {id: 'presence-mission-leader', orchestrationOnly: true, permissions: ['ORCHESTRATE'], skillLocks: ['trace-safe-escalation@1.0.0']},
   {id: 'evidence-claim-steward', orchestrationOnly: false, permissions: ['READ_EVIDENCE'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'trace-safe-escalation@1.0.0']},
@@ -101,14 +106,15 @@ function liveConformanceValid(value) {
   const transport = value?.stdinTransport;
   const diagnostics = value?.stageDiagnostics;
   const providerOutcomes = value?.providerOutcomeDiagnostics;
+  const taskProtocolOutcomes = value?.taskProtocolDiagnostics;
   const receipt = transport?.receipt;
   return value?.schemaVersion === 1
     && value?.status === 'PASS'
     && value?.maturity === 'ENGINEERING_VERIFIED'
     && value?.liveProviderVerified === false
     && value?.liveProviderStatus === 'NOT_RUN_NO_OWNER_SECRET'
-    && value?.targetedContracts?.testFiles === 7
-    && value?.targetedContracts?.tests === 131
+    && value?.targetedContracts?.testFiles === 9
+    && value?.targetedContracts?.tests === 155
     && value?.targetedContracts?.noKeyFailClosed === true
     && value?.targetedContracts?.mockFallback === false
     && value?.targetedContracts?.scopedSingleUseTickets === true
@@ -119,6 +125,7 @@ function liveConformanceValid(value) {
     && value?.targetedContracts?.taskSpecificSemanticSchemas === true
     && value?.targetedContracts?.firstDomainFixtureCovered === true
     && value?.targetedContracts?.workerBrokerOriginBound === true
+    && value?.targetedContracts?.resumableAgentTeamsTaskProtocol === true
     && transport?.status === 'PASS'
     && transport?.protocol === 'STRICT_JSON_EXACT_FOUR_FIELDS_SINGLE_FD0_READ'
     && transport?.nestedChildProcess === true
@@ -160,6 +167,18 @@ function liveConformanceValid(value) {
     && providerOutcomes?.arbitraryExceptionTextForwarded === false
     && providerOutcomes?.rawHttpOrModelOutputForwarded === false
     && providerOutcomes?.bootstrapTicketHeaderResponseIdFinding === false
+    && taskProtocolOutcomes?.status === 'PASS'
+    && taskProtocolOutcomes?.actualNestedChildProcess === true
+    && taskProtocolOutcomes?.cases === expectedTaskProtocolOutcomes.length
+    && exactStringSet(taskProtocolOutcomes?.outcomes?.map((entry) => entry.taskProtocolOutcomeCode), expectedTaskProtocolOutcomes)
+    && taskProtocolOutcomes.outcomes.every((entry) => entry.failedTaskBound === true
+      && exactStringSet(Object.keys(entry.taskProtocolStatus ?? {}), ['planStatus', 'taskStatus'])
+      && [null, 'pending', 'delegated', 'completed'].includes(entry.taskProtocolStatus.planStatus)
+      && [null, 'assigned', 'in_progress', 'submitted'].includes(entry.taskProtocolStatus.taskStatus))
+    && taskProtocolOutcomes?.taskProjectMemberDigestBound === true
+    && taskProtocolOutcomes?.arbitraryExceptionTextForwarded === false
+    && taskProtocolOutcomes?.rawChildOrModelOutputForwarded === false
+    && taskProtocolOutcomes?.bootstrapTicketHeaderResponseIdFinding === false
     && value?.composePolicy?.status === 'PASS'
     && value?.composePolicy?.dockerSocketMounted === false
     && value?.composePolicy?.secretAsServiceEnvironment === false
@@ -297,6 +316,8 @@ function exactTaskSet(tasks) {
     && new Set(tasks.map((task) => task.taskId)).size === 8
     && tasks.every((task) => task.resultSource === 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY'
       && task.protocol?.join(',') === 'DELEGATE,ACK,SUBMIT,CHECK,ACCEPT'
+      && exactRecord(task.preOperation, {planStatus: 'pending', taskStatus: null, selectedAction: 'DELEGATE', bindingDigest: task.preOperation?.bindingDigest})
+      && digest(task.preOperation?.bindingDigest)
       && task.inputProjectionSchema === `lumiclaw.shadow.task-input.${task.taskKind.toLowerCase().replaceAll('_', '-')}.v1`
       && digestFields.every((field) => digest(task[field]))
       && exactStringSet(task.inputProjectionKeys, expectedTaskByKind.get(task.taskKind)?.keys ?? []))
@@ -466,6 +487,8 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !exactBooleanMap(undefined, expectedImmutableHistory),
     !exactBooleanMap({}, expectedImmutableHistory),
     !exactTaskSet(tasks.map((task, index) => index === 0 ? {...task, inputProjectionKeys: ['x']} : task)),
+    !exactTaskSet(tasks.map((task) => task.taskKind === 'PRODUCE_FOUNDER_CORRECTION' ? {...task, preOperation: {...task.preOperation, selectedAction: 'ACK'}} : task)),
+    !exactTaskSet(tasks.map((task) => task.taskKind === 'REAUDIT_CORRECTION' ? {...task, preOperation: {...task.preOperation, bindingDigest: '0'.repeat(64)}} : task)),
     !sourceIdentityMatches({...sourcePackage, fileCount: 0, files: []}, runtimeSource, currentHead, sourceArchive, currentGitFiles),
     !sourceIdentityMatches({...sourcePackage, archive: '.evidence/sdd-002/source-packages/not-the-evidence.zip'}, runtimeSource, currentHead, sourceArchive, currentGitFiles),
     !sourceIdentityMatches(sourcePackage, runtimeSource, currentHead, {...sourceArchive, zipValid: false}, currentGitFiles),
@@ -487,7 +510,9 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, exactRoleSchemaPromptBound: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, taskSpecificSemanticSchemas: false}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, workerBrokerOriginBound: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, resumableAgentTeamsTaskProtocol: false}}),
     !liveConformanceValid({...liveConformance, providerOutcomeDiagnostics: {...liveConformance.providerOutcomeDiagnostics, outcomes: liveConformance.providerOutcomeDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, providerOutcomeCode: 'RAW_PROVIDER_FAILURE'} : entry)}}),
+    !liveConformanceValid({...liveConformance, taskProtocolDiagnostics: {...liveConformance.taskProtocolDiagnostics, outcomes: liveConformance.taskProtocolDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, taskProtocolOutcomeCode: 'RAW_TASK_EXCEPTION'} : entry)}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, nestedChildProcess: false}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, bootstrapOrSecretFinding: true}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, extraFieldRejected: false}}),

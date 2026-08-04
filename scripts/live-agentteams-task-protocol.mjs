@@ -31,6 +31,21 @@ const outcomeSet = new Set(LIVE_TASK_PROTOCOL_OUTCOMES);
 const planStates = new Set(['pending', 'delegated', 'completed']);
 const taskStates = new Set(['assigned', 'in_progress', 'submitted']);
 const digestPattern = /^[a-f0-9]{64}$/u;
+const diagnosticStatusByOutcome = Object.freeze({
+  LIVE_TASK_INSPECT_FAILED: {planStatus: null, taskStatus: null},
+  LIVE_TASK_BINDING_INVALID: {planStatus: null, taskStatus: null},
+  LIVE_TASK_STATE_INVALID: {planStatus: 'delegated', taskStatus: null},
+  LIVE_TASK_DELEGATE_FAILED: {planStatus: 'pending', taskStatus: null},
+  LIVE_TASK_DELEGATE_RECONCILE_FAILED: {planStatus: 'delegated', taskStatus: 'assigned'},
+  LIVE_TASK_ACK_FAILED: {planStatus: 'delegated', taskStatus: 'assigned'},
+  LIVE_TASK_ACK_IMPORT_FAILED: {planStatus: 'delegated', taskStatus: 'in_progress'},
+  LIVE_TASK_DOMAIN_RESUME_UNSAFE: {planStatus: 'delegated', taskStatus: 'in_progress'},
+  LIVE_TASK_SUBMIT_FAILED: {planStatus: 'delegated', taskStatus: 'in_progress'},
+  LIVE_TASK_CHECK_FAILED: {planStatus: 'delegated', taskStatus: 'submitted'},
+  LIVE_TASK_SUBMISSION_IMPORT_FAILED: {planStatus: 'delegated', taskStatus: 'submitted'},
+  LIVE_TASK_ACCEPT_FAILED: {planStatus: 'delegated', taskStatus: 'submitted'},
+  LIVE_TASK_REPLAY_CONFLICT: {planStatus: 'delegated', taskStatus: 'in_progress'}
+});
 
 export class LiveTaskProtocolError extends Error {
   constructor(code, status = {planStatus: null, taskStatus: null}) {
@@ -50,6 +65,11 @@ export function isLiveTaskProtocolStatus(value) {
     && Object.keys(value).sort().join(',') === 'planStatus,taskStatus'
     && (value.planStatus === null || planStates.has(value.planStatus))
     && (value.taskStatus === null || taskStates.has(value.taskStatus));
+}
+
+export function taskProtocolDiagnosticStatus(outcome) {
+  if (!isLiveTaskProtocolOutcome(outcome)) throw new LiveTaskProtocolError('LIVE_TASK_STATE_INVALID');
+  return Object.freeze({...diagnosticStatusByOutcome[outcome]});
 }
 
 export function taskContractDigest(contract) {

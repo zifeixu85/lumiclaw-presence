@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync, writeSync} from 'node:fs';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
-import {LiveTaskProtocolError, planLiveTaskProtocol, safeTaskProtocolStatus, taskContractDigest} from './live-agentteams-task-protocol.mjs';
+import {isLiveTaskProtocolOutcome, LiveTaskProtocolError, planLiveTaskProtocol, safeTaskProtocolStatus, taskContractDigest, taskProtocolDiagnosticStatus} from './live-agentteams-task-protocol.mjs';
 import {conformanceProgressForStage, createLiveFailureEnvelope, createLiveFailureReceipt, defaultLiveProgress, isLiveStage, isProviderOutcomeCode, liveStageCode, providerOutcomeFromMission, readSourceIdentity, writeLiveFailureReceipt} from './live-uat-diagnostics.mjs';
 import {createRedactedTransportReceipt, deriveWorkerBrokerUrl, parseLiveUatTransport} from './live-uat-transport.mjs';
 
@@ -27,11 +27,20 @@ if (process.argv.includes('--transport-conformance')) {
 const {organizationId, missionId, campaignDigest, bootstrap} = transport;
 const diagnosticStage = process.argv.find((value) => value.startsWith('--diagnostic-stage-conformance='))?.split('=', 2)[1];
 const diagnosticProviderOutcome = process.argv.find((value) => value.startsWith('--provider-outcome-diagnostic-conformance='))?.split('=', 2)[1];
-if (diagnosticStage !== undefined || diagnosticProviderOutcome !== undefined) {
+const diagnosticTaskProtocolOutcome = process.argv.find((value) => value.startsWith('--task-protocol-outcome-diagnostic-conformance='))?.split('=', 2)[1];
+if (diagnosticStage !== undefined || diagnosticProviderOutcome !== undefined || diagnosticTaskProtocolOutcome !== undefined) {
   try {
-    const stage = diagnosticProviderOutcome === undefined ? diagnosticStage : 'PROVIDER_REQUEST';
-    if (!isLiveStage(stage) || (diagnosticProviderOutcome !== undefined && !isProviderOutcomeCode(diagnosticProviderOutcome))) throw new Error('LIVE_DIAGNOSTIC_STAGE_INVALID');
-    const receipt = createLiveFailureReceipt({source: readSourceIdentity(root), organizationId, missionId, campaignDigest, stage, failedTaskId: diagnosticProviderOutcome === undefined ? null : 'public-safe-provider-task', providerOutcomeCode: diagnosticProviderOutcome ?? null, progress: conformanceProgressForStage(stage)});
+    const modeCount = [diagnosticStage, diagnosticProviderOutcome, diagnosticTaskProtocolOutcome].filter((value) => value !== undefined).length;
+    const stage = diagnosticTaskProtocolOutcome !== undefined ? 'TASK_PROTOCOL' : diagnosticProviderOutcome !== undefined ? 'PROVIDER_REQUEST' : diagnosticStage;
+    if (modeCount !== 1 || !isLiveStage(stage) || (diagnosticProviderOutcome !== undefined && !isProviderOutcomeCode(diagnosticProviderOutcome)) || (diagnosticTaskProtocolOutcome !== undefined && !isLiveTaskProtocolOutcome(diagnosticTaskProtocolOutcome))) throw new Error('LIVE_DIAGNOSTIC_STAGE_INVALID');
+    const receipt = createLiveFailureReceipt({
+      source: readSourceIdentity(root), organizationId, missionId, campaignDigest, stage,
+      failedTaskId: diagnosticProviderOutcome !== undefined ? 'public-safe-provider-task' : diagnosticTaskProtocolOutcome !== undefined ? 'public-safe-task-protocol-task' : null,
+      providerOutcomeCode: diagnosticProviderOutcome ?? null,
+      taskProtocolOutcomeCode: diagnosticTaskProtocolOutcome ?? null,
+      taskProtocolStatus: diagnosticTaskProtocolOutcome === undefined ? undefined : taskProtocolDiagnosticStatus(diagnosticTaskProtocolOutcome),
+      progress: conformanceProgressForStage(stage)
+    });
     await writeLiveFailureReceipt(root, receipt, {targetPath: process.env.LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH});
     writeSync(2, `${JSON.stringify(createLiveFailureEnvelope(receipt))}\n`); process.exit(1);
   } catch { emitFailure('LIVE_FAILURE_RECEIPT_WRITE_FAILED'); process.exit(1); }
