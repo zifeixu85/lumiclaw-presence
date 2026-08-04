@@ -65,6 +65,25 @@ export type RuntimeCapabilityReport = {
   limitations: string[];
 };
 
+const expectedRoleContracts = new Map<string, {
+  orchestrationOnly: boolean;
+  permissions: TeamRole['permissions'];
+  skillLocks: TeamRole['skillLocks'];
+}>([
+  ['presence-mission-leader', {orchestrationOnly: true, permissions: ['ORCHESTRATE'], skillLocks: ['trace-safe-escalation@1.0.0']}],
+  ['evidence-claim-steward', {orchestrationOnly: false, permissions: ['READ_EVIDENCE'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'trace-safe-escalation@1.0.0']}],
+  ['campaign-planner', {orchestrationOnly: false, permissions: ['PLAN'], skillLocks: ['campaign-strategy@1.0.0', 'trace-safe-escalation@1.0.0']}],
+  ['founder-identity-producer', {orchestrationOnly: false, permissions: ['PRODUCE_FOUNDER'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'account-native-expression@1.0.0', 'trace-safe-escalation@1.0.0']}],
+  ['product-account-producer', {orchestrationOnly: false, permissions: ['PRODUCE_PRODUCT'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'account-native-expression@1.0.0', 'trace-safe-escalation@1.0.0']}],
+  ['independent-auditor', {orchestrationOnly: false, permissions: ['AUDIT'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'independent-action-audit@1.0.0', 'trace-safe-escalation@1.0.0']}]
+]);
+
+function exactStrings(actual: readonly string[], expected: readonly string[]): boolean {
+  const left = [...actual].sort();
+  const right = [...expected].sort();
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
+
 const versionResponseSchema = {
   type: 'object',
   additionalProperties: true,
@@ -89,7 +108,9 @@ const forbiddenMountTargets = new Set([
 export function validateRuntimeProfile(profile: RuntimeProfile): string[] {
   const errors: string[] = [];
   if (profile.version !== 'v1.2.0') errors.push('RUNTIME_VERSION_MISMATCH');
-  if (profile.images.length < 2) errors.push('RUNTIME_IMAGE_SET_INCOMPLETE');
+  if (!exactStrings(profile.images.map((image) => image.component), ['manager', 'worker'])) {
+    errors.push('RUNTIME_IMAGE_SET_INCOMPLETE');
+  }
 
   for (const image of profile.images) {
     if (image.tag !== 'v1.2.0') errors.push(`IMAGE_TAG_MISMATCH:${image.component}`);
@@ -131,6 +152,16 @@ export function validateTeamProfile(profile: TeamProfile): string[] {
   const expectedIds = new Set(['presence-mission-leader', 'evidence-claim-steward', 'campaign-planner', 'founder-identity-producer', 'product-account-producer', 'independent-auditor']);
   if (profile.roles.length !== 6 || profile.roles.some((role) => !expectedIds.has(role.id)) || [...expectedIds].some((id) => !ids.has(id))) errors.push('TEAM_MEMBERS_NOT_EXACTLY_SIX');
   if (profile.executionMode !== 'SHADOW_PREP_ONLY' || profile.externalActionAllowed !== false) errors.push('SHADOW_BOUNDARY_INVALID');
+
+  for (const role of profile.roles) {
+    const expected = expectedRoleContracts.get(role.id);
+    if (expected === undefined
+      || role.orchestrationOnly !== expected.orchestrationOnly
+      || !exactStrings(role.permissions, expected.permissions)
+      || !exactStrings(role.skillLocks, expected.skillLocks)) {
+      errors.push(`ROLE_CONTRACT_INVALID:${role.id}`);
+    }
+  }
 
   const leader = profile.roles.find((role) => role.id === 'presence-mission-leader');
   if (leader === undefined || !leader.orchestrationOnly || leader.permissions.length !== 1 || leader.permissions[0] !== 'ORCHESTRATE') {

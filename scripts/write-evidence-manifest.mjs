@@ -10,6 +10,23 @@ const expectedBase = '4377103b3fea493a591af7f069fd697d9601f1ca';
 const expectedBranch = 'codex/sdd-002-governed-shadow-campaign';
 const expectedArchive = '.evidence/sdd-002/source-packages/lumiclaw-presence-sdd-002-source.zip';
 const expectedImmutableHistory = ['governed_artifact_revisions', 'audit_decisions', 'owner_reviews', 'trace_events', 'ledger_entries', 'shadow_idempotency'];
+const expectedRuntimeImageComponents = ['embedded-controller', 'manager-copaw', 'worker'];
+const expectedSkillLocks = ['account-native-expression@1.0.0', 'campaign-strategy@1.0.0', 'evidence-and-claim-grounding@1.0.0', 'independent-action-audit@1.0.0', 'trace-safe-escalation@1.0.0'];
+const expectedRoleContracts = [
+  {id: 'presence-mission-leader', orchestrationOnly: true, permissions: ['ORCHESTRATE'], skillLocks: ['trace-safe-escalation@1.0.0']},
+  {id: 'evidence-claim-steward', orchestrationOnly: false, permissions: ['READ_EVIDENCE'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'trace-safe-escalation@1.0.0']},
+  {id: 'campaign-planner', orchestrationOnly: false, permissions: ['PLAN'], skillLocks: ['campaign-strategy@1.0.0', 'trace-safe-escalation@1.0.0']},
+  {id: 'founder-identity-producer', orchestrationOnly: false, permissions: ['PRODUCE_FOUNDER'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'account-native-expression@1.0.0', 'trace-safe-escalation@1.0.0']},
+  {id: 'product-account-producer', orchestrationOnly: false, permissions: ['PRODUCE_PRODUCT'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'account-native-expression@1.0.0', 'trace-safe-escalation@1.0.0']},
+  {id: 'independent-auditor', orchestrationOnly: false, permissions: ['AUDIT'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'independent-action-audit@1.0.0', 'trace-safe-escalation@1.0.0']}
+];
+const expectedScreenshotDimensions = new Map([
+  ['browser/product-zh-mission-390.png', {width: 780, height: 7508}],
+  ['browser/product-zh-mission-desktop.png', {width: 1440, height: 3432}],
+  ['browser/product-zh-review-390.png', {width: 780, height: 8610}],
+  ['browser/product-zh-review-desktop.png', {width: 1440, height: 2252}],
+  ['browser/storybook-en-queued-390.png', {width: 780, height: 4536}]
+]);
 const expectedTasks = [
   {role: 'presence-mission-leader', kind: 'PROJECT_COORDINATION', attempt: 1, keys: ['mission']},
   {role: 'evidence-claim-steward', kind: 'FREEZE_EVIDENCE', attempt: 1, keys: ['claimEvidence']},
@@ -75,6 +92,28 @@ function exactBooleanMap(actual, expected) {
     && exactStringSet(Object.keys(actual), expected)
     && expected.every((key) => actual[key] === true);
 }
+function roleContractIdentity(role) {
+  return JSON.stringify({
+    id: role?.id,
+    orchestrationOnly: role?.orchestrationOnly,
+    permissions: Array.isArray(role?.permissions) ? [...role.permissions].sort() : null,
+    skillLocks: Array.isArray(role?.skillLocks) ? [...role.skillLocks].sort() : null
+  });
+}
+function exactRoleContracts(roles) {
+  if (!Array.isArray(roles)) return false;
+  const actual = roles.map(roleContractIdentity).sort();
+  const expected = expectedRoleContracts.map(roleContractIdentity).sort();
+  return actual.length === expected.length && actual.every((value, index) => value === expected[index]);
+}
+function pngImageMatches(value, expected) {
+  const signature = '89504e470d0a1a0a';
+  return Buffer.isBuffer(value) && value.length >= 24
+    && value.subarray(0, 8).toString('hex') === signature
+    && value.subarray(12, 16).toString('ascii') === 'IHDR'
+    && value.readUInt32BE(16) === expected.width
+    && value.readUInt32BE(20) === expected.height;
+}
 function exactTaskSet(tasks) {
   if (!Array.isArray(tasks) || tasks.length !== expectedTasks.length) return false;
   const tuples = tasks.map((task) => `${task.roleId}:${task.taskKind}:${task.attempt}`).sort();
@@ -91,13 +130,60 @@ function exactTaskSet(tasks) {
 }
 
 function runtimeIdentityMatches(runtime, lifecycle, imageManifest) {
-  const expectedImages = new Map(imageManifest.images.map((image) => [image.component, `${image.repository}:${image.tag}:${image.digest}`]));
-  return runtime?.requestedVersion === imageManifest.requestedVersion
+  if (!exactStringSet(imageManifest?.images?.map((image) => image.component), expectedRuntimeImageComponents)
+    || !exactStringSet(runtime?.images?.map((image) => image.component), expectedRuntimeImageComponents)) return false;
+  const expectedImages = new Map(imageManifest.images.map((image) => [image.component, image]));
+  return runtime.requestedVersion === imageManifest.requestedVersion
     && runtime?.sourceTagCommit === imageManifest.sourceTagCommit
     && runtime?.sourceTarSha256 === imageManifest.sourceTarSha256
     && lifecycle?.sourceTarSha256 === imageManifest.sourceTarSha256
-    && Array.isArray(runtime?.images) && runtime.images.length === imageManifest.images.length
-    && runtime.images.every((image) => expectedImages.get(image.component) === `${image.repository}:${image.tag}:${image.digest}` && buildDigest(image.digest));
+    && runtime.images.every((image) => {
+      const expected = expectedImages.get(image.component);
+      return expected !== undefined
+        && image.repository === expected.repository
+        && image.tag === expected.tag
+        && image.digest === expected.digest
+        && image.platformVerified === expected.platformVerified
+        && buildDigest(image.digest);
+    });
+}
+
+function capabilityEvidenceValid(capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256) {
+  const runtime = capability?.profiles?.runtime;
+  const team = capability?.profiles?.team;
+  return capability?.schemaVersion === '1.0.0'
+    && capability?.kind === 'ADAPTER_CONTRACT_SMOKE'
+    && capability?.status === 'SUCCESS'
+    && capability?.probeMode === 'CONTROLLED_FIXTURE'
+    && capability?.runtime === 'agentteams'
+    && capability?.requestedVersion === 'v1.2.0'
+    && capability?.controllerVersion === 'v1.2.0'
+    && capability?.buildIdentity === 'v1.2.0'
+    && capability?.liveAgentTeamRun === false
+    && capability?.runtimeProfileValidation === 'PASS'
+    && capability?.teamProfileValidation === 'PASS'
+    && capability?.roleCount === 6
+    && runtime?.path === 'infra/agentteams/runtime-profile.json'
+    && runtime?.sha256 === runtimeProfileSha256
+    && runtime?.id === runtimeProfile.id
+    && runtime?.runtime === 'agentteams'
+    && runtime?.version === 'v1.2.0'
+    && exactStringSet(runtimeProfile.images?.map((image) => image.component), ['manager', 'worker'])
+    && JSON.stringify(runtime?.images) === JSON.stringify(runtimeProfile.images)
+    && team?.path === 'infra/agentteams/team-profile.json'
+    && team?.sha256 === teamProfileSha256
+    && team?.id === teamProfile.id
+    && team?.runtimeVersion === 'v1.2.0'
+    && team?.executionMode === 'SHADOW_PREP_ONLY'
+    && team?.externalActionAllowed === false
+    && team?.modelMaturity === 'MOCK_CONFORMANCE'
+    && teamProfile.runtimeVersion === team.runtimeVersion
+    && teamProfile.executionMode === team.executionMode
+    && teamProfile.externalActionAllowed === team.externalActionAllowed
+    && teamProfile.modelMaturity === team.modelMaturity
+    && exactRoleContracts(teamProfile.roles)
+    && exactRoleContracts(team?.roles)
+    && exactStringSet(team?.skillLocks, expectedSkillLocks);
 }
 
 function sourceIdentityMatches(sourcePackage, runtimeSource, currentHead, sourceArchive, currentGitFiles) {
@@ -162,12 +248,40 @@ function sbomEvidenceValid(sbom, expectedSbom, rootPackage, packageCount, source
     && properties.get('lumiclaw:license-inventory-path') === '.evidence/sdd-002/license-inventory.json';
 }
 
-function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, sourcePackage, runtimeSource, currentHead, sourceArchive, currentGitFiles, productControlPlane, noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage}) {
+function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256, sourcePackage, runtimeSource, currentHead, sourceArchive, currentGitFiles, productControlPlane, noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage}) {
+  const duplicateRuntimeImages = runtime.images.map(() => ({...runtime.images[0]}));
+  const extraRuntimeImage = {...runtime.images[0], component: 'unknown-component'};
+  const mutateCapabilityRole = (roleId, mutation) => ({
+    ...capability,
+    profiles: {
+      ...capability.profiles,
+      team: {
+        ...capability.profiles.team,
+        roles: capability.profiles.team.roles.map((role) => role.id === roleId ? mutation(role) : role)
+      }
+    }
+  });
   const mutationsRejected = [
     !exactTaskSet(tasks.map((task, index) => index === 0 ? {...task, ackReceiptDigest: 'x'} : task)),
     !exactTaskSet(tasks.map((task, index) => index === 0 ? {...task, runtimeResultDigest: tasks[1].runtimeResultDigest} : task)),
     !runtimeIdentityMatches({...runtime, sourceTarSha256: 'WRONG'}, lifecycle, imageManifest),
     !runtimeIdentityMatches({...runtime, images: runtime.images.map((image, index) => index === 0 ? {...image, digest: `sha256:${'0'.repeat(64)}`} : image)}, lifecycle, imageManifest),
+    !runtimeIdentityMatches({...runtime, images: duplicateRuntimeImages}, lifecycle, imageManifest),
+    !runtimeIdentityMatches({...runtime, images: runtime.images.filter((image) => image.component !== 'worker')}, lifecycle, imageManifest),
+    !runtimeIdentityMatches({...runtime, images: runtime.images.filter((image) => image.component !== 'manager-copaw')}, lifecycle, imageManifest),
+    !runtimeIdentityMatches({...runtime, images: [...runtime.images, extraRuntimeImage]}, lifecycle, imageManifest),
+    !runtimeIdentityMatches({...runtime, images: runtime.images.map((image, index) => index === 0 ? {...image, platformVerified: 'linux/amd64'} : image)}, lifecycle, imageManifest),
+    !capabilityEvidenceValid({}, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256),
+    !capabilityEvidenceValid({...capability, schemaVersion: '0.0.0'}, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256),
+    !capabilityEvidenceValid({...capability, roleCount: 5}, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256),
+    !capabilityEvidenceValid({...capability, profiles: {...capability.profiles, team: {...capability.profiles.team, roles: capability.profiles.team.roles.slice(0, 5)}}}, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256),
+    !capabilityEvidenceValid({...capability, profiles: {...capability.profiles, team: {...capability.profiles.team, roles: [...capability.profiles.team.roles, {...capability.profiles.team.roles[0], id: 'unknown-role'}]}}}, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256),
+    !capabilityEvidenceValid(mutateCapabilityRole('presence-mission-leader', (role) => ({...role, orchestrationOnly: false})), runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256),
+    !capabilityEvidenceValid(mutateCapabilityRole('founder-identity-producer', (role) => ({...role, permissions: [...role.permissions, 'AUDIT']})), runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256),
+    !capabilityEvidenceValid(mutateCapabilityRole('campaign-planner', (role) => ({...role, skillLocks: ['trace-safe-escalation@1.0.0']})), runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256),
+    !capabilityEvidenceValid({...capability, profiles: {...capability.profiles, team: {...capability.profiles.team, skillLocks: capability.profiles.team.skillLocks.slice(1)}}}, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256),
+    !capabilityEvidenceValid({...capability, profiles: {...capability.profiles, team: {...capability.profiles.team, sha256: '0'.repeat(64)}}}, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256),
+    !capabilityEvidenceValid({...capability, profiles: {...capability.profiles, runtime: {...capability.profiles.runtime, sha256: '0'.repeat(64)}}}, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256),
     !sourceIdentityMatches({...sourcePackage, head: 'WRONG'}, runtimeSource, currentHead, sourceArchive, currentGitFiles),
     !sourceIdentityMatches(sourcePackage, {...runtimeSource, head: 'WRONG'}, currentHead, sourceArchive, currentGitFiles),
     {...productControlPlane, aggregatePoisonIgnored: false}.aggregatePoisonIgnored !== true,
@@ -184,14 +298,16 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, sourceP
     !licenseEvidenceValid({...licenses, packages: [], packageCount: 0}, expectedPackages, sourceLockSha256),
     !sbomEvidenceValid({bomFormat: 'CycloneDX'}, expectedSbom, rootPackage, expectedPackages.length, sourceLockSha256),
     !sbomEvidenceValid({...sbom, components: sbom.components.slice(0, 1)}, expectedSbom, rootPackage, expectedPackages.length, sourceLockSha256),
-    !exactBooleanMap({...shadowPostgres.immutableHistory, owner_reviews: false}, expectedImmutableHistory)
+    !exactBooleanMap({...shadowPostgres.immutableHistory, owner_reviews: false}, expectedImmutableHistory),
+    !pngImageMatches(Buffer.from('not a png', 'utf8'), {width: 390, height: 844})
   ];
   if (!mutationsRejected.every(Boolean)) throw new Error('EVIDENCE_NEGATIVE_SELF_TEST_FAILED');
   return mutationsRejected.length;
 }
 
 async function assertEvidence() {
-  const [api, compose, agentteamsImage, agentteamsReal, providers, shadowPostgres, browser, licenses, secretScan, sourcePackage, sbom, npmAudit] = await Promise.all([
+  const [capability, api, compose, agentteamsImage, agentteamsReal, providers, shadowPostgres, browser, licenses, secretScan, sourcePackage, sbom, npmAudit] = await Promise.all([
+    readJson('agentteams-capability-report.json'),
     readJson('api-integration.json'),
     readJson('compose-verification.json'),
     readJson('agentteams-image-smoke.json'),
@@ -206,6 +322,12 @@ async function assertEvidence() {
     readJson('npm-audit.json')
   ]);
   const imageManifest = JSON.parse(await readFile(path.join(root, 'infra/agentteams/image-manifest.json'), 'utf8'));
+  const runtimeProfileText = await readFile(path.join(root, 'infra/agentteams/runtime-profile.json'), 'utf8');
+  const teamProfileText = await readFile(path.join(root, 'infra/agentteams/team-profile.json'), 'utf8');
+  const runtimeProfileSha256 = createHash('sha256').update(runtimeProfileText).digest('hex');
+  const teamProfileSha256 = createHash('sha256').update(teamProfileText).digest('hex');
+  const runtimeProfile = JSON.parse(runtimeProfileText);
+  const teamProfile = JSON.parse(teamProfileText);
   const currentHead = execFileSync('git', ['rev-parse', 'HEAD'], {cwd: root, encoding: 'utf8'}).trim();
   const currentBranch = execFileSync('git', ['branch', '--show-current'], {cwd: root, encoding: 'utf8'}).trim();
   const currentGitTree = execFileSync('git', ['ls-tree', '-r', currentHead], {cwd: root, encoding: 'utf8'}).trim().split('\n').filter(Boolean);
@@ -255,6 +377,11 @@ async function assertEvidence() {
   const failures = [];
   const expectedBrowserScreenshots = publicEvidencePaths.filter((file) => file.startsWith('browser/')).sort();
   const declaredBrowserScreenshots = (browser.screenshots ?? []).map((file) => file.replace(/^\.evidence\/sdd-002\//u, '')).sort();
+  const screenshotEvidenceValid = (await Promise.all([...expectedScreenshotDimensions].map(async ([file, dimensions]) => {
+    const value = await readFile(path.join(evidenceRoot, file));
+    return pngImageMatches(value, dimensions);
+  }))).every(Boolean);
+  if (!capabilityEvidenceValid(capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256)) failures.push('agentteams-capability-report');
   const apiNoAction = api.checks?.ownerReviewAndNoAction;
   if (api.result !== 'PASS' || api.cleanup !== 'PASS' || apiNoAction?.actionGrants !== 0 || apiNoAction?.connectors !== 0 || apiNoAction?.externalActions !== 0 || api.checks?.persistedCounts?.forbiddenActionTables !== 0) failures.push('api-integration');
   const composeOperator = compose.checks?.actionOperatorDormantNoGrants;
@@ -289,14 +416,14 @@ async function assertEvidence() {
     && productBrowser?.review?.noGrantBoundary === true
     && Array.isArray(productBrowser?.review?.grants)
     && productBrowser.review.grants.join(',') === '0,0,0,FALSE';
-  if (browser.status !== 'PASS' || browser.consoleErrorCount !== 0 || browser.checks?.storybookRealBrowserStateMatrix?.count !== 14 || declaredBrowserScreenshots.join(',') !== expectedBrowserScreenshots.join(',') || browser.realAgentTeamsClaim !== false || !browserNoActionValid) failures.push('browser-verification');
+  if (browser.status !== 'PASS' || browser.consoleErrorCount !== 0 || browser.checks?.storybookRealBrowserStateMatrix?.count !== 14 || declaredBrowserScreenshots.join(',') !== expectedBrowserScreenshots.join(',') || !screenshotEvidenceValid || browser.realAgentTeamsClaim !== false || !browserNoActionValid) failures.push('browser-verification');
   if (!licenseEvidenceValid(licenses, expectedPackages, sourceLockSha256)) failures.push('license-inventory');
   if (secretScan.status !== 'PASS' || !Array.isArray(secretScan.findings) || secretScan.findings.length !== 0) failures.push('secret-scan');
   if (currentBranch !== expectedBranch || sourcePackage.publicSafe !== true || sourcePackage.secretScan !== 'PASS' || sourcePackage.pathScan !== 'PASS' || sourcePackage.archiveCrcTest !== 'PASS' || sourcePackage.workingTreeSnapshot !== false || !sourceIdentityMatches(sourcePackage, agentteamsReal.sourceIdentity, currentHead, sourceArchive, currentGitFiles)) failures.push('source-package');
   if (!sbomEvidenceValid(sbom, expectedSbom, rootPackage, expectedPackages.length, sourceLockSha256)) failures.push('sbom');
   if (npmAudit.metadata?.vulnerabilities?.total !== 0) failures.push('npm-audit');
   if (failures.length > 0) throw new Error(`EVIDENCE_VALIDATION_FAILED:${failures.join(',')}`);
-  return runNegativeSelfTests({tasks: causalTasks, runtime: agentteamsReal.runtime, lifecycle: agentteamsReal.environmentLifecycle, imageManifest, sourcePackage, runtimeSource: agentteamsReal.sourceIdentity, currentHead, sourceArchive, currentGitFiles, productControlPlane: agentteamsReal.productControlPlane, noAction: agentteamsReal.noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage});
+  return runNegativeSelfTests({tasks: causalTasks, runtime: agentteamsReal.runtime, lifecycle: agentteamsReal.environmentLifecycle, imageManifest, capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256, sourcePackage, runtimeSource: agentteamsReal.sourceIdentity, currentHead, sourceArchive, currentGitFiles, productControlPlane: agentteamsReal.productControlPlane, noAction: agentteamsReal.noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage});
 }
 
 const negativeMutationsRejected = await assertEvidence();
@@ -321,6 +448,7 @@ const manifest = {
   privacyBoundary: 'Strict public-safe allowlist; ChatGPT Pro interaction screenshots, browser/session state, credentials, runtime state, database state, and superseded source archives are excluded.',
   negativeMutationsRejected,
   validatedGates: [
+    'agentteams-capability-report',
     'api-integration',
     'compose-verification',
     'agentteams-image-smoke',

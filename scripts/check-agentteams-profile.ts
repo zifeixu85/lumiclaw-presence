@@ -1,3 +1,4 @@
+import {createHash} from 'node:crypto';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {
@@ -9,12 +10,12 @@ import {
 } from '../packages/runtime-agentteams/src/index.js';
 
 const root = process.cwd();
-const runtime = JSON.parse(
-  await readFile(path.join(root, 'infra/agentteams/runtime-profile.json'), 'utf8')
-) as RuntimeProfile;
-const team = JSON.parse(
-  await readFile(path.join(root, 'infra/agentteams/team-profile.json'), 'utf8')
-) as TeamProfile;
+const runtimeProfilePath = path.join(root, 'infra/agentteams/runtime-profile.json');
+const teamProfilePath = path.join(root, 'infra/agentteams/team-profile.json');
+const runtimeText = await readFile(runtimeProfilePath, 'utf8');
+const teamText = await readFile(teamProfilePath, 'utf8');
+const runtime = JSON.parse(runtimeText) as RuntimeProfile;
+const team = JSON.parse(teamText) as TeamProfile;
 
 const runtimeErrors = validateRuntimeProfile(runtime);
 const teamErrors = validateTeamProfile(team);
@@ -32,6 +33,32 @@ const outputDir = path.join(root, '.evidence/sdd-002');
 await mkdir(outputDir, {recursive: true});
 await writeFile(
   path.join(outputDir, 'agentteams-capability-report.json'),
-  `${JSON.stringify({...report, teamProfileValidation: 'PASS', roleCount: team.roles.length}, null, 2)}\n`
+  `${JSON.stringify({
+    ...report,
+    runtimeProfileValidation: 'PASS',
+    teamProfileValidation: 'PASS',
+    roleCount: team.roles.length,
+    profiles: {
+      runtime: {
+        path: 'infra/agentteams/runtime-profile.json',
+        sha256: createHash('sha256').update(runtimeText).digest('hex'),
+        id: runtime.id,
+        runtime: runtime.runtime,
+        version: runtime.version,
+        images: runtime.images
+      },
+      team: {
+        path: 'infra/agentteams/team-profile.json',
+        sha256: createHash('sha256').update(teamText).digest('hex'),
+        id: team.id,
+        runtimeVersion: team.runtimeVersion,
+        executionMode: team.executionMode,
+        externalActionAllowed: team.externalActionAllowed,
+        modelMaturity: team.modelMaturity,
+        roles: team.roles.map(({id, orchestrationOnly, permissions, skillLocks}) => ({id, orchestrationOnly, permissions, skillLocks})),
+        skillLocks: [...new Set(team.roles.flatMap((role) => role.skillLocks))].sort()
+      }
+    }
+  }, null, 2)}\n`
 );
 console.info(JSON.stringify(report));

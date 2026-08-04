@@ -79,6 +79,26 @@ describe('AgentTeams M0 isolation contract', () => {
     expect(validateRuntimeProfile(unsafe)).toContain('RUNTIME_INTERNAL_PORT_PUBLISHED:8088');
   });
 
+  it('rejects duplicate or incomplete runtime image component sets', () => {
+    const duplicate = structuredClone(safeProfile);
+    const manager = duplicate.images[0];
+    if (manager === undefined) throw new Error('missing manager fixture');
+    duplicate.images[1] = {...manager};
+    expect(validateRuntimeProfile(duplicate)).toContain('RUNTIME_IMAGE_SET_INCOMPLETE');
+  });
+
+  it('rejects overbroad role permissions and substituted SkillLocks', () => {
+    const overbroad = structuredClone(teamProfile);
+    overbroad.roles.find((role) => role.id === 'evidence-claim-steward')?.permissions.push('PLAN');
+    expect(validateTeamProfile(overbroad)).toContain('ROLE_CONTRACT_INVALID:evidence-claim-steward');
+
+    const substituted = structuredClone(teamProfile);
+    const planner = substituted.roles.find((role) => role.id === 'campaign-planner');
+    if (planner === undefined) throw new Error('missing planner fixture');
+    planner.skillLocks = ['trace-safe-escalation@1.0.0'];
+    expect(validateTeamProfile(substituted)).toContain('ROLE_CONTRACT_INVALID:campaign-planner');
+  });
+
   it('rejects secrets and missing safety limits', () => {
     const unsafe = structuredClone(safeProfile);
     unsafe.secretRefs = ['provider-key'];
