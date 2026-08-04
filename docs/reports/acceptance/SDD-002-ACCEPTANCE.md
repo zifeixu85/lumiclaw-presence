@@ -13,7 +13,7 @@
 
 ## 一、交付结果
 
-本分支把已验收 M1 的持久化 Campaign 贯穿到一条可重复的 M2 SHADOW 纵向切片。一个 PostgreSQL Campaign 会编译成恰好六个分权 RoleContext、五个版本锁定 Skill 与六任务 DAG；真实固定版本 AgentTeams v1.2.0 Manager/Worker Runtime 创建一个 Leader 与五个 Worker，执行真实 Project/Task/ACK/Submit。Runtime 返回的 Mission、Role Identity、Input、SkillLock、Schema 与 Output digest 必须全部匹配，API 才会把 accepted Payload 写入同一个 PostgreSQL Mission；重复、冲突、角色错配或 digest 错配均隔离。
+本分支把已验收 M1 的持久化 Campaign 贯穿到一条可重复的 M2 SHADOW 纵向切片。一个 PostgreSQL Campaign 会编译成恰好六个分权 RoleContext、五个版本锁定 Skill 与六任务 DAG；真实固定版本 AgentTeams v1.2.0 Manager/Worker Runtime 创建一个 Leader 与五个 Worker，执行真实 Project/Task/ACK/Submit。Project receipt 绑定固定 build、六个 Matrix actor、六个内部 Role Identity 与精确 DAG；每个 accepted Submit 还必须绑定同一个 Project、actor、task、attempt、ACK receipt 和 AgentTeams `check_task` 持久化结果 digest。Mission、Input、SkillLock、Schema 与 Output digest 任一不匹配都会隔离。
 
 两个 Producer 提交 X、Bluesky、LinkedIn、小红书四平台产物；冻结 Flight 把 X v1 的 Beta 能力故意写成 GA，Independent Auditor 以 `FAIL`、Evidence Ref 和下一责任角色拒绝。Founder Producer 提交 X v2 后，旧 Audit 被标为 `INVALIDATED`，Auditor 对精确新 digest 重审为 `PASS`。四个平台最新 PASS Revision 才进入 Owner Review；Review 只记录 `NON_EXECUTABLE_OWNER_REVIEW`，不会创建 ActionGrant、Connector、Schedule due execution 或外部动作。
 
@@ -26,7 +26,7 @@ DeepSeek 官方 Gateway 与 MediaGenerationProvider 边界已实现并通过公�
 ### 已包含
 
 - AgentTeams v1.2.0 Runtime Adapter 的 Project/DAG/Task/ACK/Submit、版本/digest/schema/角色校验、timeout/cancel/restart/reconcile、重复与错误隔离。
-- 同一 PostgreSQL Control Plane 中的 Campaign、Mission、AgentRun、AgentTask、SkillLock、Revision、AuditDecision、OwnerReview、Trace、Ledger、ModelCall 与 MediaAsset；读取时验证 aggregate 与十类 normalized history 一致。
+- 同一 PostgreSQL Control Plane 中的 Campaign、Mission、AgentRun、AgentTask、SkillLock、Revision、AuditDecision、OwnerReview、Trace、Ledger、ModelCall 与 MediaAsset；Mission JSON 只保留 envelope，十类历史只从 normalized rows 重放，并验证 ETag、Trace sequence、Ledger digest chain 与 Runtime receipt binding。
 - 恰好六个真实 Runtime 成员：Presence Mission Leader、Evidence & Claim Steward、Campaign Planner、Founder Identity Producer、Product Account Producer、Independent Auditor；Leader 只编排，Producer 与 Auditor 身份/Context/权限/提交分离。
 - 五个 Apache-2.0 公共 Skill：版本、源码与 digest 固定；无 legacy/竞品源码迁移。
 - DeepSeek 官方 `ModelProvider` Gateway：`deepseek-v4-flash` / `deepseek-v4-pro` allowlist、结构化 JSON Schema、config/model/input/output/cost/latency/error 快照、有界 timeout/retry、429/5xx、4xx、无静默换模、Secret/Prompt redaction。
@@ -64,17 +64,17 @@ DeepSeek 官方 Gateway 与 MediaGenerationProvider 边界已实现并通过公�
 
 | 检查 | 命令或协议 | 期望 | 实际 | 结果 |
 |---|---|---|---|---|
-| Unit / Schema / Permission | `npm test` | 正反合同、六角色、权限、runtime/provider/media/audit/review/UI 全通过 | 21 个 test files、117 个 tests 全通过 | `PASS` |
+| Unit / Schema / Permission | `npm test` | 正反合同、六角色、权限、runtime/provider/media/audit/review/UI 全通过 | 21 个 test files、118 个 tests 全通过 | `PASS` |
 | Lint / Type | `npm run lint && npm run typecheck` | 所有 workspace 无错误 | 全部 workspace 无错误 | `PASS` |
-| PostgreSQL Mission | 临时 PostgreSQL + migrate + `npm run verify:shadow-postgres` | restart/idempotency/normalized history/revision/audit/no-action | `status=PASS`；6 run/6 task/5 skill/5 revision/5 audit/27 trace/27 ledger；forbidden table 0 | `PASS` |
+| PostgreSQL Mission | 临时 PostgreSQL + migrate + `npm run verify:shadow-postgres` | restart/idempotency/normalized history/revision/audit/no-action | `status=PASS`；Mission envelope 六类已检查历史数组均为 0；6 run/6 task/5 skill/5 revision/5 audit/27 trace/27 ledger；forbidden table 0 | `PASS` |
 | Campaign/API | `npm run verify:campaign-api` | M1+M2 create/replay/scope/ETag/flight/review/restart/down-up/cleanup | `result=PASS`、`cleanup=PASS`；四个 exact review，state `SHADOW_COMPLETE`，forbidden action table 0 | `PASS` |
 | AgentTeams images | `npm run verify:agentteams-images` | 固定 v1.2.0 tag/source/image digest 与受控 smoke | `result=PASS`、`cleanup=PASS` | `PASS` |
-| 真实 AgentTeams | `npm run verify:agentteams-real` | 真实六成员、Project/DAG/ACK/Submit/restart，与同一 PG Mission 链接 | `status=PASS`、`realAgentTeamsAcceptance=true`、`realModelAcceptance=false`；6 task 全部 CHECK effective；同一 Project binding；digest mismatch 与 normalized divergence 拒绝 | `PASS` |
+| 真实 AgentTeams | `npm run verify:agentteams-real` | 真实六成员、Project/DAG/ACK/Submit/restart，与同一 PG Mission 链接 | `status=PASS`、`realAgentTeamsAcceptance=true`、`realModelAcceptance=false`；6 个 Worker 结果均来自 AgentTeams CHECK persisted summary；Project/actor/ACK/Submit receipts 因果绑定；digest mismatch 与 normalized tamper 拒绝 | `PASS` |
 | Provider / Media | `npm run verify:providers` | structured/429/5xx/4xx/timeout/schema/no-switch/redaction/cost/media rights/no approval | `status=PASS`；DeepSeek/EvoLink `NOT_RUN_NO_KEY`；Mock `MOCK_CONFORMANCE`；Secret absent | `PASS` |
 | Browser / Storybook | current Compose API + production Web + Storybook + `npm run verify:browser` | 14 状态、真实 Blink、zh/en、390px、UX-M1-001、四 Review | `status=PASS`；14 stories；desktop/mobile document width 等于 viewport；reviewed=4；5 张 screenshot；console error/warning 均为 0 | `PASS` |
 | Fresh Compose / Recovery | `npm run verify:compose` | broken migration/DB unavailable fail closed，fresh health，DB/blob restart/down-up，no action，cleanup | current-source `result=PASS`、`cleanup=PASS`；5 migration；forbidden action table 0 | `PASS` |
-| Build / Storybook / Static | `npm run verify` | lint/type/test/messages/status/report/secret/compose/profile/license/SBOM/build/Storybook | 21 files / 117 tests、99 message keys、13 个 Next 页面、Storybook static + browser-safety 全通过 | `PASS` |
-| Security / License / SBOM | `npm audit --audit-level=high --json`；`npm run verify:dependencies`；`npm run check:secrets` | 0 high/critical；无 disallowed license/Secret | Next `16.2.12` 升级到 `16.3.0` 后 audit 为 0；958 packages、disallowed license 0、CycloneDX SBOM 已生成 | `PASS` |
+| Build / Storybook / Static | `npm run verify` | lint/type/test/messages/status/report/secret/compose/profile/license/SBOM/build/Storybook | 21 files / 118 tests、99 message keys、13 个 Next 页面、Storybook static + browser-safety 全通过 | `PASS` |
+| Security / License / SBOM | `npm audit --audit-level=high --json`；`npm run verify:dependencies`；`npm run check:secrets` | 0 high/critical；无 disallowed license/Secret | Next `16.2.12` 升级到 `16.3.0` 后 audit 为 0；982 npm dependencies、disallowed license 0、CycloneDX SBOM 已生成 | `PASS` |
 | Source ZIP / Evidence | `npm run evidence:package-source && npm run evidence:manifest` | clean committed Head；文件/bytes/SHA-256/Secret/path/CRC scan；必要 evidence 全 PASS | 最终 clean Head 后回填 | `PENDING` |
 
 GitHub Actions 未 Push，因此远端 CI run 为 `NOT_CLAIMED`；这里只声明本地 CI-equivalent 门禁。
@@ -85,12 +85,12 @@ GitHub Actions 未 Push，因此远端 CI run 为 `NOT_CLAIMED`；这里只声�
 |---|---|---|---|
 | AC-01 | `PASS` | `agentteams-real-runtime.json`、team profile、真实容器/Project | 固定 v1.2.0；恰好 1 Leader + 5 Worker；六 Task；Leader Payload 只有 Project 编排，无领域 Artifact。 |
 | AC-02 | `PASS` | RoleContext/SkillLock/permission tests、真实 Submit | 六个 identity/context；五 SkillLock；Producer/Auditor 提交与权限分开；Auditor不能编辑、Owner review、Grant 或外部动作。 |
-| AC-03 | `PASS` | Adapter/API/domain tests、real runtime evidence | Project/Task/ACK/Submit/recovery 持久化；Mission/Task/Role/Input/Skill/Schema/Output digest 全校验；错配与重复隔离。 |
+| AC-03 | `PASS` | Adapter/API/domain tests、real runtime evidence | Project dispatch receipt 绑定 build、六 actor/identity、DAG；Task ACK/Submit receipt 绑定 Project/actor/attempt/前序 ACK 与 AgentTeams persisted result digest；错配、抢跑与重复隔离。 |
 | AC-04 | `PASS` | `provider-conformance.json`、provider tests | 官方模型/价格/URL核验；structured schema、config/cost/latency/error、429/5xx/4xx/timeout、无换模、无 Secret；真实 Canary `NOT_RUN_NO_KEY`。 |
 | AC-05 | `PASS` | DB/API/real runtime evidence、UI | 同一 PostgreSQL Campaign/Mission 导入 X/Bluesky/LinkedIn/小红书 5 个 immutable Revision（四平台 + X v2），M1 UI 合同可 Review。 |
 | AC-06 | `PASS` | fault/audit/trace evidence | X v1 Beta→GA 被 `FAIL`，包含 `CLAIM_OVERREACH`、Evidence Ref 与下一责任 Producer；Grant/Occurrence execution/Action 均 0。 |
 | AC-07 | `PASS` | Revision/Audit/OwnerReview tests、browser | X v2 新 digest；旧 Audit `INVALIDATED`；独立 Auditor 重审 PASS；四个平台 exact Revision 进入非执行 Owner Review。 |
-| AC-08 | `PASS` | real runtime restart、PG/API restart、duplicate/divergence negative | Leader 与 API restart 恢复；accepted output 不重复；aggregate 与 normalized history 不一致时拒绝，不存在 AgentTeams-only business success。 |
+| AC-08 | `PASS` | real runtime restart、PG/API restart、duplicate/divergence negative | Leader 与 API restart 恢复；accepted output 不重复；Mission envelope 不承载历史，normalized rows 重构精确 ETag；aggregate scalar poison 被忽略、normalized row 篡改被拒绝，不存在 AgentTeams-only business success。 |
 | AC-09 | `PASS` | 14 Storybook state + product browser evidence | zh/en 覆盖 empty/blocked/queued/running/waiting/needs-owner/failure/timeout/cancelled/unknown/recovery/audit-blocked/revision/complete，Trace 渐进披露，390px 无 document overflow。 |
 | AC-10 | `PASS` | unit/DB/API/runtime/provider/browser/Compose/secret/license/SBOM/build evidence | 所有可执行门禁在最终 Closeout 完整回填；真实 Runtime 与 Mock Provider 成熟度严格分开。 |
 | AC-11 | `PASS` | code/table/route scan、Compose/API/real runtime noAction | 无 Connector、Schedule execution、ActionGrant、platform credential/action、客户资料、业务或生产声明；action tables/routes/count 均 0。 |
@@ -154,12 +154,15 @@ GitHub Actions 未 Push，因此远端 CI run 为 `NOT_CLAIMED`；这里只声�
 - 首轮 WIP 包：Base `4377103b3fea493a591af7f069fd697d9601f1ca`，205 files，`947,625` bytes，SHA-256 `fb61b048ae412a561fd88d0b43215caa30da844749a80b9853c0411bf99b9dde`；路径/content secret scan `PASS`。
 - Pro 首轮结论：`FAIL_NOT_EVIDENCE_READY`。八项主要问题是：API complete path 绕过 Adapter；fixture evidence 成熟度标签过高；Auditor/修正版被脚本直接构造；accepted output 可被不同 digest 覆盖；Runtime observe 失败被错误标成 reconciled；PG restart 只读 aggregate JSON；没有真实六成员 Project/Task/ACK/Submit；Compose/browser/SBOM/report 仍接 SDD-001。
 - Codex 独立修正：新增 Runtime event import 与 exact accepted Payload materializer；真实 AgentTeams 动态 Project/Task ID 与同一 PG Mission/Campaign 绑定；Independent Auditor 真实 Worker Submit；accepted duplicate/conflict quarantine；observe failure 保持 `UNKNOWN_RECOVERY`；aggregate 与 normalized child history 双向校验；真实六成员 verifier；全部 SDD-002 evidence/package/report 路径与门禁。
-- 修正不是直接采纳 Pro 代码；每项由本地 unit/API/PG/真实 Runtime/浏览器/Compose 证据独立验证。
+- 二轮候选包：Head `1051e062ae9cc5189bc9c8b2a1637b3afa4e8e65`，212 files，`1,000,413` bytes，SHA-256 `1b917690ebeb72efa182dc66fc7bdacbae3dc50d9612b729e12c002ea1ab2e5f`；secret/path scan `PASS`。
+- Pro 二轮结论：`FAIL_NOT_EVIDENCE_READY`。五个聚焦问题是 host 预构造领域 payload、Auditor decision 预定义、PostgreSQL aggregate 仍可充当权威历史，以及 API receipt 缺少真实 Project/ACK/attempt/actor/result 来源绑定，相关 evidence gate 只证明结构而没有证明来源。
+- Codex 二轮独立修正：删去 verifier 的 host `payloadByRole`；六个 Worker 容器分别调用公开安全 Provider，Auditor 从两个 Producer 的 AgentTeams persisted summary 计算 decisions；引入 Project/member/DAG、Task ACK、Task Submit/result receipt digest 因果链；Mission JSON 变为无历史 envelope，读取只从 normalized rows 重放并校验 ETag/Trace/Ledger/receipt；新增 aggregate poison 与 normalized tamper 正反证据。
+- 修正不是直接采纳 Pro 代码；每项由本地 unit/API/PG/真实 Runtime/浏览器/Compose 证据独立验证。第三轮定向终审将只复核上述五项。
 - 最终 clean Head 源码包：文件数/bytes/SHA-256/Secret/path/CRC scan 与 Pro 定向终审结论在 Closeout 回填。若终审仍发现有效问题，必须修复、重提包并重跑门禁；Pro 不能访问本地 Docker/浏览器，也不替代 Coordinator/Owner。
 
 ## 八、失败、限制与非声明
 
-- **已发现并修复：**Pro 八项均已在源码与独立门禁中定向收口；Runtime quarantine 的幂等重放保持 422/`accepted=false`；Mission 只允许一个 Project dispatch，restart 必须 reconcile。
+- **已发现并修复：**Pro 首轮八项与二轮五项均已在源码与独立门禁中定向收口；Runtime quarantine 的幂等重放保持 422/`accepted=false`；Mission 只允许一个 Project dispatch，restart 必须 reconcile。
 - **已发现并修复：**`npm audit` 曾从 Next `16.2.12` 的 transitive `postcss/sharp` 报告 3 个 high；升级到 Next `16.3.0` 后 audit 为 0，生产 build/API/Browser/Compose 重新验证。
 - **已发现并修复：**最终真实浏览器门禁捕获 Storybook `/favicon.ico` 404；为 preview 注入内联公共安全 SVG icon，并把 CDP 错误证据扩展为具体 URL。重跑后 console error/warning 均为 0。
 - **Known limitations：**真实 AgentTeams v1.2.0 CLI 的 controller 显示 `dev`，源 tag commit、source tar SHA-256 与三个 OCI image digest 是验收身份；不能仅用 CLI label 证明版本。
