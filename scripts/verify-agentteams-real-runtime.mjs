@@ -54,6 +54,12 @@ function callTool(role, tool, action, payload, actor) {
   return JSON.parse(run('docker', args, `${role}:${tool}:${action}`, 45_000));
 }
 
+function callPublicSafeModelFromWorker(role, input) {
+  const code = 'import base64,json,sys,urllib.request; task=json.loads(base64.b64decode(sys.argv[1]).decode()); body=json.dumps({"model":"mock-agentteams-conformance","messages":[{"role":"user","content":json.dumps(task,separators=(",",":"))}],"response_format":{"type":"json_object"}}).encode(); req=urllib.request.Request("http://host.docker.internal:28333/v1/chat/completions",data=body,headers={"content-type":"application/json"}); response=urllib.request.urlopen(req,timeout=10); data=json.loads(response.read().decode()); print(data["choices"][0]["message"]["content"])';
+  const encoded = Buffer.from(JSON.stringify(input)).toString('base64');
+  return JSON.parse(run('docker', ['exec', '-w', workspace(role), `agentteams-worker-${role}`, '/opt/venv/standard/bin/python', '-c', code, encoded], `${role}:public-safe-model-generate`, 45_000));
+}
+
 function projectState() {
   const code = 'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,parse_dag_tasks; s=FileSystemTaskStore(); m=s.read_project_meta(sys.argv[1]); p=s.read_project_plan(sys.argv[1]); print(json.dumps({"project":asdict(m),"tasks":[asdict(x) for x in parse_dag_tasks(p)]}))';
   return JSON.parse(run('docker', ['exec', '-w', workspace(leader), `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', code, projectId], 'project-state'));
@@ -120,21 +126,6 @@ async function runtimeEvent(body, expected = 200) {
   productMission = response.body.mission; productEtag = response.etag; return response;
 }
 
-const sourceByPlatform = new Map(campaign.artifactRevisions.map((revision) => [revision.platform, revision]));
-const runtimeDraft = (platform, revision, content) => ({platform, revision, sourceRevisionDigest: digest(sourceByPlatform.get(platform)), contentDigest: digest(content), content});
-const sourceX = sourceByPlatform.get('X'); const faultyX = structuredClone(sourceX.content); faultyX.posts = ['LumiClaw Presence is generally available in every market today.'];
-const founderPayload = {revisions: [runtimeDraft('X', 1, faultyX), runtimeDraft('X', 2, structuredClone(sourceX.content)), runtimeDraft('XIAOHONGSHU', 1, structuredClone(sourceByPlatform.get('XIAOHONGSHU').content))]};
-const productPayload = {revisions: [runtimeDraft('BLUESKY', 1, structuredClone(sourceByPlatform.get('BLUESKY').content)), runtimeDraft('LINKEDIN', 1, structuredClone(sourceByPlatform.get('LINKEDIN').content))]};
-const auditIssue = {code: 'CLAIM_OVERREACH', severity: 'BLOCKING', path: '/content/posts/0', message: '“Generally available” exceeds the frozen approved product-direction Claim.', evidenceRefIds: campaign.evidenceRefs.map((item) => item.id), nextResponsibleRoleId: 'founder-identity-producer'};
-const auditorPayload = {decisions: [...founderPayload.revisions, ...productPayload.revisions].map((draft) => ({platform: draft.platform, revision: draft.revision, revisionContentDigest: draft.contentDigest, outcome: draft.platform === 'X' && draft.revision === 1 ? 'FAIL' : 'PASS', issues: draft.platform === 'X' && draft.revision === 1 ? [auditIssue] : []}))};
-const payloadByRole = {
-  'presence-mission-leader': {projectId, externalActionAllowed: false},
-  'evidence-claim-steward': {frozen: true, claimEvidenceDigest: digest({claims: campaign.claims, evidence: campaign.evidenceRefs})},
-  'campaign-planner': {activationPlanDigest: digest(campaign.activationPlan)},
-  'founder-identity-producer': founderPayload,
-  'product-account-producer': productPayload,
-  'independent-auditor': auditorPayload
-};
 const titleByRole = {
   'presence-mission-leader': 'Coordinate exact SHADOW Project', 'evidence-claim-steward': 'Freeze Claim and Evidence bindings', 'campaign-planner': 'Allocate persisted activation plan',
   'founder-identity-producer': 'Produce X and Xiaohongshu revisions', 'product-account-producer': 'Produce Bluesky and LinkedIn revisions', 'independent-auditor': 'Independently audit exact revision digests'
@@ -156,18 +147,36 @@ const created = callTool(leader, 'projectflow', 'create_project', {projectId, ti
 if (!created.ok && !String(created.error).includes('already exists')) throw new Error(`REAL_PROJECT_CREATE_FAILED:${created.error}`);
 const planned = callTool(leader, 'projectflow', 'plan_dag', {projectId, tasks: dag});
 if (!planned.ok || planned.tasks.length !== 6) throw new Error('REAL_PROJECT_DAG_PLAN_FAILED');
-await runtimeEvent({kind: 'PROJECT_DISPATCHED', buildDigest: `sha256:${manifest.sourceTarSha256}`});
+const plannedState = projectState();
+const memberBindings = productMission.roleContexts.map((context) => {
+  const worker = workers.find((candidate) => candidate.name === context.roleId);
+  if (!worker?.matrixUserID) throw new Error(`REAL_RUNTIME_MEMBER_BINDING_MISSING:${context.roleId}`);
+  return {roleId: context.roleId, roleIdentityId: context.identityId, runtimeActorId: worker.matrixUserID};
+});
+const dispatchBase = {
+  schemaVersion: 1,
+  projectId,
+  runtimeVersion: 'v1.2.0',
+  buildDigest: `sha256:${manifest.sourceTarSha256}`,
+  memberBindings,
+  memberSetDigest: digest([...memberBindings].sort((left, right) => left.roleId.localeCompare(right.roleId))),
+  dagDigest: digest(productMission.tasks.map((task) => ({taskId: task.id, assignedTo: task.roleId, dependsOn: task.prerequisiteTaskIds}))),
+  dispatchedAt: new Date(plannedState.project.created_at).toISOString()
+};
+const dispatchReceipt = {...dispatchBase, receiptDigest: digest({...dispatchBase, memberBindings: [...memberBindings].sort((left, right) => left.roleId.localeCompare(right.roleId))})};
+await runtimeEvent({kind: 'PROJECT_DISPATCHED', receipt: dispatchReceipt});
 
 const taskEvidence = [];
+const acceptedRuntimePayloads = {};
 for (const node of dag) {
   let current = projectState().tasks.find((item) => item.task_id === node.taskId);
   if (!current) throw new Error(`REAL_DAG_NODE_MISSING:${node.taskId}`);
   let checked = callTool(leader, 'taskflow', 'check_task', {taskId: node.taskId});
+  let ackReceiptDigest = null; let submissionReceiptDigest = null; let runtimeResultDigest = null;
   if (!(checked.ok && checked.effective)) {
     if (current.status === 'pending') {
       const productTask = productMission.tasks.find((task) => task.id === node.taskId);
-      const payload = payloadByRole[node.assignedTo];
-      if (!productTask || payload === undefined) throw new Error(`PRODUCT_TASK_CONTRACT_MISSING:${node.taskId}`);
+      if (!productTask) throw new Error(`PRODUCT_TASK_CONTRACT_MISSING:${node.taskId}`);
       const contract = {
         schemaVersion: 1,
         projectId,
@@ -178,11 +187,10 @@ for (const node of dag) {
         skillLockDigest: productTask.skillLockDigest,
         outputSchema: productTask.outputSchema,
         outputSchemaVersion: productTask.outputSchemaVersion,
-        outputDigest: digest(payload),
         executionMode: 'SHADOW_PREP_ONLY',
         externalActionAllowed: false
       };
-      const delegated = callTool(leader, 'taskflow', 'delegate_task', {projectId, taskId: node.taskId, roomId, spec: JSON.stringify({...contract, payload})});
+      const delegated = callTool(leader, 'taskflow', 'delegate_task', {projectId, taskId: node.taskId, roomId, spec: JSON.stringify(contract)});
       if (!delegated.ok || delegated.task.status !== 'assigned') throw new Error(`REAL_TASK_DELEGATE_FAILED:${node.taskId}`);
     } else if (current.status !== 'delegated') {
       throw new Error(`REAL_TASK_STATE_NOT_RESUMABLE:${node.taskId}:${current.status}`);
@@ -190,28 +198,32 @@ for (const node of dag) {
     const runtimeWorker = workers.find((worker) => worker.name === node.assignedTo);
     if (!runtimeWorker?.matrixUserID) throw new Error(`REAL_WORKER_IDENTITY_MISSING:${node.assignedTo}`);
     const acknowledged = callTool(node.assignedTo, 'taskflow', 'ack_task', {taskId: node.taskId}, runtimeWorker.matrixUserID);
-    if (!acknowledged.ok || acknowledged.task.status !== 'in_progress') throw new Error(`REAL_TASK_ACK_FAILED:${node.taskId}:${acknowledged.error ?? ''}`);
-    await runtimeEvent({kind: 'TASK_ACK', taskId: node.taskId, roleId: node.assignedTo});
-    const productTask = productMission.tasks.find((task) => task.id === node.taskId); const payload = payloadByRole[node.assignedTo];
-    if (!productTask || payload === undefined) throw new Error(`PRODUCT_TASK_CONTRACT_MISSING_AFTER_ACK:${node.taskId}`);
-    const receipt = {
-      schemaVersion: 1,
-      taskId: node.taskId,
-      roleId: node.assignedTo,
-      payload,
-      outputDigest: digest(payload),
-      maturity: 'MOCK_CONFORMANCE',
-      externalActionAllowed: false
-    };
-    const submitted = callTool(node.assignedTo, 'taskflow', 'submit_task', {taskId: node.taskId, status: 'SUCCESS', summary: JSON.stringify(receipt), deliverables: [], notes: ['REAL_AGENTTEAMS_V1_2_0_TASK_PROTOCOL', 'NO_ACTION_GRANT', 'NO_CONNECTOR', 'NO_EXTERNAL_ACTION']}, runtimeWorker.matrixUserID);
+    if (!acknowledged.ok || acknowledged.task.status !== 'in_progress' || !acknowledged.task.acknowledged_at) throw new Error(`REAL_TASK_ACK_FAILED:${node.taskId}:${acknowledged.error ?? ''}`);
+    const productTaskBeforeAck = productMission.tasks.find((task) => task.id === node.taskId);
+    if (!productTaskBeforeAck) throw new Error(`PRODUCT_TASK_CONTRACT_MISSING_AFTER_ACK:${node.taskId}`);
+    const ackBase = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTaskBeforeAck.attempt, runtimeState: 'in_progress', acknowledgedAt: new Date(acknowledged.task.acknowledged_at).toISOString()};
+    const ackReceipt = {...ackBase, receiptDigest: digest(ackBase)}; ackReceiptDigest = ackReceipt.receiptDigest;
+    await runtimeEvent({kind: 'TASK_ACK', receipt: ackReceipt});
+    const productTask = productMission.tasks.find((task) => task.id === node.taskId);
+    if (!productTask) throw new Error(`PRODUCT_TASK_NOT_REOPENED_AFTER_ACK:${node.taskId}`);
+    const generated = callPublicSafeModelFromWorker(node.assignedTo, {kind: 'LUMICLAW_PUBLIC_SAFE_SHADOW_TASK', projectId, taskId: node.taskId, roleId: node.assignedTo, campaign, upstream: {founder: acceptedRuntimePayloads['founder-identity-producer'], product: acceptedRuntimePayloads['product-account-producer']}, externalActionAllowed: false});
+    if (generated.taskId !== node.taskId || generated.roleId !== node.assignedTo || generated.maturity !== 'MOCK_CONFORMANCE' || generated.externalActionAllowed !== false || generated.outputDigest !== digest(generated.payload)) throw new Error(`PUBLIC_SAFE_WORKER_RESULT_INVALID:${node.taskId}`);
+    const submitted = callTool(node.assignedTo, 'taskflow', 'submit_task', {taskId: node.taskId, status: 'SUCCESS', summary: JSON.stringify(generated), deliverables: [], notes: ['REAL_AGENTTEAMS_V1_2_0_TASK_PROTOCOL', 'PUBLIC_SAFE_MODEL_OUTPUT', 'NO_ACTION_GRANT', 'NO_CONNECTOR', 'NO_EXTERNAL_ACTION']}, runtimeWorker.matrixUserID);
     if (!submitted.ok || submitted.verified !== true || submitted.task.status !== 'submitted') throw new Error(`REAL_TASK_SUBMIT_FAILED:${node.taskId}:${submitted.error ?? ''}`);
     checked = callTool(leader, 'taskflow', 'check_task', {taskId: node.taskId});
-    const submission = {schemaVersion: 1, missionId: productMission.id, taskId: productTask.id, roleId: productTask.roleId, roleIdentityId: productTask.roleIdentityId, inputDigest: productTask.inputDigest, skillLockDigest: productTask.skillLockDigest, outputSchema: productTask.outputSchema, outputSchemaVersion: 1, payload, outputDigest: digest(payload)};
+    if (!checked.ok || checked.effective !== true || checked.task.status !== 'submitted' || !checked.task.submitted_at) throw new Error(`REAL_TASK_CHECK_FAILED:${node.taskId}`);
+    const runtimeResult = JSON.parse(checked.result.summary);
+    if (digest(runtimeResult) !== digest(generated)) throw new Error(`REAL_TASK_RESULT_NOT_ROUND_TRIPPED:${node.taskId}`);
+    runtimeResultDigest = digest(runtimeResult);
+    const submitBase = {schemaVersion: 1, projectId, taskId: node.taskId, roleId: node.assignedTo, runtimeActorId: runtimeWorker.matrixUserID, attempt: productTask.attempt, ackReceiptDigest: ackReceipt.receiptDigest, runtimeState: 'submitted', submittedAt: new Date(checked.task.submitted_at).toISOString(), resultDigest: runtimeResultDigest};
+    const runtimeReceipt = {...submitBase, receiptDigest: digest(submitBase)}; submissionReceiptDigest = runtimeReceipt.receiptDigest;
+    const submission = {schemaVersion: 1, missionId: productMission.id, taskId: productTask.id, roleId: productTask.roleId, roleIdentityId: productTask.roleIdentityId, inputDigest: productTask.inputDigest, skillLockDigest: productTask.skillLockDigest, outputSchema: productTask.outputSchema, outputSchemaVersion: 1, payload: runtimeResult.payload, outputDigest: runtimeResult.outputDigest, runtimeResultMaturity: runtimeResult.maturity, runtimeReceipt};
     if (node.assignedTo === 'evidence-claim-steward') {
       const quarantined = await runtimeEvent({kind: 'TASK_SUBMIT', submission: {...submission, outputDigest: '0'.repeat(64)}}, 422);
       if (quarantined.body.code !== 'RUNTIME_SUBMISSION_QUARANTINED') throw new Error('PRODUCT_DIGEST_MISMATCH_NOT_QUARANTINED');
     }
     await runtimeEvent({kind: 'TASK_SUBMIT', submission});
+    acceptedRuntimePayloads[node.assignedTo] = structuredClone(runtimeResult.payload);
   }
   if (!checked.ok || checked.effective !== true || checked.task.status !== 'submitted') throw new Error(`REAL_TASK_CHECK_FAILED:${node.taskId}`);
   current = projectState().tasks.find((item) => item.task_id === node.taskId);
@@ -226,7 +238,11 @@ for (const node of dag) {
     effective: checked.effective,
     inputDigest: productMission.tasks.find((task) => task.id === node.taskId)?.inputDigest,
     outputSchema: productMission.tasks.find((task) => task.id === node.taskId)?.outputSchema,
-    outputDigest: productMission.tasks.find((task) => task.id === node.taskId)?.acceptedOutputDigest
+    outputDigest: productMission.tasks.find((task) => task.id === node.taskId)?.acceptedOutputDigest,
+    ackReceiptDigest,
+    submissionReceiptDigest,
+    runtimeResultDigest,
+    resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY'
   });
 }
 
@@ -268,7 +284,7 @@ const providerProbeCode = 'import json,urllib.request; body=json.dumps({"model":
 const providerRuntimeProbe = JSON.parse(run('docker', ['exec', `agentteams-worker-${leader}`, '/opt/venv/standard/bin/python', '-c', providerProbeCode], 'agentteams-container-model-provider-probe'));
 if (providerRuntimeProbe.status !== 200 || providerRuntimeProbe.maturity !== 'MOCK_CONFORMANCE' || providerRuntimeProbe.content?.externalActionAllowed !== false) throw new Error('PUBLIC_SAFE_RUNTIME_MODEL_CONTAINER_PROBE_FAILED');
 const mockHealth = await fetch('http://127.0.0.1:28333/health', {signal: AbortSignal.timeout(3_000)}).then((response) => response.json());
-if (mockHealth.provider !== 'PUBLIC_SAFE_MOCK' || mockHealth.maturity !== 'MOCK_CONFORMANCE' || mockHealth.realModelClaim !== false || mockHealth.requestCounts?.chatCompletions < 1) throw new Error('PUBLIC_SAFE_RUNTIME_MODEL_MATURITY_INVALID');
+if (mockHealth.provider !== 'PUBLIC_SAFE_MOCK' || mockHealth.maturity !== 'MOCK_CONFORMANCE' || mockHealth.realModelClaim !== false || mockHealth.requestCounts?.chatCompletions < 7) throw new Error('PUBLIC_SAFE_RUNTIME_MODEL_MATURITY_INVALID');
 
 run('docker', ['compose', '--project-name', controlProject, 'restart', 'api'], 'product-api-restart', 60_000);
 await waitForControlApi();
@@ -277,9 +293,14 @@ if (reopenedProduct.body.mission.etag !== productMission.etag || reopenedProduct
 const publicEvidence = await request(`/api/v1/shadow-missions/${productMission.id}/evidence`, {headers: organizationHeaders}, 200);
 if (publicEvidence.body.evidence.noAction.actionGrantCount !== 0 || publicEvidence.body.evidence.noAction.connectorCount !== 0 || publicEvidence.body.evidence.noAction.externalActionCount !== 0) throw new Error('PRODUCT_PUBLIC_EVIDENCE_NO_ACTION_FAILED');
 run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update missions set payload=jsonb_set(payload,'{state}',to_jsonb('FAILED'::text)) where id='${productMission.id}'`], 'tamper-aggregate-state');
-const diverged = await request(`/api/v1/shadow-missions/${productMission.id}`, {headers: organizationHeaders}, 422);
-if (diverged.body.code !== 'CONTROL_PLANE_HISTORY_DIVERGED') throw new Error('NORMALIZED_HISTORY_DIVERGENCE_NOT_REJECTED');
+const normalizedRecovery = await request(`/api/v1/shadow-missions/${productMission.id}`, {headers: organizationHeaders}, 200);
+if (normalizedRecovery.body.mission.state !== productMission.state || normalizedRecovery.body.mission.etag !== productMission.etag || normalizedRecovery.body.mission.revisions.length !== 5) throw new Error('NORMALIZED_HISTORY_NOT_AUTHORITATIVE');
 run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update missions set payload=jsonb_set(payload,'{state}',to_jsonb(state)) where id='${productMission.id}'`], 'restore-aggregate-state');
+const tamperedTaskId = productMission.tasks[0].id;
+run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update agent_tasks set payload=jsonb_set(payload,'{acceptedOutputDigest}',to_jsonb('${'0'.repeat(64)}'::text)) where id='${tamperedTaskId}'`], 'tamper-normalized-task-history');
+const normalizedDivergence = await request(`/api/v1/shadow-missions/${productMission.id}`, {headers: organizationHeaders}, 422);
+if (normalizedDivergence.body.code !== 'CONTROL_PLANE_HISTORY_DIVERGED') throw new Error('NORMALIZED_HISTORY_TAMPER_NOT_REJECTED');
+run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-c', `update agent_tasks set payload=jsonb_set(payload,'{acceptedOutputDigest}',to_jsonb(trim(accepted_output_digest)::text)) where id='${tamperedTaskId}'`], 'restore-normalized-task-history');
 const databaseCounts = JSON.parse(run('docker', ['compose', '--project-name', controlProject, 'exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At', '-c', "select json_build_object('campaigns',(select count(*) from campaigns),'missions',(select count(*) from missions),'agent_runs',(select count(*) from agent_runs),'agent_tasks',(select count(*) from agent_tasks),'revisions',(select count(*) from governed_artifact_revisions),'audits',(select count(*) from audit_decisions),'owner_reviews',(select count(*) from owner_reviews),'action_tables',(select count(*) from information_schema.tables where table_schema='public' and table_name in ('action_grants','connectors','action_outbox')))"], 'product-database-counts'));
 if (databaseCounts.campaigns !== 1 || databaseCounts.missions !== 1 || databaseCounts.agent_runs !== 6 || databaseCounts.agent_tasks !== 6 || databaseCounts.revisions !== 5 || databaseCounts.audits !== 5 || databaseCounts.owner_reviews !== 1 || databaseCounts.action_tables !== 0) throw new Error('PRODUCT_CONTROL_PLANE_COUNTS_INVALID');
 
@@ -328,7 +349,9 @@ const evidence = {
     auditDecisionCount: productMission.audits.length,
     syntheticExactOwnerReviewCount: productMission.reviews.length,
     digestMismatchQuarantined: true,
-    normalizedHistoryDivergenceRejected: true,
+    normalizedHistoryAuthoritative: true,
+    aggregatePoisonIgnored: true,
+    normalizedHistoryTamperRejected: true,
     apiRestartRecovered: true,
     databaseCounts,
     runtimeEvidenceMaturity: 'REAL_AGENTTEAMS_WITH_MOCK_MODEL_CONFORMANCE'
@@ -340,6 +363,13 @@ const evidence = {
     observed: true,
     contributionMade: false,
     minimumBridge: 'After official taskflow CHECK returns effective=true, the verifier uses the existing typed FileSystemTaskStore DAG status primitive. No AgentTeams source or image is modified.'
+  },
+  causalRuntimeImport: {
+    projectDispatchReceiptDigest: dispatchReceipt.receiptDigest,
+    exactRuntimeActorCount: new Set(memberBindings.map((binding) => binding.runtimeActorId)).size,
+    workerGeneratedResultCount: taskEvidence.filter((task) => task.resultSource === 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY' && task.runtimeResultDigest).length,
+    independentAuditorResultSource: taskEvidence.find((task) => task.roleId === 'independent-auditor')?.resultSource,
+    apiRejectsUnacknowledgedOrDigestMismatchedSubmit: true
   },
   events
 };

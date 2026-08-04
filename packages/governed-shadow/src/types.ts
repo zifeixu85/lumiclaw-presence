@@ -31,6 +31,50 @@ export type RoleContext = {
   contextDigest: string;
 };
 
+export type RuntimeMemberBinding = {
+  roleId: MissionRoleId;
+  roleIdentityId: string;
+  runtimeActorId: string;
+};
+
+export type RuntimeProjectDispatchReceipt = {
+  schemaVersion: 1;
+  projectId: string;
+  runtimeVersion: 'v1.2.0';
+  buildDigest: string;
+  memberBindings: RuntimeMemberBinding[];
+  memberSetDigest: string;
+  dagDigest: string;
+  dispatchedAt: string;
+  receiptDigest: string;
+};
+
+export type RuntimeTaskAckReceipt = {
+  schemaVersion: 1;
+  projectId: string;
+  taskId: string;
+  roleId: MissionRoleId;
+  runtimeActorId: string;
+  attempt: number;
+  runtimeState: 'in_progress';
+  acknowledgedAt: string;
+  receiptDigest: string;
+};
+
+export type RuntimeTaskSubmissionReceipt = {
+  schemaVersion: 1;
+  projectId: string;
+  taskId: string;
+  roleId: MissionRoleId;
+  runtimeActorId: string;
+  attempt: number;
+  ackReceiptDigest: string;
+  runtimeState: 'submitted';
+  submittedAt: string;
+  resultDigest: string;
+  receiptDigest: string;
+};
+
 export type TaskContract = {
   schemaVersion: 1;
   id: string;
@@ -48,7 +92,9 @@ export type TaskContract = {
   state: AgentTaskState;
   attempt: number;
   ackedAt: string | null;
+  runtimeAck: RuntimeTaskAckReceipt | null;
   submittedAt: string | null;
+  runtimeSubmission: RuntimeTaskSubmissionReceipt | null;
   acceptedOutputDigest: string | null;
   acceptedPayload?: unknown;
 };
@@ -192,6 +238,7 @@ export type ShadowMission = {
   runtime: 'agentteams';
   runtimeVersion: 'v1.2.0';
   runtimeProjectId: string;
+  runtimeProjectDispatch: RuntimeProjectDispatchReceipt | null;
   executionMode: 'SHADOW_PREP_ONLY';
   dataMode: 'DEMO_SEED';
   live: false;
@@ -232,6 +279,8 @@ export type RuntimeSubmission = {
   outputSchemaVersion: 1;
   payload: unknown;
   outputDigest: string;
+  runtimeResultMaturity: 'MOCK_CONFORMANCE' | 'CANARY';
+  runtimeReceipt: RuntimeTaskSubmissionReceipt;
 };
 
 export interface ShadowMissionRepository {

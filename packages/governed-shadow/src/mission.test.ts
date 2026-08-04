@@ -2,12 +2,36 @@ import {createDemoCampaignDocument, sha256Digest} from '@lumiclaw/domain';
 import {createHash} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {describe, expect, it} from 'vitest';
-import {acceptRuntimeSubmission, acknowledgeRuntimeTask, cancelMission, compareLatestTwo, createShadowMission, materializeAcceptedRuntimeMission, missionPublicEvidence, reconcileMission, recordRuntimeProjectDispatch, reviewRevision, runPublicSafeFlight} from './mission.js';
+import {
+  acceptRuntimeSubmission, acknowledgeRuntimeTask, cancelMission, compareLatestTwo, createShadowMission, materializeAcceptedRuntimeMission,
+  missionPublicEvidence, reconcileMission, recordRuntimeProjectDispatch, reviewRevision, runPublicSafeFlight, runtimeDagDigest,
+  runtimeMemberSetDigest, runtimeProjectDispatchReceiptDigest, runtimeTaskAckReceiptDigest, runtimeTaskSubmissionReceiptDigest
+} from './mission.js';
 import {MemoryShadowMissionRepository} from './repository.js';
+import type {RuntimeSubmission, ShadowMission, TaskContract} from './types.js';
 
 const now = new Date('2026-08-04T01:00:00.000Z');
 const campaign = createDemoCampaignDocument();
 const source = () => ({campaign, campaignVersion: 1, campaignDigest: campaign.missionContract.sourceDigest, now});
+
+function dispatch(value: ShadowMission): ShadowMission {
+  const memberBindings = value.roleContexts.map((context) => ({roleId: context.roleId, roleIdentityId: context.identityId, runtimeActorId: `@${context.roleId}:runtime.test`}));
+  const base = {schemaVersion: 1 as const, projectId: value.runtimeProjectId, runtimeVersion: 'v1.2.0' as const, buildDigest: `sha256:${'a'.repeat(64)}`, memberBindings, memberSetDigest: runtimeMemberSetDigest(memberBindings), dagDigest: runtimeDagDigest(value), dispatchedAt: now.toISOString()};
+  return recordRuntimeProjectDispatch(value, {...base, receiptDigest: runtimeProjectDispatchReceiptDigest(base)}, now);
+}
+
+function acknowledge(value: ShadowMission, task: TaskContract): ShadowMission {
+  const binding = value.runtimeProjectDispatch!.memberBindings.find((item) => item.roleId === task.roleId)!;
+  const base = {schemaVersion: 1 as const, projectId: value.runtimeProjectId, taskId: task.id, roleId: task.roleId, runtimeActorId: binding.runtimeActorId, attempt: task.attempt, runtimeState: 'in_progress' as const, acknowledgedAt: now.toISOString()};
+  return acknowledgeRuntimeTask(value, {...base, receiptDigest: runtimeTaskAckReceiptDigest(base)}, now);
+}
+
+function runtimeSubmission(value: ShadowMission, task: TaskContract, payload: unknown): RuntimeSubmission {
+  const liveTask = value.tasks.find((item) => item.id === task.id)!; const outputDigest = sha256Digest(payload);
+  const resultDigest = sha256Digest({schemaVersion: 1, taskId: task.id, roleId: task.roleId, payload, outputDigest, maturity: 'MOCK_CONFORMANCE', externalActionAllowed: false});
+  const base = {schemaVersion: 1 as const, projectId: value.runtimeProjectId, taskId: task.id, roleId: task.roleId, runtimeActorId: liveTask.runtimeAck!.runtimeActorId, attempt: task.attempt, ackReceiptDigest: liveTask.runtimeAck!.receiptDigest, runtimeState: 'submitted' as const, submittedAt: now.toISOString(), resultDigest};
+  return {schemaVersion: 1, missionId: value.id, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1, payload, outputDigest, runtimeResultMaturity: 'MOCK_CONFORMANCE', runtimeReceipt: {...base, receiptDigest: runtimeTaskSubmissionReceiptDigest(base)}};
+}
 
 describe('M2 governed SHADOW Mission', () => {
   it('compiles exactly six separated contexts, five SkillLocks and a dependency DAG', () => {
@@ -50,7 +74,7 @@ describe('M2 governed SHADOW Mission', () => {
   });
 
   it('materializes only six digest/schema-accepted Runtime submissions into producer-owned revisions and Auditor-owned decisions', () => {
-    let mission = recordRuntimeProjectDispatch(createShadowMission(source()), `sha256:${'a'.repeat(64)}`, now);
+    let mission = dispatch(createShadowMission(source()));
     const sourceByPlatform = new Map(campaign.artifactRevisions.map((revision) => [revision.platform, revision]));
     const x = sourceByPlatform.get('X')!; const xFault = {...structuredClone(x.content), posts: ['LumiClaw Presence is generally available in every market today.']};
     const draft = (platform: 'X' | 'BLUESKY' | 'LINKEDIN' | 'XIAOHONGSHU', revision: number, content: typeof x.content | (typeof campaign.artifactRevisions)[number]['content']) => ({platform, revision, sourceRevisionDigest: sha256Digest(sourceByPlatform.get(platform)!), contentDigest: sha256Digest(content), content});
@@ -65,8 +89,8 @@ describe('M2 governed SHADOW Mission', () => {
       ['founder-identity-producer', founder], ['product-account-producer', product], ['independent-auditor', decisions]
     ]);
     for (const roleId of ['presence-mission-leader', 'evidence-claim-steward', 'campaign-planner', 'founder-identity-producer', 'product-account-producer', 'independent-auditor'] as const) {
-      const task = mission.tasks.find((item) => item.roleId === roleId)!; mission = acknowledgeRuntimeTask(mission, task.id, roleId, now); const payload = payloadByRole.get(roleId)!;
-      mission = acceptRuntimeSubmission(mission, {schemaVersion: 1, missionId: mission.id, taskId: task.id, roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1, payload, outputDigest: sha256Digest(payload)}, now);
+      const task = mission.tasks.find((item) => item.roleId === roleId)!; mission = acknowledge(mission, task); const payload = payloadByRole.get(roleId)!;
+      mission = acceptRuntimeSubmission(mission, runtimeSubmission(mission, task, payload), now);
       expect(mission.tasks.find((item) => item.id === task.id)?.state).toBe('ACCEPTED');
     }
     mission = materializeAcceptedRuntimeMission(mission, campaign, now);
@@ -78,16 +102,25 @@ describe('M2 governed SHADOW Mission', () => {
   });
 
   it('quarantines digest/schema/identity mismatch and duplicate accepted Submit', () => {
-    const mission = createShadowMission(source()); const task = mission.tasks[1]!; const payload = {frozen: true, claimEvidenceDigest: 'c'.repeat(64)};
-    const base = {schemaVersion: 1 as const, missionId: mission.id, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1 as const, payload, outputDigest: sha256Digest(payload)};
+    let mission = dispatch(createShadowMission(source())); const task = mission.tasks[1]!; mission = acknowledge(mission, task); const payload = {frozen: true, claimEvidenceDigest: 'c'.repeat(64)};
+    const base = runtimeSubmission(mission, task, payload);
     const accepted = acceptRuntimeSubmission(mission, base, now); expect(accepted.tasks[1]!.state).toBe('ACCEPTED');
     const duplicate = acceptRuntimeSubmission(accepted, base, now); expect(duplicate.recovery.duplicateSubmissionsRejected).toBe(1); expect(duplicate.trace.at(-1)?.kind).toBe('QUARANTINE');
     const tampered = acceptRuntimeSubmission(mission, {...base, roleIdentityId: mission.roleContexts[5]!.identityId, outputDigest: 'f'.repeat(64)}, now); expect(tampered.trace.at(-1)?.detail.errors).toContain('ROLE_IDENTITY_MISMATCH'); expect(tampered.trace.at(-1)?.detail.errors).toContain('OUTPUT_DIGEST_MISMATCH');
   });
 
   it('binds exactly one AgentTeams Project dispatch', () => {
-    const dispatched = recordRuntimeProjectDispatch(createShadowMission(source()), `sha256:${'a'.repeat(64)}`, now);
-    expect(() => recordRuntimeProjectDispatch(dispatched, `sha256:${'b'.repeat(64)}`, now)).toThrowError(expect.objectContaining({code: 'RUNTIME_PROJECT_ALREADY_DISPATCHED'}));
+    const initial = createShadowMission(source()); const dispatched = dispatch(initial);
+    expect(() => dispatch(dispatched)).toThrowError(expect.objectContaining({code: 'RUNTIME_PROJECT_ALREADY_DISPATCHED'}));
+  });
+
+  it('rejects contract-shaped Submit before exact Project dispatch and ACK receipts', () => {
+    const initial = createShadowMission(source()); const task = initial.tasks[1]!; const payload = {frozen: true, claimEvidenceDigest: 'c'.repeat(64)};
+    const fakeResultDigest = sha256Digest({schemaVersion: 1, taskId: task.id, roleId: task.roleId, payload, outputDigest: sha256Digest(payload), maturity: 'MOCK_CONFORMANCE', externalActionAllowed: false});
+    const fakeReceipt = {schemaVersion: 1 as const, projectId: initial.runtimeProjectId, taskId: task.id, roleId: task.roleId, runtimeActorId: '@forged:runtime.test', attempt: 1, ackReceiptDigest: '0'.repeat(64), runtimeState: 'submitted' as const, submittedAt: now.toISOString(), resultDigest: fakeResultDigest, receiptDigest: '0'.repeat(64)};
+    const shaped = {schemaVersion: 1 as const, missionId: initial.id, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1 as const, payload, outputDigest: sha256Digest(payload), runtimeResultMaturity: 'MOCK_CONFORMANCE' as const, runtimeReceipt: fakeReceipt};
+    const beforeDispatch = acceptRuntimeSubmission(initial, shaped, now); expect(beforeDispatch.trace.at(-1)?.detail.errors).toContain('PROJECT_NOT_DISPATCHED'); expect(beforeDispatch.trace.at(-1)?.detail.errors).toContain('TASK_NOT_ACKNOWLEDGED');
+    const afterDispatch = acceptRuntimeSubmission(dispatch(initial), shaped, now); expect(afterDispatch.trace.at(-1)?.detail.errors).toContain('TASK_NOT_ACKNOWLEDGED'); expect(afterDispatch.tasks[1]!.state).not.toBe('ACCEPTED');
   });
 
   it('reconciles from PostgreSQL-owned state without duplicating submissions', () => {

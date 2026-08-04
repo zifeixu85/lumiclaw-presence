@@ -52,8 +52,8 @@ export class PostgresShadowMissionRepository implements ShadowMissionRepository 
         if (String(replay.rows[0].request_digest).trim() !== requestDigest) throw new ShadowContractError('IDEMPOTENCY_KEY_REUSED', 'Idempotency key was reused with a different body.');
         return {mission: replay.rows[0].response_payload as ShadowMission, replayed: true};
       }
-      const existing = await client.query('select payload from missions where organization_id=$1 and campaign_id=$2 and source_campaign_digest=$3', [input.campaign.organizationId, input.campaign.id, input.campaignDigest]);
-      const mission = existing.rowCount === 0 ? createShadowMission(input) : existing.rows[0].payload as ShadowMission;
+      const existing = await client.query('select id from missions where organization_id=$1 and campaign_id=$2 and source_campaign_digest=$3', [input.campaign.organizationId, input.campaign.id, input.campaignDigest]);
+      const mission = existing.rowCount === 0 ? createShadowMission(input) : (await readMission(client, input.campaign.organizationId, existing.rows[0].id as string))!;
       if (existing.rowCount === 0) await persistMission(client, mission, true);
       await client.query('insert into shadow_idempotency(organization_id,route,idempotency_key,request_digest,mission_id,response_etag,response_payload) values($1,$2,$3,$4,$5,$6,$7)', [mission.organizationId, route, idempotencyKey, requestDigest, mission.id, mission.etag, mission]);
       return {mission, replayed: existing.rowCount !== 0};
@@ -89,39 +89,56 @@ export class PostgresShadowMissionRepository implements ShadowMissionRepository 
 }
 
 async function readMission(client: PoolClient, organizationId: string, missionId: string): Promise<ShadowMission | undefined> {
-  const result = await client.query('select state,version,etag,payload from missions where organization_id=$1 and id=$2', [organizationId, missionId]);
+  const result = await client.query('select organization_id,id,campaign_id,source_campaign_version,source_campaign_digest,runtime,runtime_version,runtime_project_id,state,version,etag,payload,live,external_action_allowed,created_at,updated_at from missions where organization_id=$1 and id=$2', [organizationId, missionId]);
   if (result.rowCount === 0) return undefined;
-  const mission = result.rows[0].payload as ShadowMission;
-  if (mission.state !== result.rows[0].state || mission.version !== result.rows[0].version || mission.etag !== result.rows[0].etag) throw new ShadowContractError('CONTROL_PLANE_HISTORY_DIVERGED', 'Mission aggregate metadata diverged from normalized PostgreSQL state.');
-  await verifyNormalizedHistory(client, mission);
+  const row = result.rows[0] as Record<string, unknown>;
+  const envelope = row.payload as ShadowMission;
+  const historyKeys = ['roleContexts', 'skillLocks', 'tasks', 'revisions', 'audits', 'reviews', 'trace', 'ledger', 'modelCalls', 'mediaAssets'] as const;
+  if (historyKeys.some((key) => !Array.isArray(envelope[key]) || envelope[key].length !== 0)) throw new ShadowContractError('CONTROL_PLANE_HISTORY_DIVERGED', 'Mission JSON is an envelope only; normalized PostgreSQL rows are the sole history source.');
+  const history = await readNormalizedHistory(client, organizationId, missionId);
+  const mission = {
+    ...envelope,
+    organizationId: String(row.organization_id), id: String(row.id), campaignId: String(row.campaign_id),
+    sourceCampaignVersion: Number(row.source_campaign_version), sourceCampaignDigest: String(row.source_campaign_digest).trim(),
+    runtime: String(row.runtime), runtimeVersion: String(row.runtime_version), runtimeProjectId: String(row.runtime_project_id),
+    state: String(row.state), version: Number(row.version), etag: String(row.etag), live: Boolean(row.live), externalActionAllowed: Boolean(row.external_action_allowed),
+    createdAt: new Date(row.created_at as string | number | Date).toISOString(), updatedAt: new Date(row.updated_at as string | number | Date).toISOString(),
+    ...history
+  } as ShadowMission;
+  validateReconstructedMission(mission);
   return mission;
 }
 
-async function verifyNormalizedHistory(client: PoolClient, mission: ShadowMission): Promise<void> {
-  const specs: {table: string; expected: unknown[]; order: string}[] = [
-    {table: 'agent_runs', expected: mission.roleContexts, order: 'role_id'},
-    {table: 'skill_locks', expected: mission.skillLocks, order: 'id'},
-    {table: 'agent_tasks', expected: mission.tasks, order: 'id'},
-    {table: 'governed_artifact_revisions', expected: mission.revisions, order: 'id'},
-    {table: 'audit_decisions', expected: mission.audits, order: 'id'},
-    {table: 'owner_reviews', expected: mission.reviews, order: 'id'},
-    {table: 'trace_events', expected: mission.trace, order: 'sequence'},
-    {table: 'ledger_entries', expected: mission.ledger, order: 'sequence'},
-    {table: 'model_calls', expected: mission.modelCalls, order: 'id'},
-    {table: 'media_assets', expected: mission.mediaAssets, order: 'id'}
-  ];
-  for (const spec of specs) {
-    const result = await client.query(`select payload from ${spec.table} where organization_id=$1 and mission_id=$2 order by ${spec.order}`, [mission.organizationId, mission.id]);
-    const normalized = result.rows.map((row) => row.payload);
-    const byDigest = (values: unknown[]) => values.map((value) => sha256Digest(value)).sort();
-    if (sha256Digest(byDigest(normalized)) !== sha256Digest(byDigest(spec.expected))) throw new ShadowContractError('CONTROL_PLANE_HISTORY_DIVERGED', `${spec.table} diverged from the Mission aggregate.`);
+async function readNormalizedHistory(client: PoolClient, organizationId: string, missionId: string): Promise<Pick<ShadowMission, 'roleContexts' | 'skillLocks' | 'tasks' | 'revisions' | 'audits' | 'reviews' | 'trace' | 'ledger' | 'modelCalls' | 'mediaAssets'>> {
+  const specs = [
+    ['roleContexts', 'agent_runs', 'role_id'], ['skillLocks', 'skill_locks', 'id'], ['tasks', 'agent_tasks', 'id'],
+    ['revisions', 'governed_artifact_revisions', 'created_at,id'], ['audits', 'audit_decisions', 'created_at,id'], ['reviews', 'owner_reviews', 'created_at,id'],
+    ['trace', 'trace_events', 'sequence'], ['ledger', 'ledger_entries', 'sequence'], ['modelCalls', 'model_calls', 'created_at,id'], ['mediaAssets', 'media_assets', 'created_at,id']
+  ] as const;
+  const history: Record<string, unknown[]> = {};
+  for (const [key, table, order] of specs) {
+    const rows = await client.query(`select payload from ${table} where organization_id=$1 and mission_id=$2 order by ${order}`, [organizationId, missionId]);
+    history[key] = rows.rows.map((row) => row.payload);
   }
+  return history as Pick<ShadowMission, 'roleContexts' | 'skillLocks' | 'tasks' | 'revisions' | 'audits' | 'reviews' | 'trace' | 'ledger' | 'modelCalls' | 'mediaAssets'>;
+}
+
+function validateReconstructedMission(mission: ShadowMission): void {
+  const expectedEtag = `"mission-${mission.id}-v${mission.version}-${sha256Digest({...mission, etag: ''}).slice(0, 16)}"`;
+  const traceValid = mission.trace.every((event, index) => event.missionId === mission.id && event.sequence === index + 1);
+  const ledgerValid = mission.ledger.every((entry, index) => {
+    const {entryDigest, ...base} = entry;
+    return entry.missionId === mission.id && entry.sequence === index + 1 && entry.previousEntryDigest === (mission.ledger[index - 1]?.entryDigest ?? null) && entryDigest === sha256Digest(base);
+  });
+  const taskValid = mission.tasks.every((task) => task.missionId === mission.id && (task.runtimeAck === null || task.runtimeAck.taskId === task.id) && (task.runtimeSubmission === null || task.runtimeSubmission.taskId === task.id));
+  if (mission.etag !== expectedEtag || !traceValid || !ledgerValid || !taskValid) throw new ShadowContractError('CONTROL_PLANE_HISTORY_DIVERGED', 'Normalized PostgreSQL history cannot reconstruct the exact Mission ETag/chain/bindings.');
 }
 
 async function persistMission(client: PoolClient, mission: ShadowMission, insert: boolean): Promise<void> {
-  const values = [mission.organizationId, mission.id, mission.campaignId, mission.sourceCampaignVersion, mission.sourceCampaignDigest, mission.runtime, mission.runtimeVersion, mission.runtimeProjectId, mission.state, mission.version, mission.etag, mission, mission.createdAt, mission.updatedAt];
+  const envelope = missionEnvelope(mission);
+  const values = [mission.organizationId, mission.id, mission.campaignId, mission.sourceCampaignVersion, mission.sourceCampaignDigest, mission.runtime, mission.runtimeVersion, mission.runtimeProjectId, mission.state, mission.version, mission.etag, envelope, mission.createdAt, mission.updatedAt];
   if (insert) await client.query('insert into missions(organization_id,id,campaign_id,source_campaign_version,source_campaign_digest,runtime,runtime_version,runtime_project_id,state,version,etag,payload,live,external_action_allowed,created_at,updated_at) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,false,false,$13,$14)', values);
-  else await client.query('update missions set state=$3,version=$4,etag=$5,payload=$6,updated_at=$7 where organization_id=$1 and id=$2', [mission.organizationId, mission.id, mission.state, mission.version, mission.etag, mission, mission.updatedAt]);
+  else await client.query('update missions set state=$3,version=$4,etag=$5,payload=$6,updated_at=$7 where organization_id=$1 and id=$2', [mission.organizationId, mission.id, mission.state, mission.version, mission.etag, envelope, mission.updatedAt]);
   for (const context of mission.roleContexts) await client.query('insert into agent_runs(organization_id,mission_id,role_id,identity_id,context_digest,permissions,payload,created_at) values($1,$2,$3,$4,$5,$6,$7,$8) on conflict(organization_id,mission_id,role_id) do update set payload=excluded.payload', [mission.organizationId, mission.id, context.roleId, context.identityId, context.contextDigest, JSON.stringify(context.permissions), context, mission.createdAt]);
   for (const lock of mission.skillLocks) await client.query('insert into skill_locks(organization_id,mission_id,id,name,version,digest,payload) values($1,$2,$3,$4,$5,$6,$7) on conflict do nothing', [mission.organizationId, mission.id, lock.id, lock.name, lock.version, lock.digest, lock]);
   for (const task of mission.tasks) await client.query('insert into agent_tasks(organization_id,mission_id,id,role_id,input_digest,skill_lock_digest,state,attempt,accepted_output_digest,payload,updated_at) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) on conflict(organization_id,mission_id,id) do update set state=excluded.state,attempt=excluded.attempt,accepted_output_digest=excluded.accepted_output_digest,payload=excluded.payload,updated_at=excluded.updated_at', [mission.organizationId, mission.id, task.id, task.roleId, task.inputDigest, task.skillLockDigest, task.state, task.attempt, task.acceptedOutputDigest, task, mission.updatedAt]);
@@ -133,7 +150,12 @@ async function persistMission(client: PoolClient, mission: ShadowMission, insert
   for (const call of mission.modelCalls) await client.query('insert into model_calls(organization_id,mission_id,id,provider,model,input_digest,output_digest,payload,created_at) values($1,$2,$3,$4,$5,$6,$7,$8,$9) on conflict do nothing', [mission.organizationId, mission.id, call.id, call.provider, call.model, call.inputDigest, call.outputDigest, call, call.createdAt]);
   for (const asset of mission.mediaAssets) await client.query('insert into media_assets(organization_id,mission_id,id,content_digest,provider,approval_state,payload,created_at) values($1,$2,$3,$4,$5,$6,$7,$8) on conflict do nothing', [mission.organizationId, mission.id, asset.id, asset.contentDigest, asset.provider, asset.approvalState, asset, asset.createdAt]);
   if (sha256Digest(missionPublicNoAction(mission)) !== sha256Digest({externalActionAllowed: false, actionGrantCount: 0, connectorCount: 0, externalActionCount: 0})) throw new ShadowContractError('EXTERNAL_ACTION_BOUNDARY_VIOLATION', 'Mission persistence rejected an action-capable state.');
-  await verifyNormalizedHistory(client, mission);
+  const reconstructed = await readMission(client, mission.organizationId, mission.id);
+  if (reconstructed === undefined || sha256Digest(reconstructed) !== sha256Digest(mission)) throw new ShadowContractError('CONTROL_PLANE_HISTORY_DIVERGED', 'Normalized PostgreSQL rows did not reconstruct the exact persisted Mission.');
 }
 
 function missionPublicNoAction(mission: ShadowMission) { return {externalActionAllowed: mission.externalActionAllowed, actionGrantCount: mission.actionGrantCount, connectorCount: mission.connectorCount, externalActionCount: mission.externalActionCount}; }
+
+function missionEnvelope(mission: ShadowMission): ShadowMission {
+  return {...structuredClone(mission), roleContexts: [] as unknown as ShadowMission['roleContexts'], skillLocks: [] as unknown as ShadowMission['skillLocks'], tasks: [] as unknown as ShadowMission['tasks'], revisions: [], audits: [], reviews: [], trace: [], ledger: [], modelCalls: [], mediaAssets: []};
+}

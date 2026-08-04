@@ -1,9 +1,29 @@
 import {createDemoCampaignDocument, createUuidV7, sha256Digest} from '@lumiclaw/domain';
+import {runtimeDagDigest, runtimeMemberSetDigest, runtimeProjectDispatchReceiptDigest, runtimeTaskAckReceiptDigest, runtimeTaskSubmissionReceiptDigest, type ShadowMission, type TaskContract} from '@lumiclaw/governed-shadow';
 import {afterEach, describe, expect, it} from 'vitest';
 import {buildApi} from './server.js';
 
 const apps = [] as ReturnType<typeof buildApi>[];
 const now = () => new Date('2026-08-03T12:00:00.000Z');
+
+function projectReceipt(mission: ShadowMission) {
+  const memberBindings = mission.roleContexts.map((context) => ({roleId: context.roleId, roleIdentityId: context.identityId, runtimeActorId: `@${context.roleId}:runtime.test`}));
+  const base = {schemaVersion: 1 as const, projectId: mission.runtimeProjectId, runtimeVersion: 'v1.2.0' as const, buildDigest: `sha256:${'a'.repeat(64)}`, memberBindings, memberSetDigest: runtimeMemberSetDigest(memberBindings), dagDigest: runtimeDagDigest(mission), dispatchedAt: now().toISOString()};
+  return {...base, receiptDigest: runtimeProjectDispatchReceiptDigest(base)};
+}
+
+function ackReceipt(mission: ShadowMission, task: TaskContract) {
+  const runtimeActorId = mission.runtimeProjectDispatch!.memberBindings.find((item) => item.roleId === task.roleId)!.runtimeActorId;
+  const base = {schemaVersion: 1 as const, projectId: mission.runtimeProjectId, taskId: task.id, roleId: task.roleId, runtimeActorId, attempt: task.attempt, runtimeState: 'in_progress' as const, acknowledgedAt: now().toISOString()};
+  return {...base, receiptDigest: runtimeTaskAckReceiptDigest(base)};
+}
+
+function taskSubmission(mission: ShadowMission, task: TaskContract, payload: unknown) {
+  const current = mission.tasks.find((item) => item.id === task.id)!; const outputDigest = sha256Digest(payload);
+  const resultDigest = sha256Digest({schemaVersion: 1, taskId: task.id, roleId: task.roleId, payload, outputDigest, maturity: 'MOCK_CONFORMANCE', externalActionAllowed: false});
+  const base = {schemaVersion: 1 as const, projectId: mission.runtimeProjectId, taskId: task.id, roleId: task.roleId, runtimeActorId: current.runtimeAck!.runtimeActorId, attempt: task.attempt, ackReceiptDigest: current.runtimeAck!.receiptDigest, runtimeState: 'submitted' as const, submittedAt: now().toISOString(), resultDigest};
+  return {schemaVersion: 1 as const, missionId: mission.id, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1 as const, payload, outputDigest, runtimeResultMaturity: 'MOCK_CONFORMANCE' as const, runtimeReceipt: {...base, receiptDigest: runtimeTaskSubmissionReceiptDigest(base)}};
+}
 
 afterEach(async () => { await Promise.all(apps.splice(0).map(async (app) => app.close())); });
 
@@ -50,20 +70,27 @@ describe('M1 Campaign API contract', () => {
     const created = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers, payload: document});
     const started = await app.inject({method: 'POST', url: `/api/v1/campaigns/${document.id}/shadow-missions`, headers: {...headers, 'idempotency-key': 'runtime-start-001', 'if-match': created.headers.etag!}, payload: {sourceDigest: created.json().digest, fault: 'BETA_TO_GA'}});
     const missionId = started.json().mission.id; const route = `/api/v1/shadow-missions/${missionId}/runtime-events`;
-    const dispatched = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-project-1', 'if-match': started.headers.etag!}, payload: {kind: 'PROJECT_DISPATCHED', buildDigest: `sha256:${'a'.repeat(64)}`}});
+    const initialTask = started.json().mission.tasks.find((item: {roleId: string}) => item.roleId === 'presence-mission-leader'); const initialPayload = {projectId: started.json().mission.runtimeProjectId, externalActionAllowed: false}; const initialOutputDigest = sha256Digest(initialPayload);
+    const forgedResultDigest = sha256Digest({schemaVersion: 1, taskId: initialTask.id, roleId: initialTask.roleId, payload: initialPayload, outputDigest: initialOutputDigest, maturity: 'MOCK_CONFORMANCE', externalActionAllowed: false});
+    const forgedBeforeDispatch = {schemaVersion: 1, missionId, taskId: initialTask.id, roleId: initialTask.roleId, roleIdentityId: initialTask.roleIdentityId, inputDigest: initialTask.inputDigest, skillLockDigest: initialTask.skillLockDigest, outputSchema: initialTask.outputSchema, outputSchemaVersion: 1, payload: initialPayload, outputDigest: initialOutputDigest, runtimeResultMaturity: 'MOCK_CONFORMANCE', runtimeReceipt: {schemaVersion: 1, projectId: started.json().mission.runtimeProjectId, taskId: initialTask.id, roleId: initialTask.roleId, runtimeActorId: '@presence-mission-leader:runtime.test', attempt: 1, ackReceiptDigest: '0'.repeat(64), runtimeState: 'submitted', submittedAt: now().toISOString(), resultDigest: forgedResultDigest, receiptDigest: '0'.repeat(64)}};
+    const rejectedBeforeDispatch = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-forged-01', 'if-match': started.headers.etag!}, payload: {kind: 'TASK_SUBMIT', submission: forgedBeforeDispatch}}); expect(rejectedBeforeDispatch.statusCode).toBe(422); expect(rejectedBeforeDispatch.json().mission.trace.at(-1).detail.errors).toContain('PROJECT_NOT_DISPATCHED');
+    const dispatchReceipt = projectReceipt(started.json().mission as ShadowMission);
+    const dispatched = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-project-1', 'if-match': rejectedBeforeDispatch.headers.etag!}, payload: {kind: 'PROJECT_DISPATCHED', receipt: dispatchReceipt}});
     expect(dispatched.statusCode).toBe(200); expect(dispatched.json().mission.state).toBe('RUNNING');
     const task = dispatched.json().mission.tasks.find((item: {roleId: string}) => item.roleId === 'presence-mission-leader');
-    const ack = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-ack-0001', 'if-match': dispatched.headers.etag!}, payload: {kind: 'TASK_ACK', taskId: task.id, roleId: task.roleId}});
+    const rejectedBeforeAck = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-forged-02', 'if-match': dispatched.headers.etag!}, payload: {kind: 'TASK_SUBMIT', submission: forgedBeforeDispatch}}); expect(rejectedBeforeAck.statusCode).toBe(422); expect(rejectedBeforeAck.json().mission.trace.at(-1).detail.errors).toContain('TASK_NOT_ACKNOWLEDGED');
+    const exactAckReceipt = ackReceipt(dispatched.json().mission as ShadowMission, task as TaskContract);
+    const ack = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-ack-0001', 'if-match': rejectedBeforeAck.headers.etag!}, payload: {kind: 'TASK_ACK', receipt: exactAckReceipt}});
     expect(ack.statusCode).toBe(200); expect(ack.json().mission.tasks.find((item: {id: string}) => item.id === task.id).state).toBe('ACKNOWLEDGED');
     const payload = {projectId: ack.json().mission.runtimeProjectId, externalActionAllowed: false};
-    const submission = {schemaVersion: 1, missionId, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1, payload, outputDigest: sha256Digest(payload)};
+    const submission = taskSubmission(ack.json().mission as ShadowMission, task as TaskContract, payload);
     const submitted = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-submit-01', 'if-match': ack.headers.etag!}, payload: {kind: 'TASK_SUBMIT', submission}});
     expect(submitted.statusCode).toBe(200); expect(submitted.json().mission.tasks.find((item: {id: string}) => item.id === task.id).state).toBe('ACCEPTED');
     const duplicate = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-submit-02', 'if-match': submitted.headers.etag!}, payload: {kind: 'TASK_SUBMIT', submission}});
     expect(duplicate.statusCode).toBe(422); expect(duplicate.json()).toMatchObject({code: 'RUNTIME_SUBMISSION_QUARANTINED', accepted: false}); expect(duplicate.json().mission.trace.at(-1).detail.errors).toContain('DUPLICATE_ACCEPTED_SUBMISSION');
     const duplicateReplay = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-submit-02', 'if-match': submitted.headers.etag!}, payload: {kind: 'TASK_SUBMIT', submission}});
     expect(duplicateReplay.statusCode).toBe(422); expect(duplicateReplay.headers['idempotency-replayed']).toBe('true'); expect(duplicateReplay.json()).toMatchObject({code: 'RUNTIME_SUBMISSION_QUARANTINED_REPLAYED', accepted: false, realAgentTeamsClaim: false});
-    const secondDispatch = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-project-2', 'if-match': duplicate.headers.etag!}, payload: {kind: 'PROJECT_DISPATCHED', buildDigest: `sha256:${'b'.repeat(64)}`}});
+    const secondDispatch = await app.inject({method: 'POST', url: route, headers: {...headers, 'idempotency-key': 'runtime-project-2', 'if-match': duplicate.headers.etag!}, payload: {kind: 'PROJECT_DISPATCHED', receipt: {...dispatchReceipt, buildDigest: `sha256:${'b'.repeat(64)}`}}});
     expect(secondDispatch.statusCode).toBe(409); expect(secondDispatch.json()).toMatchObject({code: 'RUNTIME_PROJECT_ALREADY_DISPATCHED'});
   });
 

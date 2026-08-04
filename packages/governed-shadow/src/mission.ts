@@ -1,7 +1,8 @@
 import {createUuidV7, sha256Digest, type CampaignDocument, type MissionRoleId, type PlatformArtifact} from '@lumiclaw/domain';
 import type {
   AuditDecision, AuditIssue, GovernedArtifactRevision, LedgerEntry, MediaAsset, MissionTraceEvent, ModelCallSnapshot, OwnerReview,
-  RoleContext, RuntimeSubmission, ShadowMission, SkillLock, StartShadowMissionInput, TaskContract
+  RoleContext, RuntimeMemberBinding, RuntimeProjectDispatchReceipt, RuntimeSubmission, RuntimeTaskAckReceipt,
+  RuntimeTaskSubmissionReceipt, ShadowMission, SkillLock, StartShadowMissionInput, TaskContract
 } from './types.js';
 
 const ROLE_IDS = [
@@ -46,7 +47,7 @@ export function createShadowMission(input: StartShadowMissionInput): ShadowMissi
   const mission: ShadowMission = {
     schemaVersion: 1, id: missionId, organizationId: input.campaign.organizationId, campaignId: input.campaign.id,
     sourceCampaignVersion: input.campaignVersion, sourceCampaignDigest: input.campaignDigest,
-    runtime: 'agentteams', runtimeVersion: 'v1.2.0', runtimeProjectId: `presence-${missionId}`,
+    runtime: 'agentteams', runtimeVersion: 'v1.2.0', runtimeProjectId: `presence-${missionId}`, runtimeProjectDispatch: null,
     executionMode: 'SHADOW_PREP_ONLY', dataMode: 'DEMO_SEED', live: false, externalActionAllowed: false,
     actionGrantCount: 0, connectorCount: 0, externalActionCount: 0, state: 'QUEUED', version: 1, etag: '', createdAt, updatedAt: createdAt,
     roleContexts, skillLocks: locks, tasks, revisions: [], audits: [], reviews: [], modelCalls: [], mediaAssets: [], trace: [], ledger: [],
@@ -169,15 +170,18 @@ export function acceptRuntimeSubmission(missionValue: ShadowMission, submission:
   const mission = structuredClone(missionValue);
   const task = mission.tasks.find((item) => item.id === submission.taskId);
   const errors: string[] = [];
+  if (mission.runtimeProjectDispatch === null) errors.push('PROJECT_NOT_DISPATCHED');
   if (submission.missionId !== mission.id) errors.push('MISSION_ID_MISMATCH');
   if (task === undefined) errors.push('TASK_ID_UNKNOWN');
   if (task !== undefined) {
+    if (task.state !== 'ACKNOWLEDGED' || task.runtimeAck === null) errors.push('TASK_NOT_ACKNOWLEDGED');
     if (submission.roleId !== task.roleId || submission.roleIdentityId !== task.roleIdentityId) errors.push('ROLE_IDENTITY_MISMATCH');
     if (submission.inputDigest !== task.inputDigest) errors.push('INPUT_DIGEST_MISMATCH');
     if (submission.skillLockDigest !== task.skillLockDigest) errors.push('SKILL_DIGEST_MISMATCH');
     if (submission.outputSchema !== task.outputSchema || submission.outputSchemaVersion !== task.outputSchemaVersion) errors.push('OUTPUT_SCHEMA_MISMATCH');
     if (!task.prerequisiteTaskIds.every((id) => mission.tasks.find((item) => item.id === id)?.state === 'ACCEPTED')) errors.push('TASK_PREREQUISITE_NOT_ACCEPTED');
     if (!validateSubmissionPayload(task, submission.payload)) errors.push('OUTPUT_PAYLOAD_SCHEMA_INVALID');
+    validateRuntimeSubmissionReceipt(mission, task, submission, errors);
   }
   if (submission.outputDigest !== sha256Digest(submission.payload)) errors.push('OUTPUT_DIGEST_MISMATCH');
   if (task?.acceptedOutputDigest !== null && task?.acceptedOutputDigest !== undefined) {
@@ -188,9 +192,9 @@ export function acceptRuntimeSubmission(missionValue: ShadowMission, submission:
     appendEvent(mission, 'QUARANTINE', 'Runtime Submit 已隔离', {taskId: submission.taskId, errors: errors.join(',')}, 'CONTROL_PLANE', sha256Digest(submission), sha256Digest(errors), now);
     return seal(mission, now);
   }
-  task!.state = 'ACCEPTED'; task!.submittedAt = now.toISOString(); task!.acceptedOutputDigest = submission.outputDigest;
+  task!.state = 'ACCEPTED'; task!.submittedAt = submission.runtimeReceipt.submittedAt; task!.runtimeSubmission = structuredClone(submission.runtimeReceipt); task!.acceptedOutputDigest = submission.outputDigest;
   task!.acceptedPayload = structuredClone(submission.payload);
-  appendEvent(mission, 'SUBMIT', 'Runtime Submit digest/schema 验证通过', {taskId: task!.id, roleId: task!.roleId}, task!.roleId, task!.inputDigest, submission.outputDigest, now);
+  appendEvent(mission, 'SUBMIT', 'Runtime Submit 凭据/digest/schema 验证通过', {taskId: task!.id, roleId: task!.roleId, attempt: task!.attempt, receiptDigest: submission.runtimeReceipt.receiptDigest}, task!.roleId, task!.inputDigest, submission.outputDigest, now);
   for (const dependent of mission.tasks.filter((candidate) => candidate.state === 'WAITING_DEPENDENCY' && candidate.prerequisiteTaskIds.includes(task!.id))) {
     if (dependent.prerequisiteTaskIds.every((id) => mission.tasks.find((candidate) => candidate.id === id)?.state === 'ACCEPTED')) dependent.state = 'ASSIGNED';
   }
@@ -248,29 +252,106 @@ export function materializeAcceptedRuntimeMission(missionValue: ShadowMission, c
   return seal(mission, new Date(now.getTime() + 20_000));
 }
 
-export function acknowledgeRuntimeTask(missionValue: ShadowMission, taskId: string, roleId: MissionRoleId, now = new Date()): ShadowMission {
+export function acknowledgeRuntimeTask(missionValue: ShadowMission, receipt: RuntimeTaskAckReceipt, now = new Date()): ShadowMission {
   const mission = structuredClone(missionValue);
-  const task = mission.tasks.find((item) => item.id === taskId);
-  if (task === undefined) throw new ShadowContractError('TASK_NOT_FOUND', taskId);
-  if (task.roleId !== roleId) throw new ShadowContractError('ACK_ROLE_MISMATCH', `${roleId} cannot ACK ${task.roleId}.`);
+  if (mission.runtimeProjectDispatch === null) throw new ShadowContractError('PROJECT_NOT_DISPATCHED', 'Task ACK requires an accepted AgentTeams Project dispatch.');
+  const task = mission.tasks.find((item) => item.id === receipt.taskId);
+  if (task === undefined) throw new ShadowContractError('TASK_NOT_FOUND', receipt.taskId);
+  if (task.roleId !== receipt.roleId) throw new ShadowContractError('ACK_ROLE_MISMATCH', `${receipt.roleId} cannot ACK ${task.roleId}.`);
+  const binding = mission.runtimeProjectDispatch.memberBindings.find((item) => item.roleId === task.roleId);
+  if (receipt.projectId !== mission.runtimeProjectId || binding?.runtimeActorId !== receipt.runtimeActorId || receipt.attempt !== task.attempt || receipt.runtimeState !== 'in_progress') throw new ShadowContractError('ACK_RUNTIME_BINDING_MISMATCH', 'Task ACK does not bind the exact Project, member, attempt, and runtime state.');
+  if (!isIsoInstant(receipt.acknowledgedAt) || receipt.receiptDigest !== runtimeTaskAckReceiptDigest(receipt)) throw new ShadowContractError('ACK_RECEIPT_DIGEST_MISMATCH', 'Task ACK receipt digest or timestamp is invalid.');
   if (!task.prerequisiteTaskIds.every((id) => mission.tasks.find((item) => item.id === id)?.state === 'ACCEPTED')) {
-    throw new ShadowContractError('TASK_PREREQUISITE_NOT_ACCEPTED', `Task ${taskId} is not ready.`);
+    throw new ShadowContractError('TASK_PREREQUISITE_NOT_ACCEPTED', `Task ${receipt.taskId} is not ready.`);
   }
-  if (!['ASSIGNED', 'ACKNOWLEDGED'].includes(task.state)) throw new ShadowContractError('TASK_STATE_NOT_ACKABLE', `Task ${taskId} is ${task.state}.`);
+  if (!['ASSIGNED', 'ACKNOWLEDGED'].includes(task.state)) throw new ShadowContractError('TASK_STATE_NOT_ACKABLE', `Task ${receipt.taskId} is ${task.state}.`);
   if (task.state === 'ASSIGNED') {
     task.state = 'ACKNOWLEDGED';
-    task.ackedAt = now.toISOString();
-    appendEvent(mission, 'ACK', `${roleId} 已 ACK runtime Task`, {taskId, attempt: task.attempt}, roleId, task.inputDigest, sha256Digest({taskId, roleId, ackedAt: task.ackedAt}), now);
+    task.ackedAt = receipt.acknowledgedAt;
+    task.runtimeAck = structuredClone(receipt);
+    appendEvent(mission, 'ACK', `${receipt.roleId} 已 ACK runtime Task`, {taskId: receipt.taskId, attempt: task.attempt, runtimeActorDigest: sha256Digest(receipt.runtimeActorId), receiptDigest: receipt.receiptDigest}, receipt.roleId, task.inputDigest, receipt.receiptDigest, now);
+  } else if (task.runtimeAck?.receiptDigest !== receipt.receiptDigest) {
+    throw new ShadowContractError('ACK_RECEIPT_CONFLICT', 'A Task attempt cannot bind two different ACK receipts.');
   }
   return seal(mission, now);
 }
 
-export function recordRuntimeProjectDispatch(missionValue: ShadowMission, buildDigest: string, now = new Date()): ShadowMission {
+export function recordRuntimeProjectDispatch(missionValue: ShadowMission, receipt: RuntimeProjectDispatchReceipt, now = new Date()): ShadowMission {
   const mission = structuredClone(missionValue);
   if (mission.state !== 'QUEUED') throw new ShadowContractError('RUNTIME_PROJECT_ALREADY_DISPATCHED', 'A Mission can bind exactly one AgentTeams Project dispatch. Restart recovery must reconcile that Project instead of dispatching another.');
+  const bindings = [...receipt.memberBindings].sort((left, right) => left.roleId.localeCompare(right.roleId));
+  const expectedRoles = [...ROLE_IDS].sort();
+  if (receipt.projectId !== mission.runtimeProjectId || receipt.runtimeVersion !== mission.runtimeVersion || !/^sha256:[a-f0-9]{64}$/u.test(receipt.buildDigest)) throw new ShadowContractError('RUNTIME_PROJECT_BINDING_MISMATCH', 'Project dispatch does not bind the exact Mission Project/version/build.');
+  if (bindings.length !== 6 || bindings.some((binding, index) => binding.roleId !== expectedRoles[index] || binding.roleIdentityId !== mission.roleContexts.find((context) => context.roleId === binding.roleId)?.identityId) || new Set(bindings.map((binding) => binding.runtimeActorId)).size !== 6) throw new ShadowContractError('RUNTIME_MEMBER_BINDING_INVALID', 'Project dispatch must bind exactly six distinct runtime members to the six RoleContexts.');
+  if (receipt.memberSetDigest !== runtimeMemberSetDigest(receipt.memberBindings) || receipt.dagDigest !== runtimeDagDigest(mission) || !isIsoInstant(receipt.dispatchedAt) || receipt.receiptDigest !== runtimeProjectDispatchReceiptDigest(receipt)) throw new ShadowContractError('RUNTIME_PROJECT_RECEIPT_INVALID', 'Project member/DAG/timestamp/receipt digest validation failed.');
+  mission.runtimeProjectDispatch = structuredClone(receipt);
   mission.state = 'RUNNING';
-  appendEvent(mission, 'PROJECT', 'AgentTeams v1.2.0 Project/DAG 已派发', {projectId: mission.runtimeProjectId, memberCount: 6, taskCount: 6, buildDigest, externalActionAllowed: false}, 'presence-mission-leader', mission.sourceCampaignDigest, sha256Digest(mission.tasks), now);
+  appendEvent(mission, 'PROJECT', 'AgentTeams v1.2.0 Project/DAG 已派发并验证运行时成员凭据', {projectId: mission.runtimeProjectId, memberCount: 6, taskCount: 6, buildDigest: receipt.buildDigest, receiptDigest: receipt.receiptDigest, externalActionAllowed: false}, 'presence-mission-leader', mission.sourceCampaignDigest, receipt.dagDigest, now);
   return seal(mission, now);
+}
+
+export function runtimeMemberSetDigest(bindings: RuntimeMemberBinding[]): string {
+  return sha256Digest([...bindings].sort((left, right) => left.roleId.localeCompare(right.roleId)));
+}
+
+export function runtimeDagDigest(mission: ShadowMission): string {
+  return sha256Digest(mission.tasks.map((task) => ({taskId: task.id, assignedTo: task.roleId, dependsOn: task.prerequisiteTaskIds})));
+}
+
+export function runtimeProjectDispatchReceiptDigest(receipt: Omit<RuntimeProjectDispatchReceipt, 'receiptDigest'> | RuntimeProjectDispatchReceipt): string {
+  return sha256Digest({
+    schemaVersion: receipt.schemaVersion,
+    projectId: receipt.projectId,
+    runtimeVersion: receipt.runtimeVersion,
+    buildDigest: receipt.buildDigest,
+    memberBindings: [...receipt.memberBindings].sort((left, right) => left.roleId.localeCompare(right.roleId)),
+    memberSetDigest: receipt.memberSetDigest,
+    dagDigest: receipt.dagDigest,
+    dispatchedAt: receipt.dispatchedAt
+  });
+}
+
+export function runtimeTaskAckReceiptDigest(receipt: Omit<RuntimeTaskAckReceipt, 'receiptDigest'> | RuntimeTaskAckReceipt): string {
+  return sha256Digest({
+    schemaVersion: receipt.schemaVersion,
+    projectId: receipt.projectId,
+    taskId: receipt.taskId,
+    roleId: receipt.roleId,
+    runtimeActorId: receipt.runtimeActorId,
+    attempt: receipt.attempt,
+    runtimeState: receipt.runtimeState,
+    acknowledgedAt: receipt.acknowledgedAt
+  });
+}
+
+export function runtimeTaskSubmissionReceiptDigest(receipt: Omit<RuntimeTaskSubmissionReceipt, 'receiptDigest'> | RuntimeTaskSubmissionReceipt): string {
+  return sha256Digest({
+    schemaVersion: receipt.schemaVersion,
+    projectId: receipt.projectId,
+    taskId: receipt.taskId,
+    roleId: receipt.roleId,
+    runtimeActorId: receipt.runtimeActorId,
+    attempt: receipt.attempt,
+    ackReceiptDigest: receipt.ackReceiptDigest,
+    runtimeState: receipt.runtimeState,
+    submittedAt: receipt.submittedAt,
+    resultDigest: receipt.resultDigest
+  });
+}
+
+function validateRuntimeSubmissionReceipt(mission: ShadowMission, task: TaskContract, submission: RuntimeSubmission, errors: string[]): void {
+  const receipt = submission.runtimeReceipt;
+  const ack = task.runtimeAck;
+  const binding = mission.runtimeProjectDispatch?.memberBindings.find((item) => item.roleId === task.roleId);
+  if (ack === null || receipt.projectId !== mission.runtimeProjectId || receipt.taskId !== task.id || receipt.roleId !== task.roleId || receipt.runtimeActorId !== binding?.runtimeActorId || receipt.attempt !== task.attempt || receipt.ackReceiptDigest !== ack?.receiptDigest || receipt.runtimeState !== 'submitted') errors.push('RUNTIME_SUBMISSION_BINDING_MISMATCH');
+  if (!isIsoInstant(receipt.submittedAt) || (ack !== null && Date.parse(receipt.submittedAt) < Date.parse(ack.acknowledgedAt))) errors.push('RUNTIME_SUBMISSION_TIMESTAMP_INVALID');
+  const expectedResultDigest = sha256Digest({schemaVersion: 1, taskId: task.id, roleId: task.roleId, payload: submission.payload, outputDigest: submission.outputDigest, maturity: submission.runtimeResultMaturity, externalActionAllowed: false});
+  if (receipt.resultDigest !== expectedResultDigest) errors.push('RUNTIME_RESULT_DIGEST_MISMATCH');
+  if (receipt.receiptDigest !== runtimeTaskSubmissionReceiptDigest(receipt)) errors.push('RUNTIME_SUBMISSION_RECEIPT_DIGEST_MISMATCH');
+}
+
+function isIsoInstant(value: string): boolean {
+  return Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
 }
 
 export function reconcileMission(missionValue: ShadowMission, acceptedRuntimeTaskIds: string[], now = new Date()): ShadowMission {
@@ -341,7 +422,7 @@ function taskContracts(missionId: string, sourceDigest: string, contexts: RoleCo
   const kinds = ['PROJECT_COORDINATION', 'FREEZE_EVIDENCE', 'PLAN_CAMPAIGN', 'PRODUCE_FOUNDER', 'PRODUCE_PRODUCT', 'AUDIT_REVISIONS'] as const;
   return ROLE_IDS.map((roleId, index) => {
     const context = contexts[index]!; const prereqs = index === 2 ? [ids[1]!] : index === 3 || index === 4 ? [ids[2]!] : index === 5 ? [ids[3]!, ids[4]!] : [];
-    return {schemaVersion: 1, id: ids[index]!, missionId, roleId, roleIdentityId: context.identityId, kind: kinds[index]!, inputDigest: sha256Digest({sourceDigest, contextDigest: context.contextDigest, prerequisites: prereqs}), prerequisiteTaskIds: prereqs, skillLockDigest: sha256Digest(context.skillLockIds.map((id) => locks.find((lock) => lock.id === id)!.digest)), outputSchema: `lumiclaw.shadow.${kinds[index]!.toLowerCase()}.v1`, outputSchemaVersion: 1, timeoutMs: 120_000, allowedTools: context.allowedTools, state: prereqs.length > 0 ? 'WAITING_DEPENDENCY' : 'ASSIGNED', attempt: 1, ackedAt: null, submittedAt: null, acceptedOutputDigest: null};
+    return {schemaVersion: 1, id: ids[index]!, missionId, roleId, roleIdentityId: context.identityId, kind: kinds[index]!, inputDigest: sha256Digest({sourceDigest, contextDigest: context.contextDigest, prerequisites: prereqs}), prerequisiteTaskIds: prereqs, skillLockDigest: sha256Digest(context.skillLockIds.map((id) => locks.find((lock) => lock.id === id)!.digest)), outputSchema: `lumiclaw.shadow.${kinds[index]!.toLowerCase()}.v1`, outputSchemaVersion: 1, timeoutMs: 120_000, allowedTools: context.allowedTools, state: prereqs.length > 0 ? 'WAITING_DEPENDENCY' : 'ASSIGNED', attempt: 1, ackedAt: null, runtimeAck: null, submittedAt: null, runtimeSubmission: null, acceptedOutputDigest: null};
   }) as ShadowMission['tasks'];
 }
 
@@ -450,7 +531,19 @@ function redactDetail(detail: MissionTraceEvent['detail']): MissionTraceEvent['d
   return Object.fromEntries(Object.entries(detail).map(([key, value]) => /key|token|secret|cookie|authorization/iu.test(key) ? [key, '[REDACTED]'] : [key, value]));
 }
 
-function seal(mission: ShadowMission, now: Date): ShadowMission { mission.updatedAt = now.toISOString(); mission.version += 1; mission.etag = `\"mission-${mission.id}-v${mission.version}-${sha256Digest({...mission, etag: ''}).slice(0, 16)}\"`; return mission; }
+function seal(mission: ShadowMission, now: Date): ShadowMission {
+  mission.roleContexts.sort((left, right) => left.roleId.localeCompare(right.roleId));
+  mission.skillLocks.sort((left, right) => left.id.localeCompare(right.id));
+  mission.tasks.sort((left, right) => left.id.localeCompare(right.id));
+  mission.revisions.sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
+  mission.audits.sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
+  mission.reviews.sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
+  mission.modelCalls.sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
+  mission.mediaAssets.sort((left, right) => left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id));
+  mission.trace.sort((left, right) => left.sequence - right.sequence);
+  mission.ledger.sort((left, right) => left.sequence - right.sequence);
+  mission.updatedAt = now.toISOString(); mission.version += 1; mission.etag = `\"mission-${mission.id}-v${mission.version}-${sha256Digest({...mission, etag: ''}).slice(0, 16)}\"`; return mission;
+}
 function revisionDigest(value: Omit<GovernedArtifactRevision, 'digest'> | GovernedArtifactRevision): string { const copy = {...value, digest: ''}; return sha256Digest(copy); }
 function auditDigest(value: Omit<AuditDecision, 'digest'> | AuditDecision): string { const copy = {...value, digest: ''}; return sha256Digest(copy); }
 function stableId(now: Date, seed: string, offset: number): string { const hex = sha256Digest(`${seed}:${offset}`); return createUuidV7(now.getTime() + offset, Uint8Array.from(Array.from({length: 10}, (_, index) => Number.parseInt(hex.slice(index * 2, index * 2 + 2), 16)))); }

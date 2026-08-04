@@ -1,6 +1,10 @@
-import {acceptRuntimeSubmission, acknowledgeRuntimeTask, cancelMission, markRecoveryUnknown, markTimedOut, reconcileMission, recordRuntimeProjectDispatch, type RuntimeSubmission, type ShadowMission} from '@lumiclaw/governed-shadow';
+import {
+  acceptRuntimeSubmission, acknowledgeRuntimeTask, cancelMission, markRecoveryUnknown, markTimedOut, reconcileMission,
+  recordRuntimeProjectDispatch, runtimeDagDigest, runtimeMemberSetDigest, runtimeProjectDispatchReceiptDigest,
+  runtimeTaskAckReceiptDigest, type RuntimeSubmission, type ShadowMission
+} from '@lumiclaw/governed-shadow';
 
-export type AgentTeamsMember = {name: string; roleIdentityId: string; runtime: 'copaw'; state: 'READY' | 'UNKNOWN'};
+export type AgentTeamsMember = {name: string; roleIdentityId: string; runtimeActorId: string; runtime: 'copaw'; state: 'READY' | 'UNKNOWN'};
 export type AgentTeamsProjectInput = {id: string; sourceDigest: string; leaderName: string; memberNames: string[]; executionMode: 'SHADOW_PREP_ONLY'; externalActionAllowed: false};
 export type AgentTeamsTaskInput = {id: string; projectId: string; assigneeName: string; inputDigest: string; prerequisiteTaskIds: string[]; skillLockDigest: string; outputSchema: string; timeoutMs: number};
 export type AgentTeamsRuntimeSnapshot = {projectId: string; state: string; taskStates: Record<string, string>; capturedAt: string};
@@ -11,7 +15,7 @@ export interface AgentTeamsV120Transport {
   createProject(input: AgentTeamsProjectInput): Promise<void>;
   createTask(input: AgentTeamsTaskInput): Promise<void>;
   markReady(projectId: string): Promise<void>;
-  acknowledge(projectId: string, taskId: string, memberName: string): Promise<void>;
+  acknowledge(projectId: string, taskId: string, memberName: string): Promise<{runtimeActorId: string; acknowledgedAt: string; state: 'in_progress'}>;
   observe(projectId: string): Promise<AgentTeamsRuntimeSnapshot>;
   cancel(projectId: string, unreleasedTaskIds: string[]): Promise<void>;
 }
@@ -29,12 +33,15 @@ export class AgentTeamsV120ShadowAdapter {
     if (members.length !== 6) codes.push('MEMBER_COUNT_NOT_EXACTLY_SIX');
     const expected = new Map(mission.roleContexts.map((context) => [context.roleId, context.identityId]));
     for (const [role, identityId] of expected) if (!members.some((member) => member.name === role && member.roleIdentityId === identityId && member.runtime === 'copaw')) codes.push(`MEMBER_IDENTITY_MISMATCH:${role}`);
-    if (new Set(members.map((member) => member.roleIdentityId)).size !== members.length) codes.push('MEMBER_IDENTITY_COLLISION');
+    if (new Set(members.map((member) => member.roleIdentityId)).size !== members.length || new Set(members.map((member) => member.runtimeActorId)).size !== members.length || members.some((member) => member.runtimeActorId.length === 0)) codes.push('MEMBER_IDENTITY_COLLISION');
     if (codes.length > 0) return {mission, runtime: null, accepted: false, codes};
     await this.transport.createProject({id: mission.runtimeProjectId, sourceDigest: mission.sourceCampaignDigest, leaderName: 'presence-mission-leader', memberNames: mission.roleContexts.map((item) => item.roleId), executionMode: 'SHADOW_PREP_ONLY', externalActionAllowed: false});
     for (const task of mission.tasks) await this.transport.createTask({id: task.id, projectId: mission.runtimeProjectId, assigneeName: task.roleId, inputDigest: task.inputDigest, prerequisiteTaskIds: task.prerequisiteTaskIds, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, timeoutMs: task.timeoutMs});
     await this.transport.markReady(mission.runtimeProjectId); const runtime = await this.transport.observe(mission.runtimeProjectId);
-    return {mission: recordRuntimeProjectDispatch(mission, identity.buildDigest, this.now()), runtime, accepted: true, codes: []};
+    const memberBindings = mission.roleContexts.map((context) => ({roleId: context.roleId, roleIdentityId: context.identityId, runtimeActorId: members.find((member) => member.name === context.roleId)!.runtimeActorId}));
+    const receiptBase = {schemaVersion: 1 as const, projectId: mission.runtimeProjectId, runtimeVersion: 'v1.2.0' as const, buildDigest: identity.buildDigest, memberBindings, memberSetDigest: runtimeMemberSetDigest(memberBindings), dagDigest: runtimeDagDigest(mission), dispatchedAt: runtime.capturedAt};
+    const receipt = {...receiptBase, receiptDigest: runtimeProjectDispatchReceiptDigest(receiptBase)};
+    return {mission: recordRuntimeProjectDispatch(mission, receipt, this.now()), runtime, accepted: true, codes: []};
   }
 
   async acknowledge(mission: ShadowMission, taskId: string, roleName: string): Promise<AdapterResult> {
@@ -42,8 +49,10 @@ export class AgentTeamsV120ShadowAdapter {
     if (task === undefined) return {mission, runtime: null, accepted: false, codes: ['TASK_NOT_FOUND']};
     if (task.roleId !== roleName) return {mission, runtime: null, accepted: false, codes: ['ACK_ROLE_MISMATCH']};
     if (!task.prerequisiteTaskIds.every((id) => mission.tasks.find((item) => item.id === id)?.state === 'ACCEPTED')) return {mission, runtime: null, accepted: false, codes: ['TASK_PREREQUISITE_NOT_ACCEPTED']};
-    await this.transport.acknowledge(mission.runtimeProjectId, taskId, roleName); const runtime = await this.transport.observe(mission.runtimeProjectId);
-    return {mission: acknowledgeRuntimeTask(mission, taskId, task.roleId, this.now()), runtime, accepted: true, codes: []};
+    const observedAck = await this.transport.acknowledge(mission.runtimeProjectId, taskId, roleName); const runtime = await this.transport.observe(mission.runtimeProjectId);
+    const receiptBase = {schemaVersion: 1 as const, projectId: mission.runtimeProjectId, taskId, roleId: task.roleId, runtimeActorId: observedAck.runtimeActorId, attempt: task.attempt, runtimeState: observedAck.state, acknowledgedAt: observedAck.acknowledgedAt};
+    const receipt = {...receiptBase, receiptDigest: runtimeTaskAckReceiptDigest(receiptBase)};
+    return {mission: acknowledgeRuntimeTask(mission, receipt, this.now()), runtime, accepted: true, codes: []};
   }
 
   async importSubmission(mission: ShadowMission, submission: RuntimeSubmission): Promise<AdapterResult> {
@@ -68,7 +77,7 @@ export class InMemoryAgentTeamsV120Transport implements AgentTeamsV120Transport 
   async createProject(input: AgentTeamsProjectInput) { if (input.externalActionAllowed) throw new Error('EXTERNAL_ACTION_NOT_ALLOWED'); this.#projects.set(input.id, {state: 'planning', tasks: {}}); }
   async createTask(input: AgentTeamsTaskInput) { const project = this.#projects.get(input.projectId); if (project === undefined) throw new Error('PROJECT_NOT_FOUND'); project.tasks[input.id] = input.prerequisiteTaskIds.length > 0 ? 'waiting_dependency' : 'assigned'; }
   async markReady(projectId: string) { this.#projects.get(projectId)!.state = 'ready'; }
-  async acknowledge(projectId: string, taskId: string, memberName: string) { if (!this.memberList.some((member) => member.name === memberName)) throw new Error('MEMBER_NOT_FOUND'); this.#projects.get(projectId)!.tasks[taskId] = 'in_progress'; }
+  async acknowledge(projectId: string, taskId: string, memberName: string) { const member = this.memberList.find((candidate) => candidate.name === memberName); if (member === undefined) throw new Error('MEMBER_NOT_FOUND'); this.#projects.get(projectId)!.tasks[taskId] = 'in_progress'; return {runtimeActorId: member.runtimeActorId, acknowledgedAt: new Date(0).toISOString(), state: 'in_progress' as const}; }
   async observe(projectId: string) { const value = this.#projects.get(projectId); if (value === undefined) throw new Error('PROJECT_NOT_FOUND'); return {projectId, state: value.state, taskStates: structuredClone(value.tasks), capturedAt: new Date(0).toISOString()}; }
   async cancel(projectId: string, unreleasedTaskIds: string[]) { const value = this.#projects.get(projectId)!; for (const id of unreleasedTaskIds) value.tasks[id] = 'cancelled'; value.state = 'cancelled'; }
 }
