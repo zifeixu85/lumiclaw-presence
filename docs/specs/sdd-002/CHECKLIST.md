@@ -68,9 +68,9 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 
 ## CR2 Fix 7 checklist
 
-- [ ] Baseline-compatible production API reproduction reaches five model snapshots and proves the upstream-valid/downstream-invalid Founder phrase difference without using raw Canary output.
-- [ ] Founder generation schema requires the exact frozen phrase in an X post with the same ASCII case-insensitive semantics as normalization and materialization.
-- [ ] Omission, paraphrase, reversal, punctuation, cross-post split, alt-text/Xiaohongshu-only placement, Unicode lookalikes and unknown fields fail before AgentTeams submission without coercion.
-- [ ] Exact phrase/order/case positives and the independent X FAIL → correction → re-audit chain remain valid; all digests/revision numbers remain server-derived.
-- [ ] Public-safe real AgentTeams six/eight, no-Secret Live, full verification, report, manifest and clean-Head ZIP pass with ActionGrant/Connector/external action all zero.
-- [ ] The ninth real-key Canary remains Coordinator-owned and is not represented as `LIVE_PROVIDER_VERIFIED` or `ACCEPTED`.
+- [x] Baseline-compatible production API reproduction reaches five model snapshots and proves the upstream-valid/downstream-invalid Founder phrase difference without using raw Canary output.
+- [x] Founder generation schema requires the exact frozen phrase in an X post with the same ASCII case-insensitive semantics as normalization and materialization.
+- [x] Omission, paraphrase, reversal, punctuation, cross-post split, alt-text/Xiaohongshu-only placement, Unicode lookalikes and unknown fields fail before AgentTeams submission without coercion.
+- [x] Exact phrase/order/case positives and the independent X FAIL → correction → re-audit chain remain valid; all digests/revision numbers remain server-derived.
+- [x] Public-safe real AgentTeams six/eight, no-Secret Live, full verification, report, manifest and clean-Head ZIP pass with ActionGrant/Connector/external action all zero.
+- [x] The ninth real-key Canary remains Coordinator-owned and is not represented as `LIVE_PROVIDER_VERIFIED` or `ACCEPTED`.
