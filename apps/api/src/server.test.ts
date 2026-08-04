@@ -1,5 +1,5 @@
 import {createDemoCampaignDocument, createUuidV7, sha256Digest} from '@lumiclaw/domain';
-import {AGENTTEAMS_V120_BUILD_DIGEST, runtimeDagDigest, runtimeMemberSetDigest, runtimeProjectDispatchReceiptDigest, runtimeTaskAckReceiptDigest, runtimeTaskSubmissionReceiptDigest, type ModelGenerateRequest, type ModelProvider, type ShadowMission, type TaskContract} from '@lumiclaw/governed-shadow';
+import {AGENTTEAMS_V120_BUILD_DIGEST, runtimeDagDigest, runtimeMemberSetDigest, runtimeProjectDispatchReceiptDigest, runtimeTaskAckReceiptDigest, runtimeTaskSubmissionReceiptDigest, ShadowContractError, type ModelGenerateRequest, type ModelProvider, type ShadowMission, type TaskContract} from '@lumiclaw/governed-shadow';
 import {afterEach, describe, expect, it} from 'vitest';
 import {buildApi} from './server.js';
 
@@ -25,6 +25,26 @@ function taskSubmission(mission: ShadowMission, task: TaskContract, payload: unk
   const resultDigest = sha256Digest({schemaVersion: 1, taskId: task.id, roleId: task.roleId, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest, payload, outputDigest, maturity, externalActionAllowed: false});
   const base = {schemaVersion: 1 as const, projectId: mission.runtimeProjectId, taskId: task.id, roleId: task.roleId, runtimeActorId: current.runtimeAck!.runtimeActorId, attempt: task.attempt, ackReceiptDigest: current.runtimeAck!.receiptDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest!, runtimeState: 'submitted' as const, submittedAt: now().toISOString(), resultDigest, resultSource: 'AGENTTEAMS_CHECK_TASK_PERSISTED_SUMMARY' as const, runtimeObservationId: sha256Digest({taskId: task.id, resultDigest, inputProjectionDigest: task.inputProjectionDigest, source: 'test-persisted-summary'})};
   return {schemaVersion: 1 as const, missionId: mission.id, taskId: task.id, roleId: task.roleId, roleIdentityId: task.roleIdentityId, inputDigest: task.inputDigest, inputProjectionSchema: task.inputProjectionSchema, inputProjectionDigest: task.inputProjectionDigest!, skillLockDigest: task.skillLockDigest, outputSchema: task.outputSchema, outputSchemaVersion: 1 as const, payload, outputDigest, runtimeResultMaturity: maturity, runtimeReceipt: {...base, receiptDigest: runtimeTaskSubmissionReceiptDigest(base)}};
+}
+
+function liveSnapshot(request: ModelGenerateRequest<unknown>, errorCode: string | null, value: unknown = null) {
+  const inputDigest = sha256Digest({system: request.system, input: request.input, outputSchema: request.outputSchema});
+  return {schemaVersion: 1 as const, id: createUuidV7(now().getTime(), new Uint8Array(10)), missionId: request.missionId, taskId: request.taskId, provider: 'DEEPSEEK' as const, maturity: 'CANARY' as const, model: request.model, response: {id: 'redacted-fixture-response', actualModel: request.model, systemFingerprint: null, finishReason: 'stop'}, config: {temperature: 0, maxTokens: 4000, responseFormat: 'json_object' as const, timeoutMs: 120000, maxAttempts: 3}, pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04' as const, inputCacheHitUsdPerMillion: 0.0028, inputCacheMissUsdPerMillion: 0.14, outputUsdPerMillion: 0.28, peakMultiplierNotApplied: true as const}, inputDigest, outputDigest: errorCode === null ? sha256Digest(value) : null, tokenUsage: {input: 20, output: 10, cacheHit: 5, cacheMiss: 15, reasoning: 0}, estimatedCostUsd: 0.000004914, latencyMs: 23, attempts: 1, error: errorCode === null ? null : {code: errorCode, retryable: errorCode === 'MODEL_TIMEOUT' || errorCode === 'PROVIDER_UNAVAILABLE' || /^(?:PROVIDER_HTTP_(?:429|5\d\d))$/u.test(errorCode)}, secretPresent: false as const, createdAt: now().toISOString()};
+}
+
+async function firstLiveDomainAttempt(provider: ModelProvider, suffix: string) {
+  const app = buildApi({now, runtimeBootstrapSecret: runtimeBootstrapTestSecret, deepseekApiKey: 'public-safe-in-memory-provider-fixture', liveModelProviderFactory: () => provider}); apps.push(app);
+  const document = createDemoCampaignDocument(); const headers = {'x-lumiclaw-organization-id': document.organizationId};
+  const created = await app.inject({method: 'POST', url: '/api/v1/campaigns', headers: {...headers, 'idempotency-key': `provider-campaign-${suffix}`}, payload: document});
+  const started = await app.inject({method: 'POST', url: `/api/v1/campaigns/${document.id}/shadow-missions`, headers: {...headers, 'idempotency-key': `provider-start-${suffix}`, 'if-match': created.headers.etag!}, payload: {sourceDigest: created.json().digest, fault: 'BETA_TO_GA', providerMode: 'LIVE_DEEPSEEK_UAT', providerModel: 'deepseek-v4-flash'}});
+  let mission = started.json().mission as ShadowMission; let etag = started.headers.etag!; const missionId = mission.id;
+  const issue = async (action: string, task?: TaskContract) => (await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-runner/tickets`, headers: {...headers, 'x-lumiclaw-runner-bootstrap': runtimeBootstrapTestSecret}, payload: {missionId, campaignDigest: mission.sourceCampaignDigest, action, roleId: task?.roleId ?? null, taskId: task?.id ?? null, attempt: task?.attempt ?? null, agentTeamsSourceTarSha256: mission.runtimeExpectation.agentTeamsSourceTarSha256, agentTeamsBuildDigest: mission.runtimeExpectation.agentTeamsBuildDigest, imageDigests: mission.runtimeExpectation.imageDigests}})).json().ticket as string;
+  const dispatch = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('PROJECT_DISPATCH'), 'idempotency-key': `provider-dispatch-${suffix}`, 'if-match': etag}, payload: {kind: 'PROJECT_DISPATCHED', receipt: projectReceipt(mission)}}); mission = dispatch.json().mission; etag = dispatch.headers.etag!;
+  let task = mission.tasks.find((item) => item.kind === 'FREEZE_EVIDENCE')!;
+  const ack = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('TASK_ACK', task), 'idempotency-key': `provider-ack-${suffix}`, 'if-match': etag}, payload: {kind: 'TASK_ACK', receipt: ackReceipt(mission, task)}}); mission = ack.json().mission; task = mission.tasks.find((item) => item.id === task.id)!;
+  const generated = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/live-model-generate`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('MODEL_GENERATE', task)}, payload: {taskId: task.id, roleId: task.roleId, attempt: task.attempt, inputProjectionDigest: task.inputProjectionDigest}});
+  const reopened = await app.inject({method: 'GET', url: `/api/v1/shadow-missions/${missionId}`, headers});
+  return {generated, reopened, task};
 }
 
 afterEach(async () => { await Promise.all(apps.splice(0).map(async (app) => app.close())); });
@@ -74,6 +94,33 @@ describe('M1 Campaign API contract', () => {
     const submit = taskSubmission(mission, task, generated.json().payload, 'CANARY');
     const accepted = await app.inject({method: 'POST', url: `/api/v1/shadow-missions/${missionId}/runtime-events`, headers: {...headers, 'x-lumiclaw-runtime-ticket': await issue('TASK_SUBMIT', task), 'idempotency-key': 'live-success-submit', 'if-match': etag}, payload: {kind: 'TASK_SUBMIT', submission: submit}});
     expect(accepted.statusCode).toBe(200); expect(accepted.json().mission.tasks.find((item: {id: string}) => item.id === task.id).state).toBe('ACCEPTED'); expect(accepted.json().mission.modelCalls).toHaveLength(1); expect(accepted.json().mission.actionGrantCount).toBe(0);
+  });
+
+  it.each(['PROVIDER_HTTP_401', 'PROVIDER_HTTP_402', 'PROVIDER_HTTP_404', 'PROVIDER_HTTP_429', 'PROVIDER_HTTP_500', 'PROVIDER_HTTP_502', 'PROVIDER_HTTP_503', 'PROVIDER_HTTP_504', 'MODEL_TIMEOUT', 'PROVIDER_UNAVAILABLE', 'MODEL_RESPONSE_IDENTITY_INVALID', 'MODEL_RETURNED_MODEL_MISMATCH', 'MODEL_FINISH_REASON_INVALID', 'MODEL_USAGE_INVALID', 'PROVIDER_RESPONSE_INVALID', 'MODEL_JSON_MALFORMED', 'MODEL_SCHEMA_INVALID'])('persists only the allowlisted first-domain provider outcome %s', async (providerOutcomeCode) => {
+    const provider = {generateStructured: async (request: ModelGenerateRequest<unknown>) => ({ok: false as const, snapshot: liveSnapshot(request, providerOutcomeCode)})};
+    const {generated, reopened, task} = await firstLiveDomainAttempt(provider, providerOutcomeCode.toLowerCase().replaceAll('_', '-'));
+    expect(generated.statusCode).toBe(502); expect(generated.json()).toEqual({code: providerOutcomeCode, providerOutcomeCode, mockFallback: false, nextResponsible: 'COORDINATOR'});
+    expect(reopened.json().mission).toMatchObject({state: 'FAILED', runtimeStatus: {failure: {code: providerOutcomeCode, failedTaskId: task.id}}, modelCalls: [{taskId: task.id, error: {code: providerOutcomeCode}}], actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
+    expect(JSON.stringify(generated.json())).not.toMatch(/redacted-fixture-response|authorization|bearer|prompt|model content/iu);
+  });
+
+  it('persists the semantic outcome without returning model content or the response receipt', async () => {
+    const value = {status: 'valid JSON but wrong role semantics'};
+    const provider = {generateStructured: async (request: ModelGenerateRequest<unknown>) => ({ok: true as const, value, snapshot: liveSnapshot(request, null, value)})} as unknown as ModelProvider;
+    const {generated, reopened, task} = await firstLiveDomainAttempt(provider, 'semantic-invalid');
+    expect(generated.statusCode).toBe(502); expect(generated.json()).toEqual({code: 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', providerOutcomeCode: 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', mockFallback: false, nextResponsible: 'COORDINATOR'});
+    expect(reopened.json().mission).toMatchObject({state: 'FAILED', runtimeStatus: {failure: {code: 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', failedTaskId: task.id}}, modelCalls: [{taskId: task.id, error: null}], actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
+    expect(JSON.stringify(generated.json())).not.toContain('valid JSON but wrong role semantics');
+  });
+
+  it('redacts arbitrary broker exceptions to the stable broker outcome', async () => {
+    const raw = 'Bearer dummy-secret raw-provider-response';
+    for (const [suffix, failure] of [['plain', new Error(raw)], ['internal-contract', new ShadowContractError('LIVE_MODEL_CALL_RECEIPT_INVALID', raw)]] as const) {
+      const provider = {generateStructured: async () => { throw failure; }} as ModelProvider;
+      const {generated, reopened, task} = await firstLiveDomainAttempt(provider, `broker-failed-${suffix}`);
+      expect(generated.statusCode).toBe(502); expect(generated.json()).toEqual({code: 'LIVE_PROVIDER_BROKER_FAILED', providerOutcomeCode: 'LIVE_PROVIDER_BROKER_FAILED', mockFallback: false, nextResponsible: 'COORDINATOR'});
+      expect(JSON.stringify(generated.json())).not.toContain(raw); expect(JSON.stringify(generated.json())).not.toContain('LIVE_MODEL_CALL_RECEIPT_INVALID'); expect(reopened.json().mission).toMatchObject({state: 'FAILED', runtimeStatus: {failure: {code: 'LIVE_PROVIDER_BROKER_FAILED', failedTaskId: task.id}}, modelCalls: [], actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
+    }
   });
 
   it('returns explicit PostgreSQL/non-live health and OpenAPI', async () => {

@@ -29,6 +29,21 @@ const shaBuildPattern = /^sha256:[a-f0-9]{64}$/u;
 const uuidPattern = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/u;
 const branchPattern = /^[A-Za-z0-9._/-]{1,160}$/u;
 const cleanupStates = new Set(['PENDING', 'PASS', 'FAIL', 'NOT_OWNED']);
+const exactProviderOutcomes = new Set([
+  'DEEPSEEK_SECRET_FILE_UNAVAILABLE',
+  'MODEL_TIMEOUT',
+  'PROVIDER_UNAVAILABLE',
+  'MODEL_RESPONSE_IDENTITY_INVALID',
+  'MODEL_RETURNED_MODEL_MISMATCH',
+  'MODEL_FINISH_REASON_INVALID',
+  'MODEL_USAGE_INVALID',
+  'PROVIDER_RESPONSE_INVALID',
+  'MODEL_JSON_MALFORMED',
+  'MODEL_SCHEMA_INVALID',
+  'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID',
+  'LIVE_PROVIDER_BROKER_FAILED'
+]);
+const providerHttpOutcomePattern = /^PROVIDER_HTTP_(?:4\d\d|5\d\d)$/u;
 
 export class LiveUatDiagnosticError extends Error {
   constructor(envelope) {
@@ -41,6 +56,7 @@ export class LiveUatDiagnosticError extends Error {
 
 export function isLiveStage(value) { return typeof value === 'string' && stages.has(value); }
 export function isLiveStageCode(value) { return typeof value === 'string' && codes.has(value); }
+export function isProviderOutcomeCode(value) { return typeof value === 'string' && (exactProviderOutcomes.has(value) || providerHttpOutcomePattern.test(value)); }
 export function liveStageCode(stage) {
   if (!isLiveStage(stage)) throw new Error('LIVE_DIAGNOSTIC_STAGE_INVALID');
   return LIVE_STAGE_CODE[stage];
@@ -80,6 +96,23 @@ export function conformanceProgressForStage(stage) {
   return progress;
 }
 
+export function providerOutcomeFromMission(mission, failedTaskId) {
+  if (!isRecord(mission) || mission.state !== 'FAILED' || typeof failedTaskId !== 'string' || failedTaskId.length === 0 || failedTaskId.length > 160) return 'LIVE_PROVIDER_BROKER_FAILED';
+  const failure = mission.runtimeStatus?.failure;
+  if (!isRecord(failure) || failure.failedTaskId !== failedTaskId || !isProviderOutcomeCode(failure.code)) return 'LIVE_PROVIDER_BROKER_FAILED';
+  if (!Array.isArray(mission.modelCalls)) return 'LIVE_PROVIDER_BROKER_FAILED';
+  const taskCalls = mission.modelCalls.filter((call) => isRecord(call) && call.taskId === failedTaskId);
+  if (taskCalls.length > 1) return 'LIVE_PROVIDER_BROKER_FAILED';
+  if (taskCalls.length === 1) {
+    const call = taskCalls[0];
+    if (call.provider !== 'DEEPSEEK' || call.maturity !== 'CANARY' || call.secretPresent !== false || !isRecord(call.response)) return 'LIVE_PROVIDER_BROKER_FAILED';
+    if (call.error === null) {
+      if (failure.code !== 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID' || typeof call.outputDigest !== 'string' || !digestPattern.test(call.outputDigest)) return 'LIVE_PROVIDER_BROKER_FAILED';
+    } else if (!isRecord(call.error) || !isProviderOutcomeCode(call.error.code) || call.error.code !== failure.code || typeof call.error.retryable !== 'boolean') return 'LIVE_PROVIDER_BROKER_FAILED';
+  } else if (!['DEEPSEEK_SECRET_FILE_UNAVAILABLE', 'LIVE_PROVIDER_BROKER_FAILED'].includes(failure.code)) return 'LIVE_PROVIDER_BROKER_FAILED';
+  return failure.code;
+}
+
 export function createLiveFailureReceipt(input) {
   const receipt = {
     schemaVersion: 1,
@@ -104,6 +137,7 @@ export function createLiveFailureReceipt(input) {
       expectedTaskCount: 8
     },
     progress: structuredClone(input.progress ?? defaultLiveProgress()),
+    providerOutcomeCode: input.providerOutcomeCode ?? null,
     modelReceiptCount: input.modelReceiptCount ?? 0,
     noAction: {actionGrantCount: 0, connectorCount: 0, externalActionCount: 0},
     mockFallback: false,
@@ -116,11 +150,13 @@ export function createLiveFailureReceipt(input) {
 }
 
 export function isLiveFailureReceipt(value, expected = {}) {
-  if (!isRecord(value) || Object.keys(value).sort().join(',') !== ['campaignDigest', 'cleanup', 'code', 'failedTaskId', 'generatedAt', 'liveProviderVerified', 'maturity', 'missionId', 'mockFallback', 'modelReceiptCount', 'noAction', 'organizationId', 'progress', 'runtime', 'schemaVersion', 'secretPresent', 'source', 'stage', 'status'].sort().join(',')) return false;
+  if (!isRecord(value) || Object.keys(value).sort().join(',') !== ['campaignDigest', 'cleanup', 'code', 'failedTaskId', 'generatedAt', 'liveProviderVerified', 'maturity', 'missionId', 'mockFallback', 'modelReceiptCount', 'noAction', 'organizationId', 'progress', 'providerOutcomeCode', 'runtime', 'schemaVersion', 'secretPresent', 'source', 'stage', 'status'].sort().join(',')) return false;
   if (value.schemaVersion !== 1 || value.status !== 'FAIL' || value.maturity !== 'LIVE_PROVIDER_CANARY_FAILED' || value.mockFallback !== false || value.secretPresent !== false || value.liveProviderVerified !== false) return false;
   if (!isLiveStage(value.stage) || value.code !== LIVE_STAGE_CODE[value.stage] || !isIso(value.generatedAt)) return false;
   if (!uuidPattern.test(String(value.organizationId)) || !uuidPattern.test(String(value.missionId)) || !digestPattern.test(String(value.campaignDigest))) return false;
   if (value.failedTaskId !== null && (typeof value.failedTaskId !== 'string' || value.failedTaskId.length === 0 || value.failedTaskId.length > 160)) return false;
+  if (value.providerOutcomeCode !== null && !isProviderOutcomeCode(value.providerOutcomeCode)) return false;
+  if (value.providerOutcomeCode !== null && (value.stage !== 'PROVIDER_REQUEST' || value.failedTaskId === null || !value.progress?.providerBrokerRequestStarted)) return false;
   if (!Number.isSafeInteger(value.modelReceiptCount) || value.modelReceiptCount < 0 || value.modelReceiptCount > 7) return false;
   if (!isSource(value.source) || !isRuntime(value.runtime) || !isProgress(value.progress) || !isNoAction(value.noAction) || !isCleanup(value.cleanup)) return false;
   if (value.progress.dagPlanned && !value.progress.projectCreated) return false;
@@ -133,6 +169,7 @@ export function isLiveFailureReceipt(value, expected = {}) {
   if (expected.campaignDigest !== undefined && value.campaignDigest !== expected.campaignDigest) return false;
   if (expected.stage !== undefined && value.stage !== expected.stage) return false;
   if (expected.code !== undefined && value.code !== expected.code) return false;
+  if (expected.providerOutcomeCode !== undefined && value.providerOutcomeCode !== expected.providerOutcomeCode) return false;
   return true;
 }
 
@@ -142,6 +179,7 @@ export function createLiveFailureEnvelope(receipt) {
     status: 'FAIL',
     code: receipt.code,
     stage: receipt.stage,
+    providerOutcomeCode: receipt.providerOutcomeCode,
     missionId: receipt.missionId,
     evidence: LIVE_FAILURE_EVIDENCE_RELATIVE_PATH,
     secretPresent: false,
@@ -153,8 +191,8 @@ export function parseLiveFailureEnvelope(raw, expected = {}) {
   if (typeof raw !== 'string' || Buffer.byteLength(raw, 'utf8') === 0 || Buffer.byteLength(raw, 'utf8') > 2048) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
   let value;
   try { value = JSON.parse(raw); } catch { throw new Error('LIVE_FAILURE_ENVELOPE_INVALID'); }
-  if (!isRecord(value) || Object.keys(value).sort().join(',') !== ['code', 'evidence', 'liveProviderVerified', 'missionId', 'secretPresent', 'stage', 'status'].sort().join(',')) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
-  if (value.status !== 'FAIL' || !isLiveStage(value.stage) || value.code !== LIVE_STAGE_CODE[value.stage] || !uuidPattern.test(String(value.missionId)) || value.evidence !== LIVE_FAILURE_EVIDENCE_RELATIVE_PATH || value.secretPresent !== false || value.liveProviderVerified !== false) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
+  if (!isRecord(value) || Object.keys(value).sort().join(',') !== ['code', 'evidence', 'liveProviderVerified', 'missionId', 'providerOutcomeCode', 'secretPresent', 'stage', 'status'].sort().join(',')) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
+  if (value.status !== 'FAIL' || !isLiveStage(value.stage) || value.code !== LIVE_STAGE_CODE[value.stage] || (value.providerOutcomeCode !== null && !isProviderOutcomeCode(value.providerOutcomeCode)) || (value.providerOutcomeCode !== null && value.stage !== 'PROVIDER_REQUEST') || !uuidPattern.test(String(value.missionId)) || value.evidence !== LIVE_FAILURE_EVIDENCE_RELATIVE_PATH || value.secretPresent !== false || value.liveProviderVerified !== false) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
   if (expected.missionId !== undefined && value.missionId !== expected.missionId) throw new Error('LIVE_FAILURE_ENVELOPE_INVALID');
   return value;
 }

@@ -3,7 +3,7 @@ import {execFileSync} from 'node:child_process';
 import {readFileSync, writeSync} from 'node:fs';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
-import {conformanceProgressForStage, createLiveFailureEnvelope, createLiveFailureReceipt, defaultLiveProgress, isLiveStage, liveStageCode, readSourceIdentity, writeLiveFailureReceipt} from './live-uat-diagnostics.mjs';
+import {conformanceProgressForStage, createLiveFailureEnvelope, createLiveFailureReceipt, defaultLiveProgress, isLiveStage, isProviderOutcomeCode, liveStageCode, providerOutcomeFromMission, readSourceIdentity, writeLiveFailureReceipt} from './live-uat-diagnostics.mjs';
 import {createRedactedTransportReceipt, parseLiveUatTransport} from './live-uat-transport.mjs';
 
 const root = process.cwd();
@@ -25,10 +25,12 @@ if (process.argv.includes('--transport-conformance')) {
 }
 const {organizationId, missionId, campaignDigest, bootstrap} = transport;
 const diagnosticStage = process.argv.find((value) => value.startsWith('--diagnostic-stage-conformance='))?.split('=', 2)[1];
-if (diagnosticStage !== undefined) {
+const diagnosticProviderOutcome = process.argv.find((value) => value.startsWith('--provider-outcome-diagnostic-conformance='))?.split('=', 2)[1];
+if (diagnosticStage !== undefined || diagnosticProviderOutcome !== undefined) {
   try {
-    if (!isLiveStage(diagnosticStage)) throw new Error('LIVE_DIAGNOSTIC_STAGE_INVALID');
-    const receipt = createLiveFailureReceipt({source: readSourceIdentity(root), organizationId, missionId, campaignDigest, stage: diagnosticStage, progress: conformanceProgressForStage(diagnosticStage)});
+    const stage = diagnosticProviderOutcome === undefined ? diagnosticStage : 'PROVIDER_REQUEST';
+    if (!isLiveStage(stage) || (diagnosticProviderOutcome !== undefined && !isProviderOutcomeCode(diagnosticProviderOutcome))) throw new Error('LIVE_DIAGNOSTIC_STAGE_INVALID');
+    const receipt = createLiveFailureReceipt({source: readSourceIdentity(root), organizationId, missionId, campaignDigest, stage, failedTaskId: diagnosticProviderOutcome === undefined ? null : 'public-safe-provider-task', providerOutcomeCode: diagnosticProviderOutcome ?? null, progress: conformanceProgressForStage(stage)});
     await writeLiveFailureReceipt(root, receipt, {targetPath: process.env.LUMICLAW_LIVE_FAILURE_EVIDENCE_PATH});
     writeSync(2, `${JSON.stringify(createLiveFailureEnvelope(receipt))}\n`); process.exit(1);
   } catch { emitFailure('LIVE_FAILURE_RECEIPT_WRITE_FAILED'); process.exit(1); }
@@ -36,7 +38,7 @@ if (diagnosticStage !== undefined) {
 
 const organizationHeaders = {'x-lumiclaw-organization-id': organizationId};
 let mission; let etag; let projectId; let eventCounter = 0; let lastTaskId = null; const receipts = [];
-let currentStage = 'MISSION_OPEN'; const progress = defaultLiveProgress();
+let currentStage = 'MISSION_OPEN'; let providerOutcomeCode = null; const progress = defaultLiveProgress();
 
 function digest(value) { return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(canonical(value))).digest('hex'); }
 function canonical(value) { if (Array.isArray(value)) return value.map(canonical); if (value !== null && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().filter((key) => value[key] !== undefined).map((key) => [key, canonical(value[key])])); return value; }
@@ -83,9 +85,18 @@ async function modelFromWorker(role, task) {
   const requestBody = {taskId: task.id, roleId: task.roleId, attempt: task.attempt, inputProjectionDigest: task.inputProjectionDigest};
   const input = JSON.stringify({url: `${api}/api/v1/shadow-missions/${missionId}/live-model-generate`, organizationId, ticket, body: requestBody});
   const code = 'import json,sys,urllib.request; x=json.loads(sys.stdin.read()); data=json.dumps(x["body"],separators=(",",":")).encode(); req=urllib.request.Request(x["url"],data=data,headers={"content-type":"application/json","x-lumiclaw-organization-id":x["organizationId"],"x-lumiclaw-runtime-ticket":x["ticket"]}); response=urllib.request.urlopen(req,timeout=150); print(response.read().decode())';
-  const output = run('docker', ['exec', '-i', '-w', workspace(role), `agentteams-worker-${role}`, '/opt/venv/standard/bin/python', '-c', code], `${role}:live-provider-broker`, input);
+  let output;
+  try { output = run('docker', ['exec', '-i', '-w', workspace(role), `agentteams-worker-${role}`, '/opt/venv/standard/bin/python', '-c', code], `${role}:live-provider-broker`, input); }
+  catch {
+    try {
+      const reopened = await request(`/api/v1/shadow-missions/${missionId}`, {headers: organizationHeaders});
+      mission = reopened.body.mission; etag = reopened.etag;
+      providerOutcomeCode = providerOutcomeFromMission(mission, task.id);
+    } catch { providerOutcomeCode = 'LIVE_PROVIDER_BROKER_FAILED'; }
+    throw new Error('LIVE_PROVIDER_REQUEST_FAILED');
+  }
   const result = JSON.parse(output); mission = result.mission; etag = mission.etag;
-  if (result.maturity !== 'LIVE_PROVIDER_CANARY' || result.receipt.provider !== 'DEEPSEEK' || result.receipt.secretPresent !== false || result.receipt.runtimeOutputDigest !== digest(result.payload)) throw new Error(`LIVE_PROVIDER_RECEIPT_INVALID:${task.id}`);
+  if (result.maturity !== 'LIVE_PROVIDER_CANARY' || result.receipt.provider !== 'DEEPSEEK' || result.receipt.secretPresent !== false || result.receipt.runtimeOutputDigest !== digest(result.payload)) { providerOutcomeCode = 'LIVE_PROVIDER_BROKER_FAILED'; throw new Error('LIVE_PROVIDER_REQUEST_FAILED'); }
   receipts.push({taskId: task.id, roleId: task.roleId, model: result.receipt.model, responseIdDigest: digest(result.receipt.response.id ?? ''), tokenUsage: result.receipt.tokenUsage, estimatedCostUsd: result.receipt.estimatedCostUsd, latencyMs: result.receipt.latencyMs, modelOutputDigest: result.receipt.outputDigest, runtimeOutputDigest: result.receipt.runtimeOutputDigest, secretPresent: false});
   return result.payload;
 }
@@ -153,12 +164,12 @@ try {
     receipt = createLiveFailureReceipt({
       source: readSourceIdentity(root), organizationId, missionId, campaignDigest, stage: currentStage, failedTaskId: lastTaskId,
       runtime: {projectId: projectId ?? null, sourceTarSha256: mission?.runtimeExpectation?.agentTeamsSourceTarSha256 ?? null, buildDigest: mission?.runtimeExpectation?.agentTeamsBuildDigest ?? null, imageDigestSetDigest: mission?.runtimeExpectation?.imageDigests === undefined ? null : digest(mission.runtimeExpectation.imageDigests)},
-      progress, modelReceiptCount: receipts.length
+      progress, providerOutcomeCode, modelReceiptCount: receipts.length
     });
     await writeLiveFailureReceipt(root, receipt);
   } catch { emitFailure('LIVE_FAILURE_RECEIPT_WRITE_FAILED'); process.exitCode = 1; }
   try {
-    if (mission?.runtimeExpectation) { const ticket = await issue('FAIL', mission.tasks.find((task) => task.id === lastTaskId) ?? null); await fetch(`${api}/api/v1/shadow-missions/${missionId}/live-runner/fail`, {method: 'POST', headers: {...organizationHeaders, 'x-lumiclaw-runtime-ticket': ticket, 'content-type': 'application/json'}, body: JSON.stringify({code, failedTaskId: lastTaskId, retryable: currentStage !== 'RUNTIME_IDENTITY'})}); }
+    if (mission?.runtimeExpectation && mission.state !== 'FAILED') { const ticket = await issue('FAIL', mission.tasks.find((task) => task.id === lastTaskId) ?? null); await fetch(`${api}/api/v1/shadow-missions/${missionId}/live-runner/fail`, {method: 'POST', headers: {...organizationHeaders, 'x-lumiclaw-runtime-ticket': ticket, 'content-type': 'application/json'}, body: JSON.stringify({code, failedTaskId: lastTaskId, retryable: currentStage !== 'RUNTIME_IDENTITY'})}); }
   } catch {}
   if (receipt !== undefined) writeSync(2, `${JSON.stringify(createLiveFailureEnvelope(receipt))}\n`);
   process.exitCode = 1;

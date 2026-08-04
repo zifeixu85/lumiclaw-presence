@@ -58,11 +58,11 @@ try {
   const output = `${child.stdout}${child.stderr}`;
   if (child.status === 0 || child.stdout !== '' || output.includes(bootstrap) || /x-lumiclaw-runner-bootstrap|x-lumiclaw-runtime-ticket|authorization|\bbearer\b/iu.test(output)) throw new Error('LIVE_NO_SECRET_CHILD_BOUNDARY_INVALID');
   envelope = parseLiveFailureEnvelope(child.stderr, {missionId: mission.id});
-  receipt = await readLiveFailureReceipt(root, {organizationId: campaign.organizationId, missionId: mission.id, campaignDigest: created.body.digest, stage: envelope.stage, code: envelope.code});
-  if (envelope.stage !== 'PROVIDER_REQUEST' || envelope.code !== 'LIVE_PROVIDER_REQUEST_FAILED' || !receipt.progress.projectCreated || !receipt.progress.dagPlanned || !receipt.progress.memberBindingsResolved || !receipt.progress.projectDispatched || !receipt.progress.providerBrokerRequestStarted || receipt.modelReceiptCount !== 0 || receipt.cleanup.agentTeams !== 'PASS') throw new Error('LIVE_NO_SECRET_EXPECTED_PROVIDER_BOUNDARY_NOT_REACHED');
+  receipt = await readLiveFailureReceipt(root, {organizationId: campaign.organizationId, missionId: mission.id, campaignDigest: created.body.digest, stage: envelope.stage, code: envelope.code, providerOutcomeCode: 'DEEPSEEK_SECRET_FILE_UNAVAILABLE'});
+  if (envelope.stage !== 'PROVIDER_REQUEST' || envelope.code !== 'LIVE_PROVIDER_REQUEST_FAILED' || envelope.providerOutcomeCode !== 'DEEPSEEK_SECRET_FILE_UNAVAILABLE' || !receipt.progress.projectCreated || !receipt.progress.dagPlanned || !receipt.progress.memberBindingsResolved || !receipt.progress.projectDispatched || !receipt.progress.providerBrokerRequestStarted || receipt.modelReceiptCount !== 0 || receipt.cleanup.agentTeams !== 'PASS') throw new Error('LIVE_NO_SECRET_EXPECTED_PROVIDER_BOUNDARY_NOT_REACHED');
   cleanup.agentTeams = agentTeamsRemoved(); if (!cleanup.agentTeams) throw new Error('LIVE_NO_SECRET_AGENTTEAMS_CLEANUP_FAILED');
   missionAfterFailure = (await request(api, `/api/v1/shadow-missions/${mission.id}`, {headers})).body.mission;
-  if (missionAfterFailure.state !== 'FAILED' || missionAfterFailure.runtimeStatus.failure?.code !== 'LIVE_PROVIDER_REQUEST_FAILED' || missionAfterFailure.modelCalls.length !== 0 || missionAfterFailure.actionGrantCount !== 0 || missionAfterFailure.connectorCount !== 0 || missionAfterFailure.externalActionCount !== 0) throw new Error('LIVE_NO_SECRET_FAILED_MISSION_STATE_INVALID');
+  if (missionAfterFailure.state !== 'FAILED' || missionAfterFailure.runtimeStatus.failure?.code !== 'DEEPSEEK_SECRET_FILE_UNAVAILABLE' || missionAfterFailure.modelCalls.length !== 0 || missionAfterFailure.actionGrantCount !== 0 || missionAfterFailure.connectorCount !== 0 || missionAfterFailure.externalActionCount !== 0) throw new Error('LIVE_NO_SECRET_FAILED_MISSION_STATE_INVALID');
 
   compose('down', '--volumes', '--remove-orphans'); composeStarted = false; cleanup.controlPlane = exactProjectRemoved();
   await rm(secretRoot, {recursive: true, force: true});
@@ -75,13 +75,13 @@ try {
     schemaVersion: 1, status: 'PASS', maturity: 'ENGINEERING_VERIFIED_NO_OWNER_SECRET', generatedAt: new Date().toISOString(),
     source: receipt.source, missionId: receipt.missionId, campaignDigest: receipt.campaignDigest,
     runtime: {...receipt.runtime, exactMemberCount: 6, exactTaskCount: 8},
-    diagnosedBoundary: {stage: receipt.stage, code: receipt.code, progress: receipt.progress, modelReceiptCount: 0, ownerSecretPresent: false, externalProviderRequestOccurred: false, liveProviderVerified: false, mockFallback: false},
+    diagnosedBoundary: {stage: receipt.stage, code: receipt.code, providerOutcomeCode: receipt.providerOutcomeCode, progress: receipt.progress, modelReceiptCount: 0, ownerSecretPresent: false, externalProviderRequestOccurred: false, liveProviderVerified: false, mockFallback: false},
     persistedMission: {state: missionAfterFailure.state, failureCode: missionAfterFailure.runtimeStatus.failure.code, externalActionCount: missionAfterFailure.externalActionCount},
     noAction: receipt.noAction, nonDisclosure: {bootstrapFinding: false, ticketFinding: false, authorizationFinding: false, rawProviderResponseFinding: false},
     cleanup: {agentTeams: 'PASS', controlPlane: 'PASS', secretDirectory: 'PASS'}, failureReceipt: LIVE_FAILURE_EVIDENCE_RELATIVE_PATH
   };
   await mkdir(path.join(root, '.evidence/sdd-002'), {recursive: true}); await writeFile(path.join(root, '.evidence/sdd-002/live-agentteams-no-secret-diagnostic.json'), `${JSON.stringify(evidence, null, 2)}\n`);
-  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, stage: receipt.stage, code: receipt.code, projectCreated: true, dagPlanned: true, projectDispatched: true, modelReceipts: 0, liveProviderVerified: false, externalActionCount: 0, cleanup: 'PASS', evidence: '.evidence/sdd-002/live-agentteams-no-secret-diagnostic.json'}));
+  console.info(JSON.stringify({status: 'PASS', maturity: evidence.maturity, stage: receipt.stage, code: receipt.code, providerOutcomeCode: receipt.providerOutcomeCode, projectCreated: true, dagPlanned: true, projectDispatched: true, modelReceipts: 0, liveProviderVerified: false, externalActionCount: 0, cleanup: 'PASS', evidence: '.evidence/sdd-002/live-agentteams-no-secret-diagnostic.json'}));
 } finally {
   if (composeStarted && secretRoot !== undefined) {
     const environment = {...process.env, LUMICLAW_DEEPSEEK_SECRET_FILE: path.join(secretRoot, 'deepseek-unavailable'), LUMICLAW_RUNTIME_BOOTSTRAP_FILE: path.join(secretRoot, 'bootstrap'), LUMICLAW_API_PORT: apiPort, LUMICLAW_WEB_PORT: webPort};

@@ -1,3 +1,4 @@
+import {sha256Digest} from '@lumiclaw/domain';
 import {describe, expect, it} from 'vitest';
 import {DeepSeekModelProvider, PublicSafeMockModelProvider, type ModelGenerateRequest} from './model-provider.js';
 
@@ -8,6 +9,25 @@ describe('DeepSeek ModelProvider conformance', () => {
   it('validates structured output and records exact config/cost without a secret', async () => {
     const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(response()), {status: 200, headers: {'content-type': 'application/json'}})});
     const result = await provider.generateStructured(request); expect(result.ok).toBe(true); expect(result.snapshot).toMatchObject({provider: 'DEEPSEEK', maturity: 'MOCK_CONFORMANCE', model: 'deepseek-v4-flash', response: {id: 'chatcmpl-fixture', actualModel: 'deepseek-v4-flash', systemFingerprint: 'fixture-fingerprint', finishReason: 'stop'}, pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheHitUsdPerMillion: 0.0028, inputCacheMissUsdPerMillion: 0.14, outputUsdPerMillion: 0.28, peakMultiplierNotApplied: true}, tokenUsage: {input: 100, output: 50, cacheHit: 20, cacheMiss: 80, reasoning: 10}, estimatedCostUsd: 0.000025256, attempts: 1, secretPresent: false, error: null}); expect(JSON.stringify(result.snapshot)).not.toContain('fixture-credential');
+  });
+  it('sends the exact closed role schema and binds it into the input digest', async () => {
+    let providerBody: Record<string, unknown> | undefined;
+    const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async (_url, init) => { providerBody = JSON.parse(String(init?.body)); return new Response(JSON.stringify(response()), {status: 200}); }});
+    const result = await provider.generateStructured(request);
+    expect(result.ok).toBe(true);
+    const messages = providerBody?.messages as {role: string; content: string}[];
+    expect(messages[0]?.content).toContain('outputSchema');
+    expect(JSON.parse(messages[1]!.content)).toEqual({input: request.input, outputSchema: request.outputSchema});
+    expect(result.snapshot.inputDigest).toBe(sha256Digest({system: request.system, input: request.input, outputSchema: request.outputSchema}));
+    const changed = await provider.generateStructured({...request, outputSchema: {...request.outputSchema, properties: {copy: {type: 'string', minLength: 2}}}});
+    expect(changed.snapshot.inputDigest).not.toBe(result.snapshot.inputDigest);
+  });
+  it('reproduces the first domain Task contract and rejects valid JSON with the wrong role shape', async () => {
+    const freezeRequest: ModelGenerateRequest<{frozen: true; assessment: string}> = {...request, taskId: 'first-domain-freeze-evidence', outputSchema: {type: 'object', additionalProperties: false, required: ['frozen', 'assessment'], properties: {frozen: {const: true}, assessment: {type: 'string', minLength: 1}}}};
+    const wrong = await new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(response('{"status":"ok"}')), {status: 200})}).generateStructured(freezeRequest);
+    expect(wrong.ok).toBe(false); expect(wrong.snapshot.error?.code).toBe('MODEL_SCHEMA_INVALID');
+    const correct = await new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(response('{"frozen":true,"assessment":"Evidence is frozen."}')), {status: 200})}).generateStructured(freezeRequest);
+    expect(correct.ok).toBe(true); if (correct.ok) expect(correct.value).toEqual({frozen: true, assessment: 'Evidence is frozen.'});
   });
   it('records the exact pro cache-hit/miss/output cost snapshot', async () => {
     const proRequest = {...request, model: 'deepseek-v4-pro' as const};
@@ -23,6 +43,14 @@ describe('DeepSeek ModelProvider conformance', () => {
   it('retries only 429/5xx and never switches model', async () => {
     const seen: string[] = []; let count = 0; const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', delay: async () => {}, fetchImplementation: async (_url, init) => { seen.push(JSON.parse(String(init?.body)).model); count += 1; return count < 3 ? new Response('{}', {status: count === 1 ? 429 : 503}) : new Response(JSON.stringify(response('{"copy":"ok"}', {usage: {prompt_tokens: 0, completion_tokens: 0}})), {status: 200}); }});
     const result = await provider.generateStructured(request); expect(result.ok).toBe(true); expect(result.snapshot.attempts).toBe(3); expect(seen).toEqual(['deepseek-v4-flash', 'deepseek-v4-flash', 'deepseek-v4-flash']);
+  });
+  it.each([401, 402, 404])('fails closed on non-retryable HTTP %s', async (status) => {
+    const result = await new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response('{}', {status})}).generateStructured(request);
+    expect(result.ok).toBe(false); expect(result.snapshot).toMatchObject({attempts: 1, error: {code: `PROVIDER_HTTP_${status}`, retryable: false}});
+  });
+  it.each([429, 500, 502, 503, 504])('retries bounded HTTP %s and preserves its final outcome', async (status) => {
+    const result = await new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', delay: async () => {}, fetchImplementation: async () => new Response('{}', {status})}).generateStructured(request);
+    expect(result.ok).toBe(false); expect(result.snapshot).toMatchObject({attempts: 3, error: {code: `PROVIDER_HTTP_${status}`, retryable: true}});
   });
   it.each([['malformed', '{'], ['schema', '{"wrong":true}']])('fails explicit %s output', async (_label, content) => {
     const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(response(content)), {status: 200})}); const result = await provider.generateStructured(request); expect(result.ok).toBe(false); expect(result.snapshot.error?.code).toMatch(/^MODEL_(JSON_MALFORMED|SCHEMA_INVALID)$/u);

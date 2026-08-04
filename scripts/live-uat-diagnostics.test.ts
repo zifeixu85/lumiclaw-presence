@@ -44,7 +44,7 @@ describe('Live UAT allowlisted stage diagnostics', () => {
     expect(result.stdout).toBe('');
     expectNoDisclosure(`${result.stdout}${result.stderr}`);
     const envelope = parseLiveFailureEnvelope(result.stderr, {missionId});
-    expect(envelope).toEqual({status: 'FAIL', code, stage, missionId, evidence: '.evidence/sdd-002/deepseek-live-failure.json', secretPresent: false, liveProviderVerified: false});
+    expect(envelope).toEqual({status: 'FAIL', code, stage, providerOutcomeCode: null, missionId, evidence: '.evidence/sdd-002/deepseek-live-failure.json', secretPresent: false, liveProviderVerified: false});
     const rawReceipt = readFileSync(evidencePath, 'utf8');
     expectNoDisclosure(rawReceipt);
     const receipt = JSON.parse(rawReceipt);
@@ -53,6 +53,7 @@ describe('Live UAT allowlisted stage diagnostics', () => {
     expect(receipt.noAction).toEqual({actionGrantCount: 0, connectorCount: 0, externalActionCount: 0});
     expect(receipt.secretPresent).toBe(false);
     expect(receipt.liveProviderVerified).toBe(false);
+    expect(receipt.providerOutcomeCode).toBeNull();
   });
 
   it('rejects a contradictory progress receipt and a mismatched envelope code', () => {

@@ -200,7 +200,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (deepseekApiKey === undefined) {
       const failed = failLiveMission(mission, 'DEEPSEEK_SECRET_FILE_UNAVAILABLE', task.id, true, now());
       await shadowRepository.replace(failed, mission.etag);
-      return reply.status(503).send({code: 'DEEPSEEK_SECRET_FILE_UNAVAILABLE', mockFallback: false, nextResponsible: 'COORDINATOR'});
+      return reply.status(503).send({code: 'DEEPSEEK_SECRET_FILE_UNAVAILABLE', providerOutcomeCode: 'DEEPSEEK_SECRET_FILE_UNAVAILABLE', mockFallback: false, nextResponsible: 'COORDINATOR'});
     }
     try {
       const input = runtimeTaskInputProjection(mission, campaign.document, task);
@@ -211,14 +211,16 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
       if (!result.ok || normalized === undefined || !validateLiveModelTaskOutput(task, normalized)) {
         if (next.state !== 'FAILED') next = failLiveMission(next, result.ok ? 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID' : result.snapshot.error?.code ?? 'LIVE_MODEL_FAILED', task.id, result.ok ? false : result.snapshot.error?.retryable ?? false, now());
         await shadowRepository.replace(next, mission.etag);
-        return reply.status(502).send({code: next.runtimeStatus.failure?.code ?? 'LIVE_MODEL_FAILED', mockFallback: false, nextResponsible: 'COORDINATOR', receipt: result.snapshot});
+        const providerOutcomeCode = next.runtimeStatus.failure?.code ?? 'LIVE_PROVIDER_BROKER_FAILED';
+        return reply.status(502).send({code: providerOutcomeCode, providerOutcomeCode, mockFallback: false, nextResponsible: 'COORDINATOR'});
       }
       const saved = await shadowRepository.replace(next, mission.etag);
       return reply.header('ETag', saved.etag).header('cache-control', 'no-store').send({code: 'LIVE_MODEL_OUTPUT_READY', maturity: 'LIVE_PROVIDER_CANARY', payload: normalized, receipt: result.snapshot, mission: saved});
-    } catch (error) {
-      const failed = failLiveMission(mission, error instanceof ShadowContractError ? error.code : 'LIVE_PROVIDER_BROKER_FAILED', task.id, false, now());
+    } catch {
+      const providerOutcomeCode = 'LIVE_PROVIDER_BROKER_FAILED';
+      const failed = failLiveMission(mission, providerOutcomeCode, task.id, false, now());
       try { await shadowRepository.replace(failed, mission.etag); } catch {}
-      return sendDomainOrUnavailable(reply, error);
+      return reply.status(502).send({code: providerOutcomeCode, providerOutcomeCode, mockFallback: false, nextResponsible: 'COORDINATOR'});
     }
   });
 

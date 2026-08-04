@@ -37,3 +37,11 @@ Rollback uses local Git reverts and project-scoped test migrations. Cancellation
 - Exercise every stable stage through the production nested stdin path, including forbidden-marker and contradictory-receipt negatives.
 - Run the pinned six-member environment without an Owner Secret and require it to reach a diagnosed fail-closed boundary; minimally correct any concrete pre-dispatch defect found.
 - Rebuild Live conformance, the Chinese report, full gates, clean commit and source package before returning an exact Coordinator retry protocol.
+
+## CR2 Fix 3 plan
+
+- Add one shared provider-outcome allowlist and strict Task-bound extraction from the persisted Mission/ModelCallSnapshot after Worker HTTP failure.
+- Extend the failure receipt and nested envelope with only the nullable allowlisted outcome; reject contradictions and all raw output.
+- Include the exact closed role schema in the DeepSeek request and its input digest, then reproduce the first domain Task with fixture transports.
+- Cover HTTP/provider/model/schema/semantic/broker/success cases at provider, API and actual child-process layers.
+- Rerun full Live/AgentTeams/PostgreSQL/Compose/browser/security/evidence gates, update the Chinese report, commit cleanly and return a one-attempt Coordinator retry protocol.

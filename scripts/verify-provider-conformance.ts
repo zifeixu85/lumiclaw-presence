@@ -29,6 +29,7 @@ const expectedPricing = {
   pro: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheHitUsdPerMillion: 0.003625, inputCacheMissUsdPerMillion: 0.435, outputUsdPerMillion: 0.87, peakMultiplierNotApplied: true}
 } as const;
 const observedModels: string[] = [];
+let exactSchemaPromptBound = false;
 let responseCount = 0;
 const gateway = new DeepSeekModelProvider({
   apiKey: fixtureCredential,
@@ -36,8 +37,10 @@ const gateway = new DeepSeekModelProvider({
   delay: async () => {},
   now: () => new Date('2026-08-04T00:00:00.000Z'),
   fetchImplementation: async (_url, init) => {
-    const body = JSON.parse(String(init?.body)) as {model: string};
+    const body = JSON.parse(String(init?.body)) as {model: string; messages: {role: string; content: string}[]};
     observedModels.push(body.model);
+    const userPayload = JSON.parse(body.messages[1]?.content ?? '{}') as {input?: unknown; outputSchema?: unknown};
+    exactSchemaPromptBound = body.messages[0]?.content.includes('outputSchema') === true && JSON.stringify(userPayload.outputSchema) === JSON.stringify(request.outputSchema) && JSON.stringify(userPayload.input) === JSON.stringify(request.input);
     responseCount += 1;
     if (responseCount === 1) return new Response('{}', {status: 429});
     if (responseCount === 2) return new Response('{}', {status: 503});
@@ -45,7 +48,7 @@ const gateway = new DeepSeekModelProvider({
   }
 });
 const retryResult = await gateway.generateStructured(request);
-if (!retryResult.ok || retryResult.snapshot.attempts !== 3 || observedModels.some((model) => model !== request.model) || JSON.stringify(retryResult.snapshot).includes(fixtureCredential)) throw new Error('DEEPSEEK_GATEWAY_RETRY_OR_REDACTION_CONFORMANCE_FAILED');
+if (!retryResult.ok || retryResult.snapshot.attempts !== 3 || observedModels.some((model) => model !== request.model) || !exactSchemaPromptBound || JSON.stringify(retryResult.snapshot).includes(fixtureCredential)) throw new Error('DEEPSEEK_GATEWAY_RETRY_OR_REDACTION_CONFORMANCE_FAILED');
 if (retryResult.snapshot.estimatedCostUsd !== 0.000025256 || JSON.stringify(retryResult.snapshot.pricing) !== JSON.stringify(expectedPricing.flash)) throw new Error('DEEPSEEK_FLASH_EXACT_COST_CONFORMANCE_FAILED');
 
 const proRequest = {...request, taskId: 'producer-task-pro', model: 'deepseek-v4-pro' as const};
@@ -103,6 +106,8 @@ const evidence = {
     canary: 'NOT_RUN_NO_KEY',
     conformance: {
       structuredOutput: true,
+      exactSchemaPromptBound,
+      inputDigestIncludesOutputSchema: retryResult.snapshot.inputDigest !== (await new PublicSafeMockModelProvider({copy: 'public-safe structured fixture'}, () => new Date('2026-08-04T00:00:00.000Z')).generateStructured({...request, outputSchema: {...request.outputSchema, properties: {copy: {type: 'string', minLength: 2}}}})).snapshot.inputDigest,
       retries429And5xx: true,
       nonRetryable4xxAttempts: nonRetryable.snapshot.attempts,
       timeoutAttempts: timedOut.snapshot.attempts,

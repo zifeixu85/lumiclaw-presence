@@ -22,6 +22,11 @@ const expectedLiveStageCodes = {
   PROJECT_DISPATCH: 'LIVE_PROJECT_DISPATCH_REJECTED', TASK_PROTOCOL: 'LIVE_TASK_PROTOCOL_FAILED', PROVIDER_REQUEST: 'LIVE_PROVIDER_REQUEST_FAILED',
   FINALIZE: 'LIVE_FINALIZE_FAILED', AGENTTEAMS_PROVISION: 'LIVE_AGENTTEAMS_ENVIRONMENT_FAILED', CLEANUP: 'LIVE_UAT_CLEANUP_FAILED'
 };
+const expectedProviderOutcomes = [
+  'DEEPSEEK_SECRET_FILE_UNAVAILABLE',
+  'PROVIDER_HTTP_401', 'PROVIDER_HTTP_402', 'PROVIDER_HTTP_404', 'PROVIDER_HTTP_429', 'PROVIDER_HTTP_500', 'PROVIDER_HTTP_502', 'PROVIDER_HTTP_503', 'PROVIDER_HTTP_504',
+  'MODEL_TIMEOUT', 'PROVIDER_UNAVAILABLE', 'MODEL_RESPONSE_IDENTITY_INVALID', 'MODEL_RETURNED_MODEL_MISMATCH', 'MODEL_FINISH_REASON_INVALID', 'MODEL_USAGE_INVALID', 'PROVIDER_RESPONSE_INVALID', 'MODEL_JSON_MALFORMED', 'MODEL_SCHEMA_INVALID', 'LIVE_MODEL_SEMANTIC_OUTPUT_INVALID', 'LIVE_PROVIDER_BROKER_FAILED'
+];
 const expectedRoleContracts = [
   {id: 'presence-mission-leader', orchestrationOnly: true, permissions: ['ORCHESTRATE'], skillLocks: ['trace-safe-escalation@1.0.0']},
   {id: 'evidence-claim-steward', orchestrationOnly: false, permissions: ['READ_EVIDENCE'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'trace-safe-escalation@1.0.0']},
@@ -95,20 +100,23 @@ function liveConformanceValid(value) {
   const mounts = value?.composeInspect?.secretMounts;
   const transport = value?.stdinTransport;
   const diagnostics = value?.stageDiagnostics;
+  const providerOutcomes = value?.providerOutcomeDiagnostics;
   const receipt = transport?.receipt;
   return value?.schemaVersion === 1
     && value?.status === 'PASS'
     && value?.maturity === 'ENGINEERING_VERIFIED'
     && value?.liveProviderVerified === false
     && value?.liveProviderStatus === 'NOT_RUN_NO_OWNER_SECRET'
-    && value?.targetedContracts?.testFiles === 4
-    && value?.targetedContracts?.tests === 35
+    && value?.targetedContracts?.testFiles === 6
+    && value?.targetedContracts?.tests === 126
     && value?.targetedContracts?.noKeyFailClosed === true
     && value?.targetedContracts?.mockFallback === false
     && value?.targetedContracts?.scopedSingleUseTickets === true
     && value?.targetedContracts?.wrongScopeBurnsTicket === true
     && value?.targetedContracts?.leaderModelCallForbidden === true
     && value?.targetedContracts?.independentAuditorReceiptRequired === true
+    && value?.targetedContracts?.exactRoleSchemaPromptBound === true
+    && value?.targetedContracts?.firstDomainFixtureCovered === true
     && transport?.status === 'PASS'
     && transport?.protocol === 'STRICT_JSON_EXACT_FOUR_FIELDS_SINGLE_FD0_READ'
     && transport?.nestedChildProcess === true
@@ -141,6 +149,15 @@ function liveConformanceValid(value) {
     && diagnostics?.bootstrapTicketHeaderRawResponseFinding === false
     && diagnostics?.receiptBeforeCleanup === true
     && diagnostics?.publicPackageIncludesFailureReceipt === false
+    && providerOutcomes?.status === 'PASS'
+    && providerOutcomes?.actualNestedChildProcess === true
+    && providerOutcomes?.cases === expectedProviderOutcomes.length
+    && exactStringSet(providerOutcomes?.outcomes?.map((entry) => entry.providerOutcomeCode), expectedProviderOutcomes)
+    && providerOutcomes.outcomes.every((entry) => entry.failedTaskBound === true)
+    && providerOutcomes?.missingOrContradictoryMapsTo === 'LIVE_PROVIDER_BROKER_FAILED'
+    && providerOutcomes?.arbitraryExceptionTextForwarded === false
+    && providerOutcomes?.rawHttpOrModelOutputForwarded === false
+    && providerOutcomes?.bootstrapTicketHeaderResponseIdFinding === false
     && value?.composePolicy?.status === 'PASS'
     && value?.composePolicy?.dockerSocketMounted === false
     && value?.composePolicy?.secretAsServiceEnvironment === false
@@ -181,6 +198,7 @@ function liveNoSecretDiagnosticValid(value, currentHead, imageManifest) {
     && value?.runtime?.exactTaskCount === 8
     && value?.diagnosedBoundary?.stage === 'PROVIDER_REQUEST'
     && value?.diagnosedBoundary?.code === 'LIVE_PROVIDER_REQUEST_FAILED'
+    && value?.diagnosedBoundary?.providerOutcomeCode === 'DEEPSEEK_SECRET_FILE_UNAVAILABLE'
     && exactRecord(progress, {runtimeIdentityVerified: true, topologyVerified: true, projectCreated: true, dagPlanned: true, memberBindingsResolved: true, projectDispatched: true, providerBrokerRequestStarted: true})
     && value?.diagnosedBoundary?.modelReceiptCount === 0
     && value?.diagnosedBoundary?.ownerSecretPresent === false
@@ -188,7 +206,7 @@ function liveNoSecretDiagnosticValid(value, currentHead, imageManifest) {
     && value?.diagnosedBoundary?.liveProviderVerified === false
     && value?.diagnosedBoundary?.mockFallback === false
     && value?.persistedMission?.state === 'FAILED'
-    && value?.persistedMission?.failureCode === 'LIVE_PROVIDER_REQUEST_FAILED'
+    && value?.persistedMission?.failureCode === 'DEEPSEEK_SECRET_FILE_UNAVAILABLE'
     && value?.persistedMission?.externalActionCount === 0
     && exactNoAction({...value?.noAction, externalActionAllowed: false})
     && exactRecord(value?.nonDisclosure, {bootstrapFinding: false, ticketFinding: false, authorizationFinding: false, rawProviderResponseFinding: false})
@@ -222,6 +240,8 @@ function providerEvidenceValid(providers) {
     && providers?.evoLink?.canary === 'NOT_RUN_NO_KEY'
     && providers?.publicSafeMock?.maturity === 'MOCK_CONFORMANCE'
     && conformance?.executionClass === 'MOCK_CONFORMANCE'
+    && conformance?.exactSchemaPromptBound === true
+    && conformance?.inputDigestIncludesOutputSchema === true
     && conformance?.actualReturnedModel === 'deepseek-v4-flash'
     && conformance?.finishReason === 'stop'
     && conformance?.responseIdentityCaptured === true
@@ -446,16 +466,20 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, costSnapshotsUsd: {...conformance.costSnapshotsUsd, flash: 0.000028}}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, pricingSnapshots: {...conformance.pricingSnapshots, flash: {...conformance.pricingSnapshots.flash, inputCacheHitUsdPerMillion: undefined}}}))),
     !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, usageBreakdownConsistencyRejected: false}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, exactSchemaPromptBound: false}))),
     !liveConformanceValid({...liveConformance, liveProviderVerified: true}),
     !liveConformanceValid({...liveConformance, composeInspect: {...liveConformance.composeInspect, secretInEnvironment: true}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, mockFallback: true}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, tests: 0}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, exactRoleSchemaPromptBound: false}}),
+    !liveConformanceValid({...liveConformance, providerOutcomeDiagnostics: {...liveConformance.providerOutcomeDiagnostics, outcomes: liveConformance.providerOutcomeDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, providerOutcomeCode: 'RAW_PROVIDER_FAILURE'} : entry)}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, nestedChildProcess: false}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, bootstrapOrSecretFinding: true}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, extraFieldRejected: false}}),
     !liveConformanceValid({...liveConformance, cleanupEvidence: {...liveConformance.cleanupEvidence, exactComposeProjectRemoved: false}}),
     !liveNoSecretDiagnosticValid({...liveNoSecret, source: {...liveNoSecret.source, head: '0'.repeat(40)}}, currentHead, imageManifest),
     !liveNoSecretDiagnosticValid({...liveNoSecret, diagnosedBoundary: {...liveNoSecret.diagnosedBoundary, ownerSecretPresent: true}}, currentHead, imageManifest),
+    !liveNoSecretDiagnosticValid({...liveNoSecret, diagnosedBoundary: {...liveNoSecret.diagnosedBoundary, providerOutcomeCode: 'LIVE_PROVIDER_BROKER_FAILED'}}, currentHead, imageManifest),
     !liveNoSecretDiagnosticValid({...liveNoSecret, noAction: {...liveNoSecret.noAction, externalActionCount: 1}}, currentHead, imageManifest)
   ];
   if (!mutationsRejected.every(Boolean)) throw new Error('EVIDENCE_NEGATIVE_SELF_TEST_FAILED');

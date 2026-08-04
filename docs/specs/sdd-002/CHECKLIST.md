@@ -33,3 +33,10 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 - [x] Stage/code/progress/receipt fields are allowlisted and exclude all raw child/provider/security material.
 - [x] Host receipt persistence precedes cleanup, while normal public packages continue to exclude local `.evidence` state.
 - [x] No-Secret controlled diagnosis, nested child stage tests, cleanup and zero-action conditions are binary.
+
+## CR2 Fix 3 checklist
+
+- [x] Third Canary and independent official probes freeze the failure after Project dispatch and before an accepted ModelCallSnapshot.
+- [x] Existing stable provider/model/semantic codes, Task binding and forbidden raw fields are explicitly bounded.
+- [x] The missing role-schema prompt binding is a verified concrete contract defect, not an assumed provider outage.
+- [x] HTTP/model/schema/semantic/broker/success fixtures, child non-disclosure, cleanup and zero-action are binary acceptance conditions.

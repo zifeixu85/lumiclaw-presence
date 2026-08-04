@@ -19,3 +19,5 @@
 | CL-15 | Live transport failures disclose only allowlisted stable codes. Bootstrap/ticket values remain in memory and captured pipes only, and never enter arguments, environment, logs, evidence or error text. |
 | CL-16 | CR2 Fix 2 persists an allowlisted stage failure receipt on the host before ephemeral cleanup; it contains only clean-Head/Mission/runtime/progress/no-action metadata and is excluded from public source/evidence packages. |
 | CL-17 | A no-Owner-Key controlled run may prove Project/DAG/dispatch and then stop at the unavailable provider broker. It is infrastructure diagnosis, not `LIVE_PROVIDER_VERIFIED`, and cannot silently fall back to Mock. |
+| CL-18 | CR2 Fix 3 may expose one nullable allowlisted `providerOutcomeCode` derived from the exact persisted Task failure before cleanup; raw HTTP/model/security material remains forbidden. |
+| CL-19 | The exact role output schema must be present in the DeepSeek prompt and input digest. Local validation against a schema that the model never received is not a valid structured-output contract. |

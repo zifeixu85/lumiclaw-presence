@@ -33,3 +33,10 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F2-03`: real nested child-process stage/non-disclosure/contradiction regressions and Live conformance evidence.
 - [x] `CR2-F2-04`: no-Owner-Key pinned AgentTeams diagnosis; exact pre-dispatch path reached provider boundary, so no unverified AgentTeams functional change was introduced.
 - [x] `CR2-F2-05`: Chinese acceptance update, full gates, clean commit, public-safe ZIP and Coordinator retry handoff.
+
+## CR2 Fix 3 tasks
+
+- [x] `CR2-F3-01`: strict provider-outcome allowlist, Task-bound Mission/snapshot extraction and receipt/envelope propagation.
+- [x] `CR2-F3-02`: exact role-schema prompt/digest binding and first-domain-task fixture reproduction/fix.
+- [x] `CR2-F3-03`: HTTP/provider/model/schema/semantic/broker/success API and actual child-process regression suite with forbidden-marker scans.
+- [ ] `CR2-F3-04`: Live conformance/evidence/report update, full gates, clean commit, public-safe ZIP and Coordinator retry handoff.

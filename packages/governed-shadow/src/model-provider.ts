@@ -54,14 +54,14 @@ export class DeepSeekModelProvider implements ModelProvider {
   }
 
   async generateStructured<T>(request: ModelGenerateRequest<T>): Promise<ModelGenerateResult<T>> {
-    const started = Date.now(); const config = normalizedConfig(request); const inputDigest = sha256Digest({system: request.system, input: request.input});
+    const started = Date.now(); const config = normalizedConfig(request); const inputDigest = sha256Digest({system: request.system, input: request.input, outputSchema: request.outputSchema});
     let attempts = 0; let lastError = {code: 'PROVIDER_UNAVAILABLE', retryable: true};
     while (attempts < config.maxAttempts) {
       attempts += 1;
       try {
         const response = await this.#fetch(new URL('/chat/completions', this.#baseUrl), {
           method: 'POST', headers: {'content-type': 'application/json', authorization: `Bearer ${this.#apiKey}`},
-          body: JSON.stringify({model: request.model, messages: [{role: 'system', content: request.system}, {role: 'user', content: JSON.stringify(request.input)}], temperature: config.temperature, max_tokens: config.maxTokens, response_format: {type: 'json_object'}}),
+          body: JSON.stringify({model: request.model, messages: [{role: 'system', content: `${request.system}\nThe user payload contains input and outputSchema. Return one JSON object that satisfies outputSchema exactly, including required fields and no additional fields.`}, {role: 'user', content: JSON.stringify({input: request.input, outputSchema: request.outputSchema})}], temperature: config.temperature, max_tokens: config.maxTokens, response_format: {type: 'json_object'}}),
           signal: AbortSignal.timeout(config.timeoutMs)
         });
         if (!response.ok) {
@@ -94,7 +94,7 @@ export class DeepSeekModelProvider implements ModelProvider {
 export class PublicSafeMockModelProvider implements ModelProvider {
   constructor(private readonly fixture: unknown, private readonly now: () => Date = () => new Date()) {}
   async generateStructured<T>(request: ModelGenerateRequest<T>): Promise<ModelGenerateResult<T>> {
-    const config = normalizedConfig(request); const inputDigest = sha256Digest({system: request.system, input: request.input});
+    const config = normalizedConfig(request); const inputDigest = sha256Digest({system: request.system, input: request.input, outputSchema: request.outputSchema});
     const validate = new Ajv({allErrors: true, strict: false}).compile(request.outputSchema);
     const mockResponse = {id: `public-safe-${request.taskId}`, actualModel: request.model, systemFingerprint: null, finishReason: 'stop'};
     if (!validate(this.fixture)) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, {prompt_tokens: 0, completion_tokens: 0}, mockResponse, 0, 1, {code: 'MOCK_SCHEMA_INVALID', retryable: false}, this.now(), 'PUBLIC_SAFE_MOCK', 'MOCK_CONFORMANCE')};
