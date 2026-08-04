@@ -39,4 +39,5 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F3-01`: strict provider-outcome allowlist, Task-bound Mission/snapshot extraction and receipt/envelope propagation.
 - [x] `CR2-F3-02`: exact role-schema prompt/digest binding and first-domain-task fixture reproduction/fix.
 - [x] `CR2-F3-03`: HTTP/provider/model/schema/semantic/broker/success API and actual child-process regression suite with forbidden-marker scans.
-- [ ] `CR2-F3-04`: Live conformance/evidence/report update, full gates, clean commit, public-safe ZIP and Coordinator retry handoff.
+- [x] `CR2-F3-03A`: strict host-loopback to Worker broker origin mapping and real six-member no-Secret reachability proof.
+- [x] `CR2-F3-04`: Live conformance/evidence/report update, full gates, clean commit, public-safe ZIP and Coordinator retry handoff. The real-key Canary remains Coordinator-owned and is not claimed by this task.

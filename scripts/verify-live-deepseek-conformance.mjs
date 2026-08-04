@@ -178,7 +178,7 @@ try {
     liveProviderVerified: false,
     liveProviderStatus: 'NOT_RUN_NO_OWNER_SECRET',
     generatedAt: new Date().toISOString(),
-    targetedContracts: {testFiles: 6, tests: 126, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true, exactRoleSchemaPromptBound: true, firstDomainFixtureCovered: true},
+    targetedContracts: {testFiles: 6, tests: 126, noKeyFailClosed: true, mockFallback: false, scopedSingleUseTickets: true, wrongScopeBurnsTicket: true, leaderModelCallForbidden: true, independentAuditorReceiptRequired: true, exactRoleSchemaPromptBound: true, firstDomainFixtureCovered: true, workerBrokerOriginBound: true},
     stdinTransport,
     stageDiagnostics,
     providerOutcomeDiagnostics,

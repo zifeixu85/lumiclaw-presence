@@ -76,6 +76,7 @@ try {
     source: receipt.source, missionId: receipt.missionId, campaignDigest: receipt.campaignDigest,
     runtime: {...receipt.runtime, exactMemberCount: 6, exactTaskCount: 8},
     diagnosedBoundary: {stage: receipt.stage, code: receipt.code, providerOutcomeCode: receipt.providerOutcomeCode, progress: receipt.progress, modelReceiptCount: 0, ownerSecretPresent: false, externalProviderRequestOccurred: false, liveProviderVerified: false, mockFallback: false},
+    networkBoundary: {hostApiLoopback: true, workerBrokerOrigin: 'host.docker.internal', arbitraryRemoteBrokerAllowed: false},
     persistedMission: {state: missionAfterFailure.state, failureCode: missionAfterFailure.runtimeStatus.failure.code, externalActionCount: missionAfterFailure.externalActionCount},
     noAction: receipt.noAction, nonDisclosure: {bootstrapFinding: false, ticketFinding: false, authorizationFinding: false, rawProviderResponseFinding: false},
     cleanup: {agentTeams: 'PASS', controlPlane: 'PASS', secretDirectory: 'PASS'}, failureReceipt: LIVE_FAILURE_EVIDENCE_RELATIVE_PATH

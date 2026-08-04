@@ -4,7 +4,7 @@ import {readFileSync, writeSync} from 'node:fs';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 import {conformanceProgressForStage, createLiveFailureEnvelope, createLiveFailureReceipt, defaultLiveProgress, isLiveStage, isProviderOutcomeCode, liveStageCode, providerOutcomeFromMission, readSourceIdentity, writeLiveFailureReceipt} from './live-uat-diagnostics.mjs';
-import {createRedactedTransportReceipt, parseLiveUatTransport} from './live-uat-transport.mjs';
+import {createRedactedTransportReceipt, deriveWorkerBrokerUrl, parseLiveUatTransport} from './live-uat-transport.mjs';
 
 const root = process.cwd();
 const api = process.env.LUMICLAW_LIVE_API_URL ?? 'http://127.0.0.1:4129';
@@ -38,7 +38,7 @@ if (diagnosticStage !== undefined || diagnosticProviderOutcome !== undefined) {
 
 const organizationHeaders = {'x-lumiclaw-organization-id': organizationId};
 let mission; let etag; let projectId; let eventCounter = 0; let lastTaskId = null; const receipts = [];
-let currentStage = 'MISSION_OPEN'; let providerOutcomeCode = null; const progress = defaultLiveProgress();
+let currentStage = 'MISSION_OPEN'; let providerOutcomeCode = null; let workerBrokerUrl; const progress = defaultLiveProgress();
 
 function digest(value) { return createHash('sha256').update(typeof value === 'string' ? value : JSON.stringify(canonical(value))).digest('hex'); }
 function canonical(value) { if (Array.isArray(value)) return value.map(canonical); if (value !== null && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().filter((key) => value[key] !== undefined).map((key) => [key, canonical(value[key])])); return value; }
@@ -83,7 +83,7 @@ async function modelFromWorker(role, task) {
   const ticket = await issue('MODEL_GENERATE', task);
   progress.providerBrokerRequestStarted = true;
   const requestBody = {taskId: task.id, roleId: task.roleId, attempt: task.attempt, inputProjectionDigest: task.inputProjectionDigest};
-  const input = JSON.stringify({url: `${api}/api/v1/shadow-missions/${missionId}/live-model-generate`, organizationId, ticket, body: requestBody});
+  const input = JSON.stringify({url: `${workerBrokerUrl}/api/v1/shadow-missions/${missionId}/live-model-generate`, organizationId, ticket, body: requestBody});
   const code = 'import json,sys,urllib.request; x=json.loads(sys.stdin.read()); data=json.dumps(x["body"],separators=(",",":")).encode(); req=urllib.request.Request(x["url"],data=data,headers={"content-type":"application/json","x-lumiclaw-organization-id":x["organizationId"],"x-lumiclaw-runtime-ticket":x["ticket"]}); response=urllib.request.urlopen(req,timeout=150); print(response.read().decode())';
   let output;
   try { output = run('docker', ['exec', '-i', '-w', workspace(role), `agentteams-worker-${role}`, '/opt/venv/standard/bin/python', '-c', code], `${role}:live-provider-broker`, input); }
@@ -103,6 +103,7 @@ async function modelFromWorker(role, task) {
 
 try {
   currentStage = 'MISSION_OPEN';
+  workerBrokerUrl = deriveWorkerBrokerUrl(api);
   const opened = await request(`/api/v1/shadow-missions/${missionId}`, {headers: organizationHeaders}); mission = opened.body.mission; etag = opened.etag; projectId = mission.runtimeProjectId;
   if (mission.providerMode !== 'LIVE_DEEPSEEK_UAT' || mission.providerMaturity !== 'LIVE_PROVIDER_CANARY' || mission.sourceCampaignDigest !== campaignDigest || mission.state !== 'WAITING_RUNTIME') throw new Error('LIVE_MISSION_BINDING_MISMATCH');
   currentStage = 'RUNTIME_IDENTITY';

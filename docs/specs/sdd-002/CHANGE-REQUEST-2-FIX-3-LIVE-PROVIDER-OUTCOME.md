@@ -10,7 +10,7 @@ Independent hidden-TTY probes then proved the official DeepSeek API, Owner crede
 
 The remaining implementation gap is task-level diagnostic integrity. The API persists an allowlisted provider/model/semantic failure before returning a non-2xx response. The AgentTeams Worker uses `urllib.request.urlopen`, whose `HTTPError` exits before the JSON response is parsed. The Runner then discards captured child output and retains only the coarse stage code. Ephemeral PostgreSQL cleanup removes the specific Mission failure before it can be inspected.
 
-Static inspection also finds a concrete first-domain-task contract defect: `DeepSeekModelProvider` locally validates `request.outputSchema`, but the schema is not included in either provider message. The system prompt tells the model to match a "supplied role schema" that was never supplied. The simple official JSON probe therefore does not prove that the `FREEZE_EVIDENCE` shape `{frozen, assessment}` can pass the product contract.
+The first real no-Secret reproduction after diagnostic implementation exposed the concrete third-Canary functional defect: the host Runner copied `http://127.0.0.1:<port>` into Python running inside an AgentTeams Worker container. Container loopback points to that Worker, so the request never reached the Control Plane; `providerBrokerRequestStarted` represented dispatch of the attempt, not API acceptance. A separate static contract defect also exists: `DeepSeekModelProvider` locally validates `request.outputSchema`, but the schema was absent from both provider messages. The simple official JSON probe therefore did not prove that the first `FREEZE_EVIDENCE` shape `{frozen, assessment}` could pass the product contract.
 
 ## Bounded correction
 
@@ -19,6 +19,7 @@ Static inspection also finds a concrete first-domain-task contract defect: `Deep
 - Allow only existing stable outcomes: `DEEPSEEK_SECRET_FILE_UNAVAILABLE`, `PROVIDER_HTTP_4xx`, `PROVIDER_HTTP_5xx`, `MODEL_TIMEOUT`, `PROVIDER_UNAVAILABLE`, response identity/model/finish/usage/response/JSON/schema failures, `LIVE_MODEL_SEMANTIC_OUTPUT_INVALID`, and `LIVE_PROVIDER_BROKER_FAILED`.
 - Never propagate the HTTP body, prompt, model content, response ID, headers, ticket, bootstrap, Authorization/Bearer value or arbitrary exception text. The top launcher reconstructs only the strict envelope and receipt fields.
 - Send the exact closed JSON output schema in the provider request prompt and bind that schema into the model input digest. Continue to use official `json_object`; do not invent unsupported server-side schema enforcement.
+- Preserve host loopback for Runner/API calls, but derive the Worker-only origin as `host.docker.internal` from a strict local HTTP origin. Reject arbitrary schemes/hosts/credentials/paths/query/fragment and prove reachability with a real six-member no-Secret run.
 - Exercise the first `FREEZE_EVIDENCE` domain Task through fixture transports for every HTTP/provider/model/semantic outcome and one success. The tests must prove the failure snapshot is persisted, the exact outcome survives child-process transport, and forbidden markers never appear.
 - Retain no Mock fallback, zero ActionGrant/Connector/external action, exact cleanup, fixed AgentTeams internals, canonical-status ownership and the Coordinator-only real Canary.
 
@@ -30,6 +31,7 @@ Static inspection also finds a concrete first-domain-task contract defect: `Deep
 4. The provider request contains the exact role output schema and the snapshot input digest changes if that schema changes.
 5. The actual first domain Task fixture succeeds only with `{frozen: true, assessment: <non-empty string>}` and rejects a merely valid but wrong JSON object as `MODEL_SCHEMA_INVALID`.
 6. All public evidence remains redacted, ActionGrant/Connector/external action remain zero, and `LIVE_PROVIDER_VERIFIED` remains false until a new Coordinator Canary succeeds.
+7. The actual AgentTeams Worker reaches the same PostgreSQL Control Plane through the derived local broker origin; the no-Secret run persists and exports `DEEPSEEK_SECRET_FILE_UNAVAILABLE` instead of a generic broker fallback.
 
 ## Out of scope
 

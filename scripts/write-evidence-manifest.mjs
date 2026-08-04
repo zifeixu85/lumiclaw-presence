@@ -117,6 +117,7 @@ function liveConformanceValid(value) {
     && value?.targetedContracts?.independentAuditorReceiptRequired === true
     && value?.targetedContracts?.exactRoleSchemaPromptBound === true
     && value?.targetedContracts?.firstDomainFixtureCovered === true
+    && value?.targetedContracts?.workerBrokerOriginBound === true
     && transport?.status === 'PASS'
     && transport?.protocol === 'STRICT_JSON_EXACT_FOUR_FIELDS_SINGLE_FD0_READ'
     && transport?.nestedChildProcess === true
@@ -208,6 +209,7 @@ function liveNoSecretDiagnosticValid(value, currentHead, imageManifest) {
     && value?.persistedMission?.state === 'FAILED'
     && value?.persistedMission?.failureCode === 'DEEPSEEK_SECRET_FILE_UNAVAILABLE'
     && value?.persistedMission?.externalActionCount === 0
+    && exactRecord(value?.networkBoundary, {hostApiLoopback: true, workerBrokerOrigin: 'host.docker.internal', arbitraryRemoteBrokerAllowed: false})
     && exactNoAction({...value?.noAction, externalActionAllowed: false})
     && exactRecord(value?.nonDisclosure, {bootstrapFinding: false, ticketFinding: false, authorizationFinding: false, rawProviderResponseFinding: false})
     && exactRecord(value?.cleanup, {agentTeams: 'PASS', controlPlane: 'PASS', secretDirectory: 'PASS'})
@@ -472,6 +474,7 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, mockFallback: true}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, tests: 0}}),
     !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, exactRoleSchemaPromptBound: false}}),
+    !liveConformanceValid({...liveConformance, targetedContracts: {...liveConformance.targetedContracts, workerBrokerOriginBound: false}}),
     !liveConformanceValid({...liveConformance, providerOutcomeDiagnostics: {...liveConformance.providerOutcomeDiagnostics, outcomes: liveConformance.providerOutcomeDiagnostics.outcomes.map((entry, index) => index === 0 ? {...entry, providerOutcomeCode: 'RAW_PROVIDER_FAILURE'} : entry)}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, nestedChildProcess: false}}),
     !liveConformanceValid({...liveConformance, stdinTransport: {...liveConformance.stdinTransport, bootstrapOrSecretFinding: true}}),

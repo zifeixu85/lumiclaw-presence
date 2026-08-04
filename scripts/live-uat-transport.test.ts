@@ -1,6 +1,7 @@
 import {createHash} from 'node:crypto';
 import {spawnSync} from 'node:child_process';
 import {describe, expect, it} from 'vitest';
+import {deriveWorkerBrokerUrl} from './live-uat-transport.mjs';
 
 const organizationId = '019fcc41-dd89-70c1-ae55-c8e45b4aeb3f';
 const missionId = '019fcc41-ddba-7897-a271-d0eda0c9a7fd';
@@ -74,6 +75,11 @@ describe('Live UAT nested child-process stdin transport', () => {
   });
 
   it('returns only a stable redacted code when valid transport reaches an operational failure', () => {
+    expect(deriveWorkerBrokerUrl('http://127.0.0.1:4129')).toBe('http://host.docker.internal:4129');
+    expect(deriveWorkerBrokerUrl('http://localhost:4131')).toBe('http://host.docker.internal:4131');
+    expect(() => deriveWorkerBrokerUrl('https://example.test:443')).toThrow('LIVE_UAT_TRANSPORT_INVALID');
+    expect(() => deriveWorkerBrokerUrl('http://user@127.0.0.1:4129')).toThrow('LIVE_UAT_TRANSPORT_INVALID');
+    expect(() => deriveWorkerBrokerUrl('http://127.0.0.1:4129/private?ticket=dummy')).toThrow('LIVE_UAT_TRANSPORT_INVALID');
     const result = invokeOperationalFailure(JSON.stringify(valid));
     expect(result.status).not.toBe(0);
     expectNoDisclosure(result, bootstrap, secretMarker);

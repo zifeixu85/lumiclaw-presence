@@ -39,4 +39,5 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 - [x] Third Canary and independent official probes freeze the failure after Project dispatch and before an accepted ModelCallSnapshot.
 - [x] Existing stable provider/model/semantic codes, Task binding and forbidden raw fields are explicitly bounded.
 - [x] The missing role-schema prompt binding is a verified concrete contract defect, not an assumed provider outage.
+- [x] Worker broker URL is derived only from local HTTP loopback and reaches the Compose API from the actual AgentTeams container network.
 - [x] HTTP/model/schema/semantic/broker/success fixtures, child non-disclosure, cleanup and zero-action are binary acceptance conditions.

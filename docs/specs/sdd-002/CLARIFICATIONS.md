@@ -21,3 +21,4 @@
 | CL-17 | A no-Owner-Key controlled run may prove Project/DAG/dispatch and then stop at the unavailable provider broker. It is infrastructure diagnosis, not `LIVE_PROVIDER_VERIFIED`, and cannot silently fall back to Mock. |
 | CL-18 | CR2 Fix 3 may expose one nullable allowlisted `providerOutcomeCode` derived from the exact persisted Task failure before cleanup; raw HTTP/model/security material remains forbidden. |
 | CL-19 | The exact role output schema must be present in the DeepSeek prompt and input digest. Local validation against a schema that the model never received is not a valid structured-output contract. |
+| CL-20 | A Coordinator local loopback Control Plane URL is host-only; the Runner derives a Worker-only `host.docker.internal` origin from a strict HTTP loopback URL. Arbitrary remote origins, credentials, paths, query strings and fragments fail closed. |

@@ -33,6 +33,15 @@ export function serializeLiveUatTransport(value) {
   return `${JSON.stringify(parsed)}\n`;
 }
 
+export function deriveWorkerBrokerUrl(raw) {
+  let url;
+  try { url = new URL(raw); } catch { throw new LiveUatTransportError(); }
+  const loopback = new Set(['127.0.0.1', 'localhost', '[::1]']);
+  if (url.protocol !== 'http:' || !loopback.has(url.hostname) || url.port === '' || url.username !== '' || url.password !== '' || url.pathname !== '/' || url.search !== '' || url.hash !== '') throw new LiveUatTransportError();
+  url.hostname = 'host.docker.internal';
+  return url.origin;
+}
+
 export function createRedactedTransportReceipt(value) {
   return {
     status: 'PASS',

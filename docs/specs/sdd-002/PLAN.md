@@ -44,4 +44,5 @@ Rollback uses local Git reverts and project-scoped test migrations. Cancellation
 - Extend the failure receipt and nested envelope with only the nullable allowlisted outcome; reject contradictions and all raw output.
 - Include the exact closed role schema in the DeepSeek request and its input digest, then reproduce the first domain Task with fixture transports.
 - Cover HTTP/provider/model/schema/semantic/broker/success cases at provider, API and actual child-process layers.
+- Keep host Control Plane calls on loopback while deriving a strict container-reachable Worker broker origin; verify it with the real six-member no-Secret run rather than a synthetic networking claim.
 - Rerun full Live/AgentTeams/PostgreSQL/Compose/browser/security/evidence gates, update the Chinese report, commit cleanly and return a one-attempt Coordinator retry protocol.
