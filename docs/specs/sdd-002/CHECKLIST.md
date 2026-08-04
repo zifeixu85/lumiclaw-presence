@@ -84,3 +84,14 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 - [x] Exact public-safe seven-model-call flow reaches `AWAITING_OWNER_REVIEW` with five revisions/audits and ActionGrant/Connector/external action all zero.
 - [x] Public-safe real AgentTeams six/eight, no-Secret Live, full verification, report, manifest and clean-Head ZIP pass.
 - [x] The eleventh real-key Canary remains Coordinator-owned and is not represented as `LIVE_PROVIDER_VERIFIED` or `ACCEPTED`.
+
+## CR2 Fix 9 checklist
+
+- [ ] The eleventh receipt is preserved only as `MODEL_FINISH_REASON_INVALID`; no exact historical finish reason or raw model material is inferred.
+- [ ] `stop`, `length`, `content_filter`, `tool_calls`, `insufficient_system_resource`, null and unknown have exact closed outcomes.
+- [ ] Length/filter/tool/null/unknown never parse or persist partial output; resource interruption alone retries within the existing attempt cap.
+- [ ] Resource retry preserves byte-equivalent canonical request/model/input/schema/config and succeeds or exhausts deterministically.
+- [ ] DeepSeek V4 `thinking: {type: 'disabled'}` is visible in request/config/evidence and bound into the input digest; live `maxTokens=4000` remains unchanged.
+- [ ] New outcomes cross API/nested diagnostics only through the allowlist, with forbidden raw/security markers absent.
+- [ ] Fix 8 phase policy, real six-member/eight-Task Runtime, independent Auditor, no Mock fallback and all zero-action boundaries remain green.
+- [ ] Full gates, Chinese report, manifest and clean-Head public-safe ZIP pass; the twelfth Canary remains Coordinator-owned and not `LIVE_PROVIDER_VERIFIED`/`ACCEPTED`.

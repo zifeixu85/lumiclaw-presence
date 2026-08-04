@@ -76,3 +76,10 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F8-02`: explicit action + Task kind + Mission phase ticket policy with existing Task-state/role/attempt/projection/runtime/single-use bindings preserved.
 - [x] `CR2-F8-03`: full legal/illegal phase matrix, stale/consumed/replay/overbroad negatives and seven-receipt exact correction/re-audit completion regression.
 - [x] `CR2-F8-04`: full Provider/PostgreSQL/AgentTeams/Live/browser/Compose/security/build/evidence/report/clean-Head ZIP gates and eleventh Coordinator Canary handoff. Real-key verification remains external.
+
+## CR2 Fix 9 tasks
+
+- [ ] `CR2-F9-01`: official-source lifecycle and baseline-red tests for finish-reason collapse plus implicit thinking default.
+- [ ] `CR2-F9-02`: closed finish-reason outcomes, partial-output quarantine and bounded identical-request resource retry.
+- [ ] `CR2-F9-03`: explicit non-thinking request/config/input-digest binding and strict API/nested diagnostic/evidence propagation.
+- [ ] `CR2-F9-04`: full Provider/PostgreSQL/API/AgentTeams/Live/browser/Compose/security/build/report/manifest/clean-Head ZIP gates and twelfth Coordinator Canary handoff. Real-key verification remains external.

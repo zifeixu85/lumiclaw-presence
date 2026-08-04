@@ -90,3 +90,13 @@ Rollback uses local Git reverts and project-scoped test migrations. Cancellation
 - Complete the deterministic seven-model-call correction/re-audit API flow to `AWAITING_OWNER_REVIEW` with five immutable revisions/audits and zero actions.
 - Rerun Provider/PostgreSQL/API/public-safe real AgentTeams/no-Secret Live/browser/Compose/security/build/evidence gates; update the Chinese report and clean-Head package.
 - Return an eleventh Coordinator Canary protocol while leaving real-key verification and acceptance external.
+
+## CR2 Fix 9 plan
+
+- Freeze the eleventh redacted receipt and official DeepSeek V4 finish-reason/thinking contract without claiming the lost historical value.
+- Add baseline-red Provider tests for explicit non-thinking, closed finish-reason outcomes, partial-output quarantine and resource retry.
+- Bind `thinkingMode: disabled` and the normalized generation config into the request snapshot/input digest; retain the exact model, schema and 4000-token live bound.
+- Extend API/nested diagnostics and evidence allowlists only with stable public-safe outcome codes; reject raw response/security markers.
+- Exercise official finish reasons, resource retry success/exhaustion, identical request bodies, no model switch, API persistence and child propagation.
+- Rerun Provider/Live/PostgreSQL/API/public-safe real AgentTeams/no-Secret Live/browser/Compose/security/build/evidence gates; update the Chinese report and clean-Head package.
+- Return a twelfth Coordinator Canary protocol while leaving real-key verification and acceptance external.
