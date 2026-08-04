@@ -12,6 +12,10 @@ const expectedArchive = '.evidence/sdd-002/source-packages/lumiclaw-presence-sdd
 const expectedImmutableHistory = ['governed_artifact_revisions', 'audit_decisions', 'owner_reviews', 'trace_events', 'ledger_entries', 'shadow_idempotency'];
 const expectedRuntimeImageComponents = ['embedded-controller', 'manager-copaw', 'worker'];
 const expectedSkillLocks = ['account-native-expression@1.0.0', 'campaign-strategy@1.0.0', 'evidence-and-claim-grounding@1.0.0', 'independent-action-audit@1.0.0', 'trace-safe-escalation@1.0.0'];
+const expectedProviderPricing = {
+  flash: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheHitUsdPerMillion: 0.0028, inputCacheMissUsdPerMillion: 0.14, outputUsdPerMillion: 0.28, peakMultiplierNotApplied: true},
+  pro: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheHitUsdPerMillion: 0.003625, inputCacheMissUsdPerMillion: 0.435, outputUsdPerMillion: 0.87, peakMultiplierNotApplied: true}
+};
 const expectedRoleContracts = [
   {id: 'presence-mission-leader', orchestrationOnly: true, permissions: ['ORCHESTRATE'], skillLocks: ['trace-safe-escalation@1.0.0']},
   {id: 'evidence-claim-steward', orchestrationOnly: false, permissions: ['READ_EVIDENCE'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'trace-safe-escalation@1.0.0']},
@@ -91,6 +95,30 @@ function exactBooleanMap(actual, expected) {
   return actual !== null && typeof actual === 'object' && !Array.isArray(actual)
     && exactStringSet(Object.keys(actual), expected)
     && expected.every((key) => actual[key] === true);
+}
+function exactRecord(actual, expected) {
+  return actual !== null && typeof actual === 'object' && !Array.isArray(actual)
+    && exactStringSet(Object.keys(actual), Object.keys(expected))
+    && Object.entries(expected).every(([key, value]) => actual[key] === value);
+}
+function providerEvidenceValid(providers) {
+  const conformance = providers?.deepSeek?.conformance;
+  return providers?.status === 'PASS'
+    && providers?.deepSeek?.canary === 'NOT_RUN_NO_KEY'
+    && providers?.evoLink?.canary === 'NOT_RUN_NO_KEY'
+    && providers?.publicSafeMock?.maturity === 'MOCK_CONFORMANCE'
+    && conformance?.executionClass === 'MOCK_CONFORMANCE'
+    && conformance?.actualReturnedModel === 'deepseek-v4-flash'
+    && conformance?.finishReason === 'stop'
+    && conformance?.responseIdentityCaptured === true
+    && conformance?.responseIdentityRejections?.join(',') === 'MODEL_RETURNED_MODEL_MISMATCH,MODEL_FINISH_REASON_INVALID,MODEL_RESPONSE_IDENTITY_INVALID,MODEL_USAGE_INVALID'
+    && conformance?.usageBreakdownConsistencyRejected === true
+    && conformance?.usageBreakdownPolicy === 'BOTH_OR_NONE_EXACT_SUM; ABSENT_MEANS_ALL_CACHE_MISS'
+    && conformance?.costSnapshotUsd === 0.000025256
+    && exactRecord(conformance?.costSnapshotsUsd, {flash: 0.000025256, pro: 0.0000783725})
+    && exactRecord(conformance?.pricingSnapshots?.flash, expectedProviderPricing.flash)
+    && exactRecord(conformance?.pricingSnapshots?.pro, expectedProviderPricing.pro)
+    && exactNoAction(providers?.noAction);
 }
 function roleContractIdentity(role) {
   return JSON.stringify({
@@ -248,7 +276,7 @@ function sbomEvidenceValid(sbom, expectedSbom, rootPackage, packageCount, source
     && properties.get('lumiclaw:license-inventory-path') === '.evidence/sdd-002/license-inventory.json';
 }
 
-function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256, sourcePackage, runtimeSource, currentHead, sourceArchive, currentGitFiles, productControlPlane, noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage}) {
+function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256, sourcePackage, runtimeSource, currentHead, sourceArchive, currentGitFiles, productControlPlane, noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage, providers}) {
   const duplicateRuntimeImages = runtime.images.map(() => ({...runtime.images[0]}));
   const extraRuntimeImage = {...runtime.images[0], component: 'unknown-component'};
   const mutateCapabilityRole = (roleId, mutation) => ({
@@ -261,6 +289,7 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
       }
     }
   });
+  const mutateProviderConformance = (mutation) => ({...providers, deepSeek: {...providers.deepSeek, conformance: mutation(providers.deepSeek.conformance)}});
   const mutationsRejected = [
     !exactTaskSet(tasks.map((task, index) => index === 0 ? {...task, ackReceiptDigest: 'x'} : task)),
     !exactTaskSet(tasks.map((task, index) => index === 0 ? {...task, runtimeResultDigest: tasks[1].runtimeResultDigest} : task)),
@@ -299,7 +328,10 @@ function runNegativeSelfTests({tasks, runtime, lifecycle, imageManifest, capabil
     !sbomEvidenceValid({bomFormat: 'CycloneDX'}, expectedSbom, rootPackage, expectedPackages.length, sourceLockSha256),
     !sbomEvidenceValid({...sbom, components: sbom.components.slice(0, 1)}, expectedSbom, rootPackage, expectedPackages.length, sourceLockSha256),
     !exactBooleanMap({...shadowPostgres.immutableHistory, owner_reviews: false}, expectedImmutableHistory),
-    !pngImageMatches(Buffer.from('not a png', 'utf8'), {width: 390, height: 844})
+    !pngImageMatches(Buffer.from('not a png', 'utf8'), {width: 390, height: 844}),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, costSnapshotsUsd: {...conformance.costSnapshotsUsd, flash: 0.000028}}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, pricingSnapshots: {...conformance.pricingSnapshots, flash: {...conformance.pricingSnapshots.flash, inputCacheHitUsdPerMillion: undefined}}}))),
+    !providerEvidenceValid(mutateProviderConformance((conformance) => ({...conformance, usageBreakdownConsistencyRejected: false})))
   ];
   if (!mutationsRejected.every(Boolean)) throw new Error('EVIDENCE_NEGATIVE_SELF_TEST_FAILED');
   return mutationsRejected.length;
@@ -406,8 +438,7 @@ async function assertEvidence() {
     && agentteamsReal.productControlPlane?.persistedCampaignId !== undefined
     && agentteamsReal.productControlPlane?.sourceCampaignDigest !== undefined;
   if (agentteamsReal.status !== 'PASS' || agentteamsReal.runtime?.realAgentTeamsAcceptance !== true || agentteamsReal.runtime?.realModelAcceptance !== false || agentteamsReal.topology?.memberCount !== 6 || agentteamsReal.project?.taskCount !== 8 || agentteamsReal.project?.restartRecovered !== true || !exactProductIdentity || agentteamsReal.productControlPlane?.sameProjectBinding !== true || agentteamsReal.productControlPlane?.normalizedHistoryAuthoritative !== true || agentteamsReal.productControlPlane?.aggregatePoisonIgnored !== true || agentteamsReal.productControlPlane?.normalizedHistoryTamperRejected !== true || agentteamsReal.productControlPlane?.databaseCounts?.action_tables !== 0 || agentteamsReal.environmentLifecycle?.status !== 'PASS' || agentteamsReal.environmentLifecycle?.selfProvisioned !== true || agentteamsReal.environmentLifecycle?.exactRuntimeObjectsRemoved !== true || agentteamsReal.environmentLifecycle?.ephemeralCredentialsRemoved !== true || !runtimeIdentityMatches(agentteamsReal.runtime, agentteamsReal.environmentLifecycle, imageManifest) || !causalRuntimeValid || agentteamsReal.noAction?.executionMode !== 'SHADOW_PREP_ONLY' || !exactNoAction(agentteamsReal.noAction)) failures.push('agentteams-real-runtime');
-  const deepSeekConformance = providers.deepSeek?.conformance;
-  if (providers.status !== 'PASS' || providers.deepSeek?.canary !== 'NOT_RUN_NO_KEY' || providers.evoLink?.canary !== 'NOT_RUN_NO_KEY' || providers.publicSafeMock?.maturity !== 'MOCK_CONFORMANCE' || deepSeekConformance?.executionClass !== 'MOCK_CONFORMANCE' || deepSeekConformance?.actualReturnedModel !== 'deepseek-v4-flash' || deepSeekConformance?.finishReason !== 'stop' || deepSeekConformance?.responseIdentityCaptured !== true || deepSeekConformance?.responseIdentityRejections?.join(',') !== 'MODEL_RETURNED_MODEL_MISMATCH,MODEL_FINISH_REASON_INVALID,MODEL_RESPONSE_IDENTITY_INVALID,MODEL_USAGE_INVALID' || !exactNoAction(providers.noAction)) failures.push('provider-conformance');
+  if (!providerEvidenceValid(providers)) failures.push('provider-conformance');
   if (shadowPostgres.status !== 'PASS' || shadowPostgres.restartRecovered !== true || shadowPostgres.normalizedHistoryOnly !== true || shadowPostgres.idempotencyMetadataOnly !== true || shadowPostgres.advancedCheckpointRejected !== true || shadowPostgres.idempotentReplayNormalizedValidated !== true || !exactBooleanMap(shadowPostgres.immutableHistory, expectedImmutableHistory) || shadowPostgres.counts?.owner_reviews !== 1 || shadowPostgres.forbiddenTables !== 0 || !exactNoAction(shadowPostgres.noAction)) failures.push('shadow-postgres');
   const productBrowser = browser.checks?.productHydratedMissionAndReview;
   const browserNoActionValid = exactBrowserNoAction(productBrowser?.mission)
@@ -423,7 +454,7 @@ async function assertEvidence() {
   if (!sbomEvidenceValid(sbom, expectedSbom, rootPackage, expectedPackages.length, sourceLockSha256)) failures.push('sbom');
   if (npmAudit.metadata?.vulnerabilities?.total !== 0) failures.push('npm-audit');
   if (failures.length > 0) throw new Error(`EVIDENCE_VALIDATION_FAILED:${failures.join(',')}`);
-  return runNegativeSelfTests({tasks: causalTasks, runtime: agentteamsReal.runtime, lifecycle: agentteamsReal.environmentLifecycle, imageManifest, capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256, sourcePackage, runtimeSource: agentteamsReal.sourceIdentity, currentHead, sourceArchive, currentGitFiles, productControlPlane: agentteamsReal.productControlPlane, noAction: agentteamsReal.noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage});
+  return runNegativeSelfTests({tasks: causalTasks, runtime: agentteamsReal.runtime, lifecycle: agentteamsReal.environmentLifecycle, imageManifest, capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256, sourcePackage, runtimeSource: agentteamsReal.sourceIdentity, currentHead, sourceArchive, currentGitFiles, productControlPlane: agentteamsReal.productControlPlane, noAction: agentteamsReal.noAction, shadowPostgres, licenses, expectedPackages, sourceLockSha256, sbom, expectedSbom, rootPackage, providers});
 }
 
 const negativeMutationsRejected = await assertEvidence();

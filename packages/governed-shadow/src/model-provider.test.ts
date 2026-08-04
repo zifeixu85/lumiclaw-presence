@@ -7,7 +7,18 @@ const response = (content = '{"copy":"safe"}', overrides: Record<string, unknown
 describe('DeepSeek ModelProvider conformance', () => {
   it('validates structured output and records exact config/cost without a secret', async () => {
     const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(response()), {status: 200, headers: {'content-type': 'application/json'}})});
-    const result = await provider.generateStructured(request); expect(result.ok).toBe(true); expect(result.snapshot).toMatchObject({provider: 'DEEPSEEK', maturity: 'MOCK_CONFORMANCE', model: 'deepseek-v4-flash', response: {id: 'chatcmpl-fixture', actualModel: 'deepseek-v4-flash', systemFingerprint: 'fixture-fingerprint', finishReason: 'stop'}, tokenUsage: {input: 100, output: 50, cacheHit: 20, cacheMiss: 80, reasoning: 10}, estimatedCostUsd: 0.000028, attempts: 1, secretPresent: false, error: null}); expect(JSON.stringify(result.snapshot)).not.toContain('fixture-credential');
+    const result = await provider.generateStructured(request); expect(result.ok).toBe(true); expect(result.snapshot).toMatchObject({provider: 'DEEPSEEK', maturity: 'MOCK_CONFORMANCE', model: 'deepseek-v4-flash', response: {id: 'chatcmpl-fixture', actualModel: 'deepseek-v4-flash', systemFingerprint: 'fixture-fingerprint', finishReason: 'stop'}, pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheHitUsdPerMillion: 0.0028, inputCacheMissUsdPerMillion: 0.14, outputUsdPerMillion: 0.28, peakMultiplierNotApplied: true}, tokenUsage: {input: 100, output: 50, cacheHit: 20, cacheMiss: 80, reasoning: 10}, estimatedCostUsd: 0.000025256, attempts: 1, secretPresent: false, error: null}); expect(JSON.stringify(result.snapshot)).not.toContain('fixture-credential');
+  });
+  it('records the exact pro cache-hit/miss/output cost snapshot', async () => {
+    const proRequest = {...request, model: 'deepseek-v4-pro' as const};
+    const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(response(undefined, {model: 'deepseek-v4-pro'})), {status: 200})});
+    const result = await provider.generateStructured(proRequest);
+    expect(result.ok).toBe(true); expect(result.snapshot).toMatchObject({pricing: {inputCacheHitUsdPerMillion: 0.003625, inputCacheMissUsdPerMillion: 0.435, outputUsdPerMillion: 0.87}, tokenUsage: {input: 100, output: 50, cacheHit: 20, cacheMiss: 80}, estimatedCostUsd: 0.0000783725});
+  });
+  it('prices all prompt tokens as cache misses when the optional breakdown is wholly absent', async () => {
+    const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(response(undefined, {usage: {prompt_tokens: 100, completion_tokens: 50}})), {status: 200})});
+    const result = await provider.generateStructured(request);
+    expect(result.ok).toBe(true); expect(result.snapshot).toMatchObject({tokenUsage: {input: 100, output: 50, cacheHit: 0, cacheMiss: 100}, estimatedCostUsd: 0.000028});
   });
   it('retries only 429/5xx and never switches model', async () => {
     const seen: string[] = []; let count = 0; const provider = new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', delay: async () => {}, fetchImplementation: async (_url, init) => { seen.push(JSON.parse(String(init?.body)).model); count += 1; return count < 3 ? new Response('{}', {status: count === 1 ? 429 : 503}) : new Response(JSON.stringify(response('{"copy":"ok"}', {usage: {prompt_tokens: 0, completion_tokens: 0}})), {status: 200}); }});
@@ -37,6 +48,15 @@ describe('DeepSeek ModelProvider conformance', () => {
   ])('rejects response provenance defect %s', async (code, payload) => {
     const result = await new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(payload), {status: 200})}).generateStructured(request);
     expect(result.ok).toBe(false); expect(result.snapshot.error?.code).toBe(code);
+  });
+  it.each([
+    ['contradictory breakdown', {prompt_tokens: 100, completion_tokens: 50, prompt_cache_hit_tokens: 20, prompt_cache_miss_tokens: 79}],
+    ['cache hit without miss', {prompt_tokens: 100, completion_tokens: 50, prompt_cache_hit_tokens: 20}],
+    ['cache miss without hit', {prompt_tokens: 100, completion_tokens: 50, prompt_cache_miss_tokens: 80}]
+  ])('rejects %s instead of silently underestimating cost', async (_label, usage) => {
+    const payload = response(undefined, {usage});
+    const result = await new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response(JSON.stringify(payload), {status: 200})}).generateStructured(request);
+    expect(result.ok).toBe(false); expect(result.snapshot).toMatchObject({tokenUsage: null, estimatedCostUsd: null, error: {code: 'MODEL_USAGE_INVALID', retryable: false}});
   });
   it('allows CANARY only through the official non-injected transport', () => {
     expect(() => new DeepSeekModelProvider({apiKey: 'fixture-credential', executionClass: 'CANARY', baseUrl: 'https://example.invalid'})).toThrow('DEEPSEEK_CANARY_REQUIRES_OFFICIAL_LIVE_TRANSPORT');

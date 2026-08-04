@@ -31,9 +31,9 @@ type GatewayOptions = {
   delay?: (milliseconds: number) => Promise<void>;
 };
 
-const RATES: Record<DeepSeekModel, {input: number; output: number}> = {
-  'deepseek-v4-flash': {input: 0.14, output: 0.28},
-  'deepseek-v4-pro': {input: 0.435, output: 0.87}
+const RATES: Record<DeepSeekModel, {inputCacheHit: number; inputCacheMiss: number; output: number}> = {
+  'deepseek-v4-flash': {inputCacheHit: 0.0028, inputCacheMiss: 0.14, output: 0.28},
+  'deepseek-v4-pro': {inputCacheHit: 0.003625, inputCacheMiss: 0.435, output: 0.87}
 };
 
 export class DeepSeekModelProvider implements ModelProvider {
@@ -118,19 +118,28 @@ type DeepSeekResponse = {id?: string; model?: string; system_fingerprint?: strin
 
 function validUsage(usage: DeepSeekUsage | undefined): usage is DeepSeekUsage & {prompt_tokens: number; completion_tokens: number} {
   if (usage === undefined || !nonnegativeInteger(usage.prompt_tokens) || !nonnegativeInteger(usage.completion_tokens)) return false;
-  return [usage.prompt_cache_hit_tokens, usage.prompt_cache_miss_tokens, usage.completion_tokens_details?.reasoning_tokens].every((value) => value === undefined || nonnegativeInteger(value));
+  if (![usage.prompt_cache_hit_tokens, usage.prompt_cache_miss_tokens, usage.completion_tokens_details?.reasoning_tokens].every((value) => value === undefined || nonnegativeInteger(value))) return false;
+  const hitPresent = usage.prompt_cache_hit_tokens !== undefined;
+  const missPresent = usage.prompt_cache_miss_tokens !== undefined;
+  if (hitPresent !== missPresent) return false;
+  return !hitPresent || usage.prompt_cache_hit_tokens! + usage.prompt_cache_miss_tokens! === usage.prompt_tokens;
 }
 
-function nonnegativeInteger(value: unknown): value is number { return Number.isInteger(value) && Number(value) >= 0; }
+function nonnegativeInteger(value: unknown): value is number { return Number.isSafeInteger(value) && Number(value) >= 0; }
 
 function snapshot(request: ModelGenerateRequest<unknown>, config: ReturnType<typeof normalizedConfig>, inputDigest: string, outputDigest: string | null, usage: DeepSeekUsage | null | undefined, response: ModelCallSnapshot['response'] | null, latencyMs: number, attempts: number, error: ModelCallSnapshot['error'], now: Date, provider: ModelCallSnapshot['provider'], maturity: ModelCallSnapshot['maturity']): ModelCallSnapshot {
-  const input = usage?.prompt_tokens ?? 0; const output = usage?.completion_tokens ?? 0; const rate = RATES[request.model];
-  const tokenUsage = usage === null || usage === undefined ? null : {input, output, cacheHit: usage.prompt_cache_hit_tokens ?? 0, cacheMiss: usage.prompt_cache_miss_tokens ?? input, reasoning: usage.completion_tokens_details?.reasoning_tokens ?? 0};
+  const candidateUsage = usage ?? undefined;
+  const pricedUsage = validUsage(candidateUsage) ? candidateUsage : null;
+  const input = pricedUsage?.prompt_tokens ?? 0; const output = pricedUsage?.completion_tokens ?? 0; const rate = RATES[request.model];
+  const hasCacheBreakdown = pricedUsage?.prompt_cache_hit_tokens !== undefined && pricedUsage.prompt_cache_miss_tokens !== undefined;
+  const cacheHit = hasCacheBreakdown ? pricedUsage.prompt_cache_hit_tokens! : 0;
+  const cacheMiss = hasCacheBreakdown ? pricedUsage.prompt_cache_miss_tokens! : input;
+  const tokenUsage = pricedUsage === null ? null : {input, output, cacheHit, cacheMiss, reasoning: pricedUsage.completion_tokens_details?.reasoning_tokens ?? 0};
   return {
     schemaVersion: 1, id: id(now, sha256Digest({missionId: request.missionId, taskId: request.taskId, inputDigest, attempts})), missionId: request.missionId, taskId: request.taskId,
     provider, maturity, model: request.model, response: response ?? {id: null, actualModel: null, systemFingerprint: null, finishReason: null}, config,
-    pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheMissUsdPerMillion: rate.input, outputUsdPerMillion: rate.output, peakMultiplierNotApplied: true},
-    inputDigest, outputDigest, tokenUsage, estimatedCostUsd: tokenUsage === null || provider === 'PUBLIC_SAFE_MOCK' ? provider === 'PUBLIC_SAFE_MOCK' ? 0 : null : Number(((input * rate.input + output * rate.output) / 1_000_000).toFixed(9)),
+    pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheHitUsdPerMillion: rate.inputCacheHit, inputCacheMissUsdPerMillion: rate.inputCacheMiss, outputUsdPerMillion: rate.output, peakMultiplierNotApplied: true},
+    inputDigest, outputDigest, tokenUsage, estimatedCostUsd: tokenUsage === null || provider === 'PUBLIC_SAFE_MOCK' ? provider === 'PUBLIC_SAFE_MOCK' ? 0 : null : Number(((cacheHit * rate.inputCacheHit + cacheMiss * rate.inputCacheMiss + output * rate.output) / 1_000_000).toFixed(12)),
     latencyMs, attempts, error, secretPresent: false, createdAt: now.toISOString()
   };
 }

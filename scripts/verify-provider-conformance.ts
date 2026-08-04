@@ -23,6 +23,11 @@ const request: ModelGenerateRequest<{copy: string}> = {
   maxAttempts: 3
 };
 const fixtureCredential = 'public-safe-conformance-credential';
+const usageBreakdownPolicy = 'BOTH_OR_NONE_EXACT_SUM; ABSENT_MEANS_ALL_CACHE_MISS';
+const expectedPricing = {
+  flash: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheHitUsdPerMillion: 0.0028, inputCacheMissUsdPerMillion: 0.14, outputUsdPerMillion: 0.28, peakMultiplierNotApplied: true},
+  pro: {source: 'DEEPSEEK_OFFICIAL_2026-08-04', inputCacheHitUsdPerMillion: 0.003625, inputCacheMissUsdPerMillion: 0.435, outputUsdPerMillion: 0.87, peakMultiplierNotApplied: true}
+} as const;
 const observedModels: string[] = [];
 let responseCount = 0;
 const gateway = new DeepSeekModelProvider({
@@ -41,6 +46,16 @@ const gateway = new DeepSeekModelProvider({
 });
 const retryResult = await gateway.generateStructured(request);
 if (!retryResult.ok || retryResult.snapshot.attempts !== 3 || observedModels.some((model) => model !== request.model) || JSON.stringify(retryResult.snapshot).includes(fixtureCredential)) throw new Error('DEEPSEEK_GATEWAY_RETRY_OR_REDACTION_CONFORMANCE_FAILED');
+if (retryResult.snapshot.estimatedCostUsd !== 0.000025256 || JSON.stringify(retryResult.snapshot.pricing) !== JSON.stringify(expectedPricing.flash)) throw new Error('DEEPSEEK_FLASH_EXACT_COST_CONFORMANCE_FAILED');
+
+const proRequest = {...request, taskId: 'producer-task-pro', model: 'deepseek-v4-pro' as const};
+const proResult = await new DeepSeekModelProvider({
+  apiKey: fixtureCredential,
+  executionClass: 'MOCK_CONFORMANCE',
+  now: () => new Date('2026-08-04T00:00:00.000Z'),
+  fetchImplementation: async () => new Response(JSON.stringify({id: 'chatcmpl-public-safe-pro-conformance', model: proRequest.model, system_fingerprint: 'public-safe-fixture', choices: [{finish_reason: 'stop', message: {content: '{"copy":"public-safe pro fixture"}'}}], usage: {prompt_tokens: 100, completion_tokens: 50, prompt_cache_hit_tokens: 20, prompt_cache_miss_tokens: 80}}), {status: 200})
+}).generateStructured(proRequest);
+if (!proResult.ok || proResult.snapshot.estimatedCostUsd !== 0.0000783725 || JSON.stringify(proResult.snapshot.pricing) !== JSON.stringify(expectedPricing.pro)) throw new Error('DEEPSEEK_PRO_EXACT_COST_CONFORMANCE_FAILED');
 
 const nonRetryable = await new DeepSeekModelProvider({apiKey: fixtureCredential, executionClass: 'MOCK_CONFORMANCE', fetchImplementation: async () => new Response('{}', {status: 400})}).generateStructured(request);
 if (nonRetryable.ok || nonRetryable.snapshot.attempts !== 1 || nonRetryable.snapshot.error?.code !== 'PROVIDER_HTTP_400') throw new Error('DEEPSEEK_GATEWAY_NON_RETRYABLE_CONFORMANCE_FAILED');
@@ -51,7 +66,7 @@ const identityCases = [
   ['MODEL_RETURNED_MODEL_MISMATCH', {id: 'fixture', model: 'deepseek-v4-pro', choices: [{finish_reason: 'stop', message: {content: '{"copy":"fixture"}'}}], usage: {prompt_tokens: 1, completion_tokens: 1}}],
   ['MODEL_FINISH_REASON_INVALID', {id: 'fixture', model: request.model, choices: [{finish_reason: 'length', message: {content: '{"copy":"partial"}'}}], usage: {prompt_tokens: 1, completion_tokens: 1}}],
   ['MODEL_RESPONSE_IDENTITY_INVALID', {model: request.model, choices: [{finish_reason: 'stop', message: {content: '{"copy":"fixture"}'}}], usage: {prompt_tokens: 1, completion_tokens: 1}}],
-  ['MODEL_USAGE_INVALID', {id: 'fixture', model: request.model, choices: [{finish_reason: 'stop', message: {content: '{"copy":"fixture"}'}}], usage: {prompt_tokens: -1, completion_tokens: 1}}]
+  ['MODEL_USAGE_INVALID', {id: 'fixture', model: request.model, choices: [{finish_reason: 'stop', message: {content: '{"copy":"fixture"}'}}], usage: {prompt_tokens: 100, completion_tokens: 1, prompt_cache_hit_tokens: 20, prompt_cache_miss_tokens: 79}}]
 ] as const;
 const identityRejections: string[] = [];
 for (const [expectedCode, payload] of identityCases) {
@@ -98,8 +113,12 @@ const evidence = {
       responseIdentityCaptured: retryResult.snapshot.response.id !== null,
       executionClass: retryResult.snapshot.maturity,
       responseIdentityRejections: identityRejections,
+      usageBreakdownConsistencyRejected: true,
+      usageBreakdownPolicy,
       snapshotSecretPresent: retryResult.snapshot.secretPresent,
       costSnapshotUsd: retryResult.snapshot.estimatedCostUsd,
+      costSnapshotsUsd: {flash: retryResult.snapshot.estimatedCostUsd, pro: proResult.snapshot.estimatedCostUsd},
+      pricingSnapshots: {flash: retryResult.snapshot.pricing, pro: proResult.snapshot.pricing},
       config: retryResult.snapshot.config
     }
   },

@@ -185,7 +185,7 @@ export type ModelCallSnapshot = {
   model: string;
   response: {id: string | null; actualModel: string | null; systemFingerprint: string | null; finishReason: string | null};
   config: {temperature: number; maxTokens: number; responseFormat: 'json_object'; timeoutMs: number; maxAttempts: number};
-  pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04'; inputCacheMissUsdPerMillion: number; outputUsdPerMillion: number; peakMultiplierNotApplied: true};
+  pricing: {source: 'DEEPSEEK_OFFICIAL_2026-08-04'; inputCacheHitUsdPerMillion: number; inputCacheMissUsdPerMillion: number; outputUsdPerMillion: number; peakMultiplierNotApplied: true};
   inputDigest: string;
   outputDigest: string | null;
   tokenUsage: {input: number; output: number; cacheHit: number; cacheMiss: number; reasoning: number} | null;
