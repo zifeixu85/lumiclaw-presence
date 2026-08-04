@@ -24,9 +24,11 @@ function run(executable, args, options = {}) {
     const output = execFileSync(executable, args, {cwd: root, encoding: 'utf8', timeout: options.timeout ?? 60_000, stdio: ['ignore', 'pipe', 'pipe'], env: options.env ?? process.env});
     lifecycle.push({step: label, startedAt, status: 'PASS'});
     return output.trim();
-  } catch {
+  } catch (error) {
     lifecycle.push({step: label, startedAt, status: 'FAIL'});
-    throw new Error(`${label}:FAILED`);
+    const stderr = error && typeof error === 'object' && 'stderr' in error ? String(error.stderr).trim() : '';
+    const stdout = error && typeof error === 'object' && 'stdout' in error ? String(error.stdout).trim() : '';
+    throw new Error(`${label}:FAILED:${stderr || stdout || (error instanceof Error ? error.message : 'unknown failure')}`);
   }
 }
 
