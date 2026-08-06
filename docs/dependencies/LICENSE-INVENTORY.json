@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "sourceLockSha256": "de71bb2b075a766c80a703216d0bd1db71f98414031ea7cef0a327e0c8f482c5",
-  "packageCount": 956,
+  "sourceLockSha256": "91b7d4899b3bd92e0524dd7be21016380c7f8b7be14ccde74560f78480aa95e5",
+  "packageCount": 958,
   "uniqueLicenses": [
     "(BSD-2-Clause OR MIT OR Apache-2.0)",
     "(MIT OR WTFPL)",
@@ -24,5 +24,5 @@
     "Python-2.0"
   ],
   "disallowedCount": 0,
-  "fullInventory": ".evidence/sdd-001/license-inventory.json"
+  "fullInventory": ".evidence/sdd-002/license-inventory.json"
 }

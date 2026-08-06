@@ -35,7 +35,7 @@ async function scanRepository() {
 
 if (process.argv[1] !== undefined && import.meta.url === new URL(`file://${path.resolve(process.argv[1])}`).href) {
   const result = await scanRepository();
-  const evidencePath = path.join(process.cwd(), '.evidence/sdd-001/secret-scan.json');
+  const evidencePath = path.join(process.cwd(), '.evidence/sdd-002/secret-scan.json');
   await mkdir(path.dirname(evidencePath), {recursive: true});
   await writeFile(evidencePath, `${JSON.stringify({
     schemaVersion: '1.0.0',

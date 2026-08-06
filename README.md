@@ -4,7 +4,7 @@
 
 > AI-native global brand operations for multi-brand, multi-market teams.
 
-**Status:** Pre-alpha with a local, non-live M1 Campaign walking skeleton. This branch can create, save, and reopen a synthetic Campaign in PostgreSQL, edit four platform variants, and persist non-executing schedules. It is awaiting Coordinator/Owner acceptance and is not production-ready.
+**Status:** Pre-alpha with accepted M0/M1 foundations and an SDD-002 M2 Executor evidence candidate. This branch can run a persisted synthetic Campaign through a pinned, real six-member AgentTeams SHADOW mission, import digest/schema-validated outputs into PostgreSQL, block and re-audit one frozen Claim fault, and present four exact non-executable Owner Reviews. DeepSeek and EvoLink live Canaries were not run because no keys were provided. The branch still requires Coordinator verification and Owner UAT and is not production-ready.
 
 LumiClaw Presence turns one business objective into coordinated action across identities, brands, products, markets, and public accounts. It executes within approved facts, permissions, and ownership boundaries, then brings real responses back into the next decision.
 
@@ -148,15 +148,18 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the planned service boundaries, provi
 - a Fastify REST/OpenAPI control API with PostgreSQL create/save/reopen, Idempotency-Key, ETag conflicts, snapshots, and tenant isolation;
 - Chinese-default and English five-screen M1 states plus editable, distinct previews for X, Bluesky, LinkedIn, and Xiaohongshu;
 - PostgreSQL PublishingSchedule/ScheduleOccurrence state with constrained RRULE, IANA time zones, DST gap/fold, misfire, and edit invalidation contracts;
-- no due-action executor, external platform action, model/provider call, OwnerDecision, ActionGrant, ActionReceipt, or real customer data.
+- a pinned AgentTeams v1.2.0 Runtime Adapter and a repeatable real Manager/Worker/Project/DAG/Task/ACK/Submit run with exactly six separated members, including an orchestration-only Leader and independent Auditor;
+- PostgreSQL-owned Mission, RoleContext, five version-locked Skills, accepted Runtime payloads, immutable four-platform revisions, independent AuditDecision history, exact non-executable Owner Review, restart reconciliation, quarantine, trace, ledger, and public-safe evidence;
+- DeepSeek official `ModelProvider` and replaceable `MediaGenerationProvider` boundaries with structured-output, timeout/retry/rate-limit/error, redaction, cost/latency and content-addressed rights-receipt conformance; public-safe mocks are explicitly labeled `MOCK_CONFORMANCE`, and live Canaries remain `NOT_RUN_NO_KEY`;
+- Chinese-default and English Mission/Review flows, 390px coverage, 14 browser-rendered Storybook states, and distinct actionable UX-M1-001 disabled reasons;
+- no due-action executor, connector, external platform action, executable OwnerDecision, ActionGrant, ActionReceipt, real provider claim, or real customer data.
 
 **Planned:**
 
-- the AgentTeams campaign runtime;
 - ActionGrant, ActionReceipt, and capability probing;
 - Bluesky Direct, LinkedIn and Xiaohongshu Handoffs, and the gated X Direct Canary;
-- DeepSeek, EvoLink, and isolated SignalProvider adapters;
-- response disposition, scoped learning, and Flight replay;
+- credentialed DeepSeek/EvoLink Canaries and isolated SignalProvider adapters;
+- response disposition and scoped learning;
 - hosted authentication, multi-tenant RLS, and a production web surface.
 
 Legacy engineering assets exist in a separate private prototype, but they are not treated as implementation of this product. Reuse will happen file by file with provenance, licensing, semantic-change notes, and new tests.

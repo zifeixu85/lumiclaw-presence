@@ -3,8 +3,8 @@ import {mkdir, readdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const project = 'lumiclaw-sdd001-verify';
-const evidenceDir = path.join(root, '.evidence/sdd-001');
+const project = 'lumiclaw-sdd002-verify';
+const evidenceDir = path.join(root, '.evidence/sdd-002');
 const expectedMigrationRows = (await readdir(path.join(root, 'packages/db/migrations'))).filter((file) => /^\d+.*\.cjs$/u.test(file)).length;
 const events = [];
 const checks = {};
@@ -17,7 +17,7 @@ function docker(args, options = {}) {
       cwd: root,
       encoding: 'utf8',
       stdio: options.capture === false ? 'inherit' : ['ignore', 'pipe', 'pipe'],
-      env: {...process.env, LUMICLAW_WEB_PORT: '3110', LUMICLAW_API_PORT: '4110'}
+      env: {...process.env, LUMICLAW_WEB_PORT: '3122', LUMICLAW_API_PORT: '4122'}
     });
     events.push({command, startedAt, status: 'PASS'});
     return output ?? '';
@@ -31,7 +31,7 @@ function expectDockerFailure(args, code) {
   const result = spawnSync('docker', ['compose', '--project-name', project, ...args], {
     cwd: root,
     encoding: 'utf8',
-    env: {...process.env, LUMICLAW_WEB_PORT: '3110', LUMICLAW_API_PORT: '4110'}
+    env: {...process.env, LUMICLAW_WEB_PORT: '3122', LUMICLAW_API_PORT: '4122'}
   });
   events.push({command: ['docker', 'compose', '--project-name', project, ...args], status: result.status === 0 ? 'FAIL' : 'PASS', expectedFailure: code});
   if (result.status === 0) throw new Error(`Expected Docker failure did not occur: ${code}`);
@@ -105,31 +105,41 @@ try {
   if (!blobRead.includes('SDD-000 persistence marker')) throw new Error('Blob persistence marker was lost.');
   checks.blobPersistence = true;
 
-  const webChinese = await fetch('http://127.0.0.1:3110/').then((response) => response.text());
-  const webEnglish = await fetch('http://127.0.0.1:3110/en/mission').then((response) => response.text());
+  const webChinese = await fetch('http://127.0.0.1:3122/mission').then((response) => response.text());
+  const webEnglish = await fetch('http://127.0.0.1:3122/en/mission').then((response) => response.text());
   if (
     !webChinese.includes('DEMO_SEED / NOT_LIVE') ||
-    !webEnglish.includes('Four platform variants can be edited, previewed, and saved') ||
-    !webEnglish.includes('COMPOSER_PERSISTED / NO_AGENT_TURN / NO_PUBLISH')
+    !webChinese.includes('正在读取推广任务') ||
+    !webEnglish.includes('DEMO_SEED / NOT_LIVE') ||
+    !webEnglish.includes('Loading campaign')
   ) {
-    throw new Error('Locale route, customer-language, or non-live marker smoke failed.');
+    throw new Error('Locale server shell or non-live truth marker smoke failed.');
   }
-  checks.webLocaleCustomerLanguageAndTruthMarkers = true;
-  const prefixlessWithEnglishPreference = await fetch('http://127.0.0.1:3110/mission', {
+  checks.webLocaleServerShellAndTruthMarkers = true;
+  const prefixlessWithEnglishPreference = await fetch('http://127.0.0.1:3122/mission', {
     headers: {cookie: 'NEXT_LOCALE=en'}
   }).then((response) => response.text());
   if (!prefixlessWithEnglishPreference.includes('你现在可以做')) {
     throw new Error('Prefixless routes must remain on the default zh-CN locale.');
   }
   checks.defaultLocaleIgnoresPreferenceCookie = true;
-  const faviconResponse = await fetch('http://127.0.0.1:3110/favicon.ico');
+  const faviconResponse = await fetch('http://127.0.0.1:3122/favicon.ico');
   if (!faviconResponse.ok || faviconResponse.headers.get('content-type') !== 'image/x-icon') {
     throw new Error('Standalone Web static-asset smoke failed.');
   }
   checks.webStandaloneStaticAssets = true;
-  const apiHealth = await fetch('http://127.0.0.1:4110/health').then((response) => response.json());
+  const apiHealth = await fetch('http://127.0.0.1:4122/health').then((response) => response.json());
   if (apiHealth.live !== false || apiHealth.mode !== 'DEMO_SEED') throw new Error('API health claim boundary failed.');
   checks.apiHealthClaimBoundary = true;
+  const workerHealth = JSON.parse(docker(['exec', '-T', 'mission-worker', 'node', '-e', "fetch('http://127.0.0.1:4001/health').then(r=>r.json()).then(v=>console.log(JSON.stringify(v)))"]));
+  if (workerHealth.controlPlane !== 'POSTGRESQL' || workerHealth.executionMode !== 'SHADOW_PREP_ONLY' || workerHealth.externalActionAllowed !== false) throw new Error('Mission worker did not bind the shared PostgreSQL SHADOW control plane.');
+  checks.missionWorkerSharedControlPlane = workerHealth;
+  const operatorHealth = JSON.parse(docker(['exec', '-T', 'action-operator', 'node', '-e', "fetch('http://127.0.0.1:4002/health').then(r=>r.json()).then(v=>console.log(JSON.stringify(v)))"]));
+  if (operatorHealth.state !== 'DORMANT_NO_GRANTS' || operatorHealth.actionGrantRoutes !== 0 || operatorHealth.connectorRoutes !== 0 || operatorHealth.externalActionAllowed !== false) throw new Error('Action operator must remain dormant with no grant or connector route.');
+  checks.actionOperatorDormantNoGrants = operatorHealth;
+  const forbiddenTables = Number.parseInt(docker(['exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At', '-c', "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('action_grants','connectors','action_outbox')"]).trim(), 10);
+  if (forbiddenTables !== 0) throw new Error('Forbidden action-capable tables exist in the M2 control plane.');
+  checks.forbiddenActionTables = forbiddenTables;
 
   expectDockerFailure(['run', '--rm', '-e', 'MIGRATIONS_DIR=/missing', 'migrate'], 'MIGRATION_DIRECTORY_MISSING');
   checks.migrationDirectoryFailure = true;
@@ -165,4 +175,4 @@ try {
   if (cleanupError !== null && primaryError === null) throw new Error(cleanupError);
 }
 
-console.info(JSON.stringify({status: result, project, evidence: '.evidence/sdd-001/compose-verification.json'}));
+console.info(JSON.stringify({status: result, project, evidence: '.evidence/sdd-002/compose-verification.json'}));

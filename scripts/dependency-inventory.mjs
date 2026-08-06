@@ -22,15 +22,18 @@ const disallowedExpressions = [/\bAGPL(?:-|\b)/iu, /\bGPL(?:-|\b)/iu, /\bSSPL(?:
 const disallowed = packages.filter(({license}) => disallowedExpressions.some((expression) => expression.test(license)));
 const inventory = {
   schemaVersion: '1.0.0',
+  status: disallowed.length === 0 ? 'PASS' : 'FAIL',
   generatedAt: new Date().toISOString(),
   source: 'package-lock.json',
+  sourceLockSha256,
   packageCount: packages.length,
+  disallowedCount: disallowed.length,
   policy: 'docs/DEPENDENCY-POLICY.md',
   disallowed,
   packages
 };
 
-const evidenceDir = path.join(root, '.evidence/sdd-001');
+const evidenceDir = path.join(root, '.evidence/sdd-002');
 await mkdir(evidenceDir, {recursive: true});
 await writeFile(path.join(evidenceDir, 'license-inventory.json'), `${JSON.stringify(inventory, null, 2)}\n`);
 
@@ -40,7 +43,7 @@ const summary = {
   packageCount: inventory.packageCount,
   uniqueLicenses: [...new Set(packages.map(({license}) => license))].sort(),
   disallowedCount: disallowed.length,
-  fullInventory: '.evidence/sdd-001/license-inventory.json'
+  fullInventory: '.evidence/sdd-002/license-inventory.json'
 };
 await mkdir(path.join(root, 'docs/dependencies'), {recursive: true});
 await writeFile(path.join(root, 'docs/dependencies/LICENSE-INVENTORY.json'), `${JSON.stringify(summary, null, 2)}\n`);
@@ -69,6 +72,7 @@ for (const location of workspaceLocations) {
   }
 }
 const agentTeams = JSON.parse(await readFile(path.join(root, 'infra/agentteams/image-manifest.json'), 'utf8'));
+const providers = JSON.parse(await readFile(path.join(root, 'infra/providers/provider-manifest.json'), 'utf8'));
 const composeText = await readFile(path.join(root, 'compose.yml'), 'utf8');
 const postgresImage = /^\s+image:\s+(postgres:[^\n]+)$/mu.exec(composeText)?.[1] ?? null;
 const dockerfile = await readFile(path.join(root, 'infra/compose/Dockerfile'), 'utf8');
@@ -89,6 +93,10 @@ const versionManifest = {
     node: [...new Set(nodeImages)],
     postgres: postgresImage,
     agentTeams: agentTeams.images
+  },
+  externalRuntime: {
+    agentTeams: {requestedVersion: agentTeams.requestedVersion, source: agentTeams.source, sourceTagCommit: agentTeams.sourceTagCommit, sourceTarSha256: agentTeams.sourceTarSha256},
+    providers
   },
   lockfile: {format: lock.lockfileVersion, packages: Object.keys(lock.packages ?? {}).length}
 };

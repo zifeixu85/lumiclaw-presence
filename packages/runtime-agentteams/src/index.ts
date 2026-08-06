@@ -1,4 +1,5 @@
 import {Ajv} from 'ajv';
+export * from './shadow-adapter.js';
 
 export type ImageIdentity = {
   component: 'manager' | 'worker';
@@ -38,12 +39,16 @@ export type TeamRole = {
   id: string;
   responsibility: string;
   orchestrationOnly: boolean;
-  permissions: ('orchestrate' | 'produce' | 'audit')[];
+  permissions: ('ORCHESTRATE' | 'READ_EVIDENCE' | 'PLAN' | 'PRODUCE_FOUNDER' | 'PRODUCE_PRODUCT' | 'AUDIT')[];
+  skillLocks: `${string}@1.0.0`[];
 };
 
 export type TeamProfile = {
   id: string;
   runtimeVersion: 'v1.2.0';
+  executionMode: 'SHADOW_PREP_ONLY';
+  externalActionAllowed: false;
+  modelMaturity: 'MOCK_CONFORMANCE' | 'CANARY';
   roles: TeamRole[];
 };
 
@@ -59,6 +64,25 @@ export type RuntimeCapabilityReport = {
   liveAgentTeamRun: false;
   limitations: string[];
 };
+
+const expectedRoleContracts = new Map<string, {
+  orchestrationOnly: boolean;
+  permissions: TeamRole['permissions'];
+  skillLocks: TeamRole['skillLocks'];
+}>([
+  ['presence-mission-leader', {orchestrationOnly: true, permissions: ['ORCHESTRATE'], skillLocks: ['trace-safe-escalation@1.0.0']}],
+  ['evidence-claim-steward', {orchestrationOnly: false, permissions: ['READ_EVIDENCE'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'trace-safe-escalation@1.0.0']}],
+  ['campaign-planner', {orchestrationOnly: false, permissions: ['PLAN'], skillLocks: ['campaign-strategy@1.0.0', 'trace-safe-escalation@1.0.0']}],
+  ['founder-identity-producer', {orchestrationOnly: false, permissions: ['PRODUCE_FOUNDER'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'account-native-expression@1.0.0', 'trace-safe-escalation@1.0.0']}],
+  ['product-account-producer', {orchestrationOnly: false, permissions: ['PRODUCE_PRODUCT'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'account-native-expression@1.0.0', 'trace-safe-escalation@1.0.0']}],
+  ['independent-auditor', {orchestrationOnly: false, permissions: ['AUDIT'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'independent-action-audit@1.0.0', 'trace-safe-escalation@1.0.0']}]
+]);
+
+function exactStrings(actual: readonly string[], expected: readonly string[]): boolean {
+  const left = [...actual].sort();
+  const right = [...expected].sort();
+  return left.length === right.length && left.every((value, index) => value === right[index]);
+}
 
 const versionResponseSchema = {
   type: 'object',
@@ -84,7 +108,9 @@ const forbiddenMountTargets = new Set([
 export function validateRuntimeProfile(profile: RuntimeProfile): string[] {
   const errors: string[] = [];
   if (profile.version !== 'v1.2.0') errors.push('RUNTIME_VERSION_MISMATCH');
-  if (profile.images.length < 2) errors.push('RUNTIME_IMAGE_SET_INCOMPLETE');
+  if (!exactStrings(profile.images.map((image) => image.component), ['manager', 'worker'])) {
+    errors.push('RUNTIME_IMAGE_SET_INCOMPLETE');
+  }
 
   for (const image of profile.images) {
     if (image.tag !== 'v1.2.0') errors.push(`IMAGE_TAG_MISMATCH:${image.component}`);
@@ -123,20 +149,35 @@ export function validateTeamProfile(profile: TeamProfile): string[] {
   const errors: string[] = [];
   const ids = new Set(profile.roles.map((role) => role.id));
   if (ids.size !== profile.roles.length) errors.push('TEAM_ROLE_ID_DUPLICATE');
-  if (profile.roles.length < 3) errors.push('TEAM_DISTINCT_RESPONSIBILITIES_MISSING');
+  const expectedIds = new Set(['presence-mission-leader', 'evidence-claim-steward', 'campaign-planner', 'founder-identity-producer', 'product-account-producer', 'independent-auditor']);
+  if (profile.roles.length !== 6 || profile.roles.some((role) => !expectedIds.has(role.id)) || [...expectedIds].some((id) => !ids.has(id))) errors.push('TEAM_MEMBERS_NOT_EXACTLY_SIX');
+  if (profile.executionMode !== 'SHADOW_PREP_ONLY' || profile.externalActionAllowed !== false) errors.push('SHADOW_BOUNDARY_INVALID');
+
+  for (const role of profile.roles) {
+    const expected = expectedRoleContracts.get(role.id);
+    if (expected === undefined
+      || role.orchestrationOnly !== expected.orchestrationOnly
+      || !exactStrings(role.permissions, expected.permissions)
+      || !exactStrings(role.skillLocks, expected.skillLocks)) {
+      errors.push(`ROLE_CONTRACT_INVALID:${role.id}`);
+    }
+  }
 
   const leader = profile.roles.find((role) => role.id === 'presence-mission-leader');
-  if (leader === undefined || !leader.orchestrationOnly || leader.permissions.some((p) => p !== 'orchestrate')) {
+  if (leader === undefined || !leader.orchestrationOnly || leader.permissions.length !== 1 || leader.permissions[0] !== 'ORCHESTRATE') {
     errors.push('LEADER_NOT_ORCHESTRATION_ONLY');
   }
 
-  const producers = profile.roles.filter((role) => role.permissions.includes('produce'));
-  const auditors = profile.roles.filter((role) => role.permissions.includes('audit'));
-  if (producers.length === 0) errors.push('PRODUCER_MISSING');
+  const producers = profile.roles.filter((role) => role.permissions.includes('PRODUCE_FOUNDER') || role.permissions.includes('PRODUCE_PRODUCT'));
+  const auditors = profile.roles.filter((role) => role.permissions.includes('AUDIT'));
+  if (producers.length !== 2) errors.push('PRODUCERS_NOT_EXACTLY_TWO');
   if (auditors.length !== 1) errors.push('INDEPENDENT_AUDITOR_INVALID');
-  if (auditors.some((role) => role.permissions.includes('produce'))) {
+  if (auditors.some((role) => role.permissions.includes('PRODUCE_FOUNDER') || role.permissions.includes('PRODUCE_PRODUCT'))) {
     errors.push('PRODUCER_AUDITOR_NOT_SEPARATE');
   }
+  const expectedSkills = new Set<string>(['evidence-and-claim-grounding@1.0.0', 'campaign-strategy@1.0.0', 'account-native-expression@1.0.0', 'independent-action-audit@1.0.0', 'trace-safe-escalation@1.0.0']);
+  const actualSkills = new Set<string>(profile.roles.flatMap((role) => role.skillLocks));
+  if (actualSkills.size !== 5 || [...expectedSkills].some((skill) => !actualSkills.has(skill)) || [...actualSkills].some((skill) => !expectedSkills.has(skill))) errors.push('SKILL_LOCK_SET_INVALID');
   return [...new Set(errors)].sort();
 }
 

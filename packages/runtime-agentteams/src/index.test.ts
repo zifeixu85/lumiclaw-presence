@@ -44,13 +44,16 @@ const safeProfile: RuntimeProfile = {
 const teamProfile: TeamProfile = {
   id: 'hero-topology-contract',
   runtimeVersion: 'v1.2.0',
+  executionMode: 'SHADOW_PREP_ONLY',
+  externalActionAllowed: false,
+  modelMaturity: 'MOCK_CONFORMANCE',
   roles: [
-    {id: 'presence-mission-leader', responsibility: 'orchestration', orchestrationOnly: true, permissions: ['orchestrate']},
-    {id: 'claim-steward', responsibility: 'evidence', orchestrationOnly: false, permissions: ['produce']},
-    {id: 'campaign-planner', responsibility: 'plan', orchestrationOnly: false, permissions: ['produce']},
-    {id: 'founder-producer', responsibility: 'founder', orchestrationOnly: false, permissions: ['produce']},
-    {id: 'product-producer', responsibility: 'product', orchestrationOnly: false, permissions: ['produce']},
-    {id: 'independent-auditor', responsibility: 'audit', orchestrationOnly: false, permissions: ['audit']}
+    {id: 'presence-mission-leader', responsibility: 'orchestration', orchestrationOnly: true, permissions: ['ORCHESTRATE'], skillLocks: ['trace-safe-escalation@1.0.0']},
+    {id: 'evidence-claim-steward', responsibility: 'evidence', orchestrationOnly: false, permissions: ['READ_EVIDENCE'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'trace-safe-escalation@1.0.0']},
+    {id: 'campaign-planner', responsibility: 'plan', orchestrationOnly: false, permissions: ['PLAN'], skillLocks: ['campaign-strategy@1.0.0', 'trace-safe-escalation@1.0.0']},
+    {id: 'founder-identity-producer', responsibility: 'founder', orchestrationOnly: false, permissions: ['PRODUCE_FOUNDER'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'account-native-expression@1.0.0', 'trace-safe-escalation@1.0.0']},
+    {id: 'product-account-producer', responsibility: 'product', orchestrationOnly: false, permissions: ['PRODUCE_PRODUCT'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'account-native-expression@1.0.0', 'trace-safe-escalation@1.0.0']},
+    {id: 'independent-auditor', responsibility: 'audit', orchestrationOnly: false, permissions: ['AUDIT'], skillLocks: ['evidence-and-claim-grounding@1.0.0', 'independent-action-audit@1.0.0', 'trace-safe-escalation@1.0.0']}
   ]
 };
 
@@ -74,6 +77,26 @@ describe('AgentTeams M0 isolation contract', () => {
     const unsafe = structuredClone(safeProfile);
     unsafe.publishedPorts.push({container: 8088, hostIp: '127.0.0.1'});
     expect(validateRuntimeProfile(unsafe)).toContain('RUNTIME_INTERNAL_PORT_PUBLISHED:8088');
+  });
+
+  it('rejects duplicate or incomplete runtime image component sets', () => {
+    const duplicate = structuredClone(safeProfile);
+    const manager = duplicate.images[0];
+    if (manager === undefined) throw new Error('missing manager fixture');
+    duplicate.images[1] = {...manager};
+    expect(validateRuntimeProfile(duplicate)).toContain('RUNTIME_IMAGE_SET_INCOMPLETE');
+  });
+
+  it('rejects overbroad role permissions and substituted SkillLocks', () => {
+    const overbroad = structuredClone(teamProfile);
+    overbroad.roles.find((role) => role.id === 'evidence-claim-steward')?.permissions.push('PLAN');
+    expect(validateTeamProfile(overbroad)).toContain('ROLE_CONTRACT_INVALID:evidence-claim-steward');
+
+    const substituted = structuredClone(teamProfile);
+    const planner = substituted.roles.find((role) => role.id === 'campaign-planner');
+    if (planner === undefined) throw new Error('missing planner fixture');
+    planner.skillLocks = ['trace-safe-escalation@1.0.0'];
+    expect(validateTeamProfile(substituted)).toContain('ROLE_CONTRACT_INVALID:campaign-planner');
   });
 
   it('rejects secrets and missing safety limits', () => {

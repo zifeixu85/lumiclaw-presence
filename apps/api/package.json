@@ -12,6 +12,7 @@
   "dependencies": {
     "@lumiclaw/db": "*",
     "@lumiclaw/domain": "*",
+    "@lumiclaw/governed-shadow": "*",
     "fastify": "5.11.0"
   }
 }

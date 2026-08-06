@@ -62,36 +62,36 @@
       "technicalBasis": "Organization, Identity, Brand, Product, Market, ChannelAccount, AccountMandate, and Claim–Evidence now enforce tenant scope."
     },
     "mission": {
-      "eyebrow": "03 · Prepare content for each platform",
-      "title": "Prepare once, then shape the message for four platforms.",
-      "summary": "The same brand message will be prepared for X, Bluesky, LinkedIn, and Xiaohongshu, with an editing area and a preview before anything is shared.",
-      "status": "Four platform variants can be edited, previewed, and saved",
-      "basis": "Content comes from synthetic demo seed; no model or platform is called and nothing is approved or published.",
-      "next": "Edit one platform variant, inspect the preview, and save a new version.",
+      "eyebrow": "03 · Six specialists collaborate",
+      "title": "Give every task an owner and every conclusion evidence.",
+      "summary": "Six specialists separately verify facts, plan, write for four platforms, and independently check the work. The coordinator assigns work but produces none of it.",
+      "status": "All progress, content versions, and checks come from one durable source",
+      "basis": "This is a safe rehearsal only. Demo results and real collaboration evidence are labeled separately and never imply publication.",
+      "next": "Start a safe rehearsal from the exact saved version and inspect six responsibilities and dependencies.",
       "previewTitle": "Four platform-specific content versions will appear here",
       "previewItems": {
         "first": "A suitable expression for each platform",
         "second": "Content you can edit before review",
         "third": "A preview before handoff or publication"
       },
-      "technicalStatus": "COMPOSER_PERSISTED / NO_AGENT_TURN / NO_PUBLISH",
-      "technicalBasis": "Four ArtifactRevisions, CapabilitySnapshots, and the six-role MissionContract reopen consistently; no AgentTeams Mission ran."
+      "technicalStatus": "AGENTTEAMS_V1_2_0 / SIX_MEMBERS / SHADOW_ONLY / NO_ACTION",
+      "technicalBasis": "Project/DAG/ACK/Submit, RoleContext, SkillLock, digest/schema validation, timeout/recovery, and PostgreSQL state have repeatable engineering verification."
     },
     "review": {
       "eyebrow": "04 · You make the final call",
-      "title": "You stay in control before anything is published.",
-      "summary": "Content, supporting facts, and risk notes will appear together so you know exactly what may be shared and why. Nothing moves forward without your confirmation.",
-      "status": "A draft fact still needs owner-supplied evidence",
-      "basis": "The page shows the exact version and digest, but this milestone creates no approval decision or publishing authority.",
-      "next": "Check fact status, evidence count, and version; do not treat demo content as approved.",
+      "title": "See why one claim was denied, then review the exact correction.",
+      "summary": "An independent checker compares every version with confirmed facts, supporting proof, account responsibility, and platform limits. A correction automatically invalidates the old check.",
+      "status": "The faulty statement was denied; four corrected platform versions need your exact confirmation",
+      "basis": "Your confirmation is explicitly non-executable: it connects no account, triggers no schedule, and performs no external action.",
+      "next": "Compare at most two versions, inspect cited proof and the next responsible person, then confirm the exact version.",
       "previewTitle": "A real review will bring together",
       "previewItems": {
         "first": "The exact content proposed for sharing",
         "second": "The facts that support each statement",
         "third": "Risk notes and decisions that need you"
       },
-      "technicalStatus": "NEEDS_OWNER / NO_OWNER_DECISION / NO_ACTION_GRANT",
-      "technicalBasis": "Exact revisions and digests exist; Producer/Auditor, OwnerDecision, ActionGrant, and Receipt remain future governed execution."
+      "technicalStatus": "INDEPENDENT_AUDIT / EXACT_OWNER_REVIEW / NO_ACTION_GRANT",
+      "technicalBasis": "Immutable four-platform Revisions, FAIL→correction→re-audit, Audit invalidation, and non-executable Owner Review share one control plane. M3 execution remains unimplemented."
     },
     "learn": {
       "eyebrow": "05 · Improve from real feedback",

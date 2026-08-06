@@ -38,7 +38,7 @@ Campaign 初始化
 
 完成：仓库可通过文档中的 Compose 路径安装，Migration 与测试通过，带状态标记的产品壳可打开；首个纵向 Spec 达到可开发状态。
 
-### M1｜Campaign Walking Skeleton · 当前验收切片
+### M1｜Campaign Walking Skeleton · 已交付
 
 - 使用 PostgreSQL 权威状态创建、保存并重新打开真实 CampaignBrief；
 - 建模 Identity、Product、Market、AccountMandate、Claim/Evidence 与四个 ActivationUnit；
@@ -49,7 +49,7 @@ Campaign 初始化
 
 完成：一个真实 LumiClaw Campaign 可在没有隐藏 Demo 状态的前提下进入 Readiness，并重新打开四个平台 Revision。
 
-### M2｜受治理的 SHADOW Campaign
+### M2｜受治理的 SHADOW Campaign · 当前 Executor 证据切片
 
 - 在 AgentTeams 中运行一个 Mission Leader 与五个领域成员；Leader 只编排，不生成领域 Artifact；
 - 通过 `ModelProvider` Port 与计划中的 DeepSeek V4 Gateway 路由模型任务；
@@ -60,6 +60,8 @@ Campaign 初始化
 - 注入一个 Claim 或平台 Constraint 故障并证明无外部动作。
 
 完成：六成员团队返回通过 digest 校验的 Artifact；一个有效 Revision 进入 Owner Review，一个错误 Revision 被阻断并修订。
+
+当前分支以真实固定版本 AgentTeams Runtime 与公开安全 Mock Model Flight 达到该工程 Exit；在 Coordinator 复核与 Owner UAT 前仅建议为 `EVIDENCE_READY`。由于未提供 Provider Key，不声明真实 DeepSeek 或 EvoLink 成熟度。
 
 ### M3｜受控真实激活
 

@@ -1,0 +1,11 @@
+services:
+  api:
+    secrets:
+      - deepseek_api_key
+      - lumiclaw_runtime_broker_bootstrap
+
+secrets:
+  deepseek_api_key:
+    file: ${LUMICLAW_DEEPSEEK_SECRET_FILE:?secure temporary DeepSeek secret file required}
+  lumiclaw_runtime_broker_bootstrap:
+    file: ${LUMICLAW_RUNTIME_BOOTSTRAP_FILE:?secure temporary runtime bootstrap file required}

@@ -4,6 +4,8 @@ import YAML from 'yaml';
 
 const root = process.cwd();
 const composePath = path.join(root, 'compose.yml');
+const liveComposePath = path.join(root, 'compose.live-deepseek-uat.yml');
+const runtimeAcceptanceComposePath = path.join(root, 'compose.runtime-acceptance.yml');
 const runtimePath = path.join(root, 'infra/agentteams/compose.agentteams-profile.yml');
 
 function serviceMap(document) {
@@ -46,6 +48,20 @@ for (const serviceName of ['web', 'api']) {
 if (services['action-operator'].networks?.includes('runtime')) {
   throw new Error('ACTION_OPERATOR_RUNTIME_NETWORK_FORBIDDEN');
 }
+if (composeText.includes('DEEPSEEK_API_KEY') || composeText.includes('LUMICLAW_RUNTIME_BROKER_BOOTSTRAP') || composeText.includes('LUMICLAW_RUNTIME_IMPORT_TOKEN')) throw new Error('SECRET_AS_ORDINARY_COMPOSE_ENV_FORBIDDEN');
+
+const liveComposeText = await readFile(liveComposePath, 'utf8');
+assertNoUnsafeRuntimeText(liveComposeText);
+const liveCompose = YAML.parse(liveComposeText, {merge: true});
+const liveApiSecrets = serviceMap(liveCompose).api?.secrets;
+if (!Array.isArray(liveApiSecrets) || liveApiSecrets.join(',') !== 'deepseek_api_key,lumiclaw_runtime_broker_bootstrap') throw new Error('LIVE_COMPOSE_SECRET_MOUNTS_INVALID');
+if (liveCompose.secrets?.deepseek_api_key?.file !== '${LUMICLAW_DEEPSEEK_SECRET_FILE:?secure temporary DeepSeek secret file required}' || liveCompose.secrets?.lumiclaw_runtime_broker_bootstrap?.file !== '${LUMICLAW_RUNTIME_BOOTSTRAP_FILE:?secure temporary runtime bootstrap file required}') throw new Error('LIVE_COMPOSE_SECURE_TEMP_FILE_SECRET_INVALID');
+if (serviceMap(liveCompose).api?.environment !== undefined) throw new Error('LIVE_SECRET_VALUE_IN_SERVICE_ENV_FORBIDDEN');
+
+const runtimeAcceptanceComposeText = await readFile(runtimeAcceptanceComposePath, 'utf8');
+assertNoUnsafeRuntimeText(runtimeAcceptanceComposeText);
+const runtimeAcceptanceCompose = YAML.parse(runtimeAcceptanceComposeText, {merge: true});
+if (serviceMap(runtimeAcceptanceCompose).api?.secrets?.join(',') !== 'lumiclaw_runtime_import_token' || runtimeAcceptanceCompose.secrets?.lumiclaw_runtime_import_token?.file !== '${LUMICLAW_RUNTIME_IMPORT_TOKEN_FILE:?Set LUMICLAW_RUNTIME_IMPORT_TOKEN_FILE to the verifier-owned 0600 temporary file}' || serviceMap(runtimeAcceptanceCompose).api?.environment !== undefined) throw new Error('RUNTIME_ACCEPTANCE_SECRET_FILE_INVALID');
 
 const runtimeText = await readFile(runtimePath, 'utf8');
 assertNoUnsafeRuntimeText(runtimeText);
@@ -57,4 +73,4 @@ for (const [name, service] of Object.entries(serviceMap(runtime))) {
   }
 }
 
-console.info(JSON.stringify({status: 'PASS', composeServices: Object.keys(services).length, runtimeServices: Object.keys(runtime.services).length}));
+console.info(JSON.stringify({status: 'PASS', composeServices: Object.keys(services).length, runtimeServices: Object.keys(runtime.services).length, liveSecretFiles: ['/run/secrets/deepseek_api_key', '/run/secrets/lumiclaw_runtime_broker_bootstrap'], runtimeAcceptanceSecretFile: '/run/secrets/lumiclaw_runtime_import_token', ingress: 'INTERACTIVE_TO_0600_TEMP_FILE_TO_COMPOSE_SECRET', dockerSocketMounted: false, secretAsServiceEnvironment: false}));
