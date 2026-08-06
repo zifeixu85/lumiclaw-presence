@@ -4,6 +4,8 @@ Thank you for your interest.
 
 LumiClaw Presence is currently pre-alpha and licensed under [Apache-2.0](LICENSE). Issues and focused contributions that report reproducible bugs, contract gaps, connector edge cases, or documentation problems are welcome. Large or architecture-changing contributions should begin with an SDD discussion.
 
+Read [GOVERNANCE.md](GOVERNANCE.md) for decision-making and the contribution path. Use [GitHub Discussions](https://github.com/zifeixu85/lumiclaw-presence/discussions) for early questions and broad proposals; use the issue templates for bounded bugs and features.
+
 ## Before opening an issue
 
 - Remove credentials, tokens, account IDs, private messages, and customer material.
