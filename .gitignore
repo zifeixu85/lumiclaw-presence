@@ -14,6 +14,9 @@ dist/
 build/
 coverage/
 *.log
+.next/
+storybook-static/
+*.tsbuildinfo
 
 # Generated and local runtime state
 .generated/
@@ -21,6 +24,8 @@ coverage/
 output/
 tmp/
 var/
+.evidence/
+.sbom/
 
 # Private evidence and local-only material
 private/
@@ -32,3 +37,6 @@ references/private/
 .idea/
 .vscode/
 *.swp
+
+# Pencil exports are reviewed deliverables; editor backup state is local only.
+*.pen.bak

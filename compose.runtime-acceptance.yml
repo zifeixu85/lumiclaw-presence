@@ -1,0 +1,8 @@
+services:
+  api:
+    secrets:
+      - lumiclaw_runtime_import_token
+
+secrets:
+  lumiclaw_runtime_import_token:
+    file: ${LUMICLAW_RUNTIME_IMPORT_TOKEN_FILE:?Set LUMICLAW_RUNTIME_IMPORT_TOKEN_FILE to the verifier-owned 0600 temporary file}

@@ -3,9 +3,9 @@
 [English](IMPLEMENTATION-STATUS.md) | [简体中文](IMPLEMENTATION-STATUS.zh-CN.md) | [技术架构](ARCHITECTURE.zh-CN.md) | [路线图](ROADMAP.zh-CN.md)
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
-> **快照日期：** 2026-08-03
-> **当前阶段：** M0 — Delivery foundation
-> **当前实现真相：** 公开仓目前只有文档，尚未实现产品 Runtime。
+> **快照日期：** 2026-08-06
+> **当前阶段：** M2 — Governed shadow campaign
+> **当前实现真相：** M0 与 M1 已验收。M2 已实现并完成工程验证，包括固定版本真实六成员 AgentTeams Mission、DeepSeek Provider 合同、一次由 Owner 本地控制且产生 7 个已接受脱敏模型回执的 DeepSeek Canary、不可变 Revision、独立审校/复审、精确不可执行 Owner Review、Trace、Ledger 与确定性故障拒绝。Owner UAT 仍待完成。不声明 EvoLink 真实验证、ActionGrant、Connector、外部平台动作、外部用户校准或业务结果。当前视觉壳仍是功能骨架，不是最终产品设计。
 
 ## 进度状态合同
 
@@ -25,20 +25,20 @@
 
 | 指标 | 当前值 |
 |---|---|
-| 已验收模块 | `2 / 39`（`5.1%`） |
-| 证据已就绪 | `0 / 39` |
+| 已验收模块 | `13 / 39`（`33.3%`） |
+| 证据已就绪 | `6 / 39` |
 | 被阻塞 | `0 / 39` |
-| 当前实现 SDD | `SDD-000 Delivery Foundation` — Executor 任务 `019fc3ce-a7e5-7133-b035-a9be3245b4b3` 已启动 |
-| 最早 Owner 阻塞项 | M0 实现无；Provider Credential 延后到各自 SDD |
-| 下一个可执行模块 | `M0-03` Monorepo 与依赖基线，Coordinator 已标记 `IN_PROGRESS` |
+| 当前实现 SDD | `SDD-002 Governed SHADOW Campaign` — 工程证据完成，等待 Owner UAT |
+| 最早 Owner 阻塞项 | 在接受 M2 或启动受控外部动作前，记录 SDD-002 Owner UAT |
+| 下一个可执行模块 | 尚未授权 M3；先关闭 M2 Owner UAT，并冻结 Release-to-Presence-to-Feedback SDD |
 
 ## 里程碑总进度
 
 | 里程碑 | 状态 | 已验收 | 当前模块分布 | Exit Evidence |
 |---|---|---:|---|---|
-| M0 — Delivery foundation | `IN_PROGRESS` | `2 / 7` | 2 个已验收、1 个进行中、4 个未开始 | Compose 产品壳、Migration、CI、隔离 AgentTeams Smoke、设计与 i18n 基线 |
-| M1 — Campaign walking skeleton | `NOT_STARTED` | `0 / 6` | 6 个未开始 | 持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State |
-| M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 个未开始 | 六成员 AgentTeams、DeepSeek Gateway、Revision/Audit、故障拒绝与 Trace |
+| M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 个已验收 | [SDD-000 验收报告](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)，以及 Compose、Migration、CI 映射、隔离 AgentTeams Smoke、设计与 i18n 证据 |
+| M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 个已验收 | [SDD-001 验收报告](docs/reports/acceptance/SDD-001-ACCEPTANCE.md)：持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State；最终视觉与交互收敛仍在规划中 |
+| M2 — Governed shadow campaign | `EVIDENCE_READY` | `0 / 6` | 6 个证据已就绪 | 六成员 AgentTeams、DeepSeek Gateway/Canary、Revision/Audit、故障拒绝与 Trace；Owner UAT 待完成 |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 个未开始 | Interaction → Outcome → Scoped Learning → 下一 Mission，隔离 SignalProvider PoC |
 | M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 个未开始 | Fresh Install、恢复演练、Conformance、可访问性、Evidence Export 与 Demo |
@@ -52,33 +52,33 @@
 |---|---|---|---|---|
 | M0-01 | 产品、平台与技术架构文档 | `ACCEPTED` | 已完成 | [已验收架构基线报告](docs/reports/acceptance/M0-01-ARCHITECTURE-BASELINE-ACCEPTANCE.md) |
 | M0-02 | 根 License 与贡献政策 | `ACCEPTED` | 已完成 | [已验收 Apache-2.0 与依赖政策报告](docs/reports/acceptance/M0-02-LICENSE-AND-DEPENDENCY-POLICY-ACCEPTANCE.md) |
-| M0-03 | Node/TypeScript Monorepo 与锁定依赖基线 | `IN_PROGRESS` | SDD-000 | 可复现安装、Lockfile、版本 Manifest 与许可证清单 |
-| M0-04 | Docker Compose、PostgreSQL Migration 与 Local BlobStore | `NOT_STARTED` | M0-03 | Fresh Volume 启动、Migration 成败测试、Healthcheck 与持久化测试 |
-| M0-05 | Next.js Shell、`next-intl`、设计 Token 与五主屏 Route | `NOT_STARTED` | M0-03 | 默认中文/英文切换、类型化文案一致性、Route Smoke、Pencil/Storybook 基线 |
-| M0-06 | 隔离 AgentTeams Runtime Profile 与 Adapter Smoke | `NOT_STARTED` | M0-04 | 无共享 Secret/HostPort、锁定 Digest、Health/Capability Report 与 Team Smoke |
-| M0-07 | CI、Secret Scan、SBOM 与进度/报告检查 | `NOT_STARTED` | M0-03 | CI 校验测试、文案一致性、进度 ID、报告、许可证与 Secret Hygiene |
+| M0-03 | Node/TypeScript Monorepo 与锁定依赖基线 | `ACCEPTED` | SDD-000 | [可复现安装、Lockfile、版本与许可证证据](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) |
+| M0-04 | Docker Compose、PostgreSQL Migration 与 Local BlobStore | `ACCEPTED` | M0-03 | [Fresh、故障、恢复与持久化证据](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) |
+| M0-05 | Next.js Shell、`next-intl`、设计 Token 与五主屏 Route | `ACCEPTED` | M0-03 | [双语 Route、浏览器、Storybook 与已提交 Pencil 证据](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)；移动端与统一视觉延期 |
+| M0-06 | 隔离 AgentTeams Runtime Profile 与 Adapter Smoke | `ACCEPTED` | M0-04 | [锁定镜像与受控 Adapter 证据](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)；不声明 Live Mission |
+| M0-07 | CI、Secret Scan、SBOM 与进度/报告检查 | `ACCEPTED` | M0-03 | [本地完整门禁证据](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)；不声明远端 CI |
 
 ### M1 — Campaign walking skeleton
 
 | ID | 模块 | 状态 | 依赖 | 必须提交的证据 / 验收 |
 |---|---|---|---|---|
-| M1-01 | Organization、Identity、Brand、Product、Market 与 Account Graph | `NOT_STARTED` | M0 验收 | Schema、Migration、租户约束与负向 Fixture |
-| M1-02 | Campaign、Activation、Claim 与 Evidence 合同 | `NOT_STARTED` | M1-01 | 版本化 JSON Schema、Canonical Digest 与错误 Scope 拒绝 |
-| M1-03 | Campaign API、持久化与重新打开 | `NOT_STARTED` | M1-01、M1-02 | REST/OpenAPI、幂等、ETag/版本冲突与数据库集成测试 |
-| M1-04 | 五主屏 Web Shell 与 Readiness Journey | `NOT_STARTED` | M0-05、M1-03 | 中英文 Empty/Loading/Blocked/Owner/Recovery 状态 |
-| M1-05 | 四平台可编辑 Composer 与原生近似 Preview | `NOT_STARTED` | M1-02、M1-04 | X、Bluesky、LinkedIn、小红书 Fixture、约束与视觉测试 |
-| M1-06 | 排程编辑器与持久化 Schedule Model | `NOT_STARTED` | M1-03、M1-04 | 一次性/RRULE、IANA 时区、DST 与 Misfire 校验；不执行外部动作 |
+| M1-01 | Organization、Identity、Brand、Product、Market 与 Account Graph | `ACCEPTED` | M0 验收；SDD-001 | [Schema、Migration、租户约束与负向 Fixture](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-02 | Campaign、Activation、Claim 与 Evidence 合同 | `ACCEPTED` | M1-01 | [版本化 Schema、Canonical Digest 与错误 Scope 拒绝](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-03 | Campaign API、持久化与重新打开 | `ACCEPTED` | M1-01、M1-02 | [REST/OpenAPI、幂等、ETag/版本冲突与数据库集成测试](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-04 | 五主屏 Web Shell 与 Readiness Journey | `ACCEPTED` | M0-05、M1-03 | [中英文真实状态流程与 Owner 接受的功能壳边界](docs/reports/acceptance/SDD-001-ACCEPTANCE.md)；`UX-M1-001` 延后到交互收敛 |
+| M1-05 | 四平台可编辑 Composer 与原生近似 Preview | `ACCEPTED` | M1-02、M1-04 | [X、Bluesky、LinkedIn、小红书 Fixture、约束与真实浏览器证据](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-06 | 排程编辑器与持久化 Schedule Model | `ACCEPTED` | M1-03、M1-04 | [一次性/RRULE、IANA 时区、DST/Misfire 与失效证据](docs/reports/acceptance/SDD-001-ACCEPTANCE.md)；不执行外部动作 |
 
 ### M2 — Governed shadow campaign
 
 | ID | 模块 | 状态 | 依赖 | 必须提交的证据 / 验收 |
 |---|---|---|---|---|
-| M2-01 | AgentTeams Runtime Adapter 与 Shared Mission State | `NOT_STARTED` | M0-06、M1-02 | Project/Task 生命周期、ACK/Submit、Digest 导入与重启恢复 |
-| M2-02 | 六成员 AgentTeam 与锁定 Skill | `NOT_STARTED` | M2-01 | Leader + 五领域成员、Context/权限分离与 SkillLock |
-| M2-03 | DeepSeek ModelProvider Gateway | `NOT_STARTED` | M0-07 | 结构化输出、模型/费用快照、超时重试与隐私安全 Fixture |
-| M2-04 | Artifact Revision、Independent Audit 与 Owner Review | `NOT_STARTED` | M1-05、M2-02 | Re-audit 失效、Producer/Auditor 分权与 Revision Diff E2E |
-| M2-05 | Media Asset 与 EvoLink Adapter 边界 | `NOT_STARTED` | M0-04、M2-03 | 异步 Mock/Canary、内容寻址入库、权利/费用回执与不自动批准 |
-| M2-06 | Trace、Ledger 与 Flight 故障拒绝 | `NOT_STARTED` | M2-02、M2-04 | Claim/Constraint 故障被阻断，并生成可重放、公开安全证据 |
+| M2-01 | AgentTeams Runtime Adapter 与 Shared Mission State | `EVIDENCE_READY` | M0-06、M1-02；SDD-002 | 真实 Project/Task 生命周期、ACK/Submit、Digest 导入、对账与重启证据已完成；Owner UAT 待完成 |
+| M2-02 | 六成员 AgentTeam 与锁定 Skill | `EVIDENCE_READY` | M2-01 | 精确 Leader + 五领域成员、Context/权限分离与五个锁定 Skill 已验证 |
+| M2-03 | DeepSeek ModelProvider Gateway | `EVIDENCE_READY` | M0-07 | 结构化输出、费用/config 快照、有界重试/Finish Reason、脱敏与本地真实 Canary 已验证 |
+| M2-04 | Artifact Revision、Independent Audit 与 Owner Review | `EVIDENCE_READY` | M1-05、M2-02 | 不可变 Revision、初审 FAIL、修订、独立复审与精确不可执行 Review 已验证 |
+| M2-05 | Media Asset 与 EvoLink Adapter 边界 | `EVIDENCE_READY` | M0-04、M2-03 | Content-addressed Ingest、权利/费用 Receipt 与不自动批准合同已验证；EvoLink 真实 Canary 待完成 |
+| M2-06 | Trace、Ledger 与 Flight 故障拒绝 | `EVIDENCE_READY` | M2-02、M2-04 | 冻结 Claim 故障拒绝、Replay、不可变 Trace/Ledger 与零外部动作已验证 |
 
 ### M3 — Controlled live activation
 

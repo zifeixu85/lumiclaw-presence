@@ -2,7 +2,7 @@
 
 [English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE.zh-CN.md) | [README](README.md) | [Roadmap](ROADMAP.md)
 
-> **Status:** Documentation-only and `PLANNED`. This document defines the intended reference architecture; the public repository does not yet ship the services, dependencies, connectors, or deployment described below.
+> **Status:** Mixed implementation truth. M0/M1 are accepted; M2 is `EVIDENCE_READY` with a pinned six-member AgentTeams SHADOW Mission, a local real-DeepSeek Canary, provider conformance, immutable revisions, independent audit, and non-executable Owner Review. Owner UAT, EvoLink live verification, ActionGrants, connectors, external actions, and production deployment remain pending or `PLANNED`.
 
 ## Architecture goals
 
@@ -14,7 +14,7 @@ LumiClaw Presence is planned as a control and learning layer for global brand op
 - replaceable model, media, signal, and publishing providers;
 - editable platform-native artifacts whose preview does not overstate execution capability.
 
-The first reference journey is **Global Campaign Activation & Response** across a founder identity and a product identity. It produces editable variants for X, Bluesky, LinkedIn, and Xiaohongshu, then follows the honest execution path available to each account.
+The first reference journey is a **Release-to-Presence-to-Feedback** form of **Global Campaign Activation & Response** across a founder identity and a product identity. The product surface is a governed public Presence Mission; the embedded technical core is the reusable Governed Mission Runtime.
 
 ## Planned system topology
 
@@ -151,6 +151,8 @@ The Leader coordinates but does not create domain artifacts. Producers and the A
 
 AgentTeams may run through an external endpoint or an optional pinned Compose profile. Its internal Matrix, object storage, workers, and runtime state are not LumiClaw's product data plane.
 
+The SDD-002 candidate pins AgentTeams v1.2.0 source and image digests, creates exactly one Leader plus five Workers, and exercises real Project/DAG/Task/ACK/Submit operations. The adapter accepts only the Mission's exact role identity, input digest, SkillLock digest and output schema; conflicting or duplicate accepted output is quarantined. Accepted payloads are materialized only through the API into the same PostgreSQL Mission that references the persisted M1 Campaign. AgentTeams can be restarted and reconciled, but it never becomes a second business source of truth. A bounded upstream v1.2.0 gap—no public checked-result acceptance operation—is handled by its versioned public task store API after the official effective-result check; no AgentTeams Manager, Worker or Matrix source/image is modified.
+
 ## Provider ports
 
 Read-side intelligence and write-side actions use different interfaces so that a data provider cannot silently gain publishing authority.
@@ -164,6 +166,8 @@ Read-side intelligence and write-side actions use different interfaces so that a
 | `NativeHandoffAdapter` | LinkedIn, Xiaohongshu, and X fallback | User-driven native completion with URL or approved evidence reconciliation |
 
 The planned DeepSeek routes are `deepseek-v4-flash` for lower-risk transformation and summarization, and `deepseek-v4-pro` for planning, evidence stewardship, audit, and higher-risk revision. EvoLink is replaceable and never becomes the media asset source of truth. A `SignalProvider` can only produce a claim candidate; it cannot turn third-party data into an approved public claim by itself.
+
+In SDD-002, the DeepSeek official gateway and media-provider boundary are implemented and conformance-tested. Model/config/cost/latency/error snapshots, structured-schema validation, bounded retry, finish-reason handling, timeout, redaction, and no-silent-model-switch behavior are persisted contracts. An Owner-controlled local DeepSeek Canary completed seven accepted model tasks through the real AgentTeams path with zero external actions; it is `ENGINEERING_VERIFIED`, not customer or business validation. EvoLink live verification remains `NOT_RUN_NO_KEY`, and public-safe fixtures remain `MOCK_CONFORMANCE`.
 
 ## Four-platform editable composer
 

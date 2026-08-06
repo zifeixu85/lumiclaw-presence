@@ -3,9 +3,9 @@
 [English](IMPLEMENTATION-STATUS.md) | [简体中文](IMPLEMENTATION-STATUS.zh-CN.md) | [Architecture](ARCHITECTURE.md) | [Roadmap](ROADMAP.md)
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
-> **Snapshot:** 2026-08-03
-> **Current phase:** M0 — Delivery foundation
-> **Current implementation truth:** Documentation-only. No product runtime has been implemented in this repository.
+> **Snapshot:** 2026-08-06
+> **Current phase:** M2 — Governed shadow campaign
+> **Current implementation truth:** M0 and M1 are accepted. M2 is implemented and engineering-verified, including a pinned real six-member AgentTeams mission, DeepSeek provider contracts, an Owner-controlled local DeepSeek Canary with seven accepted redacted model receipts, immutable revisions, independent audit/re-audit, exact non-executable Owner Review, trace, ledger, and deterministic fault denial. Owner UAT is pending. EvoLink live verification, ActionGrants, connectors, external platform actions, external-user calibration, and business outcomes are not claimed. The current visual shell remains a functional skeleton, not the final product design.
 
 ## Progress contract
 
@@ -25,20 +25,20 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | Metric | Current value |
 |---|---|
-| Accepted modules | `2 / 39` (`5.1%`) |
-| Evidence ready | `0 / 39` |
+| Accepted modules | `13 / 39` (`33.3%`) |
+| Evidence ready | `6 / 39` |
 | Blocked | `0 / 39` |
-| Active implementation SDD | `SDD-000 Delivery Foundation` — Executor task `019fc3ce-a7e5-7133-b035-a9be3245b4b3` active |
-| Earliest owner blocker | None for M0 implementation; provider credentials are deferred to their SDDs |
-| Next executable module | `M0-03` Monorepo and package baseline; coordinator-assigned `IN_PROGRESS` |
+| Active implementation SDD | `SDD-002 Governed SHADOW Campaign` — engineering evidence complete; Owner UAT pending |
+| Earliest owner blocker | Record SDD-002 Owner UAT before accepting M2 or starting controlled external action work |
+| Next executable module | No M3 module is authorized yet; first close M2 Owner UAT and freeze the Release-to-Presence-to-Feedback SDD |
 
 ## Milestone progress
 
 | Milestone | State | Accepted | Current module mix | Exit evidence |
 |---|---|---:|---|---|
-| M0 — Delivery foundation | `IN_PROGRESS` | `2 / 7` | 2 accepted, 1 in progress, 4 not started | Fresh Compose shell, migrations, CI, isolated AgentTeams smoke, design/i18n foundation |
-| M1 — Campaign walking skeleton | `NOT_STARTED` | `0 / 6` | 6 not started | Persisted campaign, four editable previews, schedule editor, shared control-plane state |
-| M2 — Governed shadow campaign | `NOT_STARTED` | `0 / 6` | 6 not started | Six-member AgentTeams run, DeepSeek gateway, revision/audit, fault denial, trace |
+| M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 accepted | [SDD-000 acceptance](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) plus fresh Compose, migrations, CI mapping, isolated AgentTeams smoke and design/i18n evidence |
+| M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 accepted | [SDD-001 acceptance](docs/reports/acceptance/SDD-001-ACCEPTANCE.md): persisted campaign, four editable previews, schedule editor, shared control-plane state; final visual/interaction refinement remains planned |
+| M2 — Governed shadow campaign | `EVIDENCE_READY` | `0 / 6` | 6 evidence ready | Six-member AgentTeams run, DeepSeek gateway/Canary, revision/audit, fault denial, trace; Owner UAT pending |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 not started | Exact grants, persistent scheduler, Bluesky Direct, honest Handoffs, receipts/reconciliation |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 not started | Interaction → outcome → scoped learning → next mission, isolated SignalProvider PoC |
 | M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 not started | Fresh install, restore drill, conformance, accessibility, evidence export and demo |
@@ -52,33 +52,33 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 |---|---|---|---|---|
 | M0-01 | Product, platform and technical architecture documentation | `ACCEPTED` | Complete | [Accepted baseline report](docs/reports/acceptance/M0-01-ARCHITECTURE-BASELINE-ACCEPTANCE.md) |
 | M0-02 | Root license and contribution policy | `ACCEPTED` | Complete | [Accepted Apache-2.0 and dependency-policy report](docs/reports/acceptance/M0-02-LICENSE-AND-DEPENDENCY-POLICY-ACCEPTANCE.md) |
-| M0-03 | Node/TypeScript monorepo and locked package baseline | `IN_PROGRESS` | SDD-000 | Reproducible install, lockfile, version manifest, license inventory |
-| M0-04 | Docker Compose, PostgreSQL migrations and local BlobStore | `NOT_STARTED` | M0-03 | Fresh volumes boot, migration success/failure tests, health checks and persistence test |
-| M0-05 | Next.js shell, `next-intl`, design tokens and five-screen routes | `NOT_STARTED` | M0-03 | Chinese-default/English switch, typed message parity, route smoke, Pencil/Storybook baseline |
-| M0-06 | Isolated AgentTeams runtime profile and adapter smoke | `NOT_STARTED` | M0-04 | No shared secrets/host ports, pinned digest, health/capability report, team smoke |
-| M0-07 | CI, secret scan, SBOM and status/report checks | `NOT_STARTED` | M0-03 | CI verifies tests, message parity, status IDs, reports, licenses and secret hygiene |
+| M0-03 | Node/TypeScript monorepo and locked package baseline | `ACCEPTED` | SDD-000 | [Reproducible install, lockfile, version and license evidence](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) |
+| M0-04 | Docker Compose, PostgreSQL migrations and local BlobStore | `ACCEPTED` | M0-03 | [Fresh/failure/recovery/persistence evidence](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) |
+| M0-05 | Next.js shell, `next-intl`, design tokens and five-screen routes | `ACCEPTED` | M0-03 | [Bilingual route, browser, Storybook and committed Pencil evidence](docs/reports/acceptance/SDD-000-ACCEPTANCE.md); mobile/visual refinement deferred |
+| M0-06 | Isolated AgentTeams runtime profile and adapter smoke | `ACCEPTED` | M0-04 | [Pinned image and controlled adapter evidence](docs/reports/acceptance/SDD-000-ACCEPTANCE.md); no live mission claim |
+| M0-07 | CI, secret scan, SBOM and status/report checks | `ACCEPTED` | M0-03 | [Local full-gate evidence](docs/reports/acceptance/SDD-000-ACCEPTANCE.md); remote CI not claimed |
 
 ### M1 — Campaign walking skeleton
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
-| M1-01 | Organization, identity, brand, product, market and account graph | `NOT_STARTED` | M0 accepted | Schema, migrations, tenant-aware constraints and negative fixtures |
-| M1-02 | Campaign, activation, claim and evidence contracts | `NOT_STARTED` | M1-01 | Versioned JSON Schemas, canonical digests and invalid-scope rejection |
-| M1-03 | Campaign API, persistence and reopen flow | `NOT_STARTED` | M1-01, M1-02 | REST/OpenAPI, idempotency, ETag/version conflict and database integration tests |
-| M1-04 | Five-screen Web shell and readiness journey | `NOT_STARTED` | M0-05, M1-03 | Empty/loading/blocked/owner/recovery states in English and Chinese |
-| M1-05 | Four-platform editable composer and native-like previews | `NOT_STARTED` | M1-02, M1-04 | X, Bluesky, LinkedIn and Xiaohongshu fixtures, constraints and visual tests |
-| M1-06 | Schedule editor and persistent schedule model | `NOT_STARTED` | M1-03, M1-04 | One-time/RRULE input, IANA time zone, DST and misfire validation; no external action |
+| M1-01 | Organization, identity, brand, product, market and account graph | `ACCEPTED` | M0 accepted; SDD-001 | [Schema, migrations, tenant-aware constraints and negative fixtures](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-02 | Campaign, activation, claim and evidence contracts | `ACCEPTED` | M1-01 | [Versioned schemas, canonical digests and invalid-scope rejection](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-03 | Campaign API, persistence and reopen flow | `ACCEPTED` | M1-01, M1-02 | [REST/OpenAPI, idempotency, ETag/version conflict and database integration](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-04 | Five-screen Web shell and readiness journey | `ACCEPTED` | M0-05, M1-03 | [English/Chinese real-state journey and Owner-accepted functional-shell boundary](docs/reports/acceptance/SDD-001-ACCEPTANCE.md); `UX-M1-001` deferred to interaction convergence |
+| M1-05 | Four-platform editable composer and native-like previews | `ACCEPTED` | M1-02, M1-04 | [X, Bluesky, LinkedIn and Xiaohongshu fixtures, constraints and real browser evidence](docs/reports/acceptance/SDD-001-ACCEPTANCE.md) |
+| M1-06 | Schedule editor and persistent schedule model | `ACCEPTED` | M1-03, M1-04 | [One-time/RRULE, IANA time zone, DST/misfire and invalidation evidence](docs/reports/acceptance/SDD-001-ACCEPTANCE.md); no external action |
 
 ### M2 — Governed shadow campaign
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
-| M2-01 | AgentTeams Runtime Adapter and shared mission state | `NOT_STARTED` | M0-06, M1-02 | Project/task lifecycle, ACK/Submit, digest import and restart recovery |
-| M2-02 | Six-member AgentTeam and locked Skills | `NOT_STARTED` | M2-01 | Leader plus five domain members, context/permission separation and SkillLock |
-| M2-03 | DeepSeek ModelProvider gateway | `NOT_STARTED` | M0-07 | Structured output, model/cost snapshot, timeout/retry and privacy-safe fixtures |
-| M2-04 | Artifact revision, independent audit and owner review | `NOT_STARTED` | M1-05, M2-02 | Re-audit invalidation, producer/auditor separation and revision diff E2E |
-| M2-05 | Media assets and EvoLink adapter boundary | `NOT_STARTED` | M0-04, M2-03 | Async mock/Canary, content-addressed ingest, rights/cost receipt and no auto-approval |
-| M2-06 | Trace, ledger and Flight fault denial | `NOT_STARTED` | M2-02, M2-04 | Claim/constraint fault is blocked with replayable, public-safe evidence |
+| M2-01 | AgentTeams Runtime Adapter and shared mission state | `EVIDENCE_READY` | M0-06, M1-02; SDD-002 | Real Project/task lifecycle, ACK/Submit, digest import, reconciliation and restart evidence; Owner UAT pending |
+| M2-02 | Six-member AgentTeam and locked Skills | `EVIDENCE_READY` | M2-01 | Exact Leader plus five domain members, separated context/permissions, and five locked Skills verified |
+| M2-03 | DeepSeek ModelProvider gateway | `EVIDENCE_READY` | M0-07 | Structured output, cost/config snapshots, bounded retry/finish-reason policy, redaction, and local live Canary verified |
+| M2-04 | Artifact revision, independent audit and owner review | `EVIDENCE_READY` | M1-05, M2-02 | Immutable revision, initial FAIL, correction, independent re-audit, and exact non-executable review verified |
+| M2-05 | Media assets and EvoLink adapter boundary | `EVIDENCE_READY` | M0-04, M2-03 | Content-addressed ingest, rights/cost receipt, and no-auto-approval contract verified; EvoLink live Canary pending |
+| M2-06 | Trace, ledger and Flight fault denial | `EVIDENCE_READY` | M2-02, M2-04 | Frozen claim fault denial, replay, immutable trace/ledger, and zero external action verified |
 
 ### M3 — Controlled live activation
 

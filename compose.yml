@@ -1,0 +1,150 @@
+name: lumiclaw-presence
+
+x-app-security: &app-security
+  image: lumiclaw/presence:m2-governed-shadow
+  build:
+    context: .
+    dockerfile: infra/compose/Dockerfile
+  init: true
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+  pids_limit: 128
+  mem_limit: 512m
+  cpus: 1.0
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,nodev,size=64m
+
+x-node-healthcheck: &node-healthcheck
+  interval: 3s
+  timeout: 2s
+  retries: 30
+  start_period: 5s
+
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4
+    environment:
+      POSTGRES_DB: lumiclaw
+      POSTGRES_USER: postgres
+      POSTGRES_HOST_AUTH_METHOD: trust
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [data]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U postgres -d lumiclaw]
+      interval: 3s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER, SETGID, SETUID]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 1.0
+
+  migrate:
+    <<: *app-security
+    command: [npm, --workspace, "@lumiclaw/db", run, migrate:up]
+    environment:
+      DATABASE_URL: postgres://postgres@postgres:5432/lumiclaw
+      MIGRATIONS_DIR: /app/packages/db/migrations
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks: [data]
+    restart: "no"
+
+  api:
+    <<: *app-security
+    command: [node, apps/api/dist/server.js]
+    environment:
+      PORT: "4000"
+      DATABASE_URL: postgres://postgres@postgres:5432/lumiclaw
+      BLOB_ROOT: /var/lib/lumiclaw/blobs
+    ports:
+      - target: 4000
+        published: "${LUMICLAW_API_PORT:-4100}"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    volumes:
+      - blob-data:/var/lib/lumiclaw/blobs
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [edge, data]
+    healthcheck:
+      <<: *node-healthcheck
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4000/health').then(r=>{if(!r.ok)process.exit(1)})"]
+
+  mission-worker:
+    <<: *app-security
+    command: [node, apps/mission-worker/dist/server.js]
+    environment:
+      PORT: "4001"
+      DATABASE_URL: postgres://postgres@postgres:5432/lumiclaw
+      BLOB_ROOT: /var/lib/lumiclaw/blobs
+      BLOB_MARKER_PATH: /var/lib/lumiclaw/blobs/sdd000-ref.json
+    volumes:
+      - blob-data:/var/lib/lumiclaw/blobs
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [data, runtime]
+    healthcheck:
+      <<: *node-healthcheck
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4001/health').then(r=>{if(!r.ok)process.exit(1)})"]
+
+  action-operator:
+    <<: *app-security
+    command: [node, apps/action-operator/dist/server.js]
+    environment:
+      PORT: "4002"
+      DATABASE_URL: postgres://postgres@postgres:5432/lumiclaw
+      BLOB_ROOT: /var/lib/lumiclaw/blobs
+    volumes:
+      - type: volume
+        source: blob-data
+        target: /var/lib/lumiclaw/blobs
+        read_only: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [data]
+    healthcheck:
+      <<: *node-healthcheck
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4002/health').then(r=>{if(!r.ok)process.exit(1)})"]
+
+  web:
+    <<: *app-security
+    command: [npm, --workspace, "@lumiclaw/web", run, start]
+    environment:
+      PORT: "3000"
+      CONTROL_API_URL: http://api:4000
+    ports:
+      - target: 3000
+        published: "${LUMICLAW_WEB_PORT:-3100}"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [edge]
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+      - /app/apps/web/.next/cache:rw,noexec,nosuid,nodev,size=64m
+    healthcheck:
+      <<: *node-healthcheck
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)})"]
+
+networks:
+  edge:
+  data:
+    internal: true
+  runtime:
+    internal: true
+
+volumes:
+  postgres-data:
+  blob-data:
