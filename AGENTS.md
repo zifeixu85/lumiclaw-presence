@@ -7,6 +7,9 @@
 - Long-term vision: Global Presence OS
 - First capability surface: Global SocialOps
 - First vertical slice: Global Campaign Activation & Response
+- User-visible work unit: Governed Public Presence Mission
+- First Hero: Release-to-Presence-to-Feedback
+- Embedded technical core: Governed Mission Runtime; not a separate current product claim
 
 The long-term vision is PLANNED. Do not describe it as an implemented enterprise suite.
 

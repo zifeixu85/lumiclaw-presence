@@ -4,11 +4,11 @@
 
 > AI-native global brand operations for multi-brand, multi-market teams.
 
-**Status:** Pre-alpha with accepted M0/M1 foundations and an SDD-002 M2 Executor evidence candidate. This branch can run a persisted synthetic Campaign through a pinned, real six-member AgentTeams SHADOW mission, import digest/schema-validated outputs into PostgreSQL, block and re-audit one frozen Claim fault, and present four exact non-executable Owner Reviews. DeepSeek and EvoLink live Canaries were not run because no keys were provided. The branch still requires Coordinator verification and Owner UAT and is not production-ready.
+**Status:** Pre-alpha. M0/M1 are accepted and M2 is `EVIDENCE_READY`: the code has passed repeatable engineering verification, including a local real-DeepSeek Canary through a pinned six-member AgentTeams mission. Owner UAT is still pending; connectors, external platform actions, customer outcomes, and production readiness are not claimed.
 
 LumiClaw Presence turns one business objective into coordinated action across identities, brands, products, markets, and public accounts. It executes within approved facts, permissions, and ownership boundaries, then brings real responses back into the next decision.
 
-Our long-term vision is a **Global Presence OS**. Our first product surface is **Global SocialOps**, starting with one purchasable job: **Global Campaign Activation & Response**.
+Our long-term vision is a **Global Presence OS**. Our current category is **AI-native Global Brand Operations**. We enter through **Governed Public Presence Missions**, starting with **Global Campaign Activation & Response**. The reusable technical core is an embedded **Governed Mission Runtime**, not a separate product claim.
 
 ## The problem
 
@@ -32,18 +32,19 @@ LumiClaw Presence is designed as the control and learning layer for that loop. C
 | Current category | AI-native Global Brand Operations |
 | Product | LumiClaw Presence |
 | First capability surface | Global SocialOps |
+| User-visible work unit | Governed Public Presence Mission |
 | First purchasable job | Global Campaign Activation & Response |
-| Governance runtime | Presence Governance & Execution Runtime |
+| Embedded technical core | Governed Mission Runtime |
 | Trust module | Presence Agent Flight Simulator |
 
 The vision describes where the product can grow. It is not a claim that an enterprise suite already exists.
 
 ## First governed vertical slice
 
-The first slice will run one real LumiClaw campaign across a founder identity and a product identity:
+The first Hero follows a **Release-to-Presence-to-Feedback** loop across a founder identity and a product identity:
 
 ~~~text
-real campaign objective
+real release or business signal
 → identity, product, market, account, and mandate plan
 → evidence-bound claims
 → specialized AgentTeams members
@@ -51,7 +52,8 @@ real campaign objective
 → four editable platform-native revisions
 → exact human approval
 → governed direct publish or honest native handoff
-→ real response signal and disposition
+→ action receipt and real response signal
+→ product feedback, issue, or disposition
 → scoped learning proposal
 → replayed fault denial
 ~~~
@@ -150,7 +152,8 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the planned service boundaries, provi
 - PostgreSQL PublishingSchedule/ScheduleOccurrence state with constrained RRULE, IANA time zones, DST gap/fold, misfire, and edit invalidation contracts;
 - a pinned AgentTeams v1.2.0 Runtime Adapter and a repeatable real Manager/Worker/Project/DAG/Task/ACK/Submit run with exactly six separated members, including an orchestration-only Leader and independent Auditor;
 - PostgreSQL-owned Mission, RoleContext, five version-locked Skills, accepted Runtime payloads, immutable four-platform revisions, independent AuditDecision history, exact non-executable Owner Review, restart reconciliation, quarantine, trace, ledger, and public-safe evidence;
-- DeepSeek official `ModelProvider` and replaceable `MediaGenerationProvider` boundaries with structured-output, timeout/retry/rate-limit/error, redaction, cost/latency and content-addressed rights-receipt conformance; public-safe mocks are explicitly labeled `MOCK_CONFORMANCE`, and live Canaries remain `NOT_RUN_NO_KEY`;
+- DeepSeek official `ModelProvider` and replaceable `MediaGenerationProvider` boundaries with structured-output, timeout/retry/rate-limit/error, redaction, cost/latency and content-addressed rights-receipt conformance; public-safe mocks remain explicitly labeled `MOCK_CONFORMANCE`;
+- a local Owner-controlled DeepSeek Canary that completed the real six-member/eight-task AgentTeams path with seven redacted accepted model receipts, five immutable revisions, five audit decisions, `AWAITING_OWNER_REVIEW`, and zero external actions; this is engineering verification, not customer or business validation;
 - Chinese-default and English Mission/Review flows, 390px coverage, 14 browser-rendered Storybook states, and distinct actionable UX-M1-001 disabled reasons;
 - no due-action executor, connector, external platform action, executable OwnerDecision, ActionGrant, ActionReceipt, real provider claim, or real customer data.
 
@@ -158,7 +161,7 @@ See [ARCHITECTURE.md](ARCHITECTURE.md) for the planned service boundaries, provi
 
 - ActionGrant, ActionReceipt, and capability probing;
 - Bluesky Direct, LinkedIn and Xiaohongshu Handoffs, and the gated X Direct Canary;
-- credentialed DeepSeek/EvoLink Canaries and isolated SignalProvider adapters;
+- the EvoLink live Canary and isolated SignalProvider adapters;
 - response disposition and scoped learning;
 - hosted authentication, multi-tenant RLS, and a production web surface.
 
@@ -168,14 +171,26 @@ Legacy engineering assets exist in a separate private prototype, but they are no
 
 1. SDD-000 delivery foundation: license decision, Node workspace, Docker Compose, PostgreSQL migrations, `next-intl`, design shell, CI, and isolated AgentTeams smoke.
 2. Campaign walking skeleton with four editable previews, persistent schedule editor, and capability/constraint fixtures.
-3. A real six-member AgentTeams SHADOW mission with separated producers and auditor, routed through DeepSeek.
-4. Replay, fault denial, and human decision to single-use ActionGrant to ActionReceipt.
-5. Bluesky Direct plus LinkedIn and Xiaohongshu Handoffs; X Direct only if its Canary gate passes.
-6. One real response to a reviewed outcome and scoped learning proposal, plus one isolated SignalProvider PoC.
+3. A real six-member AgentTeams SHADOW mission with separated producers and auditor, routed through DeepSeek. **Engineering evidence ready.**
+4. A Release-to-Presence-to-Feedback Hero: exact approval, single-use ActionGrant, ActionReceipt, and honest failure downgrade.
+5. One official Direct path plus explicit native handoffs; X Direct only if its Canary gate passes.
+6. One real response converted into a reviewed GitHub Issue, outcome, or scoped learning proposal, plus one isolated SignalProvider PoC.
 7. A second mission that correctly reuses approved learning.
 8. Fresh-install, recovery, provider-conformance, and single-agent versus multi-agent verification.
 
 The milestone outcomes and exit criteria are maintained in the [public roadmap](ROADMAP.md); module state, blockers, evidence, and the next executable task live in the [implementation register](IMPLEMENTATION-STATUS.md).
+
+## Run locally
+
+Prerequisites: Docker Desktop, Node.js `24.16.0`, and npm `11.13.0`.
+
+~~~bash
+npm ci
+npm run verify
+docker compose up --build
+~~~
+
+Open <http://127.0.0.1:3100>. The default locale is Simplified Chinese; English is available under `/en`. The normal Compose path uses synthetic data and performs no external social action. Live-provider UAT has a separate Owner-only protocol and must never place a key in Git, `.env`, shell history, issues, or logs.
 
 ## Repository scope
 

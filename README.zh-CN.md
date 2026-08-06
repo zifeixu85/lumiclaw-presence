@@ -4,11 +4,11 @@
 
 > 面向多品牌、多市场团队的 AI 原生全球品牌运营系统。
 
-**状态：** Pre-alpha；M0/M1 已验收，当前分支是 SDD-002 M2 Executor 的证据候选。它可让持久化合成 Campaign 经过固定版本、真实六成员 AgentTeams SHADOW Mission，把通过 digest/schema 校验的输出导入 PostgreSQL，阻断并重审一个冻结 Claim 故障，再进入四个平台的精确、不可执行 Owner Review。由于未提供 Key，DeepSeek/EvoLink 真实 Canary 未运行；分支仍需 Coordinator 复核与 Owner UAT，不代表生产就绪。
+**状态：** Pre-alpha。M0/M1 已验收，M2 已达到 `EVIDENCE_READY`：代码通过了可重复工程验证，包括一次由 Owner 在本地完成的真实 DeepSeek Canary 和固定版本六成员 AgentTeams Mission。Owner UAT 仍待完成；不声明 Connector、外部平台动作、客户结果或生产就绪。
 
 LumiClaw Presence 把一个业务目标转化为跨身份、品牌、产品、市场和公开账号的协同行动，在已批准的事实、权限与责任边界内执行，并把真实回应带回下一轮决策。
 
-长期愿景是 **Global Presence OS**；第一能力表面是 **Global SocialOps**；第一个可购买任务是 **Global Campaign Activation & Response**。
+长期愿景是 **Global Presence OS**；当前类别是 **AI-native Global Brand Operations**；我们从 **Governed Public Presence Missions（可治理的品牌公开行动任务）** 切入，第一个任务是 **Global Campaign Activation & Response**。可复用的技术核心是内嵌的 **Governed Mission Runtime**，当前不把它声明成独立产品。
 
 ## 要解决的问题
 
@@ -32,18 +32,19 @@ LumiClaw Presence 计划成为这条闭环的控制与学习层。Connector、�
 | 当前类别 | AI-native Global Brand Operations |
 | 产品 | LumiClaw Presence |
 | 第一能力表面 | Global SocialOps |
+| 用户可见工作单元 | Governed Public Presence Mission |
 | 第一可购买任务 | Global Campaign Activation & Response |
-| 治理运行时 | Presence Governance & Execution Runtime |
+| 内嵌技术核心 | Governed Mission Runtime |
 | 信任模块 | Presence Agent Flight Simulator |
 
 愿景说明产品可以走到哪里，不代表完整企业套件已经实现。
 
 ## 首个受治理纵切面
 
-第一条纵向切面将围绕一项真实 LumiClaw Campaign，让创始人身份和产品身份协同行动：
+首个 Hero 使用 **Release-to-Presence-to-Feedback** 闭环，让创始人身份和产品身份围绕一次真实发布或业务信号协同行动：
 
 ~~~text
-真实 Campaign 目标
+真实 Release 或业务信号
 → 身份、产品、市场、账号与 Mandate
 → 有证据约束的 Claim
 → 专业 AgentTeams 成员
@@ -51,7 +52,8 @@ LumiClaw Presence 计划成为这条闭环的控制与学习层。Connector、�
 → 四个平台可编辑原生版本
 → Human Owner 精确批准
 → 受治理的直发或诚实 Native Handoff
-→ 真实 Response、Outcome 与 Disposition
+→ Action Receipt 与真实 Response
+→ 产品反馈、Issue 或 Disposition
 → 有作用域的 LearningProposal
 → 故障重放被拒绝
 ~~~
@@ -150,7 +152,8 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 - PostgreSQL PublishingSchedule/ScheduleOccurrence，覆盖受约束 RRULE、IANA 时区、DST gap/fold、Misfire 与编辑失效；
 - 固定 AgentTeams v1.2.0 Runtime Adapter，以及可重复的真实 Manager/Worker/Project/DAG/Task/ACK/Submit：恰好六个分权成员，包括只编排的 Leader 与独立 Auditor；
 - PostgreSQL 权威 Mission、RoleContext、五个版本锁定 Skill、已接受 Runtime Payload、四平台不可变 Revision、独立 AuditDecision 历史、精确不可执行 Owner Review、重启对账、隔离、Trace、Ledger 与公开安全证据；
-- DeepSeek 官方 `ModelProvider` 与可替换 `MediaGenerationProvider` 边界，覆盖结构化输出、超时/重试/限流/错误、脱敏、成本/延迟和 Content-addressed Rights Receipt；公开安全 Mock 明确标记 `MOCK_CONFORMANCE`，真实 Canary 为 `NOT_RUN_NO_KEY`；
+- DeepSeek 官方 `ModelProvider` 与可替换 `MediaGenerationProvider` 边界，覆盖结构化输出、超时/重试/限流/错误、脱敏、成本/延迟和 Content-addressed Rights Receipt；公开安全 Mock 继续明确标记 `MOCK_CONFORMANCE`；
+- 一次由 Owner 本地控制的 DeepSeek Canary 完整经过真实六成员、八任务 AgentTeams 路径，形成 7 个脱敏且已接受的模型回执、5 个不可变 Revision、5 个 AuditDecision，最终状态为 `AWAITING_OWNER_REVIEW`，外部动作数为 0；这是工程验证，不是客户或业务验证；
 - 默认中文、支持英文的 Mission/Review 流程、390px、14 个浏览器渲染 Storybook 状态，以及 UX-M1-001 两类准确且可操作的禁用原因；
 - 不包含到期执行、Connector、真实平台动作、可执行 OwnerDecision、ActionGrant、ActionReceipt、真实 Provider 成熟度声明或真实客户数据。
 
@@ -158,7 +161,7 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 - ActionGrant、ActionReceipt 与 Capability Probe；
 - Bluesky Direct、LinkedIn 与小红书 Handoff，以及分级准入的 X Direct Canary；
-- 带凭据的 DeepSeek/EvoLink Canary 与隔离的 SignalProvider Adapter；
+- EvoLink 真实 Canary 与隔离的 SignalProvider Adapter；
 - Response Disposition 与作用域学习；
 - Hosted Authentication、多租户 RLS 与生产 Web Surface。
 
@@ -168,14 +171,26 @@ LumiClaw Presence 计划拥有受治理的全球品牌行动与学习，但不�
 
 1. SDD-000 交付基础：License 决策、Node Workspace、Docker Compose、PostgreSQL Migration、`next-intl`、Design Shell、CI 与隔离 AgentTeams Smoke；
 2. Campaign Walking Skeleton、四平台可编辑 Preview、持久化 Schedule Editor 与 Capability/Constraint Fixture；
-3. 经 DeepSeek 路由、Producer 与 Auditor 分离的六成员 AgentTeams SHADOW Mission；
-4. Replay、故障拒绝，以及 Human Decision → 单次 ActionGrant → ActionReceipt；
-5. Bluesky Direct、LinkedIn 与小红书 Handoff；X Direct 只有 Canary Gate 通过才开启；
-6. 一条真实 Response → Outcome → Scoped Learning，以及一个隔离的 SignalProvider PoC；
+3. 经 DeepSeek 路由、Producer 与 Auditor 分离的六成员 AgentTeams SHADOW Mission；**工程证据已就绪。**
+4. Release-to-Presence-to-Feedback Hero：精确批准、一次性 ActionGrant、ActionReceipt 与诚实故障降级；
+5. 一个官方 Direct 路径加明确 Native Handoff；X Direct 只有 Canary Gate 通过才开启；
+6. 一条真实 Response 进入已审阅 GitHub Issue、Outcome 或作用域 Learning，并完成一个隔离 SignalProvider PoC；
 7. 下一 Mission 正确复用已批准学习；
 8. Fresh Install、恢复、Provider Conformance，以及同条件单 Agent / 多 Agent 验证。
 
 各阶段的用户结果和 Exit Criteria 维护在[公开路线图](ROADMAP.zh-CN.md)中；模块状态、Blocker、Evidence 与下一可执行任务以[实现进度表](IMPLEMENTATION-STATUS.zh-CN.md)为准。
+
+## 本地运行
+
+前置：Docker Desktop、Node.js `24.16.0`、npm `11.13.0`。
+
+~~~bash
+npm ci
+npm run verify
+docker compose up --build
+~~~
+
+打开 <http://127.0.0.1:3100>。默认界面为简体中文，英文路径为 `/en`。普通 Compose 路径只使用合成数据，不会执行任何外部社媒动作。真实 Provider UAT 使用独立的 Owner-only 协议，Key 不得进入 Git、`.env`、Shell History、Issue 或日志。
 
 ## 仓库范围
 

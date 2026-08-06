@@ -2,7 +2,7 @@
 
 [English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE.zh-CN.md) | [README](README.zh-CN.md) | [路线图](ROADMAP.zh-CN.md)
 
-> **状态：** 本文同时标记实现与规划边界。M0/M1 已验收；当前分支新增 SDD-002 M2 Executor 证据候选，包括固定版本的真实六成员 AgentTeams SHADOW Mission、Provider Port/Conformance、不可变 Revision、独立 Audit 与不可执行 Owner Review。带凭据 Provider Canary、ActionGrant、Connector、外部动作和生产部署仍为 `PLANNED`。
+> **状态：** 本文同时标记实现与规划边界。M0/M1 已验收；M2 已达到 `EVIDENCE_READY`，包括固定版本六成员 AgentTeams SHADOW Mission、本地真实 DeepSeek Canary、Provider Conformance、不可变 Revision、独立 Audit 与不可执行 Owner Review。Owner UAT、EvoLink 真实验证、ActionGrant、Connector、外部动作和生产部署仍待完成或属于 `PLANNED`。
 
 ## 架构目标
 
@@ -14,7 +14,7 @@ LumiClaw Presence 计划成为全球品牌运营的控制与学习层。架构�
 - 可替换的模型、媒体、信号与发布 Provider；
 - 可编辑的平台原生产物，以及不夸大执行能力的近似预览。
 
-首条参考旅程是 **Global Campaign Activation & Response**：让 Founder Identity 与 Product Identity 面向 X、Bluesky、LinkedIn 和小红书生成四份可编辑版本，再按每个真实账号当前可用的能力选择诚实执行路径。
+首条参考旅程是 **Global Campaign Activation & Response** 的 **Release-to-Presence-to-Feedback** 形式：用户面对一个受治理的公开 Presence Mission；系统内部由可复用的 Governed Mission Runtime 承担证据、分权、审校与状态合同。
 
 ## 计划中的系统拓扑
 
@@ -167,7 +167,7 @@ SDD-002 候选固定 AgentTeams v1.2.0 源码与镜像 digest，创建恰好一�
 
 计划中的 DeepSeek 路由使用 `deepseek-v4-flash` 处理较低风险转换与归纳，使用 `deepseek-v4-pro` 处理规划、Evidence Stewardship、审校和高风险修订。EvoLink 可替换，不能成为 MediaAsset 真源。`SignalProvider` 只能产生 Claim Candidate，不能把第三方数据自行升级成已批准公开主张。
 
-SDD-002 候选已实现 DeepSeek 官方 Gateway 与 Media Provider 边界，并通过 Conformance：合同保存模型/config/成本/延迟/错误快照，验证结构化 Schema，对 429/5xx 做有界重试，覆盖超时、脱敏和禁止静默换模。媒体采用 Content-addressed Ingest，要求合成素材权利/成本 Receipt，且保持未批准。由于未提供凭据，DeepSeek 与 EvoLink 真实 Canary 为 `NOT_RUN_NO_KEY`；公开安全 Fixture 仅标记 `MOCK_CONFORMANCE`，不是实际 Provider 证据。
+SDD-002 已实现 DeepSeek 官方 Gateway 与 Media Provider 边界，并通过 Conformance：合同保存模型/config/成本/延迟/错误快照，验证结构化 Schema，覆盖有界重试、Finish Reason、超时、脱敏和禁止静默换模。Owner 控制的本地 DeepSeek Canary 已让 7 个模型任务通过真实 AgentTeams 路径并保持外部动作数为 0；其成熟度是 `ENGINEERING_VERIFIED`，不是客户或业务验证。EvoLink 真实验证仍为 `NOT_RUN_NO_KEY`；公开安全 Fixture 继续只标记 `MOCK_CONFORMANCE`。
 
 ## 四平台可编辑 Composer
 

@@ -6,10 +6,11 @@ This roadmap describes product outcomes, not a promise that every planned capabi
 
 ## How we are building
 
-We are building one continuous campaign journey and making it progressively real:
+We are building one continuous **Release-to-Presence-to-Feedback** journey and making it progressively real:
 
 ~~~text
-campaign setup
+release or business signal
+→ campaign setup
 → activation plan
 → AgentTeams shadow work
 → independent audit
@@ -49,7 +50,7 @@ Exit: the repository installs through the documented Compose path, migrations an
 
 Exit: a real LumiClaw campaign can reach readiness and reopen its four editable platform revisions without hidden demo-only state.
 
-### M2 — Governed shadow campaign · CURRENT EXECUTOR EVIDENCE SLICE
+### M2 — Governed shadow campaign · EVIDENCE READY
 
 - Run one mission leader and five domain specialists in AgentTeams; the leader orchestrates but does not produce domain artifacts.
 - Route model work through the `ModelProvider` port and the planned DeepSeek V4 gateway.
@@ -61,7 +62,7 @@ Exit: a real LumiClaw campaign can reach readiness and reopen its four editable 
 
 Exit: the six-member team returns digest-validated artifacts; one valid revision reaches owner review and one invalid revision is blocked and revised.
 
-Current branch evidence reaches this engineering exit with a real pinned AgentTeams runtime and a public-safe mock model flight. It remains an `EVIDENCE_READY` candidate until Coordinator verification and Owner UAT; the absence of provider keys means no live DeepSeek or EvoLink maturity claim is made.
+Current branch evidence reaches this engineering exit with a real pinned AgentTeams runtime and an Owner-controlled local DeepSeek Canary. M2 remains `EVIDENCE_READY` until Owner UAT is recorded. EvoLink live maturity, platform actions, and external-user outcomes are not claimed.
 
 ### M3 — Controlled live activation
 

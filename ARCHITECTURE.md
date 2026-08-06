@@ -2,7 +2,7 @@
 
 [English](ARCHITECTURE.md) | [简体中文](ARCHITECTURE.zh-CN.md) | [README](README.md) | [Roadmap](ROADMAP.md)
 
-> **Status:** Mixed implementation truth. M0/M1 are accepted; this branch adds an SDD-002 M2 Executor evidence candidate with a real pinned six-member AgentTeams SHADOW Mission, provider ports/conformance, immutable revisions, independent audit and non-executable Owner Review. Credentialed provider Canaries, ActionGrants, connectors, external actions and production deployment remain `PLANNED`.
+> **Status:** Mixed implementation truth. M0/M1 are accepted; M2 is `EVIDENCE_READY` with a pinned six-member AgentTeams SHADOW Mission, a local real-DeepSeek Canary, provider conformance, immutable revisions, independent audit, and non-executable Owner Review. Owner UAT, EvoLink live verification, ActionGrants, connectors, external actions, and production deployment remain pending or `PLANNED`.
 
 ## Architecture goals
 
@@ -14,7 +14,7 @@ LumiClaw Presence is planned as a control and learning layer for global brand op
 - replaceable model, media, signal, and publishing providers;
 - editable platform-native artifacts whose preview does not overstate execution capability.
 
-The first reference journey is **Global Campaign Activation & Response** across a founder identity and a product identity. It produces editable variants for X, Bluesky, LinkedIn, and Xiaohongshu, then follows the honest execution path available to each account.
+The first reference journey is a **Release-to-Presence-to-Feedback** form of **Global Campaign Activation & Response** across a founder identity and a product identity. The product surface is a governed public Presence Mission; the embedded technical core is the reusable Governed Mission Runtime.
 
 ## Planned system topology
 
@@ -167,7 +167,7 @@ Read-side intelligence and write-side actions use different interfaces so that a
 
 The planned DeepSeek routes are `deepseek-v4-flash` for lower-risk transformation and summarization, and `deepseek-v4-pro` for planning, evidence stewardship, audit, and higher-risk revision. EvoLink is replaceable and never becomes the media asset source of truth. A `SignalProvider` can only produce a claim candidate; it cannot turn third-party data into an approved public claim by itself.
 
-In the SDD-002 candidate, the DeepSeek official gateway and media-provider boundary are implemented and conformance-tested. Model/config/cost/latency/error snapshots, structured-schema validation, bounded retry for 429/5xx, timeout, redaction and no-silent-model-switch behavior are persisted contracts. Media ingest is content-addressed and requires synthetic-rights/cost receipts while remaining unapproved. No credential was supplied, so DeepSeek and EvoLink live Canaries are `NOT_RUN_NO_KEY`; public-safe fixtures are `MOCK_CONFORMANCE`, not real-provider evidence.
+In SDD-002, the DeepSeek official gateway and media-provider boundary are implemented and conformance-tested. Model/config/cost/latency/error snapshots, structured-schema validation, bounded retry, finish-reason handling, timeout, redaction, and no-silent-model-switch behavior are persisted contracts. An Owner-controlled local DeepSeek Canary completed seven accepted model tasks through the real AgentTeams path with zero external actions; it is `ENGINEERING_VERIFIED`, not customer or business validation. EvoLink live verification remains `NOT_RUN_NO_KEY`, and public-safe fixtures remain `MOCK_CONFORMANCE`.
 
 ## Four-platform editable composer
 
