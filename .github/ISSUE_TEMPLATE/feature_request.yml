@@ -1,0 +1,40 @@
+name: Feature proposal
+description: Propose a focused capability or contract improvement
+title: "[Proposal]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User or operator problem
+      description: Describe the job, current workaround, and who experiences it.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Explain the observable result without prescribing a large implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Scope and safety boundary
+      description: Note affected identities, accounts, markets, permissions, human gates, connectors, or data.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include current tools or workflows when relevant.
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Contribution
+      options:
+        - label: I can help refine the proposal.
+        - label: I may be able to implement it after maintainers accept the design.
+        - label: This probably needs an SDD before implementation.

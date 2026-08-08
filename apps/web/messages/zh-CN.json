@@ -1,0 +1,135 @@
+{
+  "Meta": {
+    "title": "LumiClaw Presence｜推广任务骨架",
+    "description": "从一个目标出发，安全地准备、审核并改进各平台内容。"
+  },
+  "Shell": {
+    "brand": "LumiClaw Presence",
+    "category": "你的全球品牌运营工作台",
+    "mode": "演示环境 · DEMO_SEED / NOT_LIVE",
+    "milestone": "产品体验版 · 不会执行真实操作",
+    "localeLabel": "界面语言",
+    "localeSwitch": "English",
+    "skipToContent": "跳到主要内容",
+    "evidenceLabel": "当前环境",
+    "evidenceValue": "可保存的安全演示",
+    "journeyLabel": "完成一次推广的五个步骤",
+    "statusLabel": "当前情况",
+    "ownerLabel": "你现在可以做",
+    "technicalDetailsLabel": "查看技术与验收信息",
+    "technicalStateLabel": "稳定状态码",
+    "technicalEvidenceLabel": "工程依据",
+    "footer": "这是安全演示：没有连接真实账号，不会审批或发布任何内容。",
+    "nav": {
+      "campaigns": "创建推广任务",
+      "setup": "准备品牌资料",
+      "mission": "制作各平台内容",
+      "review": "审核并确认",
+      "learn": "查看反馈并优化"
+    }
+  },
+  "Screens": {
+    "campaigns": {
+      "eyebrow": "01 · 明确这次想达成什么",
+      "title": "从一个清楚的推广目标开始。",
+      "summary": "这里将帮助你说明要推广什么、面向谁，以及希望对方采取什么行动。之后的内容准备和审核都会围绕同一个目标进行。",
+      "status": "可以创建、保存并重新打开演示推广任务",
+      "basis": "数据写入本地 PostgreSQL；所有内容仍是公开安全的演示种子，不连接真实账号。",
+      "next": "填写目标与行动号召，创建第一个演示推广任务。",
+      "previewTitle": "正式使用时，这里会汇总",
+      "previewItems": {
+        "first": "这次推广要达成的目标",
+        "second": "当前进展和仍缺少的信息",
+        "third": "下一件需要你处理的事情"
+      },
+      "technicalStatus": "CAMPAIGN_PERSISTENCE_READY / DEMO_SEED",
+      "technicalBasis": "REST、OpenAPI、Idempotency-Key、ETag 和版本快照由同一 PostgreSQL 控制面支持。"
+    },
+    "setup": {
+      "eyebrow": "02 · 准备可信的品牌信息",
+      "title": "先把事实准备好，再开始写内容。",
+      "summary": "品牌介绍、产品卖点、目标市场和可使用的证明材料会集中在这里，避免不同平台各说一套。",
+      "status": "最小品牌、产品、市场与依据矩阵可保存",
+      "basis": "页面只使用合成资料；草稿事实会明确显示为需要你补全，而不会被当作批准事实。",
+      "next": "检查品牌矩阵与事实依据，保留公开安全的演示内容。",
+      "previewTitle": "正式使用时，你会在这里确认",
+      "previewItems": {
+        "first": "品牌和产品的基本信息",
+        "second": "可以对外使用的事实与证明",
+        "third": "目标市场和平台账号是否准备好"
+      },
+      "technicalStatus": "TENANT_GRAPH_READY / CLAIM_EVIDENCE_VERSIONED",
+      "technicalBasis": "Organization、Identity、Brand、Product、Market、ChannelAccount、AccountMandate 与 Claim–Evidence 已具备租户约束。"
+    },
+    "mission": {
+      "eyebrow": "03 · 六位专员协同制作",
+      "title": "让每项工作有责任人，也让每个结论有证据。",
+      "summary": "六位职责不同的专员分开完成事实核对、规划、四个平台的表达和独立复核；协调者只安排工作，不替其他人产出。",
+      "status": "所有进度、内容版本和复核记录来自同一个可靠数据源",
+      "basis": "当前只做安全演练；演示结果与真实协作证据会分别标注，绝不伪装成发布结果。",
+      "next": "从已保存的准确版本启动安全演练，观察六位专员和前后依赖。",
+      "previewTitle": "这里将展示四个平台的内容版本",
+      "previewItems": {
+        "first": "每个平台准备的表达方式",
+        "second": "可以由你修改的内容",
+        "third": "发送或发布前的效果预览"
+      },
+      "technicalStatus": "AGENTTEAMS_V1_2_0 / SIX_MEMBERS / SHADOW_ONLY / NO_ACTION",
+      "technicalBasis": "Project/DAG/ACK/Submit、RoleContext、SkillLock、digest/schema、timeout/recovery 与 PostgreSQL 状态均有可重复工程验证。"
+    },
+    "review": {
+      "eyebrow": "04 · 由你做最后确认",
+      "title": "先看为什么被拒绝，再确认修正后的准确版本。",
+      "summary": "独立复核者会把每一版内容与已确认的事实、依据、账号职责和平台限制逐一核对；修订后，旧复核自动失效。",
+      "status": "错误说法已被拒绝，四个平台修正版等待你的准确确认",
+      "basis": "你的确认明确不可执行：它不会连接账号、触发排程或产生任何对外动作。",
+      "next": "比较最多两版差异，确认引用依据和下一责任人，再记录对准确版本的确认。",
+      "previewTitle": "正式审核时，你会一起看到",
+      "previewItems": {
+        "first": "准备发布的准确内容",
+        "second": "支持这些表达的事实依据",
+        "third": "风险提示和需要你确认的决定"
+      },
+      "technicalStatus": "INDEPENDENT_AUDIT / EXACT_OWNER_REVIEW / NO_ACTION_GRANT",
+      "technicalBasis": "四平台不可变 Revision、FAIL→修正版→re-audit、Audit 失效与非执行 Owner Review 已进入同一控制面；M3 执行仍未实现。"
+    },
+    "learn": {
+      "eyebrow": "05 · 从真实反馈中改进",
+      "title": "看见真实反馈，再决定下一轮怎么改。",
+      "summary": "这里会把评论、互动和结果整理成可追溯的反馈，并提出改进建议；系统不会自行改写你的品牌事实。",
+      "status": "已明确阻断：目前没有真实平台反馈",
+      "basis": "没有连接平台账号，也没有导入客户、评论或互动数据。",
+      "next": "确认这里清楚区分了真实反馈、系统建议和你的最终决定。",
+      "previewTitle": "正式使用时，这里会整理",
+      "previewItems": {
+        "first": "来自各平台的真实互动",
+        "second": "有依据的结果和变化",
+        "third": "等待你确认的下一轮改进建议"
+      },
+      "technicalStatus": "BLOCKED / NO_LIVE_INTERACTION",
+      "technicalBasis": "Interaction、Outcome、Disposition 与 LearningProposal 均未实现或写入。"
+    }
+  },
+  "Mission": {
+    "rail": "各平台内容",
+    "composer": "内容编辑区",
+    "preview": "发布前预览",
+    "constraint": "尚未连接平台账号",
+    "disclaimer": "这是效果示意；正式发布前仍需你确认。",
+    "platforms": {
+      "x": "X · 仅展示准备方式",
+      "bluesky": "Bluesky · 尚未连接",
+      "linkedin": "LinkedIn · 计划人工交接",
+      "xiaohongshu": "小红书 · 计划人工交接"
+    }
+  },
+  "States": {
+    "needsInput": "需要补充资料",
+    "preparing": "正在准备计划",
+    "needsReview": "需要审阅",
+    "blocked": "已阻断",
+    "needsOwner": "等待你的决定",
+    "unknown": "状态待核对",
+    "ready": "基础已就绪"
+  }
+}

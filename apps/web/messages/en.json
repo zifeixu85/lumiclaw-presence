@@ -1,0 +1,135 @@
+{
+  "Meta": {
+    "title": "LumiClaw Presence | Campaign walking skeleton",
+    "description": "Plan, review, and improve market-specific content from one clear objective."
+  },
+  "Shell": {
+    "brand": "LumiClaw Presence",
+    "category": "Your global brand operations workspace",
+    "mode": "Demo environment · DEMO_SEED / NOT_LIVE",
+    "milestone": "Product preview · no live actions",
+    "localeLabel": "Interface language",
+    "localeSwitch": "简体中文",
+    "skipToContent": "Skip to main content",
+    "evidenceLabel": "Current environment",
+    "evidenceValue": "Persistent safe demo",
+    "journeyLabel": "Five steps from objective to improvement",
+    "statusLabel": "Where things stand",
+    "ownerLabel": "What you can do now",
+    "technicalDetailsLabel": "View technical and acceptance details",
+    "technicalStateLabel": "Stable state code",
+    "technicalEvidenceLabel": "Engineering evidence",
+    "footer": "This is a safe preview: no real account is connected and nothing can be approved or published.",
+    "nav": {
+      "campaigns": "Start a campaign",
+      "setup": "Prepare brand information",
+      "mission": "Create platform content",
+      "review": "Review and confirm",
+      "learn": "Learn and improve"
+    }
+  },
+  "Screens": {
+    "campaigns": {
+      "eyebrow": "01 · Be clear about the outcome",
+      "title": "Start with one clear campaign objective.",
+      "summary": "This is where you will explain what you are promoting, who it is for, and what you want people to do. Content and review will stay anchored to that objective.",
+      "status": "You can create, save, and reopen a demo campaign",
+      "basis": "Data is stored in local PostgreSQL; everything remains public-safe demo seed with no real account.",
+      "next": "Set the objective and call to action, then create the first demo campaign.",
+      "previewTitle": "When ready, this area will summarize",
+      "previewItems": {
+        "first": "The outcome you want this campaign to achieve",
+        "second": "Current progress and missing information",
+        "third": "The next item that needs your attention"
+      },
+      "technicalStatus": "CAMPAIGN_PERSISTENCE_READY / DEMO_SEED",
+      "technicalBasis": "REST, OpenAPI, Idempotency-Key, ETag, and version snapshots share one PostgreSQL control plane."
+    },
+    "setup": {
+      "eyebrow": "02 · Prepare trusted brand information",
+      "title": "Get the facts ready before writing content.",
+      "summary": "Your brand story, product value, target market, and supporting proof will live together here so every platform starts from the same truth.",
+      "status": "The minimal brand, product, market, and evidence matrix can be saved",
+      "basis": "Only synthetic material is used; draft facts remain visibly owner-blocked instead of being treated as approved.",
+      "next": "Review the brand matrix and supporting evidence while keeping the demo public-safe.",
+      "previewTitle": "When ready, you will confirm",
+      "previewItems": {
+        "first": "Core brand and product information",
+        "second": "Facts and proof that may be used publicly",
+        "third": "Target markets and account readiness"
+      },
+      "technicalStatus": "TENANT_GRAPH_READY / CLAIM_EVIDENCE_VERSIONED",
+      "technicalBasis": "Organization, Identity, Brand, Product, Market, ChannelAccount, AccountMandate, and Claim–Evidence now enforce tenant scope."
+    },
+    "mission": {
+      "eyebrow": "03 · Six specialists collaborate",
+      "title": "Give every task an owner and every conclusion evidence.",
+      "summary": "Six specialists separately verify facts, plan, write for four platforms, and independently check the work. The coordinator assigns work but produces none of it.",
+      "status": "All progress, content versions, and checks come from one durable source",
+      "basis": "This is a safe rehearsal only. Demo results and real collaboration evidence are labeled separately and never imply publication.",
+      "next": "Start a safe rehearsal from the exact saved version and inspect six responsibilities and dependencies.",
+      "previewTitle": "Four platform-specific content versions will appear here",
+      "previewItems": {
+        "first": "A suitable expression for each platform",
+        "second": "Content you can edit before review",
+        "third": "A preview before handoff or publication"
+      },
+      "technicalStatus": "AGENTTEAMS_V1_2_0 / SIX_MEMBERS / SHADOW_ONLY / NO_ACTION",
+      "technicalBasis": "Project/DAG/ACK/Submit, RoleContext, SkillLock, digest/schema validation, timeout/recovery, and PostgreSQL state have repeatable engineering verification."
+    },
+    "review": {
+      "eyebrow": "04 · You make the final call",
+      "title": "See why one claim was denied, then review the exact correction.",
+      "summary": "An independent checker compares every version with confirmed facts, supporting proof, account responsibility, and platform limits. A correction automatically invalidates the old check.",
+      "status": "The faulty statement was denied; four corrected platform versions need your exact confirmation",
+      "basis": "Your confirmation is explicitly non-executable: it connects no account, triggers no schedule, and performs no external action.",
+      "next": "Compare at most two versions, inspect cited proof and the next responsible person, then confirm the exact version.",
+      "previewTitle": "A real review will bring together",
+      "previewItems": {
+        "first": "The exact content proposed for sharing",
+        "second": "The facts that support each statement",
+        "third": "Risk notes and decisions that need you"
+      },
+      "technicalStatus": "INDEPENDENT_AUDIT / EXACT_OWNER_REVIEW / NO_ACTION_GRANT",
+      "technicalBasis": "Immutable four-platform Revisions, FAIL→correction→re-audit, Audit invalidation, and non-executable Owner Review share one control plane. M3 execution remains unimplemented."
+    },
+    "learn": {
+      "eyebrow": "05 · Improve from real feedback",
+      "title": "See what people actually did, then decide what to change.",
+      "summary": "Comments, interactions, and outcomes will be organized into traceable feedback and suggestions. The system will never rewrite your approved brand facts on its own.",
+      "status": "Explicitly blocked: there is no real platform feedback",
+      "basis": "No platform account is connected and no customer, comment, or interaction data has been imported.",
+      "next": "Confirm that real feedback, system suggestions, and your final decision are clearly separated.",
+      "previewTitle": "When ready, this area will organize",
+      "previewItems": {
+        "first": "Real interactions from each platform",
+        "second": "Evidence-backed outcomes and changes",
+        "third": "Suggestions waiting for your decision"
+      },
+      "technicalStatus": "BLOCKED / NO_LIVE_INTERACTION",
+      "technicalBasis": "Interaction, Outcome, Disposition, and LearningProposal are not implemented or persisted."
+    }
+  },
+  "Mission": {
+    "rail": "Content by platform",
+    "composer": "Editing area",
+    "preview": "Preview before sharing",
+    "constraint": "No platform account connected",
+    "disclaimer": "This is an illustration; you will still confirm before anything is shared.",
+    "platforms": {
+      "x": "X · preparation preview only",
+      "bluesky": "Bluesky · not connected",
+      "linkedin": "LinkedIn · manual handoff planned",
+      "xiaohongshu": "Xiaohongshu · manual handoff planned"
+    }
+  },
+  "States": {
+    "needsInput": "Needs material",
+    "preparing": "Preparing plan",
+    "needsReview": "Needs review",
+    "blocked": "Blocked",
+    "needsOwner": "Needs your decision",
+    "unknown": "Needs reconciliation",
+    "ready": "Foundation ready"
+  }
+}

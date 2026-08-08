@@ -1,0 +1,61 @@
+name: Bug report
+description: Report a reproducible defect in LumiClaw Presence
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve LumiClaw Presence. Never include API keys, account tokens, private messages, customer data, or unredacted production traces.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the visible or contractual failure.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How can we reproduce it?
+      description: Provide the smallest safe sequence, using synthetic or redacted data.
+      placeholder: |
+        1. Start ...
+        2. Open ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: dropdown
+    id: evidence
+    attributes:
+      label: Evidence maturity
+      options:
+        - Synthetic reproduction
+        - Engineering-verified reproduction
+        - External user observation (redacted)
+        - Business-verified outcome (redacted)
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include commit, OS, browser/runtime, deployment mode, and relevant provider/platform versions.
+    validations:
+      required: true
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed credentials, personal data, private messages, customer material, and unsafe production details.
+          required: true
+        - label: I searched existing issues and did not find an equivalent report.
+          required: true

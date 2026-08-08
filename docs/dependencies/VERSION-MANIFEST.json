@@ -1,0 +1,265 @@
+{
+  "schemaVersion": "1.0.0",
+  "sourceLockSha256": "91b7d4899b3bd92e0524dd7be21016380c7f8b7be14ccde74560f78480aa95e5",
+  "runtime": {
+    "node": "24.16.0",
+    "npm": "11.13.0",
+    "packageManager": "npm@11.13.0",
+    "typescript": "5.9.3",
+    "moduleSystem": "ESM"
+  },
+  "directPackages": [
+    {
+      "name": "@cyclonedx/cyclonedx-npm",
+      "version": "6.0.0",
+      "classification": "development"
+    },
+    {
+      "name": "@storybook/addon-a11y",
+      "version": "10.5.5",
+      "classification": "development"
+    },
+    {
+      "name": "@storybook/nextjs-vite",
+      "version": "10.5.5",
+      "classification": "development"
+    },
+    {
+      "name": "@swc/helpers",
+      "version": "0.5.23",
+      "classification": "development"
+    },
+    {
+      "name": "@types/node",
+      "version": "26.1.2",
+      "classification": "development"
+    },
+    {
+      "name": "@types/pg",
+      "version": "8.15.5",
+      "classification": "development"
+    },
+    {
+      "name": "@types/react",
+      "version": "19.2.18",
+      "classification": "development"
+    },
+    {
+      "name": "@types/react-dom",
+      "version": "19.2.4",
+      "classification": "development"
+    },
+    {
+      "name": "ajv",
+      "version": "8.20.0",
+      "classification": "runtime"
+    },
+    {
+      "name": "eslint",
+      "version": "9.39.5",
+      "classification": "development"
+    },
+    {
+      "name": "eslint-config-next",
+      "version": "16.2.12",
+      "classification": "development"
+    },
+    {
+      "name": "fastify",
+      "version": "5.11.0",
+      "classification": "runtime"
+    },
+    {
+      "name": "jsdom",
+      "version": "30.0.1",
+      "classification": "development"
+    },
+    {
+      "name": "kysely",
+      "version": "0.29.4",
+      "classification": "runtime"
+    },
+    {
+      "name": "next",
+      "version": "16.3.0",
+      "classification": "runtime"
+    },
+    {
+      "name": "next-intl",
+      "version": "4.13.4",
+      "classification": "runtime"
+    },
+    {
+      "name": "node-pg-migrate",
+      "version": "9.0.0",
+      "classification": "runtime"
+    },
+    {
+      "name": "pg",
+      "version": "8.22.0",
+      "classification": "runtime"
+    },
+    {
+      "name": "react",
+      "version": "19.2.8",
+      "classification": "runtime"
+    },
+    {
+      "name": "react-dom",
+      "version": "19.2.8",
+      "classification": "runtime"
+    },
+    {
+      "name": "storybook",
+      "version": "10.5.5",
+      "classification": "development"
+    },
+    {
+      "name": "tsx",
+      "version": "4.23.4",
+      "classification": "development"
+    },
+    {
+      "name": "typescript",
+      "version": "5.9.3",
+      "classification": "development"
+    },
+    {
+      "name": "vitest",
+      "version": "4.1.10",
+      "classification": "development"
+    },
+    {
+      "name": "yaml",
+      "version": "2.9.0",
+      "classification": "development"
+    }
+  ],
+  "overrides": {},
+  "containers": {
+    "node": [
+      "node:24.16.0-bookworm-slim@sha256:2c87ef9bd3c6a3bd4b472b4bec2ce9d16354b0c574f736c476489d09f560a203"
+    ],
+    "postgres": "postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4",
+    "agentTeams": [
+      {
+        "component": "embedded-controller",
+        "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-embedded",
+        "tag": "v1.2.0",
+        "digest": "sha256:c0de550018e51b36138a5990b1e8095eacc9d44cc7cbdb36a697785ba02c9be4",
+        "platformVerified": "linux/arm64"
+      },
+      {
+        "component": "manager-copaw",
+        "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-manager-copaw",
+        "tag": "v1.2.0",
+        "digest": "sha256:29429e47118f859191fa133f8d617434019c0f03221b405474be7e467bad87b4",
+        "platformVerified": "linux/arm64"
+      },
+      {
+        "component": "worker",
+        "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-copaw-worker",
+        "tag": "v1.2.0",
+        "digest": "sha256:dcdd9103535cfac247267e0f69661820c801396d58e2c8e0c14eefd40b63b7bc",
+        "platformVerified": "linux/arm64"
+      }
+    ]
+  },
+  "externalRuntime": {
+    "agentTeams": {
+      "requestedVersion": "v1.2.0",
+      "source": "https://github.com/agentscope-ai/AgentTeams",
+      "sourceTagCommit": "793db242257a569d911b1aa59c1cd554af78511f",
+      "sourceTarSha256": "a4a9d66fabc49e1d08246d9b8b65d2b67742b71b2b43d3dfc0d27e8861f0770c"
+    },
+    "providers": {
+      "verifiedAt": "2026-08-04",
+      "modelProviders": [
+        {
+          "id": "deepseek-official",
+          "classification": "EXTERNAL_GATEWAY",
+          "baseUrl": "https://api.deepseek.com",
+          "models": [
+            "deepseek-v4-flash",
+            "deepseek-v4-pro"
+          ],
+          "sources": [
+            "https://api-docs.deepseek.com/api/list-models",
+            "https://api-docs.deepseek.com/api/create-chat-completion",
+            "https://api-docs.deepseek.com/guides/thinking_mode",
+            "https://api-docs.deepseek.com/quick_start/pricing",
+            "https://api-docs.deepseek.com/quick_start/rate_limit",
+            "https://api-docs.deepseek.com/news/news260424/"
+          ],
+          "pricing": {
+            "source": "https://api-docs.deepseek.com/quick_start/pricing",
+            "currency": "USD",
+            "unitTokens": 1000000,
+            "policy": "PEAK_RATES_ONLY_NO_DISCOUNT_MULTIPLIER",
+            "usageBreakdownPolicy": "BOTH_OR_NONE_EXACT_SUM; ABSENT_MEANS_ALL_CACHE_MISS",
+            "models": {
+              "deepseek-v4-flash": {
+                "inputCacheHitUsd": 0.0028,
+                "inputCacheMissUsd": 0.14,
+                "outputUsd": 0.28
+              },
+              "deepseek-v4-pro": {
+                "inputCacheHitUsd": 0.003625,
+                "inputCacheMissUsd": 0.435,
+                "outputUsd": 0.87
+              }
+            }
+          },
+          "defaultMaturity": "NOT_RUN_NO_KEY",
+          "structuredMode": {
+            "responseFormat": "json_object",
+            "thinking": "disabled",
+            "liveMaxTokens": 4000,
+            "finishReasonPolicy": {
+              "stop": "ACCEPT",
+              "length": "MODEL_OUTPUT_TRUNCATED",
+              "content_filter": "MODEL_CONTENT_FILTERED",
+              "tool_calls": "MODEL_TOOL_CALL_FORBIDDEN",
+              "insufficient_system_resource": "MODEL_INFERENCE_RESOURCE_UNAVAILABLE",
+              "nullOrUnknown": "MODEL_FINISH_REASON_INVALID"
+            },
+            "retryableFinishReasons": [
+              "insufficient_system_resource"
+            ],
+            "partialOutputAccepted": false
+          },
+          "silentModelFallback": false
+        },
+        {
+          "id": "public-safe-mock",
+          "classification": "LOCAL_CONFORMANCE",
+          "models": [
+            "mock-agentteams-conformance",
+            "mock-shadow-structured-v1"
+          ],
+          "defaultMaturity": "MOCK_CONFORMANCE",
+          "realModelClaim": false
+        }
+      ],
+      "mediaProviders": [
+        {
+          "id": "public-safe-mock",
+          "classification": "LOCAL_CONFORMANCE",
+          "defaultMaturity": "MOCK_CONFORMANCE",
+          "automaticApproval": false
+        },
+        {
+          "id": "evolink",
+          "classification": "POC_GATED_OPTIONAL_CANARY",
+          "defaultMaturity": "NOT_RUN_NO_KEY",
+          "blockingLocalAcceptance": false,
+          "automaticApproval": false
+        }
+      ]
+    }
+  },
+  "lockfile": {
+    "format": 3,
+    "packages": 983
+  }
+}

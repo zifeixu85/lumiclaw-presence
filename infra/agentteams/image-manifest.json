@@ -1,0 +1,37 @@
+{
+  "runtime": "AgentTeams",
+  "requestedVersion": "v1.2.0",
+  "source": "https://github.com/agentscope-ai/AgentTeams",
+  "license": "Apache-2.0",
+  "sourceTagCommit": "793db242257a569d911b1aa59c1cd554af78511f",
+  "sourceTarSha256": "a4a9d66fabc49e1d08246d9b8b65d2b67742b71b2b43d3dfc0d27e8861f0770c",
+  "verifiedAt": "2026-08-04",
+  "images": [
+    {
+      "component": "embedded-controller",
+      "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-embedded",
+      "tag": "v1.2.0",
+      "digest": "sha256:c0de550018e51b36138a5990b1e8095eacc9d44cc7cbdb36a697785ba02c9be4",
+      "platformVerified": "linux/arm64"
+    },
+    {
+      "component": "manager-copaw",
+      "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-manager-copaw",
+      "tag": "v1.2.0",
+      "digest": "sha256:29429e47118f859191fa133f8d617434019c0f03221b405474be7e467bad87b4",
+      "platformVerified": "linux/arm64"
+    },
+    {
+      "component": "worker",
+      "repository": "higress-registry.cn-hangzhou.cr.aliyuncs.com/agentteams/agentteams-copaw-worker",
+      "tag": "v1.2.0",
+      "digest": "sha256:dcdd9103535cfac247267e0f69661820c801396d58e2c8e0c14eefd40b63b7bc",
+      "platformVerified": "linux/arm64"
+    }
+  ],
+  "limitations": [
+    "Image identities were verified from the official registry and local RepoDigests; this is an engineering runtime identity, not a production support claim.",
+    "The v1.2.0 embedded image reports `agt version` as `dev`; acceptance therefore binds the official tag commit and all three immutable image digests instead of treating the CLI string as sufficient identity.",
+    "The repeatable SDD-002 acceptance runs a real six-member AgentTeams topology against an explicitly labeled public-safe mock ModelProvider; it does not claim a real DeepSeek AgentTeams run."
+  ]
+}

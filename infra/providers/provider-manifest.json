@@ -1,0 +1,71 @@
+{
+  "verifiedAt": "2026-08-04",
+  "modelProviders": [
+    {
+      "id": "deepseek-official",
+      "classification": "EXTERNAL_GATEWAY",
+      "baseUrl": "https://api.deepseek.com",
+      "models": ["deepseek-v4-flash", "deepseek-v4-pro"],
+      "sources": [
+        "https://api-docs.deepseek.com/api/list-models",
+        "https://api-docs.deepseek.com/api/create-chat-completion",
+        "https://api-docs.deepseek.com/guides/thinking_mode",
+        "https://api-docs.deepseek.com/quick_start/pricing",
+        "https://api-docs.deepseek.com/quick_start/rate_limit",
+        "https://api-docs.deepseek.com/news/news260424/"
+      ],
+      "pricing": {
+        "source": "https://api-docs.deepseek.com/quick_start/pricing",
+        "currency": "USD",
+        "unitTokens": 1000000,
+        "policy": "PEAK_RATES_ONLY_NO_DISCOUNT_MULTIPLIER",
+        "usageBreakdownPolicy": "BOTH_OR_NONE_EXACT_SUM; ABSENT_MEANS_ALL_CACHE_MISS",
+        "models": {
+          "deepseek-v4-flash": {"inputCacheHitUsd": 0.0028, "inputCacheMissUsd": 0.14, "outputUsd": 0.28},
+          "deepseek-v4-pro": {"inputCacheHitUsd": 0.003625, "inputCacheMissUsd": 0.435, "outputUsd": 0.87}
+        }
+      },
+      "defaultMaturity": "NOT_RUN_NO_KEY",
+      "structuredMode": {
+        "responseFormat": "json_object",
+        "thinking": "disabled",
+        "liveMaxTokens": 4000,
+        "finishReasonPolicy": {
+          "stop": "ACCEPT",
+          "length": "MODEL_OUTPUT_TRUNCATED",
+          "content_filter": "MODEL_CONTENT_FILTERED",
+          "tool_calls": "MODEL_TOOL_CALL_FORBIDDEN",
+          "insufficient_system_resource": "MODEL_INFERENCE_RESOURCE_UNAVAILABLE",
+          "nullOrUnknown": "MODEL_FINISH_REASON_INVALID"
+        },
+        "retryableFinishReasons": [
+          "insufficient_system_resource"
+        ],
+        "partialOutputAccepted": false
+      },
+      "silentModelFallback": false
+    },
+    {
+      "id": "public-safe-mock",
+      "classification": "LOCAL_CONFORMANCE",
+      "models": ["mock-agentteams-conformance", "mock-shadow-structured-v1"],
+      "defaultMaturity": "MOCK_CONFORMANCE",
+      "realModelClaim": false
+    }
+  ],
+  "mediaProviders": [
+    {
+      "id": "public-safe-mock",
+      "classification": "LOCAL_CONFORMANCE",
+      "defaultMaturity": "MOCK_CONFORMANCE",
+      "automaticApproval": false
+    },
+    {
+      "id": "evolink",
+      "classification": "POC_GATED_OPTIONAL_CANARY",
+      "defaultMaturity": "NOT_RUN_NO_KEY",
+      "blockingLocalAcceptance": false,
+      "automaticApproval": false
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0.0",
+  "sourceLockSha256": "91b7d4899b3bd92e0524dd7be21016380c7f8b7be14ccde74560f78480aa95e5",
+  "packageCount": 958,
+  "uniqueLicenses": [
+    "(BSD-2-Clause OR MIT OR Apache-2.0)",
+    "(MIT OR WTFPL)",
+    "0BSD",
+    "Apache-2.0",
+    "Apache-2.0 AND LGPL-3.0-or-later",
+    "Apache-2.0 AND LGPL-3.0-or-later AND MIT",
+    "Apache-2.0 AND MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "BlueOak-1.0.0",
+    "CC-BY-3.0",
+    "CC-BY-4.0",
+    "CC0-1.0",
+    "ISC",
+    "LGPL-3.0-or-later",
+    "MIT",
+    "MIT-0",
+    "MPL-2.0",
+    "Python-2.0"
+  ],
+  "disallowedCount": 0,
+  "fullInventory": ".evidence/sdd-002/license-inventory.json"
+}

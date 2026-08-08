@@ -1,0 +1,16 @@
+{
+  "name": "@lumiclaw/mission-worker",
+  "version": "0.0.0-m0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/server.js"
+  },
+  "dependencies": {
+    "@lumiclaw/governed-shadow": "*",
+    "@lumiclaw/process-health": "*"
+  }
+}

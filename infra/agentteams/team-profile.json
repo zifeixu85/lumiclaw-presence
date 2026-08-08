@@ -1,0 +1,15 @@
+{
+  "id": "sdd002-governed-shadow",
+  "runtimeVersion": "v1.2.0",
+  "executionMode": "SHADOW_PREP_ONLY",
+  "externalActionAllowed": false,
+  "modelMaturity": "MOCK_CONFORMANCE",
+  "roles": [
+    {"id": "presence-mission-leader", "responsibility": "Project/DAG orchestration only", "orchestrationOnly": true, "permissions": ["ORCHESTRATE"], "skillLocks": ["trace-safe-escalation@1.0.0"]},
+    {"id": "evidence-claim-steward", "responsibility": "Freeze approved Evidence and Claim bindings", "orchestrationOnly": false, "permissions": ["READ_EVIDENCE"], "skillLocks": ["evidence-and-claim-grounding@1.0.0", "trace-safe-escalation@1.0.0"]},
+    {"id": "campaign-planner", "responsibility": "Allocate the persisted ActivationPlan", "orchestrationOnly": false, "permissions": ["PLAN"], "skillLocks": ["campaign-strategy@1.0.0", "trace-safe-escalation@1.0.0"]},
+    {"id": "founder-identity-producer", "responsibility": "Produce immutable X and Xiaohongshu SHADOW revisions", "orchestrationOnly": false, "permissions": ["PRODUCE_FOUNDER"], "skillLocks": ["evidence-and-claim-grounding@1.0.0", "account-native-expression@1.0.0", "trace-safe-escalation@1.0.0"]},
+    {"id": "product-account-producer", "responsibility": "Produce immutable Bluesky and LinkedIn SHADOW revisions", "orchestrationOnly": false, "permissions": ["PRODUCE_PRODUCT"], "skillLocks": ["evidence-and-claim-grounding@1.0.0", "account-native-expression@1.0.0", "trace-safe-escalation@1.0.0"]},
+    {"id": "independent-auditor", "responsibility": "Independent PASS/FAIL/ESCALATE digest-bound audit", "orchestrationOnly": false, "permissions": ["AUDIT"], "skillLocks": ["evidence-and-claim-grounding@1.0.0", "independent-action-audit@1.0.0", "trace-safe-escalation@1.0.0"]}
+  ]
+}
