@@ -131,5 +131,138 @@
     "needsOwner": "Needs your decision",
     "unknown": "Needs reconciliation",
     "ready": "Foundation ready"
+  },
+  "ActionCenter": {
+    "boundary": "ACTION CENTER UI FOUNDATION / NOT_LIVE",
+    "subtitle": "This is a public-safe UI state contract. It connects no account and cannot issue authority, publish, or write a platform result.",
+    "nonClaim": "The UI behavior is implemented; real ActionGrants, platform actions, and production outcomes remain PLANNED / NOT_CLAIMED.",
+    "stateCodeLabel": "Stable state",
+    "modeLabel": "Execution mode",
+    "maturityLabel": "Evidence maturity",
+    "retryLabel": "Retry policy",
+    "nextStepLabel": "Only next step",
+    "retryAllowed": "Only a newly controlled attempt may be requested",
+    "retryDenied": "The current action cannot be retried",
+    "sections": {
+      "exactReview": "Exact Owner Review summary",
+      "grant": "ActionGrant summary",
+      "execution": "Execution Card",
+      "timeline": "Receipt Timeline",
+      "reconciliation": "UNKNOWN Reconciliation Panel",
+      "handoff": "Native Handoff steps"
+    },
+    "fields": {
+      "revision": "Exact revision",
+      "revisionDigest": "Revision digest",
+      "account": "Target account",
+      "accountId": "Account reference",
+      "intendedAction": "Authorized action",
+      "auditEvidence": "Audit evidence",
+      "ownerDecision": "Owner decision",
+      "reviewedAt": "Reviewed at",
+      "authorizationExpiresAt": "Authorization deadline",
+      "grantId": "Grant reference",
+      "grantDigest": "Grant digest",
+      "grantStatus": "Grant status",
+      "issuedAt": "Issued at",
+      "expiresAt": "Expires at",
+      "revocationReason": "Revocation reason",
+      "platform": "Platform",
+      "action": "Action",
+      "uiLocale": "UI locale",
+      "contentLanguage": "Content language",
+      "targetMarket": "Target market",
+      "scheduleTimeZone": "Schedule time zone",
+      "receiptId": "Receipt reference",
+      "nativeReference": "Native evidence reference",
+      "evidenceKind": "Evidence kind",
+      "reason": "Unknown reason",
+      "methods": "Allowed reconciliation methods"
+    },
+    "noGrant": "No ActionGrant has been issued. Owner Review is not executable authority.",
+    "noNativeEvidence": "No native return evidence exists, so this cannot be shown as published.",
+    "unknownFixed": "The outcome is not confirmed. The system will not publish again; reconcile the platform result first.",
+    "blindRetryBlocked": "Blind retry is disabled. Reconciliation inspects the original action and creates no second publication.",
+    "confirmation": "I verified the exact revision, digest, account, action, and expiry.",
+    "actionUnavailable": "This route is a read-only UI foundation with no action handler.",
+    "confirmationRequired": "Confirm the exact scope before the UI intent can be emitted.",
+    "modelInvalid": "State and execution mode conflict; the UI disabled the action safely.",
+    "timelineEmpty": "No Receipt event exists yet.",
+    "modes": {
+      "DIRECT": "Direct · deterministic Operator",
+      "HANDOFF": "Handoff · Owner native action",
+      "PREPARE_ONLY": "Prepare Only · no platform action"
+    },
+    "states": {
+      "GRANT_READY": {
+        "title": "The exact scope is ready, but no executable authority exists",
+        "explanation": "Audit and Owner Review bind the exact revision. The only allowed move is to verify scope and request issuance.",
+        "next": "Verify the exact summary and request issuance"
+      },
+      "GRANT_ISSUED": {
+        "title": "A short-lived Grant already exists; do not issue another",
+        "explanation": "The exact action already has an unfinished Grant. The system only monitors that authorization window.",
+        "next": "Monitor the existing Grant window and outcome"
+      },
+      "OWNER_ACTION_REQUIRED": {
+        "title": "You need to finish the action on the native platform",
+        "explanation": "The system prepared only a Handoff package. It cannot claim publication until you return native evidence.",
+        "next": "Complete the native action and return public-safe evidence"
+      },
+      "PUBLISHED": {
+        "title": "Native evidence confirms the exact action",
+        "explanation": "The Receipt binds the exact revision, account, and native reference. A synthetic fixture is not a real publication.",
+        "next": "Inspect the native reference and Receipt evidence"
+      },
+      "UNKNOWN": {
+        "title": "The platform outcome needs reconciliation; duplicate action is forbidden",
+        "explanation": "The system cannot confirm whether the original action occurred. Reconciliation is the only safe path.",
+        "next": "Reconcile the original action with the platform result"
+      },
+      "FAILED": {
+        "title": "The action definitively failed and no success is implied",
+        "explanation": "Definitive failure evidence exists. The prior action is never replayed automatically.",
+        "next": "Return to review and request one newly controlled attempt"
+      },
+      "EXPIRED": {
+        "title": "The authorization expired and cannot execute",
+        "explanation": "This Grant window has closed. Scope must be reviewed again before a new authorization exists.",
+        "next": "Return to exact Review and authorize again"
+      },
+      "REVOKED": {
+        "title": "The authorization was revoked and remains non-consumable",
+        "explanation": "The Owner revoked this Grant. The reason and evidence remain while the old authority stays disabled.",
+        "next": "Inspect the revocation and return to Review if needed"
+      }
+    },
+    "actions": {
+      "REQUEST_GRANT_ISSUANCE": "Request exact Grant issuance",
+      "MONITOR_EXISTING_GRANT": "Inspect existing Grant",
+      "RECORD_HANDOFF_EVIDENCE": "Record Handoff evidence",
+      "INSPECT_NATIVE_RECEIPT": "Inspect Receipt",
+      "START_RECONCILIATION": "Start reconciliation",
+      "REQUEST_NEW_CONTROLLED_ATTEMPT": "Request a new controlled attempt",
+      "RETURN_TO_EXACT_REVIEW": "Return to exact Review",
+      "INSPECT_REVOCATION": "Inspect revocation evidence"
+    },
+    "timelineKinds": {
+      "OWNER_REVIEW_RECORDED": "Owner Review recorded",
+      "GRANT_READY": "Authorization scope ready",
+      "GRANT_ISSUED": "Short-lived Grant issued",
+      "OPERATOR_ACCEPTED": "Operator accepted the exact action",
+      "HANDOFF_PACKAGE_READY": "Handoff package ready",
+      "OWNER_EVIDENCE_REQUIRED": "Owner return evidence required",
+      "NATIVE_EVIDENCE_CONFIRMED": "Native evidence confirmed",
+      "OUTCOME_UNKNOWN": "External outcome unknown",
+      "RECONCILIATION_REQUIRED": "Reconciliation required",
+      "ACTION_FAILED": "Action definitively failed",
+      "GRANT_EXPIRED": "Grant expired",
+      "GRANT_REVOKED": "Grant revoked"
+    },
+    "evidenceKinds": {
+      "NATIVE_URI": "Platform-native URI",
+      "OWNER_RETURNED_URL": "Owner-returned URL",
+      "APPROVED_SAFE_EVIDENCE": "Approved public-safe evidence"
+    }
   }
 }

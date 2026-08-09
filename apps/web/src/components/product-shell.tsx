@@ -1,6 +1,9 @@
 import type {AppLocale, RouteId} from '@lumiclaw/i18n';
 import {routeIds} from '@lumiclaw/i18n';
 import {Link} from '@/i18n/navigation';
+import {ActionCenter} from '@/features/action-center/action-center';
+import {getActionCenterCopy} from '@/features/action-center/action-center-copy';
+import {createActionCenterFixture} from '@/features/action-center/action-center-fixtures';
 import type {ScreenCopy} from '@/lib/shell-copy';
 import {CampaignWorkspace, type WorkspaceFixtureState} from './campaign-workspace';
 
@@ -111,6 +114,13 @@ export function ProductShell({locale, routeId, labels, screen, workspaceState}: 
         </section>
 
         <CampaignWorkspace locale={locale} routeId={routeId} fixtureState={workspaceState} />
+
+        {routeId === 'review' && (
+          <ActionCenter
+            model={createActionCenterFixture('GRANT_READY', locale)}
+            copy={getActionCenterCopy(locale)}
+          />
+        )}
 
         <details className="technical-details">
           <summary>{labels.technicalDetailsLabel}</summary>

@@ -131,5 +131,138 @@
     "needsOwner": "等待你的决定",
     "unknown": "状态待核对",
     "ready": "基础已就绪"
+  },
+  "ActionCenter": {
+    "boundary": "ACTION CENTER UI FOUNDATION / NOT_LIVE",
+    "subtitle": "这是一套公开安全的界面状态合同。没有连接账号，也不会签发授权、执行发布或写入平台结果。",
+    "nonClaim": "界面能力已实现；真实 ActionGrant、平台动作与生产结果仍为 PLANNED / NOT_CLAIMED。",
+    "stateCodeLabel": "稳定状态",
+    "modeLabel": "执行方式",
+    "maturityLabel": "证据成熟度",
+    "retryLabel": "是否允许重试",
+    "nextStepLabel": "唯一下一步",
+    "retryAllowed": "只允许申请一次新的受控尝试",
+    "retryDenied": "不允许重试当前动作",
+    "sections": {
+      "exactReview": "精确 Owner Review 摘要",
+      "grant": "ActionGrant 摘要",
+      "execution": "Execution Card",
+      "timeline": "Receipt Timeline",
+      "reconciliation": "UNKNOWN 对账面板",
+      "handoff": "原生 Handoff 步骤"
+    },
+    "fields": {
+      "revision": "准确版本",
+      "revisionDigest": "版本摘要",
+      "account": "目标账号",
+      "accountId": "账号引用",
+      "intendedAction": "获准动作",
+      "auditEvidence": "审计依据",
+      "ownerDecision": "Owner 决定",
+      "reviewedAt": "确认时间",
+      "authorizationExpiresAt": "授权最晚时间",
+      "grantId": "Grant 引用",
+      "grantDigest": "Grant 摘要",
+      "grantStatus": "Grant 状态",
+      "issuedAt": "签发时间",
+      "expiresAt": "失效时间",
+      "revocationReason": "撤销原因",
+      "platform": "平台",
+      "action": "动作",
+      "uiLocale": "界面语言",
+      "contentLanguage": "内容语言",
+      "targetMarket": "目标市场",
+      "scheduleTimeZone": "排程时区",
+      "receiptId": "Receipt 引用",
+      "nativeReference": "原生证据引用",
+      "evidenceKind": "证据类型",
+      "reason": "待核对原因",
+      "methods": "允许的核对方式"
+    },
+    "noGrant": "尚未签发 ActionGrant。Owner Review 本身不可执行。",
+    "noNativeEvidence": "尚无原生回填证据，因此不能显示为已发布。",
+    "unknownFixed": "状态尚未确认，系统不会重复发布，请先核对平台结果。",
+    "blindRetryBlocked": "盲目重试已关闭。对账只核对原动作，不会创建第二次发布。",
+    "confirmation": "我已核对准确版本、摘要、账号、动作和失效时间。",
+    "actionUnavailable": "该路由只有只读 UI foundation，没有接入任何动作处理器。",
+    "confirmationRequired": "先勾选精确范围确认，才能发出界面意图。",
+    "modelInvalid": "状态与执行方式不一致；界面已安全禁用动作。",
+    "timelineEmpty": "尚无 Receipt 事件。",
+    "modes": {
+      "DIRECT": "Direct · 确定性 Operator",
+      "HANDOFF": "Handoff · Owner 原生操作",
+      "PREPARE_ONLY": "Prepare Only · 仅准备"
+    },
+    "states": {
+      "GRANT_READY": {
+        "title": "准确范围已就绪，尚未形成可执行授权",
+        "explanation": "审计与 Owner Review 已绑定准确版本；当前只允许核对范围并申请签发。",
+        "next": "核对准确摘要并申请签发"
+      },
+      "GRANT_ISSUED": {
+        "title": "短时授权已存在，不要重复签发",
+        "explanation": "同一个准确动作已有未结束的 Grant；系统只监看该授权窗口。",
+        "next": "监看现有 Grant 的有效期与结果"
+      },
+      "OWNER_ACTION_REQUIRED": {
+        "title": "需要你在原生平台完成操作",
+        "explanation": "系统只准备了 Handoff 内容包；在你回填原生证据前不会声称已发布。",
+        "next": "完成原生操作并回填公开安全证据"
+      },
+      "PUBLISHED": {
+        "title": "原生证据已确认准确动作",
+        "explanation": "Receipt 绑定了准确版本、账号和原生引用；合成 fixture 不代表真实发布。",
+        "next": "检查原生引用与 Receipt 证据"
+      },
+      "UNKNOWN": {
+        "title": "平台结果待核对，禁止重复动作",
+        "explanation": "系统无法确认原动作是否发生；唯一安全路径是先对账。",
+        "next": "核对原动作的真实平台结果"
+      },
+      "FAILED": {
+        "title": "已确认失败，没有伪装成功",
+        "explanation": "当前动作有确定失败证据；旧动作不会自动重放。",
+        "next": "返回复核并申请一次新的受控尝试"
+      },
+      "EXPIRED": {
+        "title": "授权已过期，不能继续执行",
+        "explanation": "这个 Grant 的有效期已经结束；必须重新核对并形成新授权。",
+        "next": "返回准确 Review 并重新授权"
+      },
+      "REVOKED": {
+        "title": "授权已撤销，保持不可消费",
+        "explanation": "Owner 已撤销这个 Grant；系统保留原因与证据，不会恢复旧授权。",
+        "next": "检查撤销原因，需要时返回 Review"
+      }
+    },
+    "actions": {
+      "REQUEST_GRANT_ISSUANCE": "申请签发精确授权",
+      "MONITOR_EXISTING_GRANT": "查看现有授权",
+      "RECORD_HANDOFF_EVIDENCE": "记录 Handoff 证据",
+      "INSPECT_NATIVE_RECEIPT": "检查 Receipt",
+      "START_RECONCILIATION": "开始对账",
+      "REQUEST_NEW_CONTROLLED_ATTEMPT": "申请新的受控尝试",
+      "RETURN_TO_EXACT_REVIEW": "返回准确 Review",
+      "INSPECT_REVOCATION": "检查撤销证据"
+    },
+    "timelineKinds": {
+      "OWNER_REVIEW_RECORDED": "Owner Review 已记录",
+      "GRANT_READY": "授权范围已就绪",
+      "GRANT_ISSUED": "短时 Grant 已签发",
+      "OPERATOR_ACCEPTED": "Operator 已接收准确动作",
+      "HANDOFF_PACKAGE_READY": "Handoff 内容包已就绪",
+      "OWNER_EVIDENCE_REQUIRED": "等待 Owner 回填证据",
+      "NATIVE_EVIDENCE_CONFIRMED": "原生证据已确认",
+      "OUTCOME_UNKNOWN": "外部结果不明确",
+      "RECONCILIATION_REQUIRED": "必须先对账",
+      "ACTION_FAILED": "动作明确失败",
+      "GRANT_EXPIRED": "Grant 已过期",
+      "GRANT_REVOKED": "Grant 已撤销"
+    },
+    "evidenceKinds": {
+      "NATIVE_URI": "平台原生 URI",
+      "OWNER_RETURNED_URL": "Owner 回填 URL",
+      "APPROVED_SAFE_EVIDENCE": "已批准的公开安全证据"
+    }
   }
 }
