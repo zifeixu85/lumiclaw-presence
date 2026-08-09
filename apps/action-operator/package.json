@@ -10,6 +10,8 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@lumiclaw/db": "*",
+    "@lumiclaw/domain": "*",
     "@lumiclaw/process-health": "*"
   }
 }

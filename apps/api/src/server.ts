@@ -1,10 +1,13 @@
 import {
+  ActionRepositoryError,
   CampaignPreparationError,
   createPublishingSchedule,
+  createDemoActionGrant,
   createDemoCampaignDocument,
   isUuidV7,
   ScheduleContractError,
   sha256Digest,
+  type ActionRepository,
   type CampaignDocument,
   type CampaignRepository,
   type MutationResult
@@ -39,15 +42,16 @@ import {
   type TaskContract,
   type ShadowMissionRepository
 } from '@lumiclaw/governed-shadow';
-import {PostgresCampaignRepository} from '@lumiclaw/db';
+import {MemoryActionRepository, PostgresCampaignRepository} from '@lumiclaw/db';
 import {timingSafeEqual} from 'node:crypto';
 import Fastify, {type FastifyInstance, type FastifyReply, type FastifyRequest} from 'fastify';
 import {MemoryCampaignRepository} from './memory-campaign-repository.js';
+import {ReceiptEventBus, SseManager} from './receipt-stream.js';
 import {liveTaskActionPhaseAllowed} from './live-ticket-policy.js';
 import {openApiDocument} from './openapi.js';
 import {LiveRuntimeTicketStore, LiveTicketError, readComposeSecret, type LiveTicketAction, type LiveTicketBinding} from './live-runtime-security.js';
 
-type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
+type BuildOptions = {repository?: CampaignRepository; actionRepository?: ActionRepository; shadowRepository?: ShadowMissionRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
 type CampaignParams = {campaignId: string};
 type MissionParams = {missionId: string};
 type RuntimeEventBody =
@@ -63,7 +67,10 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   const app = Fastify({logger: false});
   const now = options.now ?? (() => new Date());
   const repository = options.repository ?? new MemoryCampaignRepository(now);
+  const actionRepository = options.actionRepository ?? new MemoryActionRepository();
   const shadowRepository = options.shadowRepository ?? new MemoryShadowMissionRepository();
+  const receiptBus = new ReceiptEventBus();
+  const sseManager = new SseManager(receiptBus);
   const runtimeImportToken = options.runtimeImportToken;
   const ticketStore = new LiveRuntimeTicketStore(options.runtimeBootstrapSecret, () => now().getTime());
   const deepseekApiKey = options.deepseekApiKey;
@@ -144,6 +151,118 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
       return {code: 'SCHEDULE_PREVIEW_READY', mode: 'DEMO_SEED', live: false, executionAllowed: false, ...value};
     } catch (error) { return sendDomainOrUnavailable(reply, error); }
   });
+
+  // -------------------------------------------------------------------
+  // M3 — Action Grants & Receipts
+  // -------------------------------------------------------------------
+
+  app.get<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/action-grants', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    const receipts = await actionRepository.getReceiptsByCampaign(organizationId, request.params.campaignId);
+    // Collect grant IDs from receipts and fetch grants
+    const grantIds = new Set(receipts.map((r) => r.actionGrantId));
+    // For now return receipts as proxy for grant list (grants are tracked through receipts)
+    return {code: 'ACTION_GRANT_LIST', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, receipts};
+  });
+
+  app.post<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/action-grants', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    const idempotencyKey = requireIdempotency(request, reply);
+    const ifMatch = request.headers['if-match'];
+    if (organizationId === undefined || idempotencyKey === undefined) return;
+    if (typeof ifMatch !== 'string' || ifMatch.length === 0) return reply.status(428).send(errorBody('ETAG_REQUIRED'));
+    const envelope = await repository.get(organizationId, request.params.campaignId);
+    if (envelope === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+    if (envelope.etag !== ifMatch) return reply.status(412).header('ETag', envelope.etag).send(errorBody('CAMPAIGN_VERSION_CONFLICT'));
+    if (envelope.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: envelope.digest, version: envelope.version, gapCodes: envelope.gapCodes});
+    try {
+      const {grant, outbox} = createDemoActionGrant(envelope.document, now());
+      const result = await actionRepository.createGrantWithOutbox(grant, outbox, idempotencyKey, sha256Digest({grant: grant.id, outbox: outbox.id}));
+      void reply.header('ETag', envelope.etag).header('Idempotency-Replayed', String(result.replayed));
+      if (result.replayed) return reply.status(200).send({code: 'ACTION_GRANT_REPLAYED', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, grant: result.grant, outbox: result.outbox});
+      return reply.status(201).send({code: 'ACTION_GRANT_ISSUED', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, grant: result.grant, outbox: result.outbox});
+    } catch (error) { return sendDomainOrUnavailable(reply, error); }
+  });
+
+  app.delete<{Params: CampaignParams & {grantId: string}}>('/api/v1/campaigns/:campaignId/action-grants/:grantId', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    const envelope = await repository.get(organizationId, request.params.campaignId);
+    if (envelope === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+    try {
+      const grant = await actionRepository.revokeGrant(organizationId, request.params.grantId, 'Owner requested revocation');
+      if (grant.campaignId !== request.params.campaignId) return reply.status(404).send(errorBody('ACTION_GRANT_NOT_FOUND'));
+      return {code: 'ACTION_GRANT_REVOKED', mode: 'DEMO_SEED', live: false, grant};
+    } catch (error) {
+      if (error instanceof ActionRepositoryError && error.code === 'ACTION_GRANT_NOT_FOUND') return reply.status(404).send(errorBody('ACTION_GRANT_NOT_FOUND'));
+      return sendDomainOrUnavailable(reply, error);
+    }
+  });
+
+  app.get<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/receipts', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    const campaign = await repository.get(organizationId, request.params.campaignId);
+    if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+    const receipts = await actionRepository.getReceiptsByCampaign(organizationId, request.params.campaignId);
+    return {code: 'RECEIPT_LIST', mode: 'DEMO_SEED', live: false, receipts};
+  });
+
+  app.get<{Params: CampaignParams & {receiptId: string}}>('/api/v1/campaigns/:campaignId/receipts/:receiptId', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    const receipt = await actionRepository.getReceipt(organizationId, request.params.receiptId);
+    if (receipt === undefined) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    return {code: 'RECEIPT_DETAIL', mode: 'DEMO_SEED', live: false, receipt};
+  });
+
+  // --- SSE Receipt Stream ---
+
+  app.get<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/receipts/stream', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    const campaign = await repository.get(organizationId, request.params.campaignId);
+    if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+
+    reply.raw.writeHead(200, {
+      'content-type': 'text/event-stream',
+      'cache-control': 'no-cache',
+      'connection': 'keep-alive',
+    });
+    reply.raw.write(`:connected\n\n`);
+    sseManager.subscribe(request.params.campaignId, reply);
+    // Prevent Fastify from closing the reply automatically
+    reply.hijack();
+  });
+
+  // --- Reconciliation ---
+
+  type ReconcileParams = CampaignParams & {receiptId: string};
+  type ReconcileBody = {method: 'PLATFORM_QUERY' | 'OWNER_MANUAL'; notes?: string};
+
+  app.post<{Params: ReconcileParams; Body: ReconcileBody}>('/api/v1/campaigns/:campaignId/receipts/:receiptId/reconcile', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    if (!isReconcileBody(request.body)) return reply.status(422).send(errorBody('RECONCILE_BODY_INVALID'));
+    const receipt = await actionRepository.getReceipt(organizationId, request.params.receiptId);
+    if (receipt === undefined) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    // Verify receipt belongs to the campaign
+    const grants = await actionRepository.getReceiptsByCampaign(organizationId, request.params.campaignId);
+    if (!grants.some((r) => r.id === request.params.receiptId)) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    try {
+      const reconciled = await actionRepository.reconcileReceipt(organizationId, request.params.receiptId, request.body.method, request.body.notes);
+      receiptBus.emit('receipt:reconciled', reconciled);
+      return {code: 'RECEIPT_RECONCILED', mode: 'DEMO_SEED', live: false, receipt: reconciled};
+    } catch (error) {
+      if (error instanceof ActionRepositoryError && error.code === 'RECEIPT_NOT_UNKNOWN') return reply.status(409).send(errorBody(error.code));
+      return sendDomainOrUnavailable(reply, error);
+    }
+  });
+
+  // -------------------------------------------------------------------
+  // M2 — Shadow Missions
+  // -------------------------------------------------------------------
 
   app.get<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/shadow-missions', async (request, reply) => {
     const organizationId = requireOrganization(request, reply); if (organizationId === undefined) return;
@@ -412,6 +531,7 @@ function isLiveTicketBody(value: unknown): value is LiveTicketBody {
 
 function isLiveModelBody(value: unknown): value is LiveModelBody { return isRecord(value) && Object.keys(value).sort().join(',') === 'attempt,inputProjectionDigest,roleId,taskId' && typeof value.taskId === 'string' && isRoleId(value.roleId) && Number.isSafeInteger(value.attempt) && isDigest(value.inputProjectionDigest); }
 function isLiveFailureBody(value: unknown): value is {code: string; failedTaskId: string | null; retryable: boolean} { return isRecord(value) && Object.keys(value).sort().join(',') === 'code,failedTaskId,retryable' && typeof value.code === 'string' && value.code.length > 0 && value.code.length <= 80 && (value.failedTaskId === null || typeof value.failedTaskId === 'string') && typeof value.retryable === 'boolean'; }
+function isReconcileBody(value: unknown): value is {method: 'PLATFORM_QUERY' | 'OWNER_MANUAL'; notes?: string} { return isRecord(value) && ['PLATFORM_QUERY', 'OWNER_MANUAL'].includes(String(value.method)) && (value.notes === undefined || typeof value.notes === 'string'); }
 
 function liveBinding(mission: Awaited<ReturnType<ShadowMissionRepository['get']>> & {}, action: LiveTicketAction, roleId: string | null, taskId: string | null, attempt: number | null): LiveTicketBinding { return {missionId: mission.id, campaignDigest: mission.sourceCampaignDigest, action, roleId, taskId, attempt}; }
 function liveBindingFromRuntimeEvent(mission: NonNullable<Awaited<ReturnType<ShadowMissionRepository['get']>>>, event: RuntimeEventBody): LiveTicketBinding {

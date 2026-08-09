@@ -2,6 +2,7 @@ export * from './campaign-envelope.js';
 export * from './campaign-fixture.js';
 export * from './campaign-repository.js';
 export * from './campaign-schema.js';
+export * from './action-grant.js';
 export * from './campaign-types.js';
 export * from './campaign.js';
 export * from './canonical.js';

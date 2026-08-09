@@ -24,6 +24,10 @@ export type MarketsTable = {organization_id: string; id: string; schema_version:
 export type ChannelAccountsTable = {organization_id: string; id: string; schema_version: number; identity_id: string; platform: string; display_handle: string; connection_state: 'NOT_CONNECTED'; created_at: Generated<Timestamp>};
 export type AccountMandatesTable = {organization_id: string; id: string; schema_version: number; channel_account_id: string; identity_id: string; product_id: string; market_id: string; role: string; allowed_actions: Json; requires_owner_review: true; valid_from: Timestamp; valid_until: Timestamp; created_at: Generated<Timestamp>};
 
+export type ActionGrantsTable = {organization_id: string; id: string; campaign_id: string; schedule_occurrence_id: string; artifact_revision_id: string; activation_unit_id: string; schema_version: number; platform: string; execution_mode: string; status: string; issued_at: Timestamp; expires_at: Timestamp; consumed_at: Timestamp | null; revocation_reason: string | null; grant_digest: string; payload: Json; created_at: Timestamp};
+export type OutboxTable = {organization_id: string; id: string; aggregate_type: string; aggregate_id: string; schema_version: number; payload: Json; state: string; locked_by: string | null; locked_at: Timestamp | null; attempts: number; created_at: Timestamp};
+export type ActionReceiptsTable = {organization_id: string; id: string; action_grant_id: string; schema_version: number; platform: string; execution_mode: string; state: string; platform_uri: string | null; platform_cid: string | null; handoff_steps: Json | null; unknown_reason: string | null; reconciled_at: Timestamp | null; reconciliation_method: string | null; created_at: Timestamp};
+
 export type Database = {
   foundation_metadata: {key: string; value: Json; created_at: Generated<Timestamp>};
   organizations: OrganizationsTable; identities: IdentitiesTable; brands: BrandsTable; products: ProductsTable; markets: MarketsTable;
@@ -31,4 +35,5 @@ export type Database = {
   campaigns: CampaignsTable; campaign_snapshots: CampaignSnapshotsTable; evidence_refs: EvidenceRefsTable; claims: ClaimsTable;
   capability_snapshots: CapabilitySnapshotsTable; artifact_revisions: ArtifactRevisionsTable; idempotency_records: IdempotencyRecordsTable;
   publishing_schedules: PublishingSchedulesTable; schedule_occurrences: ScheduleOccurrencesTable;
+  action_grants: ActionGrantsTable; outbox: OutboxTable; action_receipts: ActionReceiptsTable;
 };

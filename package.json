@@ -40,6 +40,7 @@
     "verify:compose": "node scripts/verify-compose.mjs",
     "verify:campaign-api": "node scripts/verify-campaign-api.mjs",
     "verify:shadow-postgres": "npm run build --workspace @lumiclaw/domain && npm run build --workspace @lumiclaw/db && npm run build --workspace @lumiclaw/governed-shadow && tsx scripts/verify-shadow-postgres.ts",
+    "verify:m3-action-grant": "npm run build --workspace @lumiclaw/domain && npm run build --workspace @lumiclaw/db && tsx scripts/verify-m3-action-grant.ts",
     "verify:agentteams-images": "node scripts/verify-agentteams-images.mjs",
     "verify:agentteams-real:inner": "node scripts/verify-agentteams-real-runtime.mjs",
     "verify:agentteams-real": "node scripts/verify-agentteams-real-environment.mjs",
