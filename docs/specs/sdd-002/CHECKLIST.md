@@ -95,3 +95,16 @@ No unresolved clarification remains. M1 acceptance and Coordinator assignment sa
 - [x] New outcomes cross API/nested diagnostics only through the allowlist, with forbidden raw/security markers absent.
 - [x] Fix 8 phase policy, real six-member/eight-Task Runtime, independent Auditor, no Mock fallback and all zero-action boundaries remain green.
 - [x] Full gates, Chinese report, manifest and clean-Head public-safe ZIP pass; the twelfth Canary remains Coordinator-owned and not `LIVE_PROVIDER_VERIFIED`/`ACCEPTED`.
+
+## Change Request 3 initial-demo convergence checklist
+
+- [x] Outcome is a stable/resettable/repeatable/recordable preliminary Demo, not a new capability or maturity claim.
+- [x] Deterministic seed, REST/Web/PostgreSQL path, public-safe Flight, audit/revision/review semantics, and no-action boundary are reused without a second mutation source.
+- [x] Preparation, normal completion, Auditor fail-closed proof, restart/reopen, browser smoke, evidence export, reset, and rollback are binary and observable.
+- [x] Destructive targets are frozen; unrelated Docker resources, worktrees, repository files, and evidence directories are protected.
+- [x] `DEMO_SEED`, `PUBLIC_SAFE_MOCK`, `MOCK_CONFORMANCE`, `realAgentTeamsClaim=false`, synthetic data, and zero action remain visible.
+- [x] ActionGrant/Receipt/Connector/Scheduler, real account/Secret/provider/platform action, M3 refactor, redesign, deploy, status edit, and acceptance upgrade are excluded.
+- [x] zh-CN/en, desktop/390px, console/overflow, screenshots, allowlist export, scans, README/runbook, addendum, and Owner verification are covered.
+- [x] Unit/integration/browser/build/dependency/audit/Secret gates and protected-file no-diff checks are required.
+
+No unresolved product, architecture, security, evidence, permission, or testability conflict remains. CR3 is `SPEC_READY`.

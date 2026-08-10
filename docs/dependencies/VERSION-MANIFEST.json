@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "sourceLockSha256": "91b7d4899b3bd92e0524dd7be21016380c7f8b7be14ccde74560f78480aa95e5",
+  "sourceLockSha256": "13dd6326d1a26ac87ce6c6b10441d8391ed08d6e0878a8320ae8af05e2a4d5c6",
   "runtime": {
     "node": "24.16.0",
     "npm": "11.13.0",
@@ -135,7 +135,9 @@
       "classification": "development"
     }
   ],
-  "overrides": {},
+  "overrides": {
+    "nanoid": "3.3.18"
+  },
   "containers": {
     "node": [
       "node:24.16.0-bookworm-slim@sha256:2c87ef9bd3c6a3bd4b472b4bec2ce9d16354b0c574f736c476489d09f560a203"

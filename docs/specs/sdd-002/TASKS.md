@@ -83,3 +83,12 @@ Every task begins with tests/contracts and cannot pull M3 external action forwar
 - [x] `CR2-F9-02`: closed finish-reason outcomes, partial-output quarantine and bounded identical-request resource retry.
 - [x] `CR2-F9-03`: explicit non-thinking request/config/input-digest binding and strict API/nested diagnostic/evidence propagation.
 - [x] `CR2-F9-04`: full Provider/PostgreSQL/API/AgentTeams/Live/browser/Compose/security/build/report/manifest/clean-Head ZIP gates and twelfth Coordinator Canary handoff. Real-key verification remains external.
+
+## Change Request 3 tasks
+
+- [x] `CR3-T01` — Contract/red tests: exact Demo config/target/evidence contract and tests for versions, ports, lifecycle targets, evidence allowlist, forbidden markers, no-action/audit invariants.
+- [x] `CR3-T02` — Lifecycle: preflight, exact reset/stop, Compose start/wait, deterministic template comparison/persistence, Mission creation, Flight, denied-review probe, stable codes.
+- [x] `CR3-T03` — Normal/recovery: exact four-review completion, restart/reopen, idempotent rerun/reset, and unrelated sentinel resource isolation proof.
+- [x] `CR3-T04` — Browser/evidence: real-Chrome zh-CN/en desktop/390px smoke, screenshots, allowlisted Mission/run manifest, hashes, export scans.
+- [x] `CR3-T05` — Docs: bilingual README quick start; Chinese Demo runbook/recording storyboard and acceptance addendum with Owner steps, failure signs, evidence, cleanup, rollback, and non-claims.
+- [x] `CR3-T06` — Convergence: targeted and existing regression, full build/Storybook/static/dependency/SBOM/audit/Secret gates, protected-file no-diff, clean local commit and structured handoff without push. Full production audit is clean; the no-fix Storybook dev-chain advisory is recorded as a limitation rather than misreported as PASS.

@@ -35,3 +35,11 @@
 | CL-31 | The eleventh Canary proves only that the sixth request ended with a non-`stop` value collapsed to `MODEL_FINISH_REASON_INVALID`. Its exact historical finish reason and raw output are unrecoverable and must not be inferred. |
 | CL-32 | CR2 Fix 9 uses DeepSeek V4 non-thinking explicitly for deterministic JSON Schema tasks. `thinking: {type: 'disabled'}` is part of the request, immutable config snapshot and canonical input digest; it is not a hidden transport default. |
 | CL-33 | Only `insufficient_system_resource` receives bounded same-model/same-input retry. `length`, `content_filter`, `tool_calls`, null and unknown finish reasons fail closed without parsing partial content; `maxTokens=4000` remains unchanged. |
+| CL-34 | CR3 is a host-side Demo convergence layer over existing M1/M2 REST/Web/PostgreSQL behavior. It introduces no demo-only API, direct SQL seed, domain state, migration, or alternate success path. |
+| CL-35 | The preliminary Demo default is `DEMO_SEED + PUBLIC_SAFE_MOCK + MOCK_CONFORMANCE`; it states `realAgentTeamsClaim=false` and cannot substitute for real-runtime/provider evidence or Owner UAT. |
+| CL-36 | Demo preparation stops at existing `NEEDS_OWNER_REVIEW` so the Auditor failure, correction, and Owner gate remain recordable. Four non-executable reviews are a separate completion command. |
+| CL-37 | Auditor fail-closed proof requires the invalidated `CLAIM_OVERREACH` audit plus a denied-revision review returning `REVIEW_AUDIT_PASS_REQUIRED`; a mocked connector failure is forbidden. |
+| CL-38 | Reset/stop are limited to `lumiclaw-sdd002-initial-demo` and the exact ignored Demo evidence directory. Arbitrary project/path input and global Docker cleanup are forbidden. |
+| CL-39 | Demo evidence is an allowlist projection binding source truth, synthetic IDs/digests, topology, maturity, audit/review, browser, and zero-action results while excluding raw dumps, prompts, headers, tickets, Secrets, private paths, and customer material. |
+| CL-40 | Real-Chrome smoke is read-only against the prepared/completed Demo and covers zh-CN/en plus desktop/390px. It may capture public-safe screenshots but may not mutate reviews. |
+| CL-41 | CR3 does not transition canonical progress. M1 remains accepted; M2 remains `EVIDENCE_READY` until separately defined Owner UAT and Coordinator acceptance. |

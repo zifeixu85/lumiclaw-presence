@@ -100,3 +100,14 @@ Rollback uses local Git reverts and project-scoped test migrations. Cancellation
 - Exercise official finish reasons, resource retry success/exhaustion, identical request bodies, no model switch, API persistence and child propagation.
 - Rerun Provider/Live/PostgreSQL/API/public-safe real AgentTeams/no-Secret Live/browser/Compose/security/build/evidence gates; update the Chinese report and clean-Head package.
 - Return a twelfth Coordinator Canary protocol while leaving real-key verification and acceptance external.
+
+## Change Request 3 initial-demo convergence plan
+
+- Define one closed host-side Demo contract: exact Compose project, loopback ports, evidence root, Hero seed/fault/provider labels, lifecycle commands, no-action invariants, and stable failure codes.
+- Add unit-tested preflight and destructive-target validation before reset/start; use only existing Compose services and no new dependency, image, migration, service, API, or Secret.
+- Orchestrate current API routes: compare the deterministic template twice, persist it, verify readiness, create a `PUBLIC_SAFE_MOCK` Mission, run the fault Flight, and require denied review to fail with `REVIEW_AUDIT_PASS_REQUIRED`.
+- Keep preparation at `NEEDS_OWNER_REVIEW`; add separate four-review completion/restart/reopen verification reaching `SHADOW_COMPLETE` with action counts zero.
+- Add read-only real-Chrome smoke for zh-CN/en and desktop/390px Mission/Review, screenshots, console errors, overflow, topology, audit/diff, review, and no-action checks.
+- Export allowlisted/redacted evidence under `.evidence/sdd-002/initial-demo`, scan forbidden material, and bind Git Head/dirty truth without maturity escalation.
+- Add bilingual README commands, a Chinese presenter runbook/recording storyboard, and a Chinese acceptance addendum with Owner verification and rollback.
+- Run targeted tests plus campaign/Shadow regression, full `npm run verify`, audit, dependency/SBOM and Secret gates, and protected-source no-diff checks before a local commit.

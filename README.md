@@ -192,6 +192,27 @@ docker compose up --build
 
 Open <http://127.0.0.1:3100>. The default locale is Simplified Chinese; English is available under `/en`. The normal Compose path uses synthetic data and performs no external social action. Live-provider UAT has a separate Owner-only protocol and must never place a key in Git, `.env`, shell history, issues, or logs.
 
+### Preliminary-round SHADOW demo
+
+The bounded preliminary-round demo uses only deterministic synthetic data and the existing `PUBLIC_SAFE_MOCK / MOCK_CONFORMANCE` path. It does not run real AgentTeams or a live model, and it cannot publish.
+
+~~~bash
+npm ci
+npm run demo:preflight
+npm run demo
+~~~
+
+The preparation command resets only the Compose project `lumiclaw-sdd002-initial-demo`, starts Web/API on loopback ports `3130/4130`, leaves the Mission at `NEEDS_OWNER_REVIEW`, runs a real-Chrome smoke, and exports ignored local evidence under `.evidence/sdd-002/initial-demo/`. Open <http://127.0.0.1:3130/mission> and <http://127.0.0.1:3130/review>; English is under `/en`.
+
+~~~bash
+npm run demo:complete  # four non-executable reviews, restart/reopen proof
+npm run demo:smoke     # read-only browser smoke of the current state
+npm run demo:evidence  # regenerate the redacted manifest
+npm run demo:reset     # remove only this demo project, volumes, and evidence
+~~~
+
+See the [Chinese demo and recording runbook](docs/runbooks/SDD-002-INITIAL-DEMO-RUNBOOK-CN.md) for expected results, failure signs, evidence, cleanup, and Owner verification.
+
 ## Repository scope
 
 This repository will contain public product code, domain schemas, reusable skills, connector contracts, tests, examples, and technical documentation.

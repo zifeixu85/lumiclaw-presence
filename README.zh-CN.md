@@ -192,6 +192,27 @@ docker compose up --build
 
 打开 <http://127.0.0.1:3100>。默认界面为简体中文，英文路径为 `/en`。普通 Compose 路径只使用合成数据，不会执行任何外部社媒动作。真实 Provider UAT 使用独立的 Owner-only 协议，Key 不得进入 Git、`.env`、Shell History、Issue 或日志。
 
+### 初赛 SHADOW Demo
+
+初赛 Demo 只使用确定性合成数据和现有 `PUBLIC_SAFE_MOCK / MOCK_CONFORMANCE` 路径，不运行真实 AgentTeams 或真实模型，也不具备发布能力。
+
+~~~bash
+npm ci
+npm run demo:preflight
+npm run demo
+~~~
+
+准备命令只会重置 Compose project `lumiclaw-sdd002-initial-demo`，在本机回环端口 `3130/4130` 启动 Web/API，把 Mission 留在 `NEEDS_OWNER_REVIEW`，运行真实 Chrome smoke，并把忽略提交的本地证据导出到 `.evidence/sdd-002/initial-demo/`。打开 <http://127.0.0.1:3130/mission> 与 <http://127.0.0.1:3130/review>；英文路径在 `/en` 下。
+
+~~~bash
+npm run demo:complete  # 四个不可执行确认，并验证重启复开
+npm run demo:smoke     # 对当前状态做只读浏览器 smoke
+npm run demo:evidence  # 重新生成脱敏 manifest
+npm run demo:reset     # 只删除本 Demo project、volume 与 evidence
+~~~
+
+预期结果、失败信号、录屏顺序、证据、清理与 Owner 验证详见[中文 Demo 与录屏 Runbook](docs/runbooks/SDD-002-INITIAL-DEMO-RUNBOOK-CN.md)。
+
 ## 仓库范围
 
 本仓库将保存公开产品代码、领域 Schema、可复用 Skill、Connector 契约、测试、示例和技术文档。

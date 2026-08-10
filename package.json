@@ -10,6 +10,9 @@
     "npm": "11.13.0"
   },
   "packageManager": "npm@11.13.0",
+  "overrides": {
+    "nanoid": "3.3.18"
+  },
   "workspaces": [
     "apps/*",
     "packages/*"
@@ -48,6 +51,15 @@
     "verify:live-agentteams-no-secret": "node scripts/verify-live-agentteams-no-secret.mjs",
     "verify:providers": "tsx scripts/verify-provider-conformance.ts && node scripts/verify-agentteams-role-projection.mjs",
     "verify:browser": "node scripts/verify-browser-runtime.mjs",
+    "demo": "node scripts/run-initial-demo.mjs prepare",
+    "demo:preflight": "node scripts/run-initial-demo.mjs preflight",
+    "demo:complete": "node scripts/run-initial-demo.mjs complete",
+    "demo:smoke": "node scripts/initial-demo-browser-smoke.mjs",
+    "demo:evidence": "node scripts/run-initial-demo.mjs export",
+    "demo:status": "node scripts/run-initial-demo.mjs status",
+    "demo:stop": "node scripts/run-initial-demo.mjs stop",
+    "demo:reset": "node scripts/run-initial-demo.mjs reset",
+    "verify:initial-demo": "node scripts/verify-initial-demo-workflow.mjs",
     "evidence:package-source": "node scripts/package-source-evidence.mjs",
     "evidence:manifest": "node scripts/write-evidence-manifest.mjs"
   },
