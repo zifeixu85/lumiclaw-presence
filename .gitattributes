@@ -1,0 +1,2 @@
+# Force LF line endings for files that are checksummed by CI
+package-lock.json text eol=lf
