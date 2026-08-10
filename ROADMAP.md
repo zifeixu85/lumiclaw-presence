@@ -126,3 +126,6 @@ We integrate replaceable infrastructure where appropriate: AgentTeams as an exte
 Every milestone is implemented through one Epic SDD and child specs small enough to finish and verify in roughly half a day to three days. Each bounded SDD runs in a separate Codex task and one explicit goal. A spec must define the user outcome, journey and UI states, domain/API contracts, AgentTeams roles and skills, permissions, dependencies and licenses, failure and rollback behavior, pass/fail acceptance criteria, test plan, owner-participated verification, and evidence maturity.
 
 Before starting, read and update the [implementation register](IMPLEMENTATION-STATUS.md). At closeout, create an acceptance report from [the report template](docs/reports/ACCEPTANCE-REPORT-TEMPLATE.md), then use `EVIDENCE_READY` until required owner acceptance is recorded. Use [the SDD template](docs/specs/SPEC-TEMPLATE.md). A date or chat response does not complete a milestone; its exit criteria do.
+
+
+

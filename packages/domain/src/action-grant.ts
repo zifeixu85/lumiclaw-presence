@@ -1,4 +1,12 @@
-import {sha256Digest} from './canonical.js';
+import {
+  ed25519Sign,
+  ed25519Verify,
+  exportEd25519PublicKey,
+  generateEd25519KeyPair,
+  importEd25519PublicKey,
+  sha256Digest,
+} from './canonical.js';
+import type {KeyObject} from 'node:crypto';
 import type {CampaignDocument, ScheduleOccurrence} from './campaign-types.js';
 import {createDemoCampaignDocument} from './campaign-fixture.js';
 import {createUuidV7} from './id.js';
@@ -6,7 +14,7 @@ import type {DomainId, Platform, ValidationIssue, ValidationResult} from './type
 
 export type ExecutionMode = 'DIRECT' | 'NATIVE_HANDOFF';
 export type ActionGrantStatus = 'ISSUED' | 'CONSUMED' | 'EXPIRED' | 'REVOKED';
-export type ActionReceiptState = 'PUBLISHED' | 'HANDOFF_CONFIRMED' | 'FAILED' | 'UNKNOWN';
+export type ActionReceiptState = 'PUBLISHED' | 'HANDOFF_PENDING' | 'HANDOFF_CONFIRMED' | 'FAILED' | 'UNKNOWN';
 export type ReconciliationMethod = 'PLATFORM_QUERY' | 'OWNER_MANUAL';
 export type OutboxState = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
@@ -26,6 +34,14 @@ export type ActionGrant = {
   consumedAt: string | null;
   revocationReason: string | null;
   grantDigest: string;
+  /** ChannelAccount this grant targets — bound from the OwnerDecision. */
+  channelAccountId: DomainId;
+  /** CapabilitySnapshot in effect when the grant was issued. */
+  capabilitySnapshotId: DomainId;
+  /** Ed25519 signature over grantDigest (base64url). */
+  ownerSignature: string;
+  /** Ed25519 public key embedded for self-contained verification (base64url). */
+  ownerPublicKey: string;
 };
 
 export type OutboxRecord = {
@@ -59,9 +75,9 @@ export type ActionReceipt = {
   createdAt: string;
 };
 
-/** Canonical digest of the ActionGrant body, excluding the digest field itself. */
+/** Canonical digest of the ActionGrant body, excluding the digest and signature fields. */
 export function digestActionGrant(grant: ActionGrant): string {
-  const {grantDigest: _, ...body} = grant;
+  const {grantDigest: _, ownerSignature: __, ...body} = grant;
   return sha256Digest(body);
 }
 
@@ -105,6 +121,16 @@ export function validateActionGrant(
   if (calculated !== grant.grantDigest) {
     issues.push(issue('ACTION_GRANT_DIGEST_MISMATCH', '/grantDigest',
       'Grant digest does not match canonical body.'));
+  }
+
+  // --- Ed25519 signature ---
+  if (calculated === grant.grantDigest) {
+    const publicKey = importEd25519PublicKey(grant.ownerPublicKey);
+    const sigValid = ed25519Verify(publicKey, grant.grantDigest, grant.ownerSignature);
+    if (!sigValid) {
+      issues.push(issue('ACTION_GRANT_SIGNATURE_INVALID', '/ownerSignature',
+        'Ed25519 signature does not verify against the grant digest.'));
+    }
   }
 
   // --- status ---
@@ -157,6 +183,40 @@ export function validateActionGrant(
       'Grant activation unit does not match artifact revision.'));
   }
 
+  // --- channel account reference ---
+  const channelAccount = campaign.graph.channelAccounts.find(
+    (a) => a.id === grant.channelAccountId,
+  );
+  if (channelAccount === undefined) {
+    issues.push(issue('ACTION_GRANT_CHANNEL_ACCOUNT_NOT_FOUND',
+      '/channelAccountId',
+      'Grant channel account is not in the Campaign graph.'));
+  } else if (channelAccount.platform !== grant.platform) {
+    issues.push(issue('ACTION_GRANT_SCOPE_INVALID', '/platform',
+      'Grant platform does not match channel account platform.'));
+  }
+
+  // --- capability snapshot reference ---
+  const capability = campaign.capabilitySnapshots.find(
+    (c) => c.id === grant.capabilitySnapshotId,
+  );
+  if (capability === undefined) {
+    issues.push(issue('ACTION_GRANT_CAPABILITY_NOT_FOUND',
+      '/capabilitySnapshotId',
+      'Grant capability snapshot is not in the Campaign.'));
+  } else {
+    if (capability.platform !== grant.platform) {
+      issues.push(issue('ACTION_GRANT_CAPABILITY_PLATFORM_MISMATCH',
+        '/capabilitySnapshotId',
+        'Capability platform does not match grant platform.'));
+    }
+    if (capability.channelAccountId !== grant.channelAccountId) {
+      issues.push(issue('ACTION_GRANT_CAPABILITY_ACCOUNT_MISMATCH',
+        '/capabilitySnapshotId',
+        'Capability channel account does not match grant channel account.'));
+    }
+  }
+
   return issues.length === 0 ? {ok: true} : {ok: false, issues};
 }
 
@@ -170,10 +230,21 @@ const entropy = (seed: number): Uint8Array =>
 const id = (offset: number): string =>
   createUuidV7(1_788_200_000_000 + offset, entropy(offset));
 
+/** Cached demo key pair so all demo grants share the same owner key. */
+let _demoKeyPair: {publicKey: KeyObject; privateKey: KeyObject} | undefined;
+
+function getDemoKeyPair(): {publicKey: KeyObject; privateKey: KeyObject} {
+  if (_demoKeyPair === undefined) _demoKeyPair = generateEd25519KeyPair();
+  return _demoKeyPair;
+}
+
 /**
  * Create a demo ActionGrant (plus companion OutboxRecord) against
  * the standard demo Campaign.  The grant targets the Bluesky unit
  * (DIRECT execution mode) with a 15‑minute expiry window.
+ *
+ * This is a convenience wrapper around {@link createActionGrant} for
+ * backwards compatibility in tests and the demo golden path.
  */
 export function createDemoActionGrant(
   campaign?: CampaignDocument,
@@ -193,6 +264,18 @@ export function createDemoActionGrant(
   );
   if (revision === undefined) {
     throw new Error('Demo Campaign is missing the Bluesky artifact revision.');
+  }
+  const channelAccount = document.graph.channelAccounts.find(
+    (a) => a.platform === 'BLUESKY',
+  );
+  if (channelAccount === undefined) {
+    throw new Error('Demo Campaign is missing the Bluesky channel account.');
+  }
+  const capability = document.capabilitySnapshots.find(
+    (c) => c.platform === 'BLUESKY' && c.channelAccountId === channelAccount.id,
+  );
+  if (capability === undefined) {
+    throw new Error('Demo Campaign is missing the Bluesky capability snapshot.');
   }
 
   // Use the first schedule occurrence if one exists; otherwise synthesise
@@ -217,32 +300,102 @@ export function createDemoActionGrant(
     document.scheduleOccurrences.push(occurrence);
   }
 
+  return createActionGrant({
+    campaign: document,
+    platform: 'BLUESKY',
+    executionMode: 'DIRECT',
+    scheduleOccurrenceId: occurrence.id,
+    artifactRevisionId: revision.id,
+    activationUnitId: blueskyUnit.id,
+    channelAccountId: channelAccount.id,
+    capabilitySnapshotId: capability.id,
+    now,
+  });
+}
+
+/**
+ * Create an ActionGrant (plus companion OutboxRecord) against a Campaign.
+ * All references (occurrence, revision, activation unit, channel account,
+ * capability) must be resolvable from the provided Campaign.
+ *
+ * The grant is issued with a 15‑minute expiry window and state ISSUED.
+ * An Ed25519 signature is produced over the grant digest.  When
+ * `privateKey` + `publicKey` are provided they are used directly;
+ * otherwise a fresh demo key pair is generated.
+ */
+export function createActionGrant(params: {
+  campaign: CampaignDocument;
+  platform: Platform;
+  executionMode: ExecutionMode;
+  scheduleOccurrenceId: DomainId;
+  artifactRevisionId: DomainId;
+  activationUnitId: DomainId;
+  channelAccountId: DomainId;
+  capabilitySnapshotId: DomainId;
+  privateKey?: KeyObject;
+  publicKey?: KeyObject;
+  now?: Date;
+}): {grant: ActionGrant; outbox: OutboxRecord} {
+  const {
+    campaign,
+    platform,
+    executionMode,
+    scheduleOccurrenceId,
+    artifactRevisionId,
+    activationUnitId,
+    channelAccountId,
+    capabilitySnapshotId,
+    privateKey,
+    publicKey,
+    now = new Date('2026-08-08T12:00:00.000Z'),
+  } = params;
+
+  const revision = campaign.artifactRevisions.find(
+    (r) => r.id === artifactRevisionId,
+  );
+  if (revision === undefined) {
+    throw new Error('Artifact revision not found in Campaign.');
+  }
+
+  // Use provided key pair or reuse the cached demo key pair
+  const keyPair: {publicKey: KeyObject; privateKey: KeyObject} =
+    privateKey !== undefined && publicKey !== undefined
+      ? {publicKey, privateKey}
+      : getDemoKeyPair();
+
   const grantId = id(70);
   const issuedAt = now.toISOString();
   const expiresAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
 
-  const unsigned: Omit<ActionGrant, 'grantDigest'> = {
+  const ownerPublicKeyEncoded = exportEd25519PublicKey(keyPair.publicKey);
+
+  const unsigned: Omit<ActionGrant, 'grantDigest' | 'ownerSignature'> = {
     id: grantId,
-    organizationId: document.organizationId,
-    campaignId: document.id,
-    scheduleOccurrenceId: occurrence.id,
-    artifactRevisionId: revision.id,
-    activationUnitId: blueskyUnit.id,
+    organizationId: campaign.organizationId,
+    campaignId: campaign.id,
+    scheduleOccurrenceId,
+    artifactRevisionId,
+    activationUnitId,
     schemaVersion: 1,
-    platform: 'BLUESKY',
-    executionMode: 'DIRECT',
+    platform,
+    executionMode,
     status: 'ISSUED',
     issuedAt,
     expiresAt,
     consumedAt: null,
     revocationReason: null,
+    channelAccountId,
+    capabilitySnapshotId,
+    ownerPublicKey: ownerPublicKeyEncoded,
   };
   const grantDigest = sha256Digest(unsigned);
-  const grant: ActionGrant = {...unsigned, grantDigest};
+  const ownerSignature = ed25519Sign(keyPair.privateKey, grantDigest);
+
+  const grant: ActionGrant = {...unsigned, grantDigest, ownerSignature};
 
   const outbox: OutboxRecord = {
     id: id(71),
-    organizationId: document.organizationId,
+    organizationId: campaign.organizationId,
     aggregateType: 'ACTION_GRANT',
     aggregateId: grantId,
     schemaVersion: 1,
@@ -297,7 +450,7 @@ export interface ActionRepository {
   failOutbox(
     outboxId: string,
     reason: string,
-  ): Promise<OutboxRecord>;
+  ): Promise<{outbox: OutboxRecord; receipt: ActionReceipt}>;
 
   getReceiptsByCampaign(
     organizationId: string,
@@ -314,6 +467,13 @@ export interface ActionRepository {
     receiptId: string,
     method: ReconciliationMethod,
     notes?: string,
+  ): Promise<ActionReceipt>;
+
+  confirmHandoff(
+    organizationId: string,
+    receiptId: string,
+    platformUri: string,
+    platformCid?: string,
   ): Promise<ActionReceipt>;
 
   health(): Promise<boolean>;

@@ -2,7 +2,7 @@ import {
   ActionRepositoryError,
   CampaignPreparationError,
   createPublishingSchedule,
-  createDemoActionGrant,
+  createActionGrant,
   createDemoCampaignDocument,
   isUuidV7,
   ScheduleContractError,
@@ -10,7 +10,9 @@ import {
   type ActionRepository,
   type CampaignDocument,
   type CampaignRepository,
-  type MutationResult
+  type MutationResult,
+  type Platform,
+  type ExecutionMode,
 } from '@lumiclaw/domain';
 import {
   acceptRuntimeSubmission,
@@ -176,8 +178,54 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (envelope === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
     if (envelope.etag !== ifMatch) return reply.status(412).header('ETag', envelope.etag).send(errorBody('CAMPAIGN_VERSION_CONFLICT'));
     if (envelope.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: envelope.digest, version: envelope.version, gapCodes: envelope.gapCodes});
+    if (!isCreateActionGrantBody(request.body)) return reply.status(422).send(errorBody('ACTION_GRANT_BODY_INVALID'));
     try {
-      const {grant, outbox} = createDemoActionGrant(envelope.document, now());
+      // Resolve channel account and capability from the Campaign
+      const {platform, executionMode, scheduleOccurrenceId, artifactRevisionId, activationUnitId} = request.body;
+      const channelAccount = envelope.document.graph.channelAccounts.find(
+        (a) => a.platform === platform,
+      );
+      if (channelAccount === undefined) {
+        return reply.status(422).send({...errorBody('ACTION_GRANT_BODY_INVALID'), detail: `No channel account found for platform ${platform}.`});
+      }
+      const capability = envelope.document.capabilitySnapshots.find(
+        (c) => c.platform === platform && c.channelAccountId === channelAccount.id,
+      );
+      if (capability === undefined) {
+        return reply.status(422).send({...errorBody('ACTION_GRANT_BODY_INVALID'), detail: `No capability snapshot found for platform ${platform}.`});
+      }
+
+      // Synthesize a schedule occurrence if the Campaign has none (demo path).
+      // Real campaigns will already have occurrences populated by the scheduler.
+      if (envelope.document.scheduleOccurrences.length === 0) {
+        const synthOccurrence = {
+          id: scheduleOccurrenceId,
+          organizationId: envelope.document.organizationId,
+          campaignId: envelope.document.id,
+          scheduleId: `${envelope.document.id}-synth-sched`,
+          scheduleVersion: 1,
+          schemaVersion: 1 as const,
+          ordinal: 1,
+          localWallTime: '2026-08-10T09:00:00',
+          scheduledForUtc: '2026-08-10T01:00:00.000Z',
+          utcOffsetMinutes: 480,
+          state: 'PENDING' as const,
+          misfireReason: null,
+        };
+        envelope.document.scheduleOccurrences.push(synthOccurrence);
+      }
+
+      const {grant, outbox} = createActionGrant({
+        campaign: envelope.document,
+        platform,
+        executionMode,
+        scheduleOccurrenceId,
+        artifactRevisionId,
+        activationUnitId,
+        channelAccountId: channelAccount.id,
+        capabilitySnapshotId: capability.id,
+        now: now(),
+      });
       const result = await actionRepository.createGrantWithOutbox(grant, outbox, idempotencyKey, sha256Digest({grant: grant.id, outbox: outbox.id}));
       void reply.header('ETag', envelope.etag).header('Idempotency-Replayed', String(result.replayed));
       if (result.replayed) return reply.status(200).send({code: 'ACTION_GRANT_REPLAYED', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, grant: result.grant, outbox: result.outbox});
@@ -234,6 +282,33 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     sseManager.subscribe(request.params.campaignId, reply);
     // Prevent Fastify from closing the reply automatically
     reply.hijack();
+  });
+
+  // --- Handoff Confirmation ---
+
+  type ConfirmHandoffParams = CampaignParams & {receiptId: string};
+  type ConfirmHandoffBody = {platformUri: string; platformCid?: string};
+
+  app.post<{Params: ConfirmHandoffParams}>('/api/v1/campaigns/:campaignId/receipts/:receiptId/confirm-handoff', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    if (!isConfirmHandoffBody(request.body)) return reply.status(422).send(errorBody('CONFIRM_HANDOFF_BODY_INVALID'));
+    const receipt = await actionRepository.getReceipt(organizationId, request.params.receiptId);
+    if (receipt === undefined) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    // Verify receipt belongs to the campaign
+    const grants = await actionRepository.getReceiptsByCampaign(organizationId, request.params.campaignId);
+    if (!grants.some((r) => r.id === request.params.receiptId)) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    try {
+      const confirmed = await actionRepository.confirmHandoff(
+        organizationId, request.params.receiptId,
+        request.body.platformUri, request.body.platformCid,
+      );
+      sseManager.notifyReceiptCreated(confirmed);
+      return {code: 'HANDOFF_CONFIRMED', mode: 'DEMO_SEED', live: false, receipt: confirmed};
+    } catch (error) {
+      if (error instanceof ActionRepositoryError && error.code === 'HANDOFF_NOT_PENDING') return reply.status(409).send(errorBody(error.code));
+      return sendDomainOrUnavailable(reply, error);
+    }
   });
 
   // --- Reconciliation ---
@@ -532,6 +607,33 @@ function isLiveTicketBody(value: unknown): value is LiveTicketBody {
 function isLiveModelBody(value: unknown): value is LiveModelBody { return isRecord(value) && Object.keys(value).sort().join(',') === 'attempt,inputProjectionDigest,roleId,taskId' && typeof value.taskId === 'string' && isRoleId(value.roleId) && Number.isSafeInteger(value.attempt) && isDigest(value.inputProjectionDigest); }
 function isLiveFailureBody(value: unknown): value is {code: string; failedTaskId: string | null; retryable: boolean} { return isRecord(value) && Object.keys(value).sort().join(',') === 'code,failedTaskId,retryable' && typeof value.code === 'string' && value.code.length > 0 && value.code.length <= 80 && (value.failedTaskId === null || typeof value.failedTaskId === 'string') && typeof value.retryable === 'boolean'; }
 function isReconcileBody(value: unknown): value is {method: 'PLATFORM_QUERY' | 'OWNER_MANUAL'; notes?: string} { return isRecord(value) && ['PLATFORM_QUERY', 'OWNER_MANUAL'].includes(String(value.method)) && (value.notes === undefined || typeof value.notes === 'string'); }
+
+function isConfirmHandoffBody(value: unknown): value is {platformUri: string; platformCid?: string} {
+  return isRecord(value) && typeof value.platformUri === 'string' && value.platformUri.length > 0
+    && (value.platformCid === undefined || typeof value.platformCid === 'string');
+}
+
+const validPlatforms = new Set<string>(['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU']);
+const validExecutionModes = new Set<string>(['DIRECT', 'NATIVE_HANDOFF']);
+
+type CreateActionGrantBody = {
+  platform: Platform;
+  executionMode: ExecutionMode;
+  scheduleOccurrenceId: string;
+  artifactRevisionId: string;
+  activationUnitId: string;
+};
+
+function isCreateActionGrantBody(value: unknown): value is CreateActionGrantBody {
+  if (!isRecord(value)) return false;
+  const keys = Object.keys(value).sort().join(',');
+  if (keys !== 'activationUnitId,artifactRevisionId,executionMode,platform,scheduleOccurrenceId') return false;
+  return validPlatforms.has(String(value.platform))
+    && validExecutionModes.has(String(value.executionMode))
+    && typeof value.scheduleOccurrenceId === 'string'
+    && typeof value.artifactRevisionId === 'string'
+    && typeof value.activationUnitId === 'string';
+}
 
 function liveBinding(mission: Awaited<ReturnType<ShadowMissionRepository['get']>> & {}, action: LiveTicketAction, roleId: string | null, taskId: string | null, attempt: number | null): LiveTicketBinding { return {missionId: mission.id, campaignDigest: mission.sourceCampaignDigest, action, roleId, taskId, attempt}; }
 function liveBindingFromRuntimeEvent(mission: NonNullable<Awaited<ReturnType<ShadowMissionRepository['get']>>>, event: RuntimeEventBody): LiveTicketBinding {

@@ -165,10 +165,13 @@ try {
   const tampered = {...g3, grantDigest: '0'.repeat(64)};
   // Store tampered grant directly via raw SQL
   await pool.query(
-    `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,payload,created_at)
-     values($1,$2,$3,$4,$5,$6,1,'BLUESKY','DIRECT','ISSUED',$7,$8,$9,$10,$11)`,
+    `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_public_key,payload,created_at)
+     values($1,$2,$3,$4,$5,$6,1,'BLUESKY','DIRECT','ISSUED',$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
     [orgId, g3.id, campaignId, occId, artId, g3.activationUnitId,
-      g3.issuedAt, g3.expiresAt, g3.grantDigest, JSON.stringify(tampered), now.toISOString()],
+      g3.issuedAt, g3.expiresAt, g3.grantDigest,
+      g3.channelAccountId, g3.capabilitySnapshotId,
+      g3.ownerSignature, g3.ownerPublicKey,
+      JSON.stringify(tampered), now.toISOString()],
   );
   await pool.query(
     `insert into outbox(organization_id,id,aggregate_type,aggregate_id,schema_version,payload,state,attempts,created_at)
@@ -179,7 +182,8 @@ try {
   const ct = await actionRepo.claimNextOutbox('verify-op');
   checks.tamperedClaimable = ct !== undefined;
   const ft = await actionRepo.failOutbox(ct!.id, 'Digest mismatch (integration test)');
-  checks.failOutbox = ft.state === 'FAILED';
+  checks.failOutbox = ft.outbox.state === 'FAILED';
+  checks.unknownReceiptWritten = ft.receipt.state === 'UNKNOWN';
 
   // -------------------------------------------------------------------
   // Phase 6 — Immutability

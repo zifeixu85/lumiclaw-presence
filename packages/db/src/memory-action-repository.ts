@@ -1,4 +1,5 @@
 import {
+  createUuidV7,
   digestActionGrant,
   ActionRepositoryError,
   type ActionGrant,
@@ -65,16 +66,52 @@ export class MemoryActionRepository implements ActionRepository {
   async completeOutbox(outboxId: string, receipt: ActionReceipt): Promise<ActionReceipt> {
     const outbox = this.#outbox.get(outboxId);
     if (outbox === undefined) throw new ActionRepositoryError('OUTBOX_RECORD_NOT_FOUND', 'Outbox record not found.');
+
+    // Verify the grant is still ISSUED — one grant can only be consumed once
+    const grant = this.#grants.get(receipt.actionGrantId);
+    if (grant === undefined) throw new ActionRepositoryError('ACTION_GRANT_NOT_FOUND', 'Grant not found.');
+    if (grant.status !== 'ISSUED') {
+      throw new ActionRepositoryError('ACTION_GRANT_ALREADY_CONSUMED',
+        `Grant status ${grant.status} does not allow consumption.`);
+    }
+
+    // Mark grant as CONSUMED atomically (single-threaded, but models the DB constraint)
+    grant.status = 'CONSUMED';
+    grant.consumedAt = new Date().toISOString();
+    this.#grants.set(grant.id, structuredClone(grant));
+
     outbox.state = 'COMPLETED';
     this.#receipts.set(receipt.id, structuredClone(receipt));
     return structuredClone(receipt);
   }
 
-  async failOutbox(outboxId: string, reason: string): Promise<OutboxRecord> {
+  async failOutbox(outboxId: string, reason: string): Promise<{outbox: OutboxRecord; receipt: ActionReceipt}> {
     const outbox = this.#outbox.get(outboxId);
     if (outbox === undefined) throw new ActionRepositoryError('OUTBOX_RECORD_NOT_FOUND', 'Outbox record not found.');
     outbox.state = 'FAILED';
-    return structuredClone(outbox);
+
+    // Write an UNKNOWN receipt so the Owner can see the failure in the Timeline
+    const payload = outbox.payload as {grant?: ActionGrant; aggregateId?: string};
+    const grant = payload.grant;
+    const receipt: ActionReceipt = {
+      id: createUuidV7(Date.now(), new Uint8Array(10)),
+      organizationId: outbox.organizationId,
+      actionGrantId: grant?.id ?? (payload.aggregateId ?? ''),
+      schemaVersion: 1,
+      platform: grant?.platform ?? 'BLUESKY',
+      executionMode: grant?.executionMode ?? 'DIRECT',
+      state: 'UNKNOWN',
+      platformUri: null,
+      platformCid: null,
+      handoffSteps: null,
+      unknownReason: reason,
+      reconciledAt: null,
+      reconciliationMethod: null,
+      createdAt: new Date().toISOString(),
+    };
+    this.#receipts.set(receipt.id, structuredClone(receipt));
+
+    return {outbox: structuredClone(outbox), receipt: structuredClone(receipt)};
   }
 
   async getReceiptsByCampaign(organizationId: string, campaignId: string): Promise<ActionReceipt[]> {
@@ -90,6 +127,29 @@ export class MemoryActionRepository implements ActionRepository {
   async getReceipt(organizationId: string, receiptId: string): Promise<ActionReceipt | undefined> {
     const receipt = this.#receipts.get(receiptId);
     return receipt?.organizationId === organizationId ? structuredClone(receipt) : undefined;
+  }
+
+  async confirmHandoff(
+    organizationId: string,
+    receiptId: string,
+    platformUri: string,
+    platformCid?: string,
+  ): Promise<ActionReceipt> {
+    const receipt = this.#receipts.get(receiptId);
+    if (receipt === undefined || receipt.organizationId !== organizationId) {
+      throw new ActionRepositoryError('RECEIPT_NOT_FOUND', 'Receipt not found.');
+    }
+    if (receipt.state !== 'HANDOFF_PENDING') {
+      throw new ActionRepositoryError('HANDOFF_NOT_PENDING', `Receipt state ${receipt.state} does not allow handoff confirmation.`);
+    }
+    const confirmed: ActionReceipt = {
+      ...receipt,
+      state: 'HANDOFF_CONFIRMED',
+      platformUri,
+      platformCid: platformCid ?? null,
+    };
+    this.#receipts.set(receiptId, confirmed);
+    return structuredClone(confirmed);
   }
 
   async reconcileReceipt(

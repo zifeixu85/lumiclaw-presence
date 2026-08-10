@@ -226,14 +226,90 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       expect(saved.platformUri).toBe('https://bsky.app/profile/test/post/abc');
     });
 
-    it('failOutbox marks FAILED with reason', async () => {
+    it('failOutbox marks FAILED with reason and writes UNKNOWN receipt', async () => {
       const {grant, outbox} = makeGrant(50);
       await repo.createGrantWithOutbox(
         grant, outbox, `test-fail-${uuid(50)}`, sha256Digest({g: grant.id}),
       );
       const claimed = await repo.claimNextOutbox('operator-4');
-      const failed = await repo.failOutbox(claimed!.id, 'Bluesky API timeout');
-      expect(failed.state).toBe('FAILED');
+      const result = await repo.failOutbox(claimed!.id, 'Bluesky API timeout');
+      expect(result.outbox.state).toBe('FAILED');
+      expect(result.receipt.state).toBe('UNKNOWN');
+      expect(result.receipt.unknownReason).toBe('Bluesky API timeout');
+      expect(result.receipt.actionGrantId).toBe(grant.id);
+    });
+  });
+
+  describe('atomic consumption', () => {
+    it('marks grant CONSUMED on completeOutbox', async () => {
+      const {grant, outbox} = makeGrant(80);
+      await repo.createGrantWithOutbox(
+        grant, outbox, `test-atomic-${uuid(80)}`, sha256Digest({g: grant.id}),
+      );
+      const claimed = await repo.claimNextOutbox('operator-atomic');
+      const receipt: ActionReceipt = {
+        id: uuid(81), organizationId: testOrg.organizationId,
+        actionGrantId: grant.id, schemaVersion: 1,
+        platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
+        platformUri: 'https://bsky.app/profile/test/post/atomic', platformCid: 'bafyrei-atomic',
+        handoffSteps: null, unknownReason: null,
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+      };
+      await repo.completeOutbox(claimed!.id, receipt);
+
+      // Verify grant was consumed via raw SQL query
+      const grantRow = await pool.query(
+        `select status, consumed_at from action_grants where organization_id=$1 and id=$2`,
+        [testOrg.organizationId, grant.id],
+      );
+      expect(grantRow.rows[0].status).toBe('CONSUMED');
+      expect(grantRow.rows[0].consumed_at).not.toBeNull();
+    });
+
+    it('rejects second consumption of the same grant', async () => {
+      const {grant, outbox} = makeGrant(82);
+      await repo.createGrantWithOutbox(
+        grant, outbox, `test-double-${uuid(82)}`, sha256Digest({g: grant.id}),
+      );
+
+      // Create two outbox records pointing to the same grant (simulates a race)
+      const outbox2Id = uuid(83);
+      await pool.query(
+        `insert into outbox(organization_id,id,aggregate_type,aggregate_id,schema_version,payload,state,attempts,created_at)
+         values($1,$2,'ACTION_GRANT',$3,1,$4,'PENDING',0,$5)`,
+        [testOrg.organizationId, outbox2Id, grant.id,
+          JSON.stringify({grant, revision: {}}), now.toISOString()],
+      );
+
+      // First consumption succeeds
+      const claimed1 = await repo.claimNextOutbox('operator-a');
+      const receipt1: ActionReceipt = {
+        id: uuid(84), organizationId: testOrg.organizationId,
+        actionGrantId: grant.id, schemaVersion: 1,
+        platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
+        platformUri: 'https://bsky.app/a', platformCid: 'bafyrei-a',
+        handoffSteps: null, unknownReason: null,
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+      };
+      await repo.completeOutbox(claimed1!.id, receipt1);
+
+      // Second consumption is rejected — grant already CONSUMED
+      const claimed2 = await repo.claimNextOutbox('operator-b');
+      try {
+        const receipt2: ActionReceipt = {
+          id: uuid(85), organizationId: testOrg.organizationId,
+          actionGrantId: grant.id, schemaVersion: 1,
+          platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
+          platformUri: 'https://bsky.app/b', platformCid: 'bafyrei-b',
+          handoffSteps: null, unknownReason: null,
+          reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+        };
+        await repo.completeOutbox(claimed2!.id, receipt2);
+        expect.unreachable('Second consumption should have thrown');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ActionRepositoryError);
+        expect((error as ActionRepositoryError).code).toBe('ACTION_GRANT_ALREADY_CONSUMED');
+      }
     });
   });
 
@@ -269,11 +345,14 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       const rid = uuid(71);
       // Insert grant + receipt directly
       await pool.query(
-        `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,payload,created_at)
-         values($1,$2,$3,$4,$5,$6,1,'BLUESKY','DIRECT','ISSUED',$7,$8,$9,$10,$11)`,
+        `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_public_key,payload,created_at)
+         values($1,$2,$3,$4,$5,$6,1,'BLUESKY','DIRECT','ISSUED',$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
         [testOrg.organizationId, grant.id, grant.campaignId, grant.scheduleOccurrenceId,
           grant.artifactRevisionId, grant.activationUnitId,
-          grant.issuedAt, grant.expiresAt, grant.grantDigest, JSON.stringify(grant), now.toISOString()],
+          grant.issuedAt, grant.expiresAt, grant.grantDigest,
+          grant.channelAccountId, grant.capabilitySnapshotId,
+          grant.ownerSignature, grant.ownerPublicKey,
+          JSON.stringify(grant), now.toISOString()],
       );
       await pool.query(
         `insert into action_receipts(organization_id,id,action_grant_id,schema_version,platform,execution_mode,state,created_at)

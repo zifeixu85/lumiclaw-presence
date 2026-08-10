@@ -106,6 +106,20 @@ describe('action grant contracts v1', () => {
     const issued = Date.parse(grant.issuedAt);
     const expires = Date.parse(grant.expiresAt);
     expect(expires - issued).toBe(15 * 60 * 1000);
+    // Bound references are populated
+    expect(grant.channelAccountId).toBeTruthy();
+    expect(grant.capabilitySnapshotId).toBeTruthy();
+    const channelAccount = campaign.graph.channelAccounts.find(
+      (a) => a.id === grant.channelAccountId,
+    );
+    expect(channelAccount).toBeDefined();
+    expect(channelAccount!.platform).toBe('BLUESKY');
+    const capability = campaign.capabilitySnapshots.find(
+      (c) => c.id === grant.capabilitySnapshotId,
+    );
+    expect(capability).toBeDefined();
+    expect(capability!.platform).toBe('BLUESKY');
+    expect(capability!.channelAccountId).toBe(grant.channelAccountId);
   });
 
   // -----------------------------------------------------------------------
@@ -184,6 +198,42 @@ describe('action grant contracts v1', () => {
           (u) => u.platform === 'LINKEDIN',
         )!;
         grant.activationUnitId = linkedInUnit.id;
+        grant.grantDigest = digestActionGrant(grant);
+      },
+    ],
+    [
+      'ACTION_GRANT_CHANNEL_ACCOUNT_NOT_FOUND — bogus channelAccountId',
+      (grant: ActionGrant) => {
+        grant.channelAccountId = '01908900-ffff-7000-8000-000000000099';
+        grant.grantDigest = digestActionGrant(grant);
+      },
+    ],
+    [
+      'ACTION_GRANT_CAPABILITY_NOT_FOUND — bogus capabilitySnapshotId',
+      (grant: ActionGrant) => {
+        grant.capabilitySnapshotId = '01908900-ffff-7000-8000-000000000099';
+        grant.grantDigest = digestActionGrant(grant);
+      },
+    ],
+    [
+      'ACTION_GRANT_CAPABILITY_PLATFORM_MISMATCH — capability platform != grant platform',
+      (grant: ActionGrant, campaign: CampaignDocument) => {
+        const liCapability = campaign.capabilitySnapshots.find(
+          (c) => c.platform === 'LINKEDIN',
+        )!;
+        grant.capabilitySnapshotId = liCapability.id;
+        grant.grantDigest = digestActionGrant(grant);
+      },
+    ],
+    [
+      'ACTION_GRANT_CAPABILITY_ACCOUNT_MISMATCH — capability account != grant account',
+      (grant: ActionGrant, campaign: CampaignDocument) => {
+        const liCapability = campaign.capabilitySnapshots.find(
+          (c) => c.platform === 'LINKEDIN',
+        )!;
+        // Point capability to a different channel account
+        grant.capabilitySnapshotId = liCapability.id;
+        // Keep grant.channelAccountId as Bluesky
         grant.grantDigest = digestActionGrant(grant);
       },
     ],

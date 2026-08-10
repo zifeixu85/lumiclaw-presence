@@ -1,5 +1,7 @@
 import {
   digestActionGrant,
+  ed25519Verify,
+  importEd25519PublicKey,
   isGrantConsumable,
   createUuidV7,
   type ActionGrant,
@@ -91,6 +93,13 @@ export class OutboxConsumer {
       return null;
     }
 
+    // --- Ed25519 signature ---
+    const publicKey = importEd25519PublicKey(grant.ownerPublicKey);
+    if (!ed25519Verify(publicKey, grant.grantDigest, grant.ownerSignature)) {
+      await this.#repo.failOutbox(record.id, 'Grant signature invalid.');
+      return null;
+    }
+
     // --- dispatch to connector ---
     const connector = connectorByPlatform[grant.platform];
     if (connector === undefined) {
@@ -110,7 +119,7 @@ export class OutboxConsumer {
         schemaVersion: 1,
         platform: grant.platform,
         executionMode: grant.executionMode,
-        state: result.mode === 'DIRECT' ? 'PUBLISHED' : 'HANDOFF_CONFIRMED',
+        state: result.mode === 'DIRECT' ? 'PUBLISHED' : 'HANDOFF_PENDING',
         platformUri: result.mode === 'DIRECT' ? result.platformUri : null,
         platformCid: result.mode === 'DIRECT' ? result.platformCid : null,
         handoffSteps: result.mode === 'NATIVE_HANDOFF' ? result.handoffSteps : null,
