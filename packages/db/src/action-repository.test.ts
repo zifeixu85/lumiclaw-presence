@@ -408,13 +408,13 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       const rid = uuid(71);
       // Insert grant + receipt directly
       await pool.query(
-        `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_public_key,owner_decision_id,payload,created_at)
+        `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_key_id,owner_decision_id,payload,created_at)
          values($1,$2,$3,$4,$5,$6,1,'BLUESKY','DIRECT','ISSUED',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
         [testOrg.organizationId, grant.id, grant.campaignId, grant.scheduleOccurrenceId,
           grant.artifactRevisionId, grant.activationUnitId,
           grant.issuedAt, grant.expiresAt, grant.grantDigest,
           grant.channelAccountId, grant.capabilitySnapshotId,
-          grant.ownerSignature, grant.ownerPublicKey, grant.ownerDecisionId,
+          grant.ownerSignature, grant.ownerKeyId, grant.ownerDecisionId,
           JSON.stringify(grant), now.toISOString()],
       );
       await pool.query(

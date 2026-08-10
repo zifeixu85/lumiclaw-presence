@@ -1,5 +1,6 @@
 import {describe, expect, it} from 'vitest';
-import {sha256Digest} from './canonical.js';
+import {importEd25519PublicKey} from './canonical.js';
+import type {KeyObject} from 'node:crypto';
 import {
   createDemoActionGrant,
   digestActionGrant,
@@ -17,6 +18,18 @@ function cloneGrant(grant: ActionGrant): ActionGrant {
   return structuredClone(grant);
 }
 
+/**
+ * Create a demo grant together with the matching Organization owner key
+ * so tests can call {@link validateActionGrant} with the org-bound key.
+ */
+function demoGrantWithOrgKey(
+  campaign: CampaignDocument,
+  params: {platform: 'BLUESKY' | 'LINKEDIN' | 'XIAOHONGSHU'; executionMode: 'DIRECT' | 'NATIVE_HANDOFF'},
+): {grant: ActionGrant; orgKey: KeyObject} {
+  const {grant, ownerPublicKey} = createDemoActionGrant(campaign, params);
+  return {grant, orgKey: importEd25519PublicKey(ownerPublicKey)};
+}
+
 describe('action grant contracts v1', () => {
   // -----------------------------------------------------------------------
   // Positive cases
@@ -24,19 +37,23 @@ describe('action grant contracts v1', () => {
 
   it('accepts a valid ActionGrant against the demo Campaign', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
-    const result = validateActionGrant(grant, campaign, now);
+    const {grant, orgKey} = demoGrantWithOrgKey(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT' });
+    const result = validateActionGrant(grant, campaign, orgKey, now);
     expect(result).toEqual({ok: true});
   });
 
-  it('produces a deterministic canonical digest', () => {
+  it('produces internally consistent digests with unique IDs', () => {
     const campaign = createDemoCampaignDocument();
     const {grant: a} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     const {grant: b} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
-    // Same input → same digest
-    expect(digestActionGrant(a)).toBe(digestActionGrant(b));
+    // Each grant's digest is internally consistent
+    expect(digestActionGrant(a)).toBe(a.grantDigest);
+    expect(digestActionGrant(b)).toBe(b.grantDigest);
     // Digest is 64 hex chars
     expect(digestActionGrant(a)).toMatch(/^[a-f0-9]{64}$/);
+    // Unique IDs → different digests
+    expect(a.id).not.toBe(b.id);
+    expect(digestActionGrant(a)).not.toBe(digestActionGrant(b));
   });
 
   it('changes digest when a governed field is mutated', () => {
@@ -239,12 +256,12 @@ describe('action grant contracts v1', () => {
     ],
   ])('rejects %s', (_label, mutate) => {
     const campaign = createDemoCampaignDocument();
-    const {grant: original} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
+    const {grant: original, orgKey} = demoGrantWithOrgKey(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT' });
     const grant = cloneGrant(original);
     mutate(grant, campaign);
     // Recompute digest for mutations that affect body fields
     // (other mutations already set it explicitly or break it)
-    const result = validateActionGrant(grant, campaign, now);
+    const result = validateActionGrant(grant, campaign, orgKey, now);
     expect(result.ok).toBe(false);
   });
 
@@ -254,11 +271,11 @@ describe('action grant contracts v1', () => {
 
   it('accepts grant exactly 1 ms before expiry', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
+    const {grant, orgKey} = demoGrantWithOrgKey(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT' });
     const expiresMs = Date.parse(grant.expiresAt);
     const oneMsBefore = new Date(expiresMs - 1);
     expect(isGrantConsumable(grant, oneMsBefore)).toBe(true);
-    const result = validateActionGrant(grant, campaign, oneMsBefore);
+    const result = validateActionGrant(grant, campaign, orgKey, oneMsBefore);
     expect(result).toEqual({ok: true});
   });
 
@@ -272,11 +289,11 @@ describe('action grant contracts v1', () => {
 
   it('reports multiple errors at once', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
+    const {grant, orgKey} = demoGrantWithOrgKey(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT' });
     grant.status = 'CONSUMED';
     grant.consumedAt = now.toISOString();
     grant.grantDigest = '0'.repeat(64);
-    const result = validateActionGrant(grant, campaign, now);
+    const result = validateActionGrant(grant, campaign, orgKey, now);
     expect(result.ok).toBe(false);
     if (!result.ok) {
       const codes = result.issues.map((i) => i.code);
@@ -287,11 +304,11 @@ describe('action grant contracts v1', () => {
 
   it('accepts a valid grant at a later wall-clock time within the window', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
+    const {grant, orgKey} = demoGrantWithOrgKey(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT' });
     // 10 minutes after issue but still before expiry
     const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
     expect(isGrantConsumable(grant, tenMinutesLater)).toBe(true);
-    const result = validateActionGrant(grant, campaign, tenMinutesLater);
+    const result = validateActionGrant(grant, campaign, orgKey, tenMinutesLater);
     expect(result).toEqual({ok: true});
   });
 });

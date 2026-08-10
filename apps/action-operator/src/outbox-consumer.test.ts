@@ -25,8 +25,8 @@ describe('outbox consumer', () => {
 
   function campaignAndGrant() {
     const campaign = createDemoCampaignDocument();
-    const {grant, outbox} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
-    return {campaign, grant, outbox};
+    const {grant, outbox, ownerPublicKey} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
+    return {campaign, grant, outbox, ownerPublicKey};
   }
 
   it('processOne returns null when no PENDING records', async () => {
@@ -35,8 +35,8 @@ describe('outbox consumer', () => {
   });
 
   it('processOne produces PUBLISHED receipt for DIRECT (Bluesky)', async () => {
-    const {grant, outbox} = campaignAndGrant();
-    await repo.createGrantWithOutbox(grant, outbox, 'test-direct', 'digest-direct');
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await repo.createGrantWithOutbox(grant, outbox, 'test-direct', 'digest-direct', ownerPublicKey);
 
     const receipt = await consumer.processOne();
     expect(receipt).not.toBeNull();
@@ -48,7 +48,7 @@ describe('outbox consumer', () => {
 
   it('processOne fails expired grant → outbox FAILED', async () => {
     const campaign = createDemoCampaignDocument();
-    const {grant, outbox} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
+    const {grant, outbox, ownerPublicKey} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     // Mutate grant to appear expired
     grant.status = 'EXPIRED';
     grant.grantDigest = ''; // will fail digest check too, but status check comes first
@@ -56,7 +56,7 @@ describe('outbox consumer', () => {
     // Actually, let's just make it EXPIRED at the right step
     outbox.payload = {grant, revision: campaign.artifactRevisions[0]!};
 
-    await repo.createGrantWithOutbox(grant, outbox, 'test-expired', 'digest-exp');
+    await repo.createGrantWithOutbox(grant, outbox, 'test-expired', 'digest-exp', ownerPublicKey);
     const result = await consumer.processOne();
     expect(result).toBeNull();
     // Subsequent poll should see no PENDING records (the one we had is now FAILED)
@@ -65,12 +65,12 @@ describe('outbox consumer', () => {
   });
 
   it('processOne fails digest mismatch → outbox FAILED', async () => {
-    const {grant, outbox} = campaignAndGrant();
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
     // Tamper the digest in the payload but leave the grant in outbox payload
     const tampered = {...grant, grantDigest: '0'.repeat(64)};
     outbox.payload = {grant: tampered, revision: outbox.payload};
 
-    await repo.createGrantWithOutbox(grant, outbox, 'test-digest', 'digest-dg');
+    await repo.createGrantWithOutbox(grant, outbox, 'test-digest', 'digest-dg', ownerPublicKey);
     const result = await consumer.processOne();
     expect(result).toBeNull();
   });
@@ -110,9 +110,9 @@ describe('outbox consumer', () => {
       activationUnitId: liUnit.id,
       now,
     });
-    const {grant, outbox} = createActionGrantFromDecision(decision, campaign, {now});
+    const {grant, outbox, ownerPublicKey} = createActionGrantFromDecision(decision, campaign, {now});
 
-    await repo.createGrantWithOutbox(grant, outbox, 'test-li', 'digest-li');
+    await repo.createGrantWithOutbox(grant, outbox, 'test-li', 'digest-li', ownerPublicKey);
     const receipt = await consumer.processOne();
     expect(receipt).not.toBeNull();
     expect(receipt!.state).toBe('HANDOFF_PENDING');
@@ -130,8 +130,8 @@ describe('outbox consumer', () => {
   it('full end-to-end: grant → outbox → consume → receipt', async () => {
     // Restart consumer for this test
     consumer.start();
-    const {grant, outbox} = campaignAndGrant();
-    await repo.createGrantWithOutbox(grant, outbox, 'test-e2e', 'digest-e2e');
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await repo.createGrantWithOutbox(grant, outbox, 'test-e2e', 'digest-e2e', ownerPublicKey);
 
     const receipt = await consumer.processOne();
     expect(receipt).not.toBeNull();
@@ -147,8 +147,8 @@ describe('outbox consumer', () => {
   });
 
   it('rejects second consumption of the same grant', async () => {
-    const {grant, outbox} = campaignAndGrant();
-    await repo.createGrantWithOutbox(grant, outbox, 'test-race', 'digest-race');
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await repo.createGrantWithOutbox(grant, outbox, 'test-race', 'digest-race', ownerPublicKey);
 
     // First consumption via completeOutbox succeeds
     const claimed = await repo.claimNextOutbox('operator-1');

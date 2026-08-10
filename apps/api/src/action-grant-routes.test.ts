@@ -226,12 +226,12 @@ describe('action grant routes', () => {
       liCampaign.organizationId = campaign.orgId;
       liCampaign.id = campaign.id;
 
-      const {grant, outbox} = createDemoActionGrant(liCampaign, {
+      const {grant, outbox, ownerPublicKey} = createDemoActionGrant(liCampaign, {
         platform: 'LINKEDIN',
         executionMode: 'NATIVE_HANDOFF',
         now,
       });
-      await repo.createGrantWithOutbox(grant, outbox, `co-seed-${Date.now()}`, sha256Digest({g: grant.id}));
+      await repo.createGrantWithOutbox(grant, outbox, `co-seed-${Date.now()}`, sha256Digest({g: grant.id}), ownerPublicKey);
       const claimed = await repo.claimNextOutbox('test-confirm');
       const receiptId = createUuidV7(Date.now(), new Uint8Array(10));
       const pending: ActionReceipt = {
@@ -272,12 +272,12 @@ describe('action grant routes', () => {
       bskyCampaign.organizationId = campaign.orgId;
       bskyCampaign.id = campaign.id;
 
-      const {grant, outbox} = createDemoActionGrant(bskyCampaign, {
+      const {grant, outbox, ownerPublicKey} = createDemoActionGrant(bskyCampaign, {
         platform: 'BLUESKY',
         executionMode: 'DIRECT',
         now,
       });
-      await repo.createGrantWithOutbox(grant, outbox, `co-409-${Date.now()}`, sha256Digest({g: grant.id}));
+      await repo.createGrantWithOutbox(grant, outbox, `co-409-${Date.now()}`, sha256Digest({g: grant.id}), ownerPublicKey);
       const claimed = await repo.claimNextOutbox('test-409');
       const receiptId = createUuidV7(Date.now(), new Uint8Array(10));
       const published: ActionReceipt = {

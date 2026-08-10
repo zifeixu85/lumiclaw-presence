@@ -90,21 +90,21 @@ try {
   // Phase 2 — Grant creation + idempotency
   // -------------------------------------------------------------------
 
-  const {grant: g1, outbox: o1} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
+  const {grant: g1, outbox: o1, ownerPublicKey: pk1} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
   g1.id = uid(); o1.id = uid(); o1.aggregateId = g1.id;
   const ik = `verify-${Date.now()}`;
   const dg = sha256Digest({g: g1.id});
-  const r1 = await actionRepo.createGrantWithOutbox(g1, o1, ik, dg);
+  const r1 = await actionRepo.createGrantWithOutbox(g1, o1, ik, dg, pk1);
   checks.grantIssued = r1.grant.status === 'ISSUED';
   checks.outboxPending = r1.outbox.state === 'PENDING';
   checks.grantDigest = r1.grant.grantDigest.length === 64;
 
-  const r2 = await actionRepo.createGrantWithOutbox(g1, o1, ik, dg);
+  const r2 = await actionRepo.createGrantWithOutbox(g1, o1, ik, dg, pk1);
   checks.replayed = r2.replayed === true;
   checks.replayedSameId = r2.grant.id === r1.grant.id;
 
   let reuseRejected = false;
-  try { await actionRepo.createGrantWithOutbox(g1, o1, ik, sha256Digest({x: 1})); }
+  try { await actionRepo.createGrantWithOutbox(g1, o1, ik, sha256Digest({x: 1}), pk1); }
   catch { reuseRejected = true; }
   checks.idempotencyReuseRejected = reuseRejected;
 
@@ -124,9 +124,9 @@ try {
   // Phase 4 — Outbox consume → Receipt
   // -------------------------------------------------------------------
 
-  const {grant: g2, outbox: o2} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
+  const {grant: g2, outbox: o2, ownerPublicKey: pk2} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
   g2.id = uid(); o2.id = uid(); o2.aggregateId = g2.id;
-  await actionRepo.createGrantWithOutbox(g2, o2, `consume-${Date.now()}`, sha256Digest({g: g2.id}));
+  await actionRepo.createGrantWithOutbox(g2, o2, `consume-${Date.now()}`, sha256Digest({g: g2.id}), pk2);
 
   const claimed = await actionRepo.claimNextOutbox('verify-op');
   checks.claimed = claimed !== undefined && claimed.state === 'PROCESSING';
@@ -165,12 +165,12 @@ try {
   const tampered = {...g3, grantDigest: '0'.repeat(64)};
   // Store tampered grant directly via raw SQL
   await pool.query(
-    `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_public_key,payload,created_at)
+    `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_key_id,payload,created_at)
      values($1,$2,$3,$4,$5,$6,1,'BLUESKY','DIRECT','ISSUED',$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
     [orgId, g3.id, campaignId, occId, artId, g3.activationUnitId,
       g3.issuedAt, g3.expiresAt, g3.grantDigest,
       g3.channelAccountId, g3.capabilitySnapshotId,
-      g3.ownerSignature, g3.ownerPublicKey,
+      g3.ownerSignature, g3.ownerKeyId,
       JSON.stringify(tampered), now.toISOString()],
   );
   await pool.query(

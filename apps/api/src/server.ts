@@ -195,10 +195,25 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
         now: now(),
       });
 
-      const {grant, outbox} = createActionGrantFromDecision(
+      const {grant, outbox, ownerPublicKey} = createActionGrantFromDecision(
         decision, envelope.document, {now: now()},
       );
-      const result = await actionRepository.createGrantWithOutbox(grant, outbox, idempotencyKey, sha256Digest({grant: grant.id, outbox: outbox.id}));
+      // Bind idempotency digest to the stable input parameters (not random
+      // grant IDs) so replays with the same key + same Campaign revision
+      // produce the matching digest.  Also binds the Campaign revision so
+      // a different Campaign version with the same key is rejected.
+      const requestDigest = sha256Digest({
+        platform,
+        executionMode,
+        scheduleOccurrenceId,
+        artifactRevisionId,
+        activationUnitId,
+        campaignVersion: envelope.version,
+        campaignDigest: envelope.digest,
+      });
+      const result = await actionRepository.createGrantWithOutbox(
+        grant, outbox, idempotencyKey, requestDigest, ownerPublicKey,
+      );
       void reply.header('ETag', envelope.etag).header('Idempotency-Replayed', String(result.replayed));
       if (result.replayed) return reply.status(200).send({code: 'ACTION_GRANT_REPLAYED', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, grant: result.grant, outbox: result.outbox});
       return reply.status(201).send({code: 'ACTION_GRANT_ISSUED', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, grant: result.grant, outbox: result.outbox});

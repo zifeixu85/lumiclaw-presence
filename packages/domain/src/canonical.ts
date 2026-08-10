@@ -72,3 +72,12 @@ export function ed25519Sign(privateKey: KeyObject, message: string): string {
 export function ed25519Verify(publicKey: KeyObject, message: string, signature: string): boolean {
   return verify(null, Buffer.from(message, 'utf8'), publicKey, Buffer.from(signature, 'base64url'));
 }
+
+/**
+ * Compute a stable key identifier from an Ed25519 public key.
+ * Uses SHA-256 of the SPKI DER encoding so the keyId is a
+ * collision-resistant fingerprint of the actual key material.
+ */
+export function computeOwnerKeyId(publicKey: KeyObject): string {
+  return createHash('sha256').update(publicKey.export({type: 'spki', format: 'der'})).digest('hex');
+}

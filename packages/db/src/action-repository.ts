@@ -1,12 +1,14 @@
 import {
   ActionRepositoryError,
   createUuidV7,
+  importEd25519PublicKey,
   type ActionGrant,
   type ActionReceipt,
   type ActionRepository,
   type OutboxRecord,
 } from '@lumiclaw/domain';
 import {Pool, type PoolClient} from 'pg';
+import type {KeyObject} from 'node:crypto';
 
 // ---------------------------------------------------------------------------
 // Postgres implementation
@@ -29,6 +31,15 @@ export class PostgresActionRepository implements ActionRepository {
     return result.rows[0]?.marker === 'action_grants';
   }
 
+  async getOrganizationOwnerKey(organizationId: string): Promise<KeyObject | undefined> {
+    const result = await this.#pool.query(
+      `select owner_public_key from organizations where id = $1`,
+      [organizationId],
+    );
+    if (result.rowCount === 0 || result.rows[0].owner_public_key === null) return undefined;
+    return importEd25519PublicKey(result.rows[0].owner_public_key as string);
+  }
+
   // -----------------------------------------------------------------------
   // Write — API layer
   // -----------------------------------------------------------------------
@@ -38,9 +49,19 @@ export class PostgresActionRepository implements ActionRepository {
     outbox: OutboxRecord,
     idempotencyKey: string,
     requestDigest: string,
+    ownerPublicKey?: string,
   ): Promise<{grant: ActionGrant; outbox: OutboxRecord; replayed: boolean}> {
     return this.#transaction(async (client) => {
       const route = `/api/v1/campaigns/${grant.campaignId}/action-grants`;
+
+      // Auto-register owner public key when provided (demo mode / first use)
+      if (ownerPublicKey !== undefined) {
+        await client.query(
+          `update organizations set owner_public_key = $2
+           where id = $1 and owner_public_key is null`,
+          [grant.organizationId, ownerPublicKey],
+        );
+      }
 
       // Idempotency guard
       await client.query(
@@ -65,7 +86,7 @@ export class PostgresActionRepository implements ActionRepository {
 
       // Atomic insert: grant + outbox
       await client.query(
-        `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_public_key,owner_decision_id,payload,created_at)
+        `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_key_id,owner_decision_id,payload,created_at)
          values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
         [
           grant.organizationId, grant.id, grant.campaignId,
@@ -73,7 +94,7 @@ export class PostgresActionRepository implements ActionRepository {
           grant.activationUnitId, grant.schemaVersion, grant.platform,
           grant.executionMode, grant.status, grant.issuedAt, grant.expiresAt,
           grant.grantDigest, grant.channelAccountId, grant.capabilitySnapshotId,
-          grant.ownerSignature, grant.ownerPublicKey, grant.ownerDecisionId,
+          grant.ownerSignature, grant.ownerKeyId, grant.ownerDecisionId,
           JSON.stringify(grant), grant.issuedAt,
         ],
       );

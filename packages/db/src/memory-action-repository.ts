@@ -1,12 +1,13 @@
 import {
   createUuidV7,
-  digestActionGrant,
+  importEd25519PublicKey,
   ActionRepositoryError,
   type ActionGrant,
   type ActionReceipt,
   type ActionRepository,
   type OutboxRecord,
 } from '@lumiclaw/domain';
+import type {KeyObject} from 'node:crypto';
 
 type IdempotencyEntry = {requestDigest: string; grant: ActionGrant; outbox: OutboxRecord};
 
@@ -15,9 +16,14 @@ export class MemoryActionRepository implements ActionRepository {
   readonly #outbox = new Map<string, OutboxRecord>();
   readonly #receipts = new Map<string, ActionReceipt>();
   readonly #idempotency = new Map<string, IdempotencyEntry>();
+  readonly #ownerKeys = new Map<string, KeyObject>();
 
   async health(): Promise<boolean> {
     return true;
+  }
+
+  async getOrganizationOwnerKey(organizationId: string): Promise<KeyObject | undefined> {
+    return this.#ownerKeys.get(organizationId);
   }
 
   async createGrantWithOutbox(
@@ -25,6 +31,7 @@ export class MemoryActionRepository implements ActionRepository {
     outbox: OutboxRecord,
     idempotencyKey: string,
     requestDigest: string,
+    ownerPublicKey?: string,
   ): Promise<{grant: ActionGrant; outbox: OutboxRecord; replayed: boolean}> {
     const routeKey = `POST:/api/v1/campaigns/${grant.campaignId}/action-grants:${grant.organizationId}:${idempotencyKey}`;
     const previous = this.#idempotency.get(routeKey);
@@ -34,6 +41,12 @@ export class MemoryActionRepository implements ActionRepository {
       }
       return {grant: structuredClone(previous.grant), outbox: structuredClone(previous.outbox), replayed: true};
     }
+
+    // Auto-register the owner public key on first use (demo mode)
+    if (ownerPublicKey !== undefined && !this.#ownerKeys.has(grant.organizationId)) {
+      this.#ownerKeys.set(grant.organizationId, importEd25519PublicKey(ownerPublicKey));
+    }
+
     this.#grants.set(grant.id, structuredClone(grant));
     this.#outbox.set(outbox.id, structuredClone(outbox));
     this.#idempotency.set(routeKey, {requestDigest, grant: structuredClone(grant), outbox: structuredClone(outbox)});

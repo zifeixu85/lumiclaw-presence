@@ -1,7 +1,6 @@
 import {
   digestActionGrant,
   ed25519Verify,
-  importEd25519PublicKey,
   isGrantConsumable,
   createUuidV7,
   type ActionGrant,
@@ -93,10 +92,14 @@ export class OutboxConsumer {
       return null;
     }
 
-    // --- Ed25519 signature ---
-    const publicKey = importEd25519PublicKey(grant.ownerPublicKey);
-    if (!ed25519Verify(publicKey, grant.grantDigest, grant.ownerSignature)) {
-      await this.#repo.failOutbox(record.id, 'Grant signature invalid.');
+    // --- Ed25519 signature (using Organization's registered key, not self-asserted) ---
+    const orgKey = await this.#repo.getOrganizationOwnerKey(grant.organizationId);
+    if (orgKey === undefined) {
+      await this.#repo.failOutbox(record.id, 'Organization owner key not registered.');
+      return null;
+    }
+    if (!ed25519Verify(orgKey, grant.grantDigest, grant.ownerSignature)) {
+      await this.#repo.failOutbox(record.id, 'Grant signature invalid against Organization owner key.');
       return null;
     }
 

@@ -1,9 +1,9 @@
 import {
+  computeOwnerKeyId,
   ed25519Sign,
   ed25519Verify,
   exportEd25519PublicKey,
   generateEd25519KeyPair,
-  importEd25519PublicKey,
   sha256Digest,
 } from './canonical.js';
 import type {KeyObject} from 'node:crypto';
@@ -63,8 +63,12 @@ export type ActionGrant = {
   capabilitySnapshotId: DomainId;
   /** Ed25519 signature over grantDigest (base64url). */
   ownerSignature: string;
-  /** Ed25519 public key embedded for self-contained verification (base64url). */
-  ownerPublicKey: string;
+  /**
+   * Stable key identifier derived from the Organization's registered owner
+   * public key (SHA-256 of SPKI DER).  Verification MUST use the key stored
+   * on the Organization record — never trust a self-asserted public key.
+   */
+  ownerKeyId: string;
   /** OwnerDecision that authorised this grant. */
   ownerDecisionId: DomainId;
 };
@@ -120,6 +124,11 @@ export function isGrantConsumed(grant: ActionGrant): boolean {
 
 /**
  * Validate an ActionGrant against its source Campaign.
+ *
+ * The caller MUST supply the Organization's registered owner public key
+ * ({@link organizationOwnerKey}) — the grant's {@link ownerKeyId} is only a
+ * fingerprint; verification never trusts a self-asserted key.
+ *
  * Returns {ok: true} when the grant is scope-correct, digest-intact,
  * not yet expired / revoked / consumed, and references real Campaign
  * children (occurrence + artifact revision).
@@ -127,6 +136,7 @@ export function isGrantConsumed(grant: ActionGrant): boolean {
 export function validateActionGrant(
   grant: ActionGrant,
   campaign: CampaignDocument,
+  organizationOwnerKey: KeyObject,
   now: Date,
 ): ValidationResult {
   const issues: ValidationIssue[] = [];
@@ -141,6 +151,15 @@ export function validateActionGrant(
       'Grant campaign does not match.'));
   }
 
+  // --- key binding ---
+  // Verify that the keyId in the grant matches the Organization's registered key.
+  // This prevents an attacker from substituting their own key pair.
+  const expectedKeyId = computeOwnerKeyId(organizationOwnerKey);
+  if (grant.ownerKeyId !== expectedKeyId) {
+    issues.push(issue('ACTION_GRANT_KEY_ID_MISMATCH', '/ownerKeyId',
+      'Grant ownerKeyId does not match the Organization registered public key.'));
+  }
+
   // --- digest ---
   const calculated = digestActionGrant(grant);
   if (calculated !== grant.grantDigest) {
@@ -148,13 +167,12 @@ export function validateActionGrant(
       'Grant digest does not match canonical body.'));
   }
 
-  // --- Ed25519 signature ---
+  // --- Ed25519 signature (using org key, not grant self-asserted key) ---
   if (calculated === grant.grantDigest) {
-    const publicKey = importEd25519PublicKey(grant.ownerPublicKey);
-    const sigValid = ed25519Verify(publicKey, grant.grantDigest, grant.ownerSignature);
+    const sigValid = ed25519Verify(organizationOwnerKey, grant.grantDigest, grant.ownerSignature);
     if (!sigValid) {
       issues.push(issue('ACTION_GRANT_SIGNATURE_INVALID', '/ownerSignature',
-        'Ed25519 signature does not verify against the grant digest.'));
+        'Ed25519 signature does not verify against the grant digest using the Organization owner key.'));
     }
   }
 
@@ -249,12 +267,6 @@ export function validateActionGrant(
 // Fixture
 // ---------------------------------------------------------------------------
 
-const entropy = (seed: number): Uint8Array =>
-  Uint8Array.from(Array.from({length: 10}, (_, i) => (seed * 13 + i * 19) & 0xff));
-
-const id = (offset: number): string =>
-  createUuidV7(1_788_200_000_000 + offset, entropy(offset));
-
 /** Cached demo key pair so all demo grants share the same owner key. */
 let _demoKeyPair: {publicKey: KeyObject; privateKey: KeyObject} | undefined;
 
@@ -312,10 +324,10 @@ export function resolveGrantRefs(
     campaign.scheduleOccurrences[0];
   if (scheduleOccurrence === undefined) {
     scheduleOccurrence = {
-      id: id(60),
+      id: createUuidV7(Date.now()),
       organizationId: campaign.organizationId,
       campaignId: campaign.id,
-      scheduleId: id(61),
+      scheduleId: createUuidV7(Date.now()),
       scheduleVersion: 1,
       schemaVersion: 1,
       ordinal: 1,
@@ -361,7 +373,7 @@ export function createOwnerDecision(params: {
   const refs = resolveGrantRefs(campaign, platform);
 
   return {
-    id: id(80),
+    id: createUuidV7(now.getTime()),
     organizationId: campaign.organizationId,
     campaignId: campaign.id,
     platform,
@@ -391,7 +403,7 @@ export function createActionGrantFromDecision(
     publicKey?: KeyObject;
     now?: Date;
   },
-): {grant: ActionGrant; outbox: OutboxRecord} {
+): {grant: ActionGrant; outbox: OutboxRecord; ownerPublicKey: string} {
   const {privateKey, publicKey, now = new Date('2026-08-08T12:00:00.000Z')} = params ?? {};
 
   // Validate that all decision refs resolve in the Campaign
@@ -440,7 +452,7 @@ export function createDemoActionGrant(
     executionMode: ExecutionMode;
     now?: Date;
   },
-): {grant: ActionGrant; outbox: OutboxRecord} {
+): {grant: ActionGrant; outbox: OutboxRecord; ownerPublicKey: string} {
   const {platform, executionMode, now = new Date('2026-08-08T12:00:00.000Z')} = params;
   const refs = resolveGrantRefs(campaign, platform);
 
@@ -482,7 +494,7 @@ export function createActionGrant(params: {
   privateKey?: KeyObject;
   publicKey?: KeyObject;
   now?: Date;
-}): {grant: ActionGrant; outbox: OutboxRecord} {
+}): {grant: ActionGrant; outbox: OutboxRecord; ownerPublicKey: string} {
   const {
     campaign,
     platform,
@@ -511,10 +523,11 @@ export function createActionGrant(params: {
       ? {publicKey, privateKey}
       : getDemoKeyPair();
 
-  const grantId = id(70);
+  const grantId = createUuidV7(now.getTime());
   const issuedAt = now.toISOString();
   const expiresAt = new Date(now.getTime() + 15 * 60 * 1000).toISOString();
 
+  const ownerKeyId = computeOwnerKeyId(keyPair.publicKey);
   const ownerPublicKeyEncoded = exportEd25519PublicKey(keyPair.publicKey);
 
   const unsigned: Omit<ActionGrant, 'grantDigest' | 'ownerSignature'> = {
@@ -535,7 +548,7 @@ export function createActionGrant(params: {
     channelAccountId,
     capabilitySnapshotId,
     ownerDecisionId,
-    ownerPublicKey: ownerPublicKeyEncoded,
+    ownerKeyId,
   };
   const grantDigest = sha256Digest(unsigned);
   const ownerSignature = ed25519Sign(keyPair.privateKey, grantDigest);
@@ -543,7 +556,7 @@ export function createActionGrant(params: {
   const grant: ActionGrant = {...unsigned, grantDigest, ownerSignature};
 
   const outbox: OutboxRecord = {
-    id: id(71),
+    id: createUuidV7(now.getTime()),
     organizationId: campaign.organizationId,
     aggregateType: 'ACTION_GRANT',
     aggregateId: grantId,
@@ -556,7 +569,7 @@ export function createActionGrant(params: {
     createdAt: issuedAt,
   };
 
-  return {grant, outbox};
+  return {grant, outbox, ownerPublicKey: ownerPublicKeyEncoded};
 }
 
 // ---------------------------------------------------------------------------
@@ -581,7 +594,11 @@ export interface ActionRepository {
     outbox: OutboxRecord,
     idempotencyKey: string,
     requestDigest: string,
+    ownerPublicKey?: string,
   ): Promise<{grant: ActionGrant; outbox: OutboxRecord; replayed: boolean}>;
+
+  /** Return the Organization's registered owner Ed25519 public key. */
+  getOrganizationOwnerKey(organizationId: string): Promise<KeyObject | undefined>;
 
   revokeGrant(
     organizationId: string,
