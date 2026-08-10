@@ -2,7 +2,8 @@ import {
   ActionRepositoryError,
   CampaignPreparationError,
   createPublishingSchedule,
-  createActionGrant,
+  createActionGrantFromDecision,
+  createOwnerDecision,
   createDemoCampaignDocument,
   isUuidV7,
   ScheduleContractError,
@@ -180,52 +181,23 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (envelope.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: envelope.digest, version: envelope.version, gapCodes: envelope.gapCodes});
     if (!isCreateActionGrantBody(request.body)) return reply.status(422).send(errorBody('ACTION_GRANT_BODY_INVALID'));
     try {
-      // Resolve channel account and capability from the Campaign
       const {platform, executionMode, scheduleOccurrenceId, artifactRevisionId, activationUnitId} = request.body;
-      const channelAccount = envelope.document.graph.channelAccounts.find(
-        (a) => a.platform === platform,
-      );
-      if (channelAccount === undefined) {
-        return reply.status(422).send({...errorBody('ACTION_GRANT_BODY_INVALID'), detail: `No channel account found for platform ${platform}.`});
-      }
-      const capability = envelope.document.capabilitySnapshots.find(
-        (c) => c.platform === platform && c.channelAccountId === channelAccount.id,
-      );
-      if (capability === undefined) {
-        return reply.status(422).send({...errorBody('ACTION_GRANT_BODY_INVALID'), detail: `No capability snapshot found for platform ${platform}.`});
-      }
 
-      // Synthesize a schedule occurrence if the Campaign has none (demo path).
-      // Real campaigns will already have occurrences populated by the scheduler.
-      if (envelope.document.scheduleOccurrences.length === 0) {
-        const synthOccurrence = {
-          id: scheduleOccurrenceId,
-          organizationId: envelope.document.organizationId,
-          campaignId: envelope.document.id,
-          scheduleId: `${envelope.document.id}-synth-sched`,
-          scheduleVersion: 1,
-          schemaVersion: 1 as const,
-          ordinal: 1,
-          localWallTime: '2026-08-10T09:00:00',
-          scheduledForUtc: '2026-08-10T01:00:00.000Z',
-          utcOffsetMinutes: 480,
-          state: 'PENDING' as const,
-          misfireReason: null,
-        };
-        envelope.document.scheduleOccurrences.push(synthOccurrence);
-      }
-
-      const {grant, outbox} = createActionGrant({
+      // Construct a formal OwnerDecision and bind the ActionGrant to it.
+      // Every grant must follow the Decision → Grant path.
+      const decision = createOwnerDecision({
         campaign: envelope.document,
         platform,
         executionMode,
         scheduleOccurrenceId,
         artifactRevisionId,
         activationUnitId,
-        channelAccountId: channelAccount.id,
-        capabilitySnapshotId: capability.id,
         now: now(),
       });
+
+      const {grant, outbox} = createActionGrantFromDecision(
+        decision, envelope.document, {now: now()},
+      );
       const result = await actionRepository.createGrantWithOutbox(grant, outbox, idempotencyKey, sha256Digest({grant: grant.id, outbox: outbox.id}));
       void reply.header('ETag', envelope.etag).header('Idempotency-Replayed', String(result.replayed));
       if (result.replayed) return reply.status(200).send({code: 'ACTION_GRANT_REPLAYED', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, grant: result.grant, outbox: result.outbox});

@@ -4,7 +4,7 @@
 > Milestone: `M3`
 > Progress module ID: `M3-01`
 > 冻结范围: Demo Golden Path / ViewModel & API / 状态码和错误码 / Direct-Handoff-UNKNOWN 行为边界
-> 对应代码分支: `dtg-lumiclaw`
+> 对应代码分支: `dtg-lumiclaw-v2`
 > 最后更新: `2026-08-09`
 
 ---
@@ -235,7 +235,8 @@ OutboxRecord.state:
 
 ActionReceipt.state:
     PUBLISHED           ← DIRECT 模式成功
-    HANDOFF_CONFIRMED   ← NATIVE_HANDOFF 模式成功
+    HANDOFF_PENDING     ← NATIVE_HANDOFF 模式成功（等待 Owner 回填 URL）
+    HANDOFF_CONFIRMED   ← Owner POST /confirm-handoff（platformUri 已回填）
     FAILED              ← （预留，当前未生成）
     UNKNOWN             ← connector 返回 {ok: false} 或异常
                        → (Reconcile) → 状态不变但 reconciledAt 被设置
@@ -293,7 +294,7 @@ type ConnectorResult =
 | **谁执行** | action-operator 自动调用平台 API | Owner 手动按步骤操作 | （异常路径） |
 | **当前平台** | Bluesky（mock） | LinkedIn、小红书（mock） | — |
 | **成功产物** | `platformUri` + `platformCid` | `handoffSteps: string[]`（如 "1. 打开 LinkedIn..."） | — |
-| **Receipt 状态** | `PUBLISHED` | `HANDOFF_CONFIRMED` | （不写 Receipt） |
+| **Receipt 状态** | `PUBLISHED` | `HANDOFF_PENDING`（需 Owner 回填 URL → `HANDOFF_CONFIRMED`） | `UNKNOWN`（持久化 Receipt 供 Owner 对账） |
 | **Outbox 结果** | `COMPLETED` | `COMPLETED` | `FAILED` |
 | **失败策略** | Connector 返回 `{ok: false}` | Connector 返回 `{ok: false}` | `failOutbox()` → Outbox FAILED |
 | **重试策略** | **不重试**（outbox-consumer 不重试） | **不重试** | **绝不盲重试** |
@@ -320,14 +321,16 @@ claimNextOutbox → 有 PENDING 记录？
                 ├── {ok: true, mode: 'DIRECT'}
                 │   → Receipt.state = PUBLISHED → completeOutbox
                 ├── {ok: true, mode: 'NATIVE_HANDOFF'}
-                │   → Receipt.state = HANDOFF_CONFIRMED → completeOutbox
+                │   → Receipt.state = HANDOFF_PENDING → completeOutbox
+                │   → 后续 Owner POST /confirm-handoff → HANDOFF_CONFIRMED
                 └── {ok: false, reason: 'UNKNOWN'}
                     → failOutbox("UNKNOWN: ...")  // fail closed, no blind retry
 ```
 
-**HANDOFF 的 Owner 确认路径：**
-- 当前 HANDOFF Connector 返回 `handoffSteps` 后直接写 `HANDOFF_CONFIRMED`
-- **没有**等待 Owner 确认的环节——代码注释标注了 `"Owner 确认后，将发布后的 URL 粘贴回 LumiClaw 以完成对账"`，但这一步**尚未实现**
+**HANDOFF 的 Owner 确认路径（已实现，commit 098078a）：**
+- Connector 返回 `handoffSteps` 后 → OutboxConsumer 写 `HANDOFF_PENDING` + `platformUri: null`
+- Owner 在平台完成操作后 → `POST /api/v1/campaigns/:campaignId/receipts/:receiptId/confirm-handoff` → `HANDOFF_CONFIRMED`
+- DB 触发器 `000011_confirm_handoff_trigger` 强制：仅允许 `HANDOFF_PENDING → HANDOFF_CONFIRMED` 且 `platform_uri IS NULL → NOT NULL`
 
 **UNKNOWN 的对账路径：**
 - `POST /receipts/:id/reconcile` → `{method: 'PLATFORM_QUERY' | 'OWNER_MANUAL'}` 已实现
@@ -381,8 +384,8 @@ claimNextOutbox → 有 PENDING 记录？
 
 以下问题在冻结对齐时应一并讨论：
 
-1. **grant.status 不在消费时更新为 CONSUMED**：`outbox-consumer.ts` 的 `completeOutbox` 只更新 outbox 和 receipt，没有更新 grant 的状态。目前只能通过 `outbox.state === 'COMPLETED'` 来间接判断 grant 已被消费。
+1. **✅ 已修复 (098078a)**：~~grant.status 不在消费时更新为 CONSUMED~~：`completeOutbox` 现在在同一事务中原子地锁定 grant 行、检查 ISSUED 状态、设置 `CONSUMED` + `consumed_at`。并发竞争由 `FOR UPDATE` 行锁 + `Promise.allSettled` 测试覆盖。
 2. **`GET /action-grants` 返回的是 Receipt 列表**：API 注释写 `"return receipts as proxy for grant list"`，需要确认是临时方案还是最终设计。
 3. **SSE fan-out 未按 campaignId 过滤**：当前推送给所有连接的 SSE 客户端，由客户端自行过滤。
 4. **Postgres 版 reconcileReceipt 未实现**：标注 M3-07，当前抛 `RECONCILIATION_NOT_AVAILABLE`。
-5. **HANDOFF 缺少 Owner 确认环节**：Connector 返回 handoff steps 后直接标记 HANDOFF_CONFIRMED，没有等待 Owner 实际确认。
+5. **✅ 已修复 (098078a)**：~~HANDOFF 缺少 Owner 确认环节~~：Connector 返回 handoff steps 后写入 `HANDOFF_PENDING` + `platformUri: null`；Owner 通过 `POST /confirm-handoff` 回填 URL 后转为 `HANDOFF_CONFIRMED`；DB 触发器强制唯一合法转移。

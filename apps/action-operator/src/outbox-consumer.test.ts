@@ -1,8 +1,9 @@
 import {beforeAll, describe, expect, it} from 'vitest';
 import {
   ActionRepositoryError,
-  createActionGrant,
+  createActionGrantFromDecision,
   createDemoActionGrant,
+  createOwnerDecision,
   createDemoCampaignDocument,
   digestActionGrant,
   type ActionReceipt,
@@ -24,7 +25,7 @@ describe('outbox consumer', () => {
 
   function campaignAndGrant() {
     const campaign = createDemoCampaignDocument();
-    const {grant, outbox} = createDemoActionGrant(campaign, now);
+    const {grant, outbox} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     return {campaign, grant, outbox};
   }
 
@@ -47,7 +48,7 @@ describe('outbox consumer', () => {
 
   it('processOne fails expired grant → outbox FAILED', async () => {
     const campaign = createDemoCampaignDocument();
-    const {grant, outbox} = createDemoActionGrant(campaign, now);
+    const {grant, outbox} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     // Mutate grant to appear expired
     grant.status = 'EXPIRED';
     grant.grantDigest = ''; // will fail digest check too, but status check comes first
@@ -74,7 +75,7 @@ describe('outbox consumer', () => {
     expect(result).toBeNull();
   });
 
-  it('processOne produces HANDOFF_CONFIRMED for LinkedIn', async () => {
+  it('processOne produces HANDOFF_PENDING for LinkedIn (Native Handoff)', async () => {
     const campaign = createDemoCampaignDocument();
     // Use LinkedIn unit
     const liUnit = campaign.activationPlan.units.find((u) => u.platform === 'LINKEDIN')!;
@@ -100,17 +101,16 @@ describe('outbox consumer', () => {
       misfireReason: null,
     }];
 
-    const {grant, outbox} = createActionGrant({
+    const decision = createOwnerDecision({
       campaign,
       platform: 'LINKEDIN',
       executionMode: 'NATIVE_HANDOFF',
       scheduleOccurrenceId: liUnit.id + '-occ',
       artifactRevisionId: liRevision.id,
       activationUnitId: liUnit.id,
-      channelAccountId: liChannelAccount.id,
-      capabilitySnapshotId: liCapability.id,
       now,
     });
+    const {grant, outbox} = createActionGrantFromDecision(decision, campaign, {now});
 
     await repo.createGrantWithOutbox(grant, outbox, 'test-li', 'digest-li');
     const receipt = await consumer.processOne();

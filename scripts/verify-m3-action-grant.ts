@@ -90,7 +90,7 @@ try {
   // Phase 2 — Grant creation + idempotency
   // -------------------------------------------------------------------
 
-  const {grant: g1, outbox: o1} = createDemoActionGrant(campaign, now);
+  const {grant: g1, outbox: o1} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
   g1.id = uid(); o1.id = uid(); o1.aggregateId = g1.id;
   const ik = `verify-${Date.now()}`;
   const dg = sha256Digest({g: g1.id});
@@ -124,7 +124,7 @@ try {
   // Phase 4 — Outbox consume → Receipt
   // -------------------------------------------------------------------
 
-  const {grant: g2, outbox: o2} = createDemoActionGrant(campaign, now);
+  const {grant: g2, outbox: o2} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
   g2.id = uid(); o2.id = uid(); o2.aggregateId = g2.id;
   await actionRepo.createGrantWithOutbox(g2, o2, `consume-${Date.now()}`, sha256Digest({g: g2.id}));
 
@@ -160,7 +160,7 @@ try {
   // Phase 5 — Negative: tampered digest
   // -------------------------------------------------------------------
 
-  const {grant: g3, outbox: o3} = createDemoActionGrant(campaign, now);
+  const {grant: g3, outbox: o3} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
   g3.id = uid(); o3.id = uid(); o3.aggregateId = g3.id;
   const tampered = {...g3, grantDigest: '0'.repeat(64)};
   // Store tampered grant directly via raw SQL

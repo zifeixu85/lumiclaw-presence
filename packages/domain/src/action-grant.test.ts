@@ -24,15 +24,15 @@ describe('action grant contracts v1', () => {
 
   it('accepts a valid ActionGrant against the demo Campaign', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, now);
+    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     const result = validateActionGrant(grant, campaign, now);
     expect(result).toEqual({ok: true});
   });
 
   it('produces a deterministic canonical digest', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant: a} = createDemoActionGrant(campaign, now);
-    const {grant: b} = createDemoActionGrant(campaign, now);
+    const {grant: a} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
+    const {grant: b} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     // Same input → same digest
     expect(digestActionGrant(a)).toBe(digestActionGrant(b));
     // Digest is 64 hex chars
@@ -41,7 +41,7 @@ describe('action grant contracts v1', () => {
 
   it('changes digest when a governed field is mutated', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, now);
+    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     const before = digestActionGrant(grant);
     const tampered = cloneGrant(grant);
     tampered.artifactRevisionId = campaign.artifactRevisions[1]!.id;
@@ -50,13 +50,13 @@ describe('action grant contracts v1', () => {
 
   it('isGrantConsumable returns true for ISSUED grant within window', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, now);
+    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     expect(isGrantConsumable(grant, now)).toBe(true);
   });
 
   it('isGrantConsumable returns false for CONSUMED grant', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, now);
+    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     const consumed = cloneGrant(grant);
     consumed.status = 'CONSUMED';
     consumed.consumedAt = now.toISOString();
@@ -65,7 +65,7 @@ describe('action grant contracts v1', () => {
 
   it('isGrantConsumable returns false for REVOKED grant', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, now);
+    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     const revoked = cloneGrant(grant);
     revoked.status = 'REVOKED';
     revoked.revocationReason = 'Owner changed their mind';
@@ -74,7 +74,7 @@ describe('action grant contracts v1', () => {
 
   it('isGrantConsumable returns false for EXPIRED grant', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, now);
+    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     const expired = cloneGrant(grant);
     expired.status = 'EXPIRED';
     expect(isGrantConsumable(expired, now)).toBe(false);
@@ -82,7 +82,7 @@ describe('action grant contracts v1', () => {
 
   it('isGrantConsumed returns true only for CONSUMED status', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, now);
+    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     expect(isGrantConsumed(grant)).toBe(false);
     const consumed = cloneGrant(grant);
     consumed.status = 'CONSUMED';
@@ -91,7 +91,7 @@ describe('action grant contracts v1', () => {
 
   it('createDemoActionGrant produces internally consistent grant + outbox', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant, outbox} = createDemoActionGrant(campaign, now);
+    const {grant, outbox} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     // Outbox points to the grant
     expect(outbox.aggregateType).toBe('ACTION_GRANT');
     expect(outbox.aggregateId).toBe(grant.id);
@@ -239,7 +239,7 @@ describe('action grant contracts v1', () => {
     ],
   ])('rejects %s', (_label, mutate) => {
     const campaign = createDemoCampaignDocument();
-    const {grant: original} = createDemoActionGrant(campaign, now);
+    const {grant: original} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     const grant = cloneGrant(original);
     mutate(grant, campaign);
     // Recompute digest for mutations that affect body fields
@@ -254,7 +254,7 @@ describe('action grant contracts v1', () => {
 
   it('accepts grant exactly 1 ms before expiry', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, now);
+    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     const expiresMs = Date.parse(grant.expiresAt);
     const oneMsBefore = new Date(expiresMs - 1);
     expect(isGrantConsumable(grant, oneMsBefore)).toBe(true);
@@ -264,7 +264,7 @@ describe('action grant contracts v1', () => {
 
   it('rejects grant exactly at expiry', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, now);
+    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     const expiresMs = Date.parse(grant.expiresAt);
     const atExpiry = new Date(expiresMs);
     expect(isGrantConsumable(grant, atExpiry)).toBe(false);
@@ -272,7 +272,7 @@ describe('action grant contracts v1', () => {
 
   it('reports multiple errors at once', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, now);
+    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     grant.status = 'CONSUMED';
     grant.consumedAt = now.toISOString();
     grant.grantDigest = '0'.repeat(64);
@@ -287,7 +287,7 @@ describe('action grant contracts v1', () => {
 
   it('accepts a valid grant at a later wall-clock time within the window', () => {
     const campaign = createDemoCampaignDocument();
-    const {grant} = createDemoActionGrant(campaign, now);
+    const {grant} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     // 10 minutes after issue but still before expiry
     const tenMinutesLater = new Date(now.getTime() + 10 * 60 * 1000);
     expect(isGrantConsumable(grant, tenMinutesLater)).toBe(true);

@@ -65,15 +65,15 @@ export class PostgresActionRepository implements ActionRepository {
 
       // Atomic insert: grant + outbox
       await client.query(
-        `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_public_key,payload,created_at)
-         values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
+        `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_public_key,owner_decision_id,payload,created_at)
+         values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
         [
           grant.organizationId, grant.id, grant.campaignId,
           grant.scheduleOccurrenceId, grant.artifactRevisionId,
           grant.activationUnitId, grant.schemaVersion, grant.platform,
           grant.executionMode, grant.status, grant.issuedAt, grant.expiresAt,
           grant.grantDigest, grant.channelAccountId, grant.capabilitySnapshotId,
-          grant.ownerSignature, grant.ownerPublicKey,
+          grant.ownerSignature, grant.ownerPublicKey, grant.ownerDecisionId,
           JSON.stringify(grant), grant.issuedAt,
         ],
       );
@@ -391,18 +391,54 @@ export class PostgresActionRepository implements ActionRepository {
   }
 
   async confirmHandoff(
-    _organizationId: string,
-    _receiptId: string,
-    _platformUri: string,
-    _platformCid?: string,
+    organizationId: string,
+    receiptId: string,
+    platformUri: string,
+    platformCid?: string,
   ): Promise<ActionReceipt> {
-    // action_receipts has an immutable trigger — updating state from
-    // HANDOFF_PENDING → HANDOFF_CONFIRMED requires a trigger exception
-    // or a separate confirmation table.  Deferred to a future migration.
-    throw new ActionRepositoryError(
-      'HANDOFF_NOT_AVAILABLE',
-      'Postgres handoff confirmation is not yet available. Use the in-memory repository for tests.',
-    );
+    const client = await this.#pool.connect();
+    try {
+      await client.query('begin');
+
+      const row = await client.query(
+        `select * from action_receipts
+         where organization_id=$1 and id=$2 for update`,
+        [organizationId, receiptId],
+      );
+      if (row.rowCount === 0) {
+        throw new ActionRepositoryError(
+          'RECEIPT_NOT_FOUND',
+          'Receipt not found.',
+        );
+      }
+      const current = rowToReceipt(row.rows[0]!);
+      if (current.state !== 'HANDOFF_PENDING') {
+        throw new ActionRepositoryError(
+          'HANDOFF_NOT_PENDING',
+          `Receipt state ${current.state} does not allow handoff confirmation.`,
+        );
+      }
+
+      await client.query(
+        `update action_receipts
+         set state='HANDOFF_CONFIRMED', platform_uri=$1, platform_cid=$2
+         where organization_id=$3 and id=$4`,
+        [platformUri, platformCid ?? null, organizationId, receiptId],
+      );
+      await client.query('commit');
+
+      return {
+        ...current,
+        state: 'HANDOFF_CONFIRMED',
+        platformUri,
+        platformCid: platformCid ?? null,
+      };
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   async reconcileReceipt(

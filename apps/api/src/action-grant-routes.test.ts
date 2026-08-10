@@ -1,5 +1,7 @@
 import {beforeAll, describe, expect, it, afterAll} from 'vitest';
 import {buildApi} from './server.js';
+import {createDemoActionGrant, createDemoCampaignDocument, createUuidV7, sha256Digest, type ActionReceipt, type ActionRepository} from '@lumiclaw/domain';
+import {MemoryActionRepository} from '@lumiclaw/db';
 import type {FastifyInstance} from 'fastify';
 
 // ---------------------------------------------------------------------------
@@ -44,11 +46,13 @@ function makeGrantBody(doc: Record<string, unknown>): Record<string, unknown> {
 
 describe('action grant routes', () => {
   let app: FastifyInstance;
+  let repo: ActionRepository;
   let campaign: {orgId: string; id: string; etag: string; doc: Record<string, unknown>};
   let grantBody: Record<string, unknown>;
 
   beforeAll(async () => {
-    app = buildApi();
+    repo = new MemoryActionRepository();
+    app = buildApi({actionRepository: repo});
     campaign = await seedCampaign(app);
     grantBody = makeGrantBody(campaign.doc);
   });
@@ -214,37 +218,94 @@ describe('action grant routes', () => {
   // -----------------------------------------------------------------------
 
   describe('POST /api/v1/campaigns/:campaignId/receipts/:receiptId/confirm-handoff', () => {
-    it('confirms HANDOFF_PENDING receipt', async () => {
-      // First create a LinkedIn grant which produces a HANDOFF_PENDING receipt via the outbox consumer
-      const camp = await app.inject({
-        method: 'GET', url: `/api/v1/campaigns/${campaign.id}`,
-        headers: h(),
-      });
-      const doc = JSON.parse(camp.body).document;
-      const liUnit = (doc.activationPlan as Record<string, unknown>).units.find((u: Record<string, unknown>) => u.platform === 'LINKEDIN');
-      const liRevision = doc.artifactRevisions.find((r: Record<string, unknown>) => r.platform === 'LINKEDIN');
-      const liChannelAccount = doc.graph.channelAccounts.find((a: Record<string, unknown>) => a.platform === 'LINKEDIN');
-      const liCapability = doc.capabilitySnapshots.find((c: Record<string, unknown>) => c.platform === 'LINKEDIN' && c.channelAccountId === liChannelAccount.id);
-      const body = {
+    const now = new Date('2026-08-08T12:00:00.000Z');
+
+    it('confirms HANDOFF_PENDING receipt → HANDOFF_CONFIRMED', async () => {
+      // Use the repository's public API to seed a HANDOFF_PENDING receipt
+      const liCampaign = createDemoCampaignDocument();
+      liCampaign.organizationId = campaign.orgId;
+      liCampaign.id = campaign.id;
+
+      const {grant, outbox} = createDemoActionGrant(liCampaign, {
         platform: 'LINKEDIN',
         executionMode: 'NATIVE_HANDOFF',
-        scheduleOccurrenceId: '01908900-0000-7000-8000-00000000aa02',
-        artifactRevisionId: liRevision.id,
-        activationUnitId: liUnit.id,
-      };
-
-      // Create grant
-      const create = await app.inject({
-        method: 'POST', url: `/api/v1/campaigns/${campaign.id}/action-grants`,
-        headers: hb({'idempotency-key': `co-${Date.now()}`, 'if-match': JSON.parse(camp.body).etag}),
-        body,
+        now,
       });
-      expect(create.statusCode).toBe(201);
-      const gid = JSON.parse(create.body).grant.id;
+      await repo.createGrantWithOutbox(grant, outbox, `co-seed-${Date.now()}`, sha256Digest({g: grant.id}));
+      const claimed = await repo.claimNextOutbox('test-confirm');
+      const receiptId = createUuidV7(Date.now(), new Uint8Array(10));
+      const pending: ActionReceipt = {
+        id: receiptId,
+        organizationId: campaign.orgId,
+        actionGrantId: grant.id,
+        schemaVersion: 1,
+        platform: 'LINKEDIN',
+        executionMode: 'NATIVE_HANDOFF',
+        state: 'HANDOFF_PENDING',
+        platformUri: null,
+        platformCid: null,
+        handoffSteps: ['1. 打开 LinkedIn', '2. 粘贴内容并发布', '3. 将发布后的 URL 粘贴回 LumiClaw'],
+        unknownReason: null,
+        reconciledAt: null,
+        reconciliationMethod: null,
+        createdAt: now.toISOString(),
+      };
+      await repo.completeOutbox(claimed!.id, pending);
 
-      // Directly create a HANDOFF_PENDING receipt via the repository
-      // (the outbox consumer would normally do this, but in test we seed manually)
-      // Instead, let's just test the error path since outbox consumer runs separately
+      // Now call confirm-handoff via the API
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/campaigns/${campaign.id}/receipts/${receiptId}/confirm-handoff`,
+        headers: hb({'content-type': 'application/json'}),
+        body: {platformUri: 'https://linkedin.com/feed/post/123'},
+      });
+      expect(res.statusCode).toBe(200);
+      const body = JSON.parse(res.body);
+      expect(body.code).toBe('HANDOFF_CONFIRMED');
+      expect(body.receipt.state).toBe('HANDOFF_CONFIRMED');
+      expect(body.receipt.platformUri).toBe('https://linkedin.com/feed/post/123');
+    });
+
+    it('returns 409 when receipt is not HANDOFF_PENDING', async () => {
+      // Seed a PUBLISHED receipt via the repository
+      const bskyCampaign = createDemoCampaignDocument();
+      bskyCampaign.organizationId = campaign.orgId;
+      bskyCampaign.id = campaign.id;
+
+      const {grant, outbox} = createDemoActionGrant(bskyCampaign, {
+        platform: 'BLUESKY',
+        executionMode: 'DIRECT',
+        now,
+      });
+      await repo.createGrantWithOutbox(grant, outbox, `co-409-${Date.now()}`, sha256Digest({g: grant.id}));
+      const claimed = await repo.claimNextOutbox('test-409');
+      const receiptId = createUuidV7(Date.now(), new Uint8Array(10));
+      const published: ActionReceipt = {
+        id: receiptId,
+        organizationId: campaign.orgId,
+        actionGrantId: grant.id,
+        schemaVersion: 1,
+        platform: 'BLUESKY',
+        executionMode: 'DIRECT',
+        state: 'PUBLISHED',
+        platformUri: 'https://bsky.app/already-published',
+        platformCid: 'bafyrei-pub',
+        handoffSteps: null,
+        unknownReason: null,
+        reconciledAt: null,
+        reconciliationMethod: null,
+        createdAt: now.toISOString(),
+      };
+      await repo.completeOutbox(claimed!.id, published);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: `/api/v1/campaigns/${campaign.id}/receipts/${receiptId}/confirm-handoff`,
+        headers: hb({'content-type': 'application/json'}),
+        body: {platformUri: 'https://linkedin.com/feed/post/456'},
+      });
+      expect(res.statusCode).toBe(409);
+      expect(JSON.parse(res.body).code).toBe('HANDOFF_NOT_PENDING');
     });
 
     it('returns 404 for unknown receipt', async () => {

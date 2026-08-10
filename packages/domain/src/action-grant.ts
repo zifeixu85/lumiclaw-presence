@@ -7,16 +7,39 @@ import {
   sha256Digest,
 } from './canonical.js';
 import type {KeyObject} from 'node:crypto';
-import type {CampaignDocument, ScheduleOccurrence} from './campaign-types.js';
-import {createDemoCampaignDocument} from './campaign-fixture.js';
+import type {ActivationUnit, ArtifactRevision, CampaignDocument, CapabilitySnapshot, ScheduleOccurrence} from './campaign-types.js';
 import {createUuidV7} from './id.js';
-import type {DomainId, Platform, ValidationIssue, ValidationResult} from './types.js';
+import type {ChannelAccount, DomainId, Platform, ValidationIssue, ValidationResult} from './types.js';
 
 export type ExecutionMode = 'DIRECT' | 'NATIVE_HANDOFF';
 export type ActionGrantStatus = 'ISSUED' | 'CONSUMED' | 'EXPIRED' | 'REVOKED';
 export type ActionReceiptState = 'PUBLISHED' | 'HANDOFF_PENDING' | 'HANDOFF_CONFIRMED' | 'FAILED' | 'UNKNOWN';
 export type ReconciliationMethod = 'PLATFORM_QUERY' | 'OWNER_MANUAL';
 export type OutboxState = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+/**
+ * An Owner's explicit decision to authorise an action on a specific platform
+ * against a Campaign.  Every ActionGrant must be bound to one OwnerDecision.
+ *
+ * Persistence: the decision is materialised as the {@link ActionGrant.ownerDecisionId}
+ * column.  A dedicated owner_decisions table is deferred to M3-07.
+ */
+export type OwnerDecision = {
+  id: DomainId;
+  organizationId: DomainId;
+  campaignId: DomainId;
+  platform: Platform;
+  executionMode: ExecutionMode;
+  scheduleOccurrenceId: DomainId;
+  artifactRevisionId: DomainId;
+  activationUnitId: DomainId;
+  /** ChannelAccount resolved from the Campaign at decision time. */
+  channelAccountId: DomainId;
+  /** CapabilitySnapshot in effect when the decision was made. */
+  capabilitySnapshotId: DomainId;
+  /** ISO-8601 timestamp of the Owner's decision. */
+  decidedAt: string;
+};
 
 export type ActionGrant = {
   id: DomainId;
@@ -42,6 +65,8 @@ export type ActionGrant = {
   ownerSignature: string;
   /** Ed25519 public key embedded for self-contained verification (base64url). */
   ownerPublicKey: string;
+  /** OwnerDecision that authorised this grant. */
+  ownerDecisionId: DomainId;
 };
 
 export type OutboxRecord = {
@@ -239,54 +264,57 @@ function getDemoKeyPair(): {publicKey: KeyObject; privateKey: KeyObject} {
 }
 
 /**
- * Create a demo ActionGrant (plus companion OutboxRecord) against
- * the standard demo Campaign.  The grant targets the Bluesky unit
- * (DIRECT execution mode) with a 15‑minute expiry window.
+ * Resolve the platform-specific references from a Campaign that are
+ * required to create an ActionGrant.  Throws when any reference is
+ * missing.
  *
- * This is a convenience wrapper around {@link createActionGrant} for
- * backwards compatibility in tests and the demo golden path.
+ * Shared by {@link createDemoActionGrant}, the API route, and
+ * eventually by the OwnerDecision → Grant path.
  */
-export function createDemoActionGrant(
-  campaign?: CampaignDocument,
-  now: Date = new Date('2026-08-08T12:00:00.000Z'),
-): {grant: ActionGrant; outbox: OutboxRecord} {
-  const document = campaign ?? createDemoCampaignDocument();
-
-  // Pick the Bluesky activation unit — that is the Hero Direct gate.
-  const blueskyUnit = document.activationPlan.units.find(
-    (u) => u.platform === 'BLUESKY',
+export function resolveGrantRefs(
+  campaign: CampaignDocument,
+  platform: Platform,
+): {
+  activationUnit: ActivationUnit;
+  artifactRevision: ArtifactRevision;
+  channelAccount: ChannelAccount;
+  capabilitySnapshot: CapabilitySnapshot;
+  scheduleOccurrence: ScheduleOccurrence;
+} {
+  const activationUnit = campaign.activationPlan.units.find(
+    (u) => u.platform === platform,
   );
-  if (blueskyUnit === undefined) {
-    throw new Error('Demo Campaign is missing the Bluesky activation unit.');
+  if (activationUnit === undefined) {
+    throw new Error(`Campaign is missing an activation unit for platform ${platform}.`);
   }
-  const revision = document.artifactRevisions.find(
-    (r) => r.activationUnitId === blueskyUnit.id && r.platform === 'BLUESKY',
+  const artifactRevision = campaign.artifactRevisions.find(
+    (r) => r.activationUnitId === activationUnit.id && r.platform === platform,
   );
-  if (revision === undefined) {
-    throw new Error('Demo Campaign is missing the Bluesky artifact revision.');
+  if (artifactRevision === undefined) {
+    throw new Error(`Campaign is missing an artifact revision for platform ${platform}.`);
   }
-  const channelAccount = document.graph.channelAccounts.find(
-    (a) => a.platform === 'BLUESKY',
+  const channelAccount = campaign.graph.channelAccounts.find(
+    (a) => a.platform === platform,
   );
   if (channelAccount === undefined) {
-    throw new Error('Demo Campaign is missing the Bluesky channel account.');
+    throw new Error(`Campaign is missing a channel account for platform ${platform}.`);
   }
-  const capability = document.capabilitySnapshots.find(
-    (c) => c.platform === 'BLUESKY' && c.channelAccountId === channelAccount.id,
+  const capabilitySnapshot = campaign.capabilitySnapshots.find(
+    (c) => c.platform === platform && c.channelAccountId === channelAccount.id,
   );
-  if (capability === undefined) {
-    throw new Error('Demo Campaign is missing the Bluesky capability snapshot.');
+  if (capabilitySnapshot === undefined) {
+    throw new Error(`Campaign is missing a capability snapshot for platform ${platform}.`);
   }
 
   // Use the first schedule occurrence if one exists; otherwise synthesise
   // one and attach it to the Campaign so validation can resolve it.
-  let occurrence: ScheduleOccurrence | undefined =
-    document.scheduleOccurrences[0];
-  if (occurrence === undefined) {
-    occurrence = {
+  let scheduleOccurrence: ScheduleOccurrence | undefined =
+    campaign.scheduleOccurrences[0];
+  if (scheduleOccurrence === undefined) {
+    scheduleOccurrence = {
       id: id(60),
-      organizationId: document.organizationId,
-      campaignId: document.id,
+      organizationId: campaign.organizationId,
+      campaignId: campaign.id,
       scheduleId: id(61),
       scheduleVersion: 1,
       schemaVersion: 1,
@@ -297,20 +325,137 @@ export function createDemoActionGrant(
       state: 'PENDING',
       misfireReason: null,
     };
-    document.scheduleOccurrences.push(occurrence);
+    campaign.scheduleOccurrences.push(scheduleOccurrence);
   }
 
-  return createActionGrant({
-    campaign: document,
-    platform: 'BLUESKY',
-    executionMode: 'DIRECT',
-    scheduleOccurrenceId: occurrence.id,
-    artifactRevisionId: revision.id,
-    activationUnitId: blueskyUnit.id,
-    channelAccountId: channelAccount.id,
-    capabilitySnapshotId: capability.id,
+  return {activationUnit, artifactRevision, channelAccount, capabilitySnapshot, scheduleOccurrence};
+}
+
+/**
+ * Create an OwnerDecision — the formal record of the Owner's intent to
+ * authorise an action on a specific platform against a Campaign.
+ *
+ * The decision resolves {@link channelAccountId} and
+ * {@link capabilitySnapshotId} from the Campaign via
+ * {@link resolveGrantRefs}.  Callers supply the remaining references
+ * (occurrence, revision, activation unit) explicitly.
+ *
+ * Every ActionGrant must be bound to an OwnerDecision via
+ * {@link createActionGrantFromDecision}.
+ */
+export function createOwnerDecision(params: {
+  campaign: CampaignDocument;
+  platform: Platform;
+  executionMode: ExecutionMode;
+  scheduleOccurrenceId: DomainId;
+  artifactRevisionId: DomainId;
+  activationUnitId: DomainId;
+  now?: Date;
+}): OwnerDecision {
+  const {
+    campaign, platform, executionMode,
+    scheduleOccurrenceId, artifactRevisionId, activationUnitId,
+    now = new Date('2026-08-08T12:00:00.000Z'),
+  } = params;
+
+  const refs = resolveGrantRefs(campaign, platform);
+
+  return {
+    id: id(80),
+    organizationId: campaign.organizationId,
+    campaignId: campaign.id,
+    platform,
+    executionMode,
+    scheduleOccurrenceId,
+    artifactRevisionId,
+    activationUnitId,
+    channelAccountId: refs.channelAccount.id,
+    capabilitySnapshotId: refs.capabilitySnapshot.id,
+    decidedAt: now.toISOString(),
+  };
+}
+
+/**
+ * Create an ActionGrant (plus companion OutboxRecord) from a formal
+ * {@link OwnerDecision}.  This is the canonical path for grant creation —
+ * every ActionGrant must be bound to an OwnerDecision.
+ *
+ * The decision's references are validated against the Campaign before
+ * the grant is issued.
+ */
+export function createActionGrantFromDecision(
+  decision: OwnerDecision,
+  campaign: CampaignDocument,
+  params?: {
+    privateKey?: KeyObject;
+    publicKey?: KeyObject;
+    now?: Date;
+  },
+): {grant: ActionGrant; outbox: OutboxRecord} {
+  const {privateKey, publicKey, now = new Date('2026-08-08T12:00:00.000Z')} = params ?? {};
+
+  // Validate that all decision refs resolve in the Campaign
+  const revision = campaign.artifactRevisions.find(
+    (r) => r.id === decision.artifactRevisionId,
+  );
+  if (revision === undefined) {
+    throw new Error('Decision artifact revision not found in Campaign.');
+  }
+
+  // Build params without optional keys so exactOptionalPropertyTypes passes
+  const base = {
+    campaign,
+    platform: decision.platform,
+    executionMode: decision.executionMode,
+    scheduleOccurrenceId: decision.scheduleOccurrenceId,
+    artifactRevisionId: decision.artifactRevisionId,
+    activationUnitId: decision.activationUnitId,
+    channelAccountId: decision.channelAccountId,
+    capabilitySnapshotId: decision.capabilitySnapshotId,
+    ownerDecisionId: decision.id,
+  } as const;
+  const grantParams: Parameters<typeof createActionGrant>[0] =
+    privateKey !== undefined && publicKey !== undefined
+      ? {...base, privateKey, publicKey, now}
+      : {...base, now};
+  return createActionGrant(grantParams);
+}
+
+/**
+ * Create a demo ActionGrant (plus companion OutboxRecord) against a
+ * Campaign.  The caller must supply the target {@link Platform} and
+ * {@link ExecutionMode}; all other references are resolved from the
+ * Campaign via {@link resolveGrantRefs}.
+ *
+ * Internally creates a synthetic {@link OwnerDecision} so every grant
+ * follows the Decision → Grant path.
+ *
+ * The grant is issued with a 15‑minute expiry window and state ISSUED.
+ * A demo Ed25519 key pair is used for signing.
+ */
+export function createDemoActionGrant(
+  campaign: CampaignDocument,
+  params: {
+    platform: Platform;
+    executionMode: ExecutionMode;
+    now?: Date;
+  },
+): {grant: ActionGrant; outbox: OutboxRecord} {
+  const {platform, executionMode, now = new Date('2026-08-08T12:00:00.000Z')} = params;
+  const refs = resolveGrantRefs(campaign, platform);
+
+  // Synthesise an OwnerDecision so every grant follows the Decision → Grant path
+  const decision = createOwnerDecision({
+    campaign,
+    platform,
+    executionMode,
+    scheduleOccurrenceId: refs.scheduleOccurrence.id,
+    artifactRevisionId: refs.artifactRevision.id,
+    activationUnitId: refs.activationUnit.id,
     now,
   });
+
+  return createActionGrantFromDecision(decision, campaign, {now});
 }
 
 /**
@@ -332,6 +477,8 @@ export function createActionGrant(params: {
   activationUnitId: DomainId;
   channelAccountId: DomainId;
   capabilitySnapshotId: DomainId;
+  /** OwnerDecision that authorised this grant. */
+  ownerDecisionId: DomainId;
   privateKey?: KeyObject;
   publicKey?: KeyObject;
   now?: Date;
@@ -345,6 +492,7 @@ export function createActionGrant(params: {
     activationUnitId,
     channelAccountId,
     capabilitySnapshotId,
+    ownerDecisionId,
     privateKey,
     publicKey,
     now = new Date('2026-08-08T12:00:00.000Z'),
@@ -386,6 +534,7 @@ export function createActionGrant(params: {
     revocationReason: null,
     channelAccountId,
     capabilitySnapshotId,
+    ownerDecisionId,
     ownerPublicKey: ownerPublicKeyEncoded,
   };
   const grantDigest = sha256Digest(unsigned);

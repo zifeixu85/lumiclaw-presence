@@ -128,7 +128,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       scheduledForUtc: '2026-08-10T01:00:00.000Z',
       utcOffsetMinutes: 480, state: 'PENDING', misfireReason: null,
     }];
-    const {grant, outbox} = createDemoActionGrant(campaign, now);
+    const {grant, outbox} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
     // Override with unique IDs per test to avoid duplicate key violations
     grant.id = uuid(offset);
     outbox.id = uuid(offset + 1);
@@ -311,6 +311,69 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         expect((error as ActionRepositoryError).code).toBe('ACTION_GRANT_ALREADY_CONSUMED');
       }
     });
+
+    it('only one operator succeeds when two completeOutbox concurrently', async () => {
+      const {grant, outbox} = makeGrant(86);
+      await repo.createGrantWithOutbox(
+        grant, outbox, `test-race-${uuid(86)}`, sha256Digest({g: grant.id}),
+      );
+
+      // Simulate a race: two outbox records point to the same grant
+      const outbox2Id = uuid(87);
+      await pool.query(
+        `insert into outbox(organization_id,id,aggregate_type,aggregate_id,schema_version,payload,state,attempts,created_at)
+         values($1,$2,'ACTION_GRANT',$3,1,$4,'PENDING',0,$5)`,
+        [testOrg.organizationId, outbox2Id, grant.id,
+          JSON.stringify({grant, revision: {}}), now.toISOString()],
+      );
+
+      // Both operators claim their respective outbox records
+      const claimed1 = await repo.claimNextOutbox('operator-race-a');
+      const claimed2 = await repo.claimNextOutbox('operator-race-b');
+      expect(claimed1).not.toBeUndefined();
+      expect(claimed2).not.toBeUndefined();
+
+      // Both operators attempt to complete concurrently — only one may succeed
+      const receiptA: ActionReceipt = {
+        id: uuid(88), organizationId: testOrg.organizationId,
+        actionGrantId: grant.id, schemaVersion: 1,
+        platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
+        platformUri: 'https://bsky.app/a', platformCid: 'bafyrei-a',
+        handoffSteps: null, unknownReason: null,
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+      };
+      const receiptB: ActionReceipt = {
+        id: uuid(89), organizationId: testOrg.organizationId,
+        actionGrantId: grant.id, schemaVersion: 1,
+        platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
+        platformUri: 'https://bsky.app/b', platformCid: 'bafyrei-b',
+        handoffSteps: null, unknownReason: null,
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+      };
+
+      const results = await Promise.allSettled([
+        repo.completeOutbox(claimed1!.id, receiptA),
+        repo.completeOutbox(claimed2!.id, receiptB),
+      ]);
+
+      const fulfilled = results.filter((r) => r.status === 'fulfilled').length;
+      const rejected = results.filter((r) => r.status === 'rejected').length;
+      expect(fulfilled).toBe(1);
+      expect(rejected).toBe(1);
+
+      // The rejected promise must carry ACTION_GRANT_ALREADY_CONSUMED
+      const failure = results.find((r) => r.status === 'rejected') as PromiseRejectedResult;
+      expect(failure.reason).toBeInstanceOf(ActionRepositoryError);
+      expect((failure.reason as ActionRepositoryError).code).toBe('ACTION_GRANT_ALREADY_CONSUMED');
+
+      // Database confirms exactly one consumption
+      const grantRow = await pool.query(
+        `select status, consumed_at from action_grants where organization_id=$1 and id=$2`,
+        [testOrg.organizationId, grant.id],
+      );
+      expect(grantRow.rows[0].status).toBe('CONSUMED');
+      expect(grantRow.rows[0].consumed_at).not.toBeNull();
+    });
   });
 
   describe('receipt queries', () => {
@@ -345,13 +408,13 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       const rid = uuid(71);
       // Insert grant + receipt directly
       await pool.query(
-        `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_public_key,payload,created_at)
-         values($1,$2,$3,$4,$5,$6,1,'BLUESKY','DIRECT','ISSUED',$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
+        `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_public_key,owner_decision_id,payload,created_at)
+         values($1,$2,$3,$4,$5,$6,1,'BLUESKY','DIRECT','ISSUED',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
         [testOrg.organizationId, grant.id, grant.campaignId, grant.scheduleOccurrenceId,
           grant.artifactRevisionId, grant.activationUnitId,
           grant.issuedAt, grant.expiresAt, grant.grantDigest,
           grant.channelAccountId, grant.capabilitySnapshotId,
-          grant.ownerSignature, grant.ownerPublicKey,
+          grant.ownerSignature, grant.ownerPublicKey, grant.ownerDecisionId,
           JSON.stringify(grant), now.toISOString()],
       );
       await pool.query(
