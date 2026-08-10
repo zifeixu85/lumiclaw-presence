@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {importEd25519PublicKey} from './canonical.js';
+import {generateEd25519KeyPair, importEd25519PublicKey} from './canonical.js';
 import type {KeyObject} from 'node:crypto';
 import {
   createDemoActionGrant,
@@ -310,5 +310,55 @@ describe('action grant contracts v1', () => {
     expect(isGrantConsumable(grant, tenMinutesLater)).toBe(true);
     const result = validateActionGrant(grant, campaign, orgKey, tenMinutesLater);
     expect(result).toEqual({ok: true});
+  });
+
+  // -----------------------------------------------------------------------
+  // P3-11 supplementary tests
+  // -----------------------------------------------------------------------
+
+  it('two consecutive issuances produce unique IDs and distinct digests', () => {
+    const campaign = createDemoCampaignDocument();
+    const a = demoGrantWithOrgKey(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT' });
+    const b = demoGrantWithOrgKey(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT' });
+    // Unique IDs
+    expect(a.grant.id).not.toBe(b.grant.id);
+    // Distinct digests (IDs are part of the digest body)
+    expect(a.grant.grantDigest).not.toBe(b.grant.grantDigest);
+    // Each grant is internally consistent
+    expect(digestActionGrant(a.grant)).toBe(a.grant.grantDigest);
+    expect(digestActionGrant(b.grant)).toBe(b.grant.grantDigest);
+    // Each validates with its own org key
+    expect(validateActionGrant(a.grant, campaign, a.orgKey, now)).toEqual({ok: true});
+    expect(validateActionGrant(b.grant, campaign, b.orgKey, now)).toEqual({ok: true});
+  });
+
+  it('rejects when ownerKeyId does not match the Organization public key', () => {
+    const campaign = createDemoCampaignDocument();
+    const {grant, orgKey} = demoGrantWithOrgKey(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT' });
+    // Generate a completely different key pair
+    const otherKey = generateEd25519KeyPair();
+    const result = validateActionGrant(grant, campaign, otherKey.publicKey, now);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues.map((i) => i.code)).toContain('ACTION_GRANT_KEY_ID_MISMATCH');
+    }
+  });
+
+  it('rejects when scheduleOccurrence.campaignId differs from grant.campaignId', () => {
+    const campaign = createDemoCampaignDocument();
+    const {grant: original, orgKey} = demoGrantWithOrgKey(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT' });
+    const grant = cloneGrant(original);
+    // Ensure the occurrence exists then tamper its campaignId
+    const occurrence = campaign.scheduleOccurrences.find(
+      (o) => o.id === grant.scheduleOccurrenceId,
+    );
+    if (occurrence !== undefined) {
+      occurrence.campaignId = '01908900-0000-7000-8000-000000000099';
+    }
+    const result = validateActionGrant(grant, campaign, orgKey, now);
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.issues.map((i) => i.code)).toContain('ACTION_GRANT_OCCURRENCE_SCOPE_INVALID');
+    }
   });
 });

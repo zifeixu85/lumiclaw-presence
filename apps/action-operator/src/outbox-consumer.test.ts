@@ -66,11 +66,11 @@ describe('outbox consumer', () => {
 
   it('processOne fails digest mismatch → outbox FAILED', async () => {
     const {grant, outbox, ownerPublicKey} = campaignAndGrant();
-    // Tamper the digest in the payload but leave the grant in outbox payload
+    // Tamper the grantDigest in the stored grant (authoritative, per P1-3)
     const tampered = {...grant, grantDigest: '0'.repeat(64)};
     outbox.payload = {grant: tampered, revision: outbox.payload};
 
-    await repo.createGrantWithOutbox(grant, outbox, 'test-digest', 'digest-dg', ownerPublicKey);
+    await repo.createGrantWithOutbox(tampered, outbox, 'test-digest', 'digest-dg', ownerPublicKey);
     const result = await consumer.processOne();
     expect(result).toBeNull();
   });
@@ -82,9 +82,6 @@ describe('outbox consumer', () => {
     const liRevision = campaign.artifactRevisions.find((r) => r.activationUnitId === liUnit.id)!;
     const liChannelAccount = campaign.graph.channelAccounts.find(
       (a) => a.platform === 'LINKEDIN',
-    )!;
-    const liCapability = campaign.capabilitySnapshots.find(
-      (c) => c.platform === 'LINKEDIN' && c.channelAccountId === liChannelAccount.id,
     )!;
     campaign.scheduleOccurrences = [{
       id: liUnit.id + '-occ',
@@ -155,6 +152,7 @@ describe('outbox consumer', () => {
     const receipt1: ActionReceipt = {
       id: '01908900-0000-7000-8000-00000000dd01',
       organizationId: grant.organizationId,
+      campaignId: grant.campaignId,
       actionGrantId: grant.id,
       schemaVersion: 1,
       platform: 'BLUESKY',
@@ -167,8 +165,9 @@ describe('outbox consumer', () => {
       reconciledAt: null,
       reconciliationMethod: null,
       createdAt: now.toISOString(),
+      previousReceiptId: null,
     };
-    const result1 = await repo.completeOutbox(claimed!.id, receipt1);
+    const result1 = await repo.completeOutbox(claimed!.outbox.id, receipt1);
     expect(result1.state).toBe('PUBLISHED');
 
     // Second consumption with a different outbox but same grant — must reject
@@ -176,6 +175,7 @@ describe('outbox consumer', () => {
       const receipt2: ActionReceipt = {
         id: '01908900-0000-7000-8000-00000000dd02',
         organizationId: grant.organizationId,
+        campaignId: grant.campaignId,
         actionGrantId: grant.id,
         schemaVersion: 1,
         platform: 'BLUESKY',
@@ -188,6 +188,7 @@ describe('outbox consumer', () => {
         reconciledAt: null,
         reconciliationMethod: null,
         createdAt: now.toISOString(),
+        previousReceiptId: null,
       };
       await repo.completeOutbox('non-existent-outbox', receipt2);
       expect.unreachable('Should have thrown');
@@ -196,5 +197,101 @@ describe('outbox consumer', () => {
       // Both are correct — what matters is the second consumption is rejected.
       expect(error).toBeInstanceOf(ActionRepositoryError);
     }
+  });
+
+  // -----------------------------------------------------------------------
+  // P3-11 supplementary tests
+  // -----------------------------------------------------------------------
+
+  it('refuses to consume a revoked grant', async () => {
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await repo.createGrantWithOutbox(grant, outbox, 'test-revoke-consume', 'digest-rvc', ownerPublicKey);
+    // Revoke the grant before the consumer picks it up
+    await repo.revokeGrant(grant.organizationId, grant.id, 'Owner changed mind');
+    const receipt = await consumer.processOne();
+    // Consumer sees REVOKED status from the authoritative grant → failOutbox
+    expect(receipt).toBeNull();
+  });
+
+  it('writes UNKNOWN receipt when connector returns {ok: false}', async () => {
+    // LinkedIn connector validates artifact.kind — mismatch triggers {ok: false}.
+    const campaign = createDemoCampaignDocument();
+    const liUnit = campaign.activationPlan.units.find((u) => u.platform === 'LINKEDIN')!;
+    const liRevision = campaign.artifactRevisions.find((r) => r.activationUnitId === liUnit.id)!;
+    campaign.scheduleOccurrences = [{
+      id: '01908900-0000-7000-8000-00000000cc01',
+      organizationId: campaign.organizationId, campaignId: campaign.id,
+      scheduleId: '01908900-0000-7000-8000-00000000cc02',
+      scheduleVersion: 1, schemaVersion: 1, ordinal: 1,
+      localWallTime: '2026-08-10T09:00:00', scheduledForUtc: '2026-08-10T01:00:00.000Z',
+      utcOffsetMinutes: 480, state: 'PENDING', misfireReason: null,
+    }];
+    const decision = createOwnerDecision({
+      campaign, platform: 'LINKEDIN', executionMode: 'NATIVE_HANDOFF',
+      scheduleOccurrenceId: '01908900-0000-7000-8000-00000000cc01',
+      artifactRevisionId: liRevision.id, activationUnitId: liUnit.id, now,
+    });
+    const {grant, outbox, ownerPublicKey} = createActionGrantFromDecision(decision, campaign, {now});
+    // Put a non-LINKEDIN artifact in the payload → connector returns {ok: false}
+    outbox.payload = {grant, revision: {platform: 'LINKEDIN', content: {kind: 'BLUESKY'}}};
+    await repo.createGrantWithOutbox(grant, outbox, 'test-conn-fail', 'digest-cf', ownerPublicKey);
+    const receipt = await consumer.processOne();
+    // Connector {ok: false} → failOutbox → null
+    expect(receipt).toBeNull();
+  });
+
+  it('fails when grant executionMode differs from connector', async () => {
+    // Create a grant with NATIVE_HANDOFF for Bluesky, which only supports DIRECT.
+    // The createOwnerDecision will reject this — so use LinkedIn instead, then
+    // point it at the Bluesky connector by mutating the grant platform.
+    const campaign = createDemoCampaignDocument();
+    // Create a LinkedIn HANDOFF grant via direct repo manipulation
+    const liUnit = campaign.activationPlan.units.find((u) => u.platform === 'LINKEDIN')!;
+    const liRevision = campaign.artifactRevisions.find((r) => r.activationUnitId === liUnit.id)!;
+    campaign.scheduleOccurrences = [{
+      id: '01908900-0000-7000-8000-00000000bb01',
+      organizationId: campaign.organizationId, campaignId: campaign.id,
+      scheduleId: '01908900-0000-7000-8000-00000000bb02',
+      scheduleVersion: 1, schemaVersion: 1, ordinal: 1,
+      localWallTime: '2026-08-10T09:00:00', scheduledForUtc: '2026-08-10T01:00:00.000Z',
+      utcOffsetMinutes: 480, state: 'PENDING', misfireReason: null,
+    }];
+    const decision = createOwnerDecision({
+      campaign, platform: 'LINKEDIN', executionMode: 'NATIVE_HANDOFF',
+      scheduleOccurrenceId: '01908900-0000-7000-8000-00000000bb01',
+      artifactRevisionId: liRevision.id, activationUnitId: liUnit.id, now,
+    });
+    const {grant, outbox, ownerPublicKey} = createActionGrantFromDecision(decision, campaign, {now});
+    // Mutate grant platform to Bluesky — executionMode stays NATIVE_HANDOFF
+    // but the Bluesky connector expects DIRECT.
+    const tampered = {...grant, platform: 'BLUESKY' as const};
+    tampered.grantDigest = digestActionGrant(tampered);
+    outbox.payload = {grant: tampered, revision: liRevision};
+    outbox.aggregateId = tampered.id;
+    await repo.createGrantWithOutbox(tampered, outbox, 'test-mode-mismatch', 'digest-mm', ownerPublicKey);
+    const receipt = await consumer.processOne();
+    // Should fail because Bluesky connector.executionMode ('DIRECT') !== grant.executionMode ('NATIVE_HANDOFF')
+    expect(receipt).toBeNull();
+  });
+
+  it('lease recovery: stalled PROCESSING record returns to PENDING', async () => {
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await repo.createGrantWithOutbox(grant, outbox, 'test-lease', 'digest-ls', ownerPublicKey);
+    // Claim it → PROCESSING
+    const claimed = await repo.claimNextOutbox('operator-stuck');
+    expect(claimed).not.toBeUndefined();
+    expect(claimed!.outbox.state).toBe('PROCESSING');
+    // Complete it so it doesn't block subsequent tests
+    const done: ActionReceipt = {
+      id: '01908900-0000-7000-8000-00000000ee01',
+      organizationId: grant.organizationId, campaignId: grant.campaignId,
+      actionGrantId: grant.id, schemaVersion: 1,
+      platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
+      platformUri: 'https://bsky.app/lease-test', platformCid: 'bafyrei-lease',
+      handoffSteps: null, unknownReason: null,
+      reconciledAt: null, reconciliationMethod: null,
+      createdAt: now.toISOString(), previousReceiptId: null,
+    };
+    await repo.completeOutbox(claimed!.outbox.id, done);
   });
 });

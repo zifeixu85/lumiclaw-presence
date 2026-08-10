@@ -5,6 +5,7 @@ import {
   type ActionGrant,
   type ActionReceipt,
   type ActionRepository,
+  type OutboxClaim,
   type OutboxRecord,
 } from '@lumiclaw/domain';
 import type {KeyObject} from 'node:crypto';
@@ -60,17 +61,44 @@ export class MemoryActionRepository implements ActionRepository {
     if (grant.status !== 'ISSUED') throw new ActionRepositoryError('ACTION_GRANT_NOT_REVOCABLE', `Grant status ${grant.status} does not allow revocation.`);
     const revoked: ActionGrant = {...grant, status: 'REVOKED', revocationReason: reason};
     this.#grants.set(grantId, revoked);
+
+    // Cancel any PENDING outbox records for this grant.
+    for (const record of this.#outbox.values()) {
+      if (record.aggregateId === grantId && record.state === 'PENDING') {
+        record.state = 'CANCELLED';
+      }
+    }
+
     return structuredClone(revoked);
   }
 
-  async claimNextOutbox(_lockId: string): Promise<OutboxRecord | undefined> {
+  async claimNextOutbox(_lockId: string): Promise<OutboxClaim | undefined> {
+    // --- Lease recovery: reset timed-out PROCESSING records ---
+    const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    for (const record of this.#outbox.values()) {
+      if (record.state === 'PROCESSING' && record.lockedAt !== null && record.lockedAt < cutoff) {
+        if (record.attempts >= record.maxAttempts) {
+          record.state = 'DEAD_LETTER';
+        } else {
+          record.state = 'PENDING';
+        }
+        record.lockedBy = null;
+        record.lockedAt = null;
+      }
+    }
+
     for (const record of this.#outbox.values()) {
       if (record.state === 'PENDING') {
+        // Fetch the authoritative grant from the store — never trust the
+        // Outbox payload snapshot which may be stale.
+        const grant = this.#grants.get(record.aggregateId);
+        if (grant === undefined) return undefined; // grant deleted concurrently
+
         record.state = 'PROCESSING';
         record.lockedBy = _lockId;
         record.lockedAt = new Date().toISOString();
         record.attempts += 1;
-        return structuredClone(record);
+        return {outbox: structuredClone(record), grant: structuredClone(grant)};
       }
     }
     return undefined;
@@ -101,7 +129,9 @@ export class MemoryActionRepository implements ActionRepository {
   async failOutbox(outboxId: string, reason: string): Promise<{outbox: OutboxRecord; receipt: ActionReceipt}> {
     const outbox = this.#outbox.get(outboxId);
     if (outbox === undefined) throw new ActionRepositoryError('OUTBOX_RECORD_NOT_FOUND', 'Outbox record not found.');
-    outbox.state = 'FAILED';
+
+    // DEAD_LETTER when retry budget exhausted; FAILED otherwise
+    outbox.state = outbox.attempts >= outbox.maxAttempts ? 'DEAD_LETTER' : 'FAILED';
 
     // Write an UNKNOWN receipt so the Owner can see the failure in the Timeline
     const payload = outbox.payload as {grant?: ActionGrant; aggregateId?: string};
@@ -109,6 +139,7 @@ export class MemoryActionRepository implements ActionRepository {
     const receipt: ActionReceipt = {
       id: createUuidV7(Date.now(), new Uint8Array(10)),
       organizationId: outbox.organizationId,
+      campaignId: grant?.campaignId ?? '',
       actionGrantId: grant?.id ?? (payload.aggregateId ?? ''),
       schemaVersion: 1,
       platform: grant?.platform ?? 'BLUESKY',
@@ -121,10 +152,26 @@ export class MemoryActionRepository implements ActionRepository {
       reconciledAt: null,
       reconciliationMethod: null,
       createdAt: new Date().toISOString(),
+      previousReceiptId: null,
     };
     this.#receipts.set(receipt.id, structuredClone(receipt));
 
     return {outbox: structuredClone(outbox), receipt: structuredClone(receipt)};
+  }
+
+  async reprocessOutbox(organizationId: string, outboxId: string): Promise<OutboxRecord> {
+    const record = this.#outbox.get(outboxId);
+    if (record === undefined || record.organizationId !== organizationId) {
+      throw new ActionRepositoryError('OUTBOX_NOT_REPROCESSABLE', 'Outbox record not found.');
+    }
+    if (record.state !== 'FAILED' && record.state !== 'DEAD_LETTER') {
+      throw new ActionRepositoryError('OUTBOX_NOT_REPROCESSABLE', `Outbox state ${record.state} does not allow reprocessing.`);
+    }
+    record.state = 'PENDING';
+    record.lockedBy = null;
+    record.lockedAt = null;
+    record.attempts = 0;
+    return structuredClone(record);
   }
 
   async getReceiptsByCampaign(organizationId: string, campaignId: string): Promise<ActionReceipt[]> {
@@ -155,13 +202,33 @@ export class MemoryActionRepository implements ActionRepository {
     if (receipt.state !== 'HANDOFF_PENDING') {
       throw new ActionRepositoryError('HANDOFF_NOT_PENDING', `Receipt state ${receipt.state} does not allow handoff confirmation.`);
     }
+
+    // Guard against duplicate confirmation — check for an existing successor.
+    for (const existing of this.#receipts.values()) {
+      if (existing.previousReceiptId === receiptId) {
+        throw new ActionRepositoryError('HANDOFF_ALREADY_CONFIRMED', 'A handoff confirmation already exists for this receipt.');
+      }
+    }
+
     const confirmed: ActionReceipt = {
-      ...receipt,
+      id: createUuidV7(Date.now(), new Uint8Array(10)),
+      organizationId: receipt.organizationId,
+      campaignId: receipt.campaignId,
+      actionGrantId: receipt.actionGrantId,
+      schemaVersion: 1,
+      platform: receipt.platform,
+      executionMode: receipt.executionMode,
       state: 'HANDOFF_CONFIRMED',
       platformUri,
       platformCid: platformCid ?? null,
+      handoffSteps: receipt.handoffSteps,
+      unknownReason: null,
+      reconciledAt: null,
+      reconciliationMethod: null,
+      createdAt: new Date().toISOString(),
+      previousReceiptId: receipt.id,
     };
-    this.#receipts.set(receiptId, confirmed);
+    this.#receipts.set(confirmed.id, confirmed);
     return structuredClone(confirmed);
   }
 
@@ -169,18 +236,39 @@ export class MemoryActionRepository implements ActionRepository {
     organizationId: string,
     receiptId: string,
     method: 'PLATFORM_QUERY' | 'OWNER_MANUAL',
-    notes?: string,
+    _notes?: string,
   ): Promise<ActionReceipt> {
     const receipt = this.#receipts.get(receiptId);
     if (receipt === undefined) throw new ActionRepositoryError('RECEIPT_NOT_FOUND', 'Receipt not found.');
     if (receipt.organizationId !== organizationId) throw new ActionRepositoryError('RECEIPT_NOT_FOUND', 'Receipt not found.');
     if (receipt.state !== 'UNKNOWN') throw new ActionRepositoryError('RECEIPT_NOT_UNKNOWN', `Receipt state ${receipt.state} does not allow reconciliation.`);
+
+    // Guard against duplicate reconciliation.
+    for (const existing of this.#receipts.values()) {
+      if (existing.previousReceiptId === receiptId) {
+        throw new ActionRepositoryError('RECEIPT_ALREADY_RECONCILED', 'A reconciliation already exists for this receipt.');
+      }
+    }
+
     const reconciled: ActionReceipt = {
-      ...receipt,
+      id: createUuidV7(Date.now(), new Uint8Array(10)),
+      organizationId: receipt.organizationId,
+      campaignId: receipt.campaignId,
+      actionGrantId: receipt.actionGrantId,
+      schemaVersion: 1,
+      platform: receipt.platform,
+      executionMode: receipt.executionMode,
+      state: receipt.state, // keeps UNKNOWN — reconciliation is a separate fact
+      platformUri: receipt.platformUri,
+      platformCid: receipt.platformCid,
+      handoffSteps: receipt.handoffSteps,
+      unknownReason: receipt.unknownReason,
       reconciledAt: new Date().toISOString(),
       reconciliationMethod: method,
+      createdAt: new Date().toISOString(),
+      previousReceiptId: receipt.id,
     };
-    this.#receipts.set(receiptId, reconciled);
+    this.#receipts.set(reconciled.id, reconciled);
     return structuredClone(reconciled);
   }
 

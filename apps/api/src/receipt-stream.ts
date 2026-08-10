@@ -33,6 +33,7 @@ export class ReceiptEventBus {
 // ---------------------------------------------------------------------------
 
 type SseClient = {
+  organizationId: string;
   campaignId: string;
   reply: FastifyReply;
 };
@@ -52,8 +53,8 @@ export class SseManager {
   // Client lifecycle
   // -------------------------------------------------------------------
 
-  subscribe(campaignId: string, reply: FastifyReply): void {
-    const client: SseClient = {campaignId, reply};
+  subscribe(organizationId: string, campaignId: string, reply: FastifyReply): void {
+    const client: SseClient = {organizationId, campaignId, reply};
     this.#clients.add(client);
 
     // Remove when client disconnects
@@ -83,14 +84,9 @@ export class SseManager {
   #onReceipt(receipt: ActionReceipt): void {
     const event = `event: receipt_created\ndata: ${JSON.stringify({event: 'receipt_created', receipt})}\n\n`;
     for (const client of this.#clients) {
-      // Only push to clients watching the receipt's campaign
-      // (campaignId is resolved via the actionGrantId → grant → campaignId chain;
-      //  for simplicity we fan-out to all and let the client filter,
-      //  or we could look up the campaignId here. We'll use a simple approach:
-      //  push to all — the client can ignore events for other campaigns.)
-      // Actually let's be precise and skip the fan-out for now. The client
-      // subscribes by campaignId and we don't have the campaignId on the receipt.
-      // For the demo, we push to all clients and let them filter.
+      // Isolate by Organization + Campaign — no cross-tenant leakage.
+      if (client.organizationId !== receipt.organizationId) continue;
+      if (client.campaignId !== receipt.campaignId) continue;
       try {
         client.reply.raw.write(event);
       } catch {

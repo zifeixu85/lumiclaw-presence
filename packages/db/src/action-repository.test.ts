@@ -203,8 +203,9 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       );
       const claimed = await repo.claimNextOutbox('operator-1');
       expect(claimed).not.toBeUndefined();
-      expect(claimed!.state).toBe('PROCESSING');
-      expect(claimed!.lockedBy).toBe('operator-1');
+      expect(claimed!.outbox.state).toBe('PROCESSING');
+      expect(claimed!.outbox.lockedBy).toBe('operator-1');
+      expect(claimed!.grant).toBeDefined();
     });
 
     it('completeOutbox marks COMPLETED and inserts receipt', async () => {
@@ -215,13 +216,14 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       const claimed = await repo.claimNextOutbox('operator-3');
       const receipt: ActionReceipt = {
         id: uuid(41), organizationId: testOrg.organizationId,
-        actionGrantId: grant.id, schemaVersion: 1,
+        campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
         platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
         platformUri: 'https://bsky.app/profile/test/post/abc', platformCid: 'bafyrei...',
         handoffSteps: null, unknownReason: null,
-        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
+        previousReceiptId: null,
       };
-      const saved = await repo.completeOutbox(claimed!.id, receipt);
+      const saved = await repo.completeOutbox(claimed!.outbox.id, receipt);
       expect(saved.state).toBe('PUBLISHED');
       expect(saved.platformUri).toBe('https://bsky.app/profile/test/post/abc');
     });
@@ -232,7 +234,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         grant, outbox, `test-fail-${uuid(50)}`, sha256Digest({g: grant.id}),
       );
       const claimed = await repo.claimNextOutbox('operator-4');
-      const result = await repo.failOutbox(claimed!.id, 'Bluesky API timeout');
+      const result = await repo.failOutbox(claimed!.outbox.id, 'Bluesky API timeout');
       expect(result.outbox.state).toBe('FAILED');
       expect(result.receipt.state).toBe('UNKNOWN');
       expect(result.receipt.unknownReason).toBe('Bluesky API timeout');
@@ -249,13 +251,13 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       const claimed = await repo.claimNextOutbox('operator-atomic');
       const receipt: ActionReceipt = {
         id: uuid(81), organizationId: testOrg.organizationId,
-        actionGrantId: grant.id, schemaVersion: 1,
+        campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
         platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
         platformUri: 'https://bsky.app/profile/test/post/atomic', platformCid: 'bafyrei-atomic',
         handoffSteps: null, unknownReason: null,
-        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
       };
-      await repo.completeOutbox(claimed!.id, receipt);
+      await repo.completeOutbox(claimed!.outbox.id, receipt);
 
       // Verify grant was consumed via raw SQL query
       const grantRow = await pool.query(
@@ -285,13 +287,13 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       const claimed1 = await repo.claimNextOutbox('operator-a');
       const receipt1: ActionReceipt = {
         id: uuid(84), organizationId: testOrg.organizationId,
-        actionGrantId: grant.id, schemaVersion: 1,
+        campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
         platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
         platformUri: 'https://bsky.app/a', platformCid: 'bafyrei-a',
         handoffSteps: null, unknownReason: null,
-        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
       };
-      await repo.completeOutbox(claimed1!.id, receipt1);
+      await repo.completeOutbox(claimed1!.outbox.id, receipt1);
 
       // Second consumption is rejected — grant already CONSUMED
       const claimed2 = await repo.claimNextOutbox('operator-b');
@@ -302,9 +304,9 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
           platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
           platformUri: 'https://bsky.app/b', platformCid: 'bafyrei-b',
           handoffSteps: null, unknownReason: null,
-          reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+          reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
         };
-        await repo.completeOutbox(claimed2!.id, receipt2);
+        await repo.completeOutbox(claimed2!.outbox.id, receipt2);
         expect.unreachable('Second consumption should have thrown');
       } catch (error) {
         expect(error).toBeInstanceOf(ActionRepositoryError);
@@ -336,24 +338,24 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       // Both operators attempt to complete concurrently — only one may succeed
       const receiptA: ActionReceipt = {
         id: uuid(88), organizationId: testOrg.organizationId,
-        actionGrantId: grant.id, schemaVersion: 1,
+        campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
         platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
         platformUri: 'https://bsky.app/a', platformCid: 'bafyrei-a',
         handoffSteps: null, unknownReason: null,
-        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
       };
       const receiptB: ActionReceipt = {
         id: uuid(89), organizationId: testOrg.organizationId,
-        actionGrantId: grant.id, schemaVersion: 1,
+        campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
         platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
         platformUri: 'https://bsky.app/b', platformCid: 'bafyrei-b',
         handoffSteps: null, unknownReason: null,
-        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
       };
 
       const results = await Promise.allSettled([
-        repo.completeOutbox(claimed1!.id, receiptA),
-        repo.completeOutbox(claimed2!.id, receiptB),
+        repo.completeOutbox(claimed1!.outbox.id, receiptA),
+        repo.completeOutbox(claimed2!.outbox.id, receiptB),
       ]);
 
       const fulfilled = results.filter((r) => r.status === 'fulfilled').length;
@@ -385,13 +387,13 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       const claimed = await repo.claimNextOutbox('operator-tl');
       const receipt: ActionReceipt = {
         id: uuid(61), organizationId: testOrg.organizationId,
-        actionGrantId: grant.id, schemaVersion: 1,
+        campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
         platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
         platformUri: 'https://bsky.app/tl', platformCid: null,
         handoffSteps: null, unknownReason: null,
-        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(),
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
       };
-      await repo.completeOutbox(claimed!.id, receipt);
+      await repo.completeOutbox(claimed!.outbox.id, receipt);
       const receipts = await repo.getReceiptsByCampaign(testOrg.organizationId, testOrg.campaignId);
       expect(receipts.length).toBeGreaterThanOrEqual(1);
     });
@@ -431,6 +433,77 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       } catch (error) {
         expect(String(error).includes('GOVERNED_HISTORY_IMMUTABLE')).toBe(true);
       }
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // P3-11 supplementary tests (PG integration)
+  // -----------------------------------------------------------------------
+
+  describe('P3-11 supplementary', () => {
+    it('rejects different body with same idempotency key', async () => {
+      const {grant, outbox} = makeGrant(90);
+      const ik = `test-diff-body-${uuid(90)}`;
+      const dg = sha256Digest({g: grant.id});
+      const first = await repo.createGrantWithOutbox(grant, outbox, ik, dg);
+      expect(first.replayed).toBe(false);
+      // Same key, different digest → IDEMPOTENCY_KEY_REUSED
+      await expect(
+        repo.createGrantWithOutbox(grant, outbox, ik, sha256Digest({x: 'different'})),
+      ).rejects.toThrow('Idempotency key was reused');
+    });
+
+    it('lease recovery: stalled PROCESSING outbox returns to PENDING', async () => {
+      const {grant, outbox} = makeGrant(91);
+      await repo.createGrantWithOutbox(
+        grant, outbox, `test-lease-recovery-${uuid(91)}`, sha256Digest({g: grant.id}),
+      );
+      // Claim to make it PROCESSING
+      const claimed = await repo.claimNextOutbox('operator-stuck');
+      expect(claimed).not.toBeUndefined();
+      expect(claimed!.outbox.state).toBe('PROCESSING');
+
+      // Manually set locked_at to 10 min ago (exceeds 5 min lease TTL)
+      await pool.query(
+        `update outbox set locked_at=$1 where organization_id=$2 and id=$3`,
+        [new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+          testOrg.organizationId, claimed!.outbox.id],
+      );
+
+      // Next claimNextOutbox should recover the stalled record
+      const recovered = await repo.claimNextOutbox('operator-recovery');
+      expect(recovered).not.toBeUndefined();
+      expect(recovered!.outbox.id).toBe(claimed!.outbox.id);
+      expect(recovered!.outbox.state).toBe('PROCESSING'); // now claimed again
+    });
+
+    it('handoff confirmation creates a new receipt with previousReceiptId chain', async () => {
+      const {grant, outbox} = makeGrant(92);
+      await repo.createGrantWithOutbox(
+        grant, outbox, `test-ho-chain-${uuid(92)}`, sha256Digest({g: grant.id}),
+      );
+      // Claim + complete with HANDOFF_PENDING
+      const claimed = await repo.claimNextOutbox('operator-ho');
+      const pending: ActionReceipt = {
+        id: uuid(93), organizationId: testOrg.organizationId,
+        campaignId: grant.campaignId, actionGrantId: grant.id,
+        schemaVersion: 1, platform: 'LINKEDIN', executionMode: 'NATIVE_HANDOFF',
+        state: 'HANDOFF_PENDING', platformUri: null, platformCid: null,
+        handoffSteps: ['Step 1', 'Step 2'], unknownReason: null,
+        reconciledAt: null, reconciliationMethod: null,
+        createdAt: now.toISOString(), previousReceiptId: null,
+      };
+      await repo.completeOutbox(claimed!.outbox.id, pending);
+
+      // Confirm handoff → should create a NEW receipt (append-only)
+      const confirmed = await repo.confirmHandoff(
+        testOrg.organizationId, pending.id,
+        'https://linkedin.com/feed/post/chain-test', 'bafyrei-chain',
+      );
+      expect(confirmed.id).not.toBe(pending.id);
+      expect(confirmed.state).toBe('HANDOFF_CONFIRMED');
+      expect(confirmed.previousReceiptId).toBe(pending.id);
+      expect(confirmed.platformUri).toBe('https://linkedin.com/feed/post/chain-test');
     });
   });
 });

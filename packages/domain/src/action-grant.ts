@@ -15,7 +15,15 @@ export type ExecutionMode = 'DIRECT' | 'NATIVE_HANDOFF';
 export type ActionGrantStatus = 'ISSUED' | 'CONSUMED' | 'EXPIRED' | 'REVOKED';
 export type ActionReceiptState = 'PUBLISHED' | 'HANDOFF_PENDING' | 'HANDOFF_CONFIRMED' | 'FAILED' | 'UNKNOWN';
 export type ReconciliationMethod = 'PLATFORM_QUERY' | 'OWNER_MANUAL';
-export type OutboxState = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+export type OutboxState = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'DEAD_LETTER';
+
+/** Composite returned by {@link ActionRepository.claimNextOutbox}. */
+export type OutboxClaim = {
+  outbox: OutboxRecord;
+  /** The authoritative ActionGrant from the database (locked FOR UPDATE),
+   *  NOT the stale snapshot inside the Outbox payload. */
+  grant: ActionGrant;
+};
 
 /**
  * An Owner's explicit decision to authorise an action on a specific platform
@@ -84,12 +92,18 @@ export type OutboxRecord = {
   lockedBy: string | null;
   lockedAt: string | null;
   attempts: number;
+  /** Maximum attempts before the record is moved to DEAD_LETTER. */
+  maxAttempts: number;
   createdAt: string;
 };
 
 export type ActionReceipt = {
   id: DomainId;
   organizationId: DomainId;
+  /** The Campaign this receipt belongs to.  Populated at creation time
+   *  from the authoritative ActionGrant so SSE clients can be filtered
+   *  by (organizationId, campaignId) without a join. */
+  campaignId: DomainId;
   actionGrantId: DomainId;
   schemaVersion: 1;
   platform: Platform;
@@ -102,6 +116,16 @@ export type ActionReceipt = {
   reconciledAt: string | null;
   reconciliationMethod: ReconciliationMethod | null;
   createdAt: string;
+  /**
+   * Points to the previous receipt in the lifecycle chain (e.g. a
+   * HANDOFF_CONFIRMED receipt links back to its HANDOFF_PENDING
+   * predecessor).  null for the initial receipt (PUBLISHED, FAILED,
+   * UNKNOWN, or the first HANDOFF_PENDING).
+   *
+   * This makes action_receipts append-only — every state transition
+   * produces a new row instead of mutating the existing one.
+   */
+  previousReceiptId: string | null;
 };
 
 /** Canonical digest of the ActionGrant body, excluding the digest and signature fields. */
@@ -120,6 +144,30 @@ export function isGrantConsumable(grant: ActionGrant, now: Date): boolean {
 /** True when the grant has been consumed and must not be replayed. */
 export function isGrantConsumed(grant: ActionGrant): boolean {
   return grant.status === 'CONSUMED';
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function issue(
+  code: ValidationIssue['code'],
+  path: string,
+  message: string,
+): ValidationIssue {
+  return {code, path, message};
+}
+
+/** Platform → allowed ExecutionMode mapping (P2-7). */
+const VALID_EXECUTION_MODES: Record<Platform, ReadonlySet<ExecutionMode>> = {
+  BLUESKY: new Set(['DIRECT']),
+  LINKEDIN: new Set(['NATIVE_HANDOFF']),
+  XIAOHONGSHU: new Set(['NATIVE_HANDOFF']),
+  X: new Set(['DIRECT', 'NATIVE_HANDOFF']),
+};
+
+function isValidExecutionMode(platform: Platform, mode: ExecutionMode): boolean {
+  return VALID_EXECUTION_MODES[platform]?.has(mode) ?? false;
 }
 
 /**
@@ -208,6 +256,11 @@ export function validateActionGrant(
     issues.push(issue('ACTION_GRANT_OCCURRENCE_NOT_FOUND',
       '/scheduleOccurrenceId',
       'Grant occurrence is not in the Campaign.'));
+  } else if (occurrence.campaignId !== grant.campaignId) {
+    // Cross-reference: occurrence must belong to the same campaign
+    issues.push(issue('ACTION_GRANT_OCCURRENCE_SCOPE_INVALID',
+      '/scheduleOccurrenceId',
+      'Occurrence does not belong to the grant campaign.'));
   }
 
   // --- artifact revision reference ---
@@ -224,6 +277,19 @@ export function validateActionGrant(
   } else if (revision.activationUnitId !== grant.activationUnitId) {
     issues.push(issue('ACTION_GRANT_SCOPE_INVALID', '/activationUnitId',
       'Grant activation unit does not match artifact revision.'));
+  }
+
+  // --- activation unit existence ---
+  const activationUnit = campaign.activationPlan.units.find(
+    (u) => u.id === grant.activationUnitId,
+  );
+  if (activationUnit === undefined) {
+    issues.push(issue('ACTION_GRANT_ACTIVATION_UNIT_NOT_FOUND',
+      '/activationUnitId',
+      'Grant activation unit is not in the Campaign activation plan.'));
+  } else if (activationUnit.platform !== grant.platform) {
+    issues.push(issue('ACTION_GRANT_SCOPE_INVALID', '/activationUnitId',
+      'Activation unit platform does not match grant platform.'));
   }
 
   // --- channel account reference ---
@@ -260,6 +326,26 @@ export function validateActionGrant(
     }
   }
 
+  // --- cross-reference: channelAccount ↔ capability must be consistent ---
+  if (channelAccount && capability && channelAccount.platform === capability.platform) {
+    // Verify the capability references a channel account that exists in the graph
+    const capabilityAccount = campaign.graph.channelAccounts.find(
+      (a) => a.id === capability.channelAccountId,
+    );
+    if (capabilityAccount === undefined) {
+      issues.push(issue('ACTION_GRANT_CAPABILITY_ACCOUNT_MISMATCH',
+        '/capabilitySnapshotId',
+        'Capability references a channel account not in the Campaign graph.'));
+    }
+  }
+
+  // --- executionMode consistency (P2-7) ---
+  // Validate that the executionMode is compatible with the platform.
+  if (!isValidExecutionMode(grant.platform, grant.executionMode)) {
+    issues.push(issue('ACTION_GRANT_EXECUTION_MODE_MISMATCH', '/executionMode',
+      `Execution mode ${grant.executionMode} is not valid for platform ${grant.platform}.`));
+  }
+
   return issues.length === 0 ? {ok: true} : {ok: false, issues};
 }
 
@@ -286,6 +372,9 @@ function getDemoKeyPair(): {publicKey: KeyObject; privateKey: KeyObject} {
 export function resolveGrantRefs(
   campaign: CampaignDocument,
   platform: Platform,
+  /** When the Campaign has no occurrences, synthesise one with this ID
+   *  so callers can supply their own scheduleOccurrenceId. */
+  scheduleOccurrenceId?: DomainId,
 ): {
   activationUnit: ActivationUnit;
   artifactRevision: ArtifactRevision;
@@ -324,7 +413,7 @@ export function resolveGrantRefs(
     campaign.scheduleOccurrences[0];
   if (scheduleOccurrence === undefined) {
     scheduleOccurrence = {
-      id: createUuidV7(Date.now()),
+      id: scheduleOccurrenceId ?? createUuidV7(Date.now()),
       organizationId: campaign.organizationId,
       campaignId: campaign.id,
       scheduleId: createUuidV7(Date.now()),
@@ -370,7 +459,30 @@ export function createOwnerDecision(params: {
     now = new Date('2026-08-08T12:00:00.000Z'),
   } = params;
 
-  const refs = resolveGrantRefs(campaign, platform);
+  // Validate that executionMode is valid for the target platform (P2-7).
+  if (!isValidExecutionMode(platform, executionMode)) {
+    throw new Error(
+      `Execution mode ${executionMode} is not valid for platform ${platform}.`,
+    );
+  }
+
+  const refs = resolveGrantRefs(campaign, platform, scheduleOccurrenceId);
+
+  // Cross-reference validation (P2-5): caller-supplied IDs must match
+  // the references resolved from the Campaign.  Passing IDs from a
+  // different campaign is a programming error.
+  // (scheduleOccurrenceId may have been synthesised by resolveGrantRefs
+  //  above, so its ID now matches refs.scheduleOccurrence.id.)
+  if (artifactRevisionId !== refs.artifactRevision.id) {
+    throw new Error(
+      `artifactRevisionId ${artifactRevisionId} does not match Campaign resolution (${refs.artifactRevision.id}).`,
+    );
+  }
+  if (activationUnitId !== refs.activationUnit.id) {
+    throw new Error(
+      `activationUnitId ${activationUnitId} does not match Campaign resolution (${refs.activationUnit.id}).`,
+    );
+  }
 
   return {
     id: createUuidV7(now.getTime()),
@@ -566,6 +678,7 @@ export function createActionGrant(params: {
     lockedBy: null,
     lockedAt: null,
     attempts: 0,
+    maxAttempts: 3,
     createdAt: issuedAt,
   };
 
@@ -575,14 +688,6 @@ export function createActionGrant(params: {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function issue(
-  code: ValidationIssue['code'],
-  path: string,
-  message: string,
-): ValidationIssue {
-  return {code, path, message};
-}
 
 // ---------------------------------------------------------------------------
 // Repository port (implemented by @lumiclaw/db)
@@ -606,7 +711,10 @@ export interface ActionRepository {
     reason: string,
   ): Promise<ActionGrant>;
 
-  claimNextOutbox(lockId: string): Promise<OutboxRecord | undefined>;
+  /** Claim the next PENDING outbox record together with its authoritative
+   *  ActionGrant (locked FOR UPDATE).  The consumer MUST use the returned
+   *  grant — never the stale snapshot inside the Outbox payload. */
+  claimNextOutbox(lockId: string): Promise<OutboxClaim | undefined>;
 
   completeOutbox(
     outboxId: string,
@@ -617,6 +725,16 @@ export interface ActionRepository {
     outboxId: string,
     reason: string,
   ): Promise<{outbox: OutboxRecord; receipt: ActionReceipt}>;
+
+  /**
+   * Reset a FAILED or DEAD_LETTER outbox record back to PENDING so the
+   * consumer retries it.  Only callable by an Owner after they have
+   * reviewed the failure reason.
+   */
+  reprocessOutbox(
+    organizationId: string,
+    outboxId: string,
+  ): Promise<OutboxRecord>;
 
   getReceiptsByCampaign(
     organizationId: string,

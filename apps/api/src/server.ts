@@ -266,7 +266,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
       'connection': 'keep-alive',
     });
     reply.raw.write(`:connected\n\n`);
-    sseManager.subscribe(request.params.campaignId, reply);
+    sseManager.subscribe(organizationId, request.params.campaignId, reply);
     // Prevent Fastify from closing the reply automatically
     reply.hijack();
   });

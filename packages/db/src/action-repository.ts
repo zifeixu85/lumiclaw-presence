@@ -5,6 +5,7 @@ import {
   type ActionGrant,
   type ActionReceipt,
   type ActionRepository,
+  type OutboxClaim,
   type OutboxRecord,
 } from '@lumiclaw/domain';
 import {Pool, type PoolClient} from 'pg';
@@ -164,6 +165,16 @@ export class PostgresActionRepository implements ActionRepository {
         [revoked.status, revoked.revocationReason, JSON.stringify(revoked),
           organizationId, grantId],
       );
+
+      // Cancel any PENDING outbox records so they are never picked up by the
+      // consumer.  PROCESSING records will be stopped by the authoritative
+      // grant check in claimNextOutbox (P1-3).
+      await client.query(
+        `update outbox set state='CANCELLED'
+         where organization_id=$1 and aggregate_id=$2 and state='PENDING'`,
+        [organizationId, grantId],
+      );
+
       await client.query('commit');
       return revoked;
     } catch (error) {
@@ -178,13 +189,33 @@ export class PostgresActionRepository implements ActionRepository {
   // Consume — action-operator
   // -----------------------------------------------------------------------
 
-  async claimNextOutbox(lockId: string): Promise<OutboxRecord | undefined> {
+  async claimNextOutbox(lockId: string): Promise<OutboxClaim | undefined> {
     const client = await this.#pool.connect();
     try {
       await client.query('begin');
+
+      // --- Lease recovery: reset timed-out PROCESSING records ---
+      const leaseCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+      // Stalled records within retry budget → back to PENDING
+      await client.query(
+        `update outbox set state='PENDING', locked_by=NULL, locked_at=NULL
+         where state='PROCESSING'
+           and locked_at < $1
+           and attempts < max_attempts`,
+        [leaseCutoff],
+      );
+      // Stalled records that exhausted retries → DEAD_LETTER
+      await client.query(
+        `update outbox set state='DEAD_LETTER', locked_by=NULL, locked_at=NULL
+         where state='PROCESSING'
+           and locked_at < $1
+           and attempts >= max_attempts`,
+        [leaseCutoff],
+      );
+
       const row = await client.query(
         `select id, organization_id, aggregate_type, aggregate_id,
-                schema_version, payload, state, attempts, created_at
+                schema_version, payload, state, attempts, max_attempts, created_at
          from outbox
          where state = 'PENDING'
          order by created_at
@@ -196,26 +227,46 @@ export class PostgresActionRepository implements ActionRepository {
         return undefined;
       }
       const r = row.rows[0]!;
+      const orgId = r.organization_id as string;
+      const aggregateId = r.aggregate_id as string;
+
+      // Lock the authoritative grant row in the same transaction.
+      // The consumer must use this grant — never the stale Outbox payload snapshot.
+      const grantRow = await client.query(
+        `select payload from action_grants
+         where organization_id=$1 and id=$2 for update`,
+        [orgId, aggregateId],
+      );
+      if (grantRow.rowCount === 0) {
+        await client.query('rollback');
+        return undefined; // grant deleted concurrently
+      }
+      const grant = grantRow.rows[0].payload as ActionGrant;
+
+      const now = new Date().toISOString();
       await client.query(
         `update outbox set state='PROCESSING', locked_by=$1, locked_at=$2,
                 attempts=attempts+1
          where organization_id=$3 and id=$4`,
-        [lockId, new Date().toISOString(), r.organization_id as string, r.id as string],
+        [lockId, now, orgId, r.id as string],
       );
       await client.query('commit');
-      return {
+
+      const outbox: OutboxRecord = {
         id: r.id as string,
-        organizationId: r.organization_id as string,
+        organizationId: orgId,
         aggregateType: r.aggregate_type as 'ACTION_GRANT',
-        aggregateId: r.aggregate_id as string,
+        aggregateId,
         schemaVersion: 1,
         payload: r.payload,
         state: 'PROCESSING',
         lockedBy: lockId,
-        lockedAt: new Date().toISOString(),
+        lockedAt: now,
         attempts: (r.attempts as number) + 1,
+        maxAttempts: (r.max_attempts as number) ?? 3,
         createdAt: (r.created_at as Date).toISOString(),
       };
+      return {outbox, grant};
     } catch (error) {
       await client.query('rollback');
       throw error;
@@ -279,14 +330,16 @@ export class PostgresActionRepository implements ActionRepository {
         [orgId, outboxId],
       );
       await client.query(
-        `insert into action_receipts(organization_id,id,action_grant_id,schema_version,platform,execution_mode,state,platform_uri,platform_cid,handoff_steps,created_at)
-         values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+        `insert into action_receipts(organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,state,platform_uri,platform_cid,handoff_steps,created_at,previous_receipt_id)
+         values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
         [
-          receipt.organizationId, receipt.id, receipt.actionGrantId,
+          receipt.organizationId, receipt.id, receipt.campaignId,
+          receipt.actionGrantId,
           receipt.schemaVersion, receipt.platform, receipt.executionMode,
           receipt.state, receipt.platformUri, receipt.platformCid,
           receipt.handoffSteps !== null ? JSON.stringify(receipt.handoffSteps) : null,
           receipt.createdAt,
+          receipt.previousReceiptId,
         ],
       );
       await client.query('commit');
@@ -331,6 +384,7 @@ export class PostgresActionRepository implements ActionRepository {
       const receipt: ActionReceipt = {
         id: receiptId,
         organizationId: orgId,
+        campaignId: grant?.campaignId ?? '',
         actionGrantId: grant?.id ?? ((payload as {aggregateId?: string}).aggregateId ?? ''),
         schemaVersion: 1,
         platform: grant?.platform ?? 'BLUESKY',
@@ -343,18 +397,26 @@ export class PostgresActionRepository implements ActionRepository {
         reconciledAt: null,
         reconciliationMethod: null,
         createdAt: new Date().toISOString(),
+        previousReceiptId: null,
       };
+      const campaignId = grant?.campaignId ?? '';
       await client.query(
-        `insert into action_receipts(organization_id,id,action_grant_id,schema_version,platform,execution_mode,state,unknown_reason,created_at)
-         values($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        `insert into action_receipts(organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,state,unknown_reason,created_at,previous_receipt_id)
+         values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
         [
-          receipt.organizationId, receipt.id, receipt.actionGrantId,
+          receipt.organizationId, receipt.id, campaignId,
+          receipt.actionGrantId,
           receipt.schemaVersion, receipt.platform, receipt.executionMode,
           receipt.state, receipt.unknownReason, receipt.createdAt,
         ],
       );
 
       await client.query('commit');
+
+      // Determine terminal state based on retry budget
+      const maxAttempts = (payload as {maxAttempts?: number}).maxAttempts ?? 3;
+      const attempts = (payload as {attempts?: number}).attempts ?? 0;
+      const terminalState: OutboxState = attempts >= maxAttempts ? 'DEAD_LETTER' : 'FAILED';
 
       const outbox: OutboxRecord = {
         id: outboxId,
@@ -363,14 +425,60 @@ export class PostgresActionRepository implements ActionRepository {
         aggregateId: grant?.id ?? ((payload as {aggregateId?: string}).aggregateId ?? ''),
         schemaVersion: 1,
         payload: {...payload, failureReason: reason},
-        state: 'FAILED',
+        state: terminalState,
         lockedBy: null,
         lockedAt: null,
-        attempts: 0,
+        attempts,
+        maxAttempts,
         createdAt: new Date().toISOString(),
       };
 
       return {outbox, receipt};
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  async reprocessOutbox(
+    organizationId: string,
+    outboxId: string,
+  ): Promise<OutboxRecord> {
+    const client = await this.#pool.connect();
+    try {
+      await client.query('begin');
+      const row = await client.query(
+        `update outbox set state='PENDING', locked_by=NULL, locked_at=NULL, attempts=0
+         where organization_id=$1 and id=$2
+           and state in ('FAILED','DEAD_LETTER')
+         returning id, organization_id, aggregate_type, aggregate_id,
+                   schema_version, payload, state, attempts, max_attempts, created_at`,
+        [organizationId, outboxId],
+      );
+      if (row.rowCount === 0) {
+        throw new ActionRepositoryError(
+          'OUTBOX_NOT_REPROCESSABLE',
+          'Outbox record not found or not in a reprocessable state.',
+        );
+      }
+      await client.query('commit');
+      const r = row.rows[0]!;
+      return {
+        id: r.id as string,
+        organizationId: r.organization_id as string,
+        aggregateType: r.aggregate_type as 'ACTION_GRANT',
+        aggregateId: r.aggregate_id as string,
+        schemaVersion: 1,
+        payload: r.payload,
+        state: 'PENDING',
+        lockedBy: null,
+        lockedAt: null,
+        attempts: (r.attempts as number),
+        maxAttempts: (r.max_attempts as number) ?? 3,
+        createdAt: (r.created_at as Date).toISOString(),
+      };
     } catch (error) {
       await client.query('rollback');
       throw error;
@@ -421,16 +529,14 @@ export class PostgresActionRepository implements ActionRepository {
     try {
       await client.query('begin');
 
+      // Lock the original receipt to serialise concurrent confirmations.
       const row = await client.query(
         `select * from action_receipts
          where organization_id=$1 and id=$2 for update`,
         [organizationId, receiptId],
       );
       if (row.rowCount === 0) {
-        throw new ActionRepositoryError(
-          'RECEIPT_NOT_FOUND',
-          'Receipt not found.',
-        );
+        throw new ActionRepositoryError('RECEIPT_NOT_FOUND', 'Receipt not found.');
       }
       const current = rowToReceipt(row.rows[0]!);
       if (current.state !== 'HANDOFF_PENDING') {
@@ -440,19 +546,53 @@ export class PostgresActionRepository implements ActionRepository {
         );
       }
 
+      // Guard against duplicate confirmation.
+      const existing = await client.query(
+        `select id from action_receipts
+         where organization_id=$1 and previous_receipt_id=$2`,
+        [organizationId, receiptId],
+      );
+      if (existing.rowCount !== 0) {
+        throw new ActionRepositoryError(
+          'HANDOFF_ALREADY_CONFIRMED',
+          'A handoff confirmation already exists for this receipt.',
+        );
+      }
+
+      // Append a new receipt — never mutate the original.
+      const newId = createUuidV7(Date.now(), new Uint8Array(10));
+      const createdAt = new Date().toISOString();
       await client.query(
-        `update action_receipts
-         set state='HANDOFF_CONFIRMED', platform_uri=$1, platform_cid=$2
-         where organization_id=$3 and id=$4`,
-        [platformUri, platformCid ?? null, organizationId, receiptId],
+        `insert into action_receipts(organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,state,platform_uri,platform_cid,handoff_steps,created_at,previous_receipt_id)
+         values($1,$2,$3,$4,$5,$6,'HANDOFF_CONFIRMED',$7,$8,$9,$10,$11,$12)`,
+        [
+          organizationId, newId, current.campaignId,
+          current.actionGrantId,
+          current.schemaVersion, current.platform, current.executionMode,
+          platformUri, platformCid ?? null,
+          current.handoffSteps !== null ? JSON.stringify(current.handoffSteps) : null,
+          createdAt, receiptId,
+        ],
       );
       await client.query('commit');
 
       return {
-        ...current,
+        id: newId,
+        organizationId,
+        campaignId: current.campaignId,
+        actionGrantId: current.actionGrantId,
+        schemaVersion: 1,
+        platform: current.platform,
+        executionMode: current.executionMode,
         state: 'HANDOFF_CONFIRMED',
         platformUri,
         platformCid: platformCid ?? null,
+        handoffSteps: current.handoffSteps,
+        unknownReason: null,
+        reconciledAt: null,
+        reconciliationMethod: null,
+        createdAt,
+        previousReceiptId: receiptId,
       };
     } catch (error) {
       await client.query('rollback');
@@ -465,15 +605,75 @@ export class PostgresActionRepository implements ActionRepository {
   async reconcileReceipt(
     organizationId: string,
     receiptId: string,
-    _method: 'PLATFORM_QUERY' | 'OWNER_MANUAL',
+    method: 'PLATFORM_QUERY' | 'OWNER_MANUAL',
     _notes?: string,
   ): Promise<ActionReceipt> {
-    // action_receipts is immutable — reconciliation is recorded as a new
-    // fact (separate reconciliation table) in M3-07.  For now, throw.
-    throw new ActionRepositoryError(
-      'RECONCILIATION_NOT_AVAILABLE',
-      'Postgres reconciliation is not yet available (M3-07). Use the in-memory repository for tests.',
-    );
+    const client = await this.#pool.connect();
+    try {
+      await client.query('begin');
+
+      const row = await client.query(
+        `select * from action_receipts
+         where organization_id=$1 and id=$2 for update`,
+        [organizationId, receiptId],
+      );
+      if (row.rowCount === 0) {
+        throw new ActionRepositoryError('RECEIPT_NOT_FOUND', 'Receipt not found.');
+      }
+      const current = rowToReceipt(row.rows[0]!);
+      if (current.state !== 'UNKNOWN') {
+        throw new ActionRepositoryError(
+          'RECEIPT_NOT_UNKNOWN',
+          `Receipt state ${current.state} does not allow reconciliation.`,
+        );
+      }
+
+      // Guard against duplicate reconciliation.
+      const existing = await client.query(
+        `select id from action_receipts
+         where organization_id=$1 and previous_receipt_id=$2`,
+        [organizationId, receiptId],
+      );
+      if (existing.rowCount !== 0) {
+        throw new ActionRepositoryError(
+          'RECEIPT_ALREADY_RECONCILED',
+          'A reconciliation already exists for this receipt.',
+        );
+      }
+
+      // Append a new receipt — reconciliation is a new fact, not a mutation.
+      const newId = createUuidV7(Date.now(), new Uint8Array(10));
+      const createdAt = new Date().toISOString();
+      await client.query(
+        `insert into action_receipts(organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,state,platform_uri,platform_cid,handoff_steps,unknown_reason,reconciled_at,reconciliation_method,created_at,previous_receipt_id)
+         values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+        [
+          organizationId, newId, current.campaignId,
+          current.actionGrantId,
+          current.schemaVersion, current.platform, current.executionMode,
+          current.state,
+          current.platformUri, current.platformCid,
+          current.handoffSteps !== null ? JSON.stringify(current.handoffSteps) : null,
+          current.unknownReason,
+          createdAt, method, createdAt, receiptId,
+        ],
+      );
+      await client.query('commit');
+
+      return {
+        ...current,
+        id: newId,
+        reconciledAt: createdAt,
+        reconciliationMethod: method,
+        createdAt,
+        previousReceiptId: receiptId,
+      };
+    } catch (error) {
+      await client.query('rollback');
+      throw error;
+    } finally {
+      client.release();
+    }
   }
 
   // -----------------------------------------------------------------------
@@ -512,6 +712,7 @@ function rowToReceipt(row: Record<string, unknown>): ActionReceipt {
   return {
     id: row.id as string,
     organizationId: row.organization_id as string,
+    campaignId: row.campaign_id as string,
     actionGrantId: row.action_grant_id as string,
     schemaVersion: row.schema_version as number as 1,
     platform: row.platform as string as ActionReceipt['platform'],
@@ -524,6 +725,7 @@ function rowToReceipt(row: Record<string, unknown>): ActionReceipt {
     reconciledAt: row.reconciled_at ? (row.reconciled_at as Date).toISOString() : null,
     reconciliationMethod: (row.reconciliation_method as string as ActionReceipt['reconciliationMethod']) ?? null,
     createdAt: (row.created_at as Date).toISOString(),
+    previousReceiptId: (row.previous_receipt_id as string) ?? null,
   };
 }
 

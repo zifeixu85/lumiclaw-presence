@@ -18,6 +18,7 @@ export class OutboxConsumer {
   readonly #lockId: string;
   readonly #pollMs: number;
   readonly #now: () => Date;
+  readonly #onReceipt: ((receipt: ActionReceipt) => void) | undefined;
   #timer: ReturnType<typeof setInterval> | null = null;
   #running = false;
 
@@ -26,11 +27,15 @@ export class OutboxConsumer {
     lockId: string,
     pollIntervalMs = 2000,
     now: () => Date = () => new Date(),
+    /** Optional callback invoked after every successful receipt creation
+     *  so the caller can fan-out via SSE or other channels. */
+    onReceipt?: (receipt: ActionReceipt) => void,
   ) {
     this.#repo = repo;
     this.#lockId = lockId;
     this.#pollMs = pollIntervalMs;
     this.#now = now;
+    this.#onReceipt = onReceipt;
   }
 
   // -------------------------------------------------------------------
@@ -64,15 +69,17 @@ export class OutboxConsumer {
   // -------------------------------------------------------------------
 
   async processOne(): Promise<ActionReceipt | null> {
-    const record = await this.#repo.claimNextOutbox(this.#lockId);
-    if (record === undefined) return null;
+    const claim = await this.#repo.claimNextOutbox(this.#lockId);
+    if (claim === undefined) return null;
 
-    // Decode payload
+    const {outbox: record, grant} = claim;
+
+    // Use the authoritative grant from the DB (locked FOR UPDATE), not the
+    // stale snapshot inside the Outbox payload.
     const payload = record.payload as {
       grant: ActionGrant;
       revision: ArtifactRevision;
     };
-    const grant = payload.grant;
     const artifact = payload.revision;
 
     // --- grant validation ---
@@ -111,6 +118,13 @@ export class OutboxConsumer {
       return null;
     }
 
+    // Guard: grant.executionMode must match the connector's declared mode (P2-7).
+    if (connector.executionMode !== grant.executionMode) {
+      await this.#repo.failOutbox(record.id,
+        `Execution mode mismatch: grant=${grant.executionMode}, connector=${connector.executionMode}`);
+      return null;
+    }
+
     const result = await connector.execute(grant, artifact.content);
 
     // --- write receipt ---
@@ -118,6 +132,7 @@ export class OutboxConsumer {
       const receipt: ActionReceipt = {
         id: createUuidV7(n.getTime(), entropy),
         organizationId: grant.organizationId,
+        campaignId: grant.campaignId,
         actionGrantId: grant.id,
         schemaVersion: 1,
         platform: grant.platform,
@@ -130,13 +145,17 @@ export class OutboxConsumer {
         reconciledAt: null,
         reconciliationMethod: null,
         createdAt: n.toISOString(),
+        previousReceiptId: null,
       };
-      return await this.#repo.completeOutbox(record.id, receipt);
+      const saved = await this.#repo.completeOutbox(record.id, receipt);
+      this.#onReceipt?.(saved); // fan-out via SSE
+      return saved;
     }
 
     // UNKNOWN result — fail closed, never blind-retry
-    await this.#repo.failOutbox(record.id,
+    const failed = await this.#repo.failOutbox(record.id,
       `UNKNOWN: ${result.message}`);
+    this.#onReceipt?.(failed.receipt); // fan-out UNKNOWN receipt via SSE
     return null;
   }
 }

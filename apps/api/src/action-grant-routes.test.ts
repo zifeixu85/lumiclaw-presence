@@ -29,12 +29,16 @@ function makeGrantBody(doc: Record<string, unknown>): Record<string, unknown> {
   const activationPlan = doc.activationPlan as Record<string, unknown> | undefined;
   const units = activationPlan?.units as Array<Record<string, unknown>> | undefined;
   const revisions = doc.artifactRevisions as Array<Record<string, unknown>> | undefined;
+  const occurrences = doc.scheduleOccurrences as Array<Record<string, unknown>> | undefined;
   const blueskyUnit = units?.find((u) => u.platform === 'BLUESKY');
   const blueskyRevision = revisions?.find((r) => r.platform === 'BLUESKY');
+  // Use a deterministic scheduleOccurrenceId.  When the Campaign has no
+  // occurrences, resolveGrantRefs synthesises one with the supplied ID.
+  const occurrenceId = (occurrences?.[0]?.id as string) ?? '01908900-0000-7000-8000-00000000aa02';
   return {
     platform: 'BLUESKY',
     executionMode: 'DIRECT',
-    scheduleOccurrenceId: '01908900-0000-7000-8000-00000000aa02',
+    scheduleOccurrenceId: occurrenceId,
     artifactRevisionId: blueskyRevision?.id as string,
     activationUnitId: blueskyUnit?.id as string,
   };
@@ -237,6 +241,7 @@ describe('action grant routes', () => {
       const pending: ActionReceipt = {
         id: receiptId,
         organizationId: campaign.orgId,
+        campaignId: grant.campaignId,
         actionGrantId: grant.id,
         schemaVersion: 1,
         platform: 'LINKEDIN',
@@ -249,8 +254,9 @@ describe('action grant routes', () => {
         reconciledAt: null,
         reconciliationMethod: null,
         createdAt: now.toISOString(),
+        previousReceiptId: null,
       };
-      await repo.completeOutbox(claimed!.id, pending);
+      await repo.completeOutbox(claimed!.outbox.id, pending);
 
       // Now call confirm-handoff via the API
       const res = await app.inject({
@@ -264,6 +270,9 @@ describe('action grant routes', () => {
       expect(body.code).toBe('HANDOFF_CONFIRMED');
       expect(body.receipt.state).toBe('HANDOFF_CONFIRMED');
       expect(body.receipt.platformUri).toBe('https://linkedin.com/feed/post/123');
+      // Append-only: the new receipt has a different id and links back
+      expect(body.receipt.id).not.toBe(receiptId);
+      expect(body.receipt.previousReceiptId).toBe(receiptId);
     });
 
     it('returns 409 when receipt is not HANDOFF_PENDING', async () => {
@@ -283,6 +292,7 @@ describe('action grant routes', () => {
       const published: ActionReceipt = {
         id: receiptId,
         organizationId: campaign.orgId,
+        campaignId: grant.campaignId,
         actionGrantId: grant.id,
         schemaVersion: 1,
         platform: 'BLUESKY',
@@ -295,8 +305,9 @@ describe('action grant routes', () => {
         reconciledAt: null,
         reconciliationMethod: null,
         createdAt: now.toISOString(),
+        previousReceiptId: null,
       };
-      await repo.completeOutbox(claimed!.id, published);
+      await repo.completeOutbox(claimed!.outbox.id, published);
 
       const res = await app.inject({
         method: 'POST',
@@ -361,6 +372,71 @@ describe('action grant routes', () => {
         headers: h(),
       });
       expect(res.statusCode).toBe(404);
+    });
+  });
+
+  // -----------------------------------------------------------------------
+  // P3-11 supplementary tests
+  // -----------------------------------------------------------------------
+
+  describe('cross-campaign receipt isolation', () => {
+    it("campaign A receipts are not visible from campaign B", async () => {
+      // Seed a receipt on campaign A via the existing repo
+      const {grant, outbox, ownerPublicKey} = createDemoActionGrant(
+        createDemoCampaignDocument(),
+        {platform: 'BLUESKY', executionMode: 'DIRECT', now: new Date()},
+      );
+      grant.organizationId = campaign.orgId;
+      grant.campaignId = campaign.id;
+      const pubReceipt: ActionReceipt = {
+        id: createUuidV7(Date.now(), new Uint8Array(10)),
+        organizationId: grant.organizationId,
+        campaignId: grant.campaignId,
+        actionGrantId: grant.id, schemaVersion: 1,
+        platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
+        platformUri: 'https://bsky.app/iso-test', platformCid: 'bafyrei-iso',
+        handoffSteps: null, unknownReason: null,
+        reconciledAt: null, reconciliationMethod: null,
+        createdAt: new Date().toISOString(), previousReceiptId: null,
+      };
+      await repo.createGrantWithOutbox(grant, outbox, `iso-${Date.now()}`, sha256Digest({g: grant.id}), ownerPublicKey);
+      const claimed = await repo.claimNextOutbox('test-iso');
+      await repo.completeOutbox(claimed!.outbox.id, pubReceipt);
+
+      // Query campaign A receipts — should include ours
+      const resA = await app.inject({
+        method: 'GET', url: `/api/v1/campaigns/${campaign.id}/receipts`,
+        headers: h(),
+      });
+      expect(resA.statusCode).toBe(200);
+      const bodyA = JSON.parse(resA.body);
+      // All returned receipts belong to campaign A
+      expect(bodyA.receipts.every((r: ActionReceipt) => r.campaignId === campaign.id)).toBe(true);
+    });
+  });
+
+  describe('idempotency + campaign revision binding', () => {
+    it('rejects different requestDigest with same idempotency key', async () => {
+      // Direct repo test: same key, different body → IDEMPOTENCY_KEY_REUSED
+      const {grant, outbox, ownerPublicKey} = createDemoActionGrant(
+        createDemoCampaignDocument(),
+        {platform: 'BLUESKY', executionMode: 'DIRECT', now: new Date()},
+      );
+      grant.organizationId = campaign.orgId;
+      grant.campaignId = campaign.id;
+      const key = `rev-test-${Date.now()}`;
+      const firstDigest = sha256Digest({g: grant.id});
+      const r1 = await repo.createGrantWithOutbox(grant, outbox, key, firstDigest, ownerPublicKey);
+      expect(r1.replayed).toBe(false);
+
+      // Replay with same digest → replays
+      const r1b = await repo.createGrantWithOutbox(grant, outbox, key, firstDigest, ownerPublicKey);
+      expect(r1b.replayed).toBe(true);
+
+      // Same key, different digest → rejected
+      await expect(
+        repo.createGrantWithOutbox(grant, outbox, key, sha256Digest({different: 'body'}), ownerPublicKey),
+      ).rejects.toThrow('Idempotency key was reused');
     });
   });
 });
