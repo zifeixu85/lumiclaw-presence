@@ -221,7 +221,6 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         platformUri: 'https://bsky.app/profile/test/post/abc', platformCid: 'bafyrei...',
         handoffSteps: null, unknownReason: null,
         reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
-        previousReceiptId: null,
       };
       const saved = await repo.completeOutbox(claimed!.outbox.id, receipt);
       expect(saved.state).toBe('PUBLISHED');
@@ -300,7 +299,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       try {
         const receipt2: ActionReceipt = {
           id: uuid(85), organizationId: testOrg.organizationId,
-          actionGrantId: grant.id, schemaVersion: 1,
+          campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
           platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
           platformUri: 'https://bsky.app/b', platformCid: 'bafyrei-b',
           handoffSteps: null, unknownReason: null,

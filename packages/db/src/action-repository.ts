@@ -7,6 +7,7 @@ import {
   type ActionRepository,
   type OutboxClaim,
   type OutboxRecord,
+  type OutboxState,
 } from '@lumiclaw/domain';
 import {Pool, type PoolClient} from 'pg';
 import type {KeyObject} from 'node:crypto';
