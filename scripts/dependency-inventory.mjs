@@ -3,7 +3,9 @@ import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const lockText = await readFile(path.join(root, 'package-lock.json'), 'utf8');
+const rawLockText = await readFile(path.join(root, 'package-lock.json'), 'utf8');
+// Normalise CRLF → LF so the digest is platform-independent.
+const lockText = rawLockText.replace(/\r\n/g, '\n');
 const lock = JSON.parse(lockText);
 const sourceLockSha256 = createHash('sha256').update(lockText).digest('hex');
 const packages = Object.entries(lock.packages ?? {})
