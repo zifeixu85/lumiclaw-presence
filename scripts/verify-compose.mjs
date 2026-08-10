@@ -135,10 +135,11 @@ try {
   if (workerHealth.controlPlane !== 'POSTGRESQL' || workerHealth.executionMode !== 'SHADOW_PREP_ONLY' || workerHealth.externalActionAllowed !== false) throw new Error('Mission worker did not bind the shared PostgreSQL SHADOW control plane.');
   checks.missionWorkerSharedControlPlane = workerHealth;
   const operatorHealth = JSON.parse(docker(['exec', '-T', 'action-operator', 'node', '-e', "fetch('http://127.0.0.1:4002/health').then(r=>r.json()).then(v=>console.log(JSON.stringify(v)))"]));
-  if (operatorHealth.state !== 'DORMANT_NO_GRANTS' || operatorHealth.actionGrantRoutes !== 0 || operatorHealth.connectorRoutes !== 0 || operatorHealth.externalActionAllowed !== false) throw new Error('Action operator must remain dormant with no grant or connector route.');
+  if (operatorHealth.state !== 'CONSUMING' || operatorHealth.actionGrantRoutes !== 1 || operatorHealth.connectorRoutes !== 3 || operatorHealth.externalActionAllowed !== false) throw new Error('Action operator must run in DEMO_SEED mode with 1 outbox consumer route and 3 mock connectors, externalActionAllowed=false.');
   checks.actionOperatorDormantNoGrants = operatorHealth;
-  const forbiddenTables = Number.parseInt(docker(['exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At', '-c', "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('action_grants','connectors','action_outbox')"]).trim(), 10);
-  if (forbiddenTables !== 0) throw new Error('Forbidden action-capable tables exist in the M2 control plane.');
+  // M3-01: action_grants is now expected. connectors and action_outbox remain deferred.
+  const forbiddenTables = Number.parseInt(docker(['exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-At', '-c', "SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('connectors','action_outbox')"]).trim(), 10);
+  if (forbiddenTables !== 0) throw new Error('Forbidden M3-02+ tables exist in the M3-01 control plane.');
   checks.forbiddenActionTables = forbiddenTables;
 
   expectDockerFailure(['run', '--rm', '-e', 'MIGRATIONS_DIR=/missing', 'migrate'], 'MIGRATION_DIRECTORY_MISSING');
