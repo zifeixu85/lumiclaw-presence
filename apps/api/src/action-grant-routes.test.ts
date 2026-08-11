@@ -1,8 +1,9 @@
 import {beforeAll, describe, expect, it, afterAll} from 'vitest';
 import {buildApi} from './server.js';
-import {createDemoActionGrant, createDemoCampaignDocument, createUuidV7, sha256Digest, type ActionReceipt, type ActionRepository} from '@lumiclaw/domain';
+import {createDemoActionGrant, createDemoCampaignDocument, createUuidV7, generateEd25519KeyPair, sha256Digest, type ActionReceipt, type ActionRepository} from '@lumiclaw/domain';
 import {MemoryActionRepository} from '@lumiclaw/db';
 import type {FastifyInstance} from 'fastify';
+import {MemoryCampaignRepository} from './memory-campaign-repository.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -438,5 +439,42 @@ describe('action grant routes', () => {
         repo.createGrantWithOutbox(grant, outbox, key, sha256Digest({different: 'body'}), ownerPublicKey),
       ).rejects.toThrow('Idempotency key was reused');
     });
+  });
+});
+
+describe('persistent ActionGrant signer across API restart', () => {
+  it('issues with a configured signer and queries the same Grant after API restart', async () => {
+    const signer = generateEd25519KeyPair();
+    const actionRepository = new MemoryActionRepository();
+    const campaignRepository = new MemoryCampaignRepository();
+    const first = buildApi({actionRepository, repository: campaignRepository, actionGrantSigner: signer, requirePersistentActionSigner: true});
+    const seeded = await seedCampaign(first);
+    const issued = await first.inject({
+      method: 'POST', url: `/api/v1/campaigns/${seeded.id}/action-grants`,
+      headers: {...mkHeaders(seeded.orgId), 'idempotency-key': 'stable-signer-restart-1', 'if-match': seeded.etag},
+      body: makeGrantBody(seeded.doc),
+    });
+    expect(issued.statusCode).toBe(201);
+    const grantId = JSON.parse(issued.body).grant.id as string;
+    await first.close();
+
+    const restarted = buildApi({actionRepository, repository: campaignRepository, actionGrantSigner: signer, requirePersistentActionSigner: true});
+    const listed = await restarted.inject({method: 'GET', url: `/api/v1/campaigns/${seeded.id}/action-grants`, headers: mkHeaders(seeded.orgId)});
+    expect(listed.statusCode).toBe(200);
+    expect(JSON.parse(listed.body).grants.some((grant: {id: string}) => grant.id === grantId)).toBe(true);
+    await restarted.close();
+  });
+
+  it('fails closed when production signer secret is unavailable', async () => {
+    const app = buildApi({requirePersistentActionSigner: true});
+    const seeded = await seedCampaign(app);
+    const response = await app.inject({
+      method: 'POST', url: `/api/v1/campaigns/${seeded.id}/action-grants`,
+      headers: {...mkHeaders(seeded.orgId), 'idempotency-key': 'missing-signer-1', 'if-match': seeded.etag},
+      body: makeGrantBody(seeded.doc),
+    });
+    expect(response.statusCode).toBe(503);
+    expect(JSON.parse(response.body).code).toBe('ACTION_GRANT_SIGNER_UNAVAILABLE');
+    await app.close();
   });
 });

@@ -14,9 +14,10 @@ const connectionString = process.env.DATABASE_URL;
 const runIntegration = typeof connectionString === 'string' && connectionString.length > 0;
 
 const entropy = Uint8Array.from(Array.from({length: 10}, (_, i) => (42 * 13 + i * 19) & 0xff));
+const testRunEpoch = Date.now();
 
 function uuid(offset: number): string {
-  return createUuidV7(1_788_300_000_000 + offset, entropy);
+  return createUuidV7(testRunEpoch + offset, entropy);
 }
 
 /**
@@ -96,7 +97,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
   // Central seed for all tests
   const testOrg = {organizationId: '', campaignId: '', scheduleOccurrenceId: '', artifactRevisionId: ''};
 
-  const runId = Date.now(); // unique per run — no cleanup needed
+  const runId = testRunEpoch; // unique per run — no cleanup needed
 
   beforeAll(async () => {
     const orgId = uuid(runId % 100000);
@@ -134,6 +135,36 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
     outbox.id = uuid(offset + 1);
     outbox.aggregateId = grant.id;
     return {grant, outbox};
+  }
+
+  async function withOtherPendingOutboxesLocked<T>(
+    targetOutboxId: string,
+    operation: () => Promise<T>,
+  ): Promise<T> {
+    const blocker = await pool.connect();
+    try {
+      await blocker.query('begin');
+      await blocker.query(
+        `select id from outbox
+         where state='PENDING' and id<>$1
+         for update`,
+        [targetOutboxId],
+      );
+      return await operation();
+    } finally {
+      await blocker.query('rollback').catch(() => {});
+      blocker.release();
+    }
+  }
+
+  async function claimExactOutbox(outboxId: string, lockId: string) {
+    const claimed = await withOtherPendingOutboxesLocked(
+      outboxId,
+      () => repo.claimNextOutbox(lockId),
+    );
+    expect(claimed).not.toBeUndefined();
+    expect(claimed!.outbox.id).toBe(outboxId);
+    return claimed!;
   }
 
   describe('health', () => {
@@ -201,8 +232,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       await repo.createGrantWithOutbox(
         grant, outbox, `test-claim-${uuid(30)}`, sha256Digest({g: grant.id}),
       );
-      const claimed = await repo.claimNextOutbox('operator-1');
-      expect(claimed).not.toBeUndefined();
+      const claimed = await claimExactOutbox(outbox.id, 'operator-1');
       expect(claimed!.outbox.state).toBe('PROCESSING');
       expect(claimed!.outbox.lockedBy).toBe('operator-1');
       expect(claimed!.grant).toBeDefined();
@@ -213,7 +243,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       await repo.createGrantWithOutbox(
         grant, outbox, `test-comp-${uuid(40)}`, sha256Digest({g: grant.id}),
       );
-      const claimed = await repo.claimNextOutbox('operator-3');
+      const claimed = await claimExactOutbox(outbox.id, 'operator-3');
       const receipt: ActionReceipt = {
         id: uuid(41), organizationId: testOrg.organizationId,
         campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
@@ -232,7 +262,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       await repo.createGrantWithOutbox(
         grant, outbox, `test-fail-${uuid(50)}`, sha256Digest({g: grant.id}),
       );
-      const claimed = await repo.claimNextOutbox('operator-4');
+      const claimed = await claimExactOutbox(outbox.id, 'operator-4');
       const result = await repo.failOutbox(claimed!.outbox.id, 'Bluesky API timeout');
       expect(result.outbox.state).toBe('FAILED');
       expect(result.receipt.state).toBe('UNKNOWN');
@@ -247,7 +277,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       await repo.createGrantWithOutbox(
         grant, outbox, `test-atomic-${uuid(80)}`, sha256Digest({g: grant.id}),
       );
-      const claimed = await repo.claimNextOutbox('operator-atomic');
+      const claimed = await claimExactOutbox(outbox.id, 'operator-atomic');
       const receipt: ActionReceipt = {
         id: uuid(81), organizationId: testOrg.organizationId,
         campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
@@ -267,50 +297,21 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       expect(grantRow.rows[0].consumed_at).not.toBeNull();
     });
 
-    it('rejects second consumption of the same grant', async () => {
+    it('rejects a second outbox attempt for the same grant', async () => {
       const {grant, outbox} = makeGrant(82);
       await repo.createGrantWithOutbox(
         grant, outbox, `test-double-${uuid(82)}`, sha256Digest({g: grant.id}),
       );
 
-      // Create two outbox records pointing to the same grant (simulates a race)
-      const outbox2Id = uuid(83);
-      await pool.query(
+      const outbox2Id = uuid(184);
+      expect(outbox2Id).not.toBe(outbox.id);
+      await expect(pool.query(
         `insert into outbox(organization_id,id,aggregate_type,aggregate_id,schema_version,payload,state,attempts,created_at)
          values($1,$2,'ACTION_GRANT',$3,1,$4,'PENDING',0,$5)`,
         [testOrg.organizationId, outbox2Id, grant.id,
           JSON.stringify({grant, revision: {}}), now.toISOString()],
-      );
+      )).rejects.toMatchObject({constraint: 'outbox_one_action_attempt'});
 
-      // First consumption succeeds
-      const claimed1 = await repo.claimNextOutbox('operator-a');
-      const receipt1: ActionReceipt = {
-        id: uuid(84), organizationId: testOrg.organizationId,
-        campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
-        platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
-        platformUri: 'https://bsky.app/a', platformCid: 'bafyrei-a',
-        handoffSteps: null, unknownReason: null,
-        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
-      };
-      await repo.completeOutbox(claimed1!.outbox.id, receipt1);
-
-      // Second consumption is rejected — grant already CONSUMED
-      const claimed2 = await repo.claimNextOutbox('operator-b');
-      try {
-        const receipt2: ActionReceipt = {
-          id: uuid(85), organizationId: testOrg.organizationId,
-          campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
-          platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
-          platformUri: 'https://bsky.app/b', platformCid: 'bafyrei-b',
-          handoffSteps: null, unknownReason: null,
-          reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
-        };
-        await repo.completeOutbox(claimed2!.outbox.id, receipt2);
-        expect.unreachable('Second consumption should have thrown');
-      } catch (error) {
-        expect(error).toBeInstanceOf(ActionRepositoryError);
-        expect((error as ActionRepositoryError).code).toBe('ACTION_GRANT_ALREADY_CONSUMED');
-      }
     });
 
     it('only one operator succeeds when two completeOutbox concurrently', async () => {
@@ -319,20 +320,9 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         grant, outbox, `test-race-${uuid(86)}`, sha256Digest({g: grant.id}),
       );
 
-      // Simulate a race: two outbox records point to the same grant
-      const outbox2Id = uuid(87);
-      await pool.query(
-        `insert into outbox(organization_id,id,aggregate_type,aggregate_id,schema_version,payload,state,attempts,created_at)
-         values($1,$2,'ACTION_GRANT',$3,1,$4,'PENDING',0,$5)`,
-        [testOrg.organizationId, outbox2Id, grant.id,
-          JSON.stringify({grant, revision: {}}), now.toISOString()],
-      );
-
-      // Both operators claim their respective outbox records
-      const claimed1 = await repo.claimNextOutbox('operator-race-a');
-      const claimed2 = await repo.claimNextOutbox('operator-race-b');
-      expect(claimed1).not.toBeUndefined();
-      expect(claimed2).not.toBeUndefined();
+      // Duplicate delivery can race on the same claimed outbox. The grant row
+      // lock must still permit exactly one terminal completion.
+      const claimed = await claimExactOutbox(outbox.id, 'operator-race-a');
 
       // Both operators attempt to complete concurrently — only one may succeed
       const receiptA: ActionReceipt = {
@@ -353,8 +343,8 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       };
 
       const results = await Promise.allSettled([
-        repo.completeOutbox(claimed1!.outbox.id, receiptA),
-        repo.completeOutbox(claimed2!.outbox.id, receiptB),
+        repo.completeOutbox(claimed.outbox.id, receiptA),
+        repo.completeOutbox(claimed.outbox.id, receiptB),
       ]);
 
       const fulfilled = results.filter((r) => r.status === 'fulfilled').length;
@@ -383,7 +373,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       await repo.createGrantWithOutbox(
         grant, outbox, `test-tl-${uuid(60)}`, sha256Digest({g: grant.id}),
       );
-      const claimed = await repo.claimNextOutbox('operator-tl');
+      const claimed = await claimExactOutbox(outbox.id, 'operator-tl');
       const receipt: ActionReceipt = {
         id: uuid(61), organizationId: testOrg.organizationId,
         campaignId: grant.campaignId, actionGrantId: grant.id, schemaVersion: 1,
@@ -419,9 +409,9 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
           JSON.stringify(grant), now.toISOString()],
       );
       await pool.query(
-        `insert into action_receipts(organization_id,id,action_grant_id,schema_version,platform,execution_mode,state,created_at)
-         values($1,$2,$3,1,'BLUESKY','DIRECT','PUBLISHED',$4)`,
-        [testOrg.organizationId, rid, grant.id, now.toISOString()],
+        `insert into action_receipts(organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,state,created_at)
+         values($1,$2,$3,$4,1,'BLUESKY','DIRECT','PUBLISHED',$5)`,
+        [testOrg.organizationId, rid, grant.campaignId, grant.id, now.toISOString()],
       );
       try {
         await pool.query(
@@ -452,14 +442,13 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       ).rejects.toThrow('Idempotency key was reused');
     });
 
-    it('lease recovery: stalled PROCESSING outbox returns to PENDING', async () => {
+    it('marks a stalled PROCESSING outbox UNKNOWN and never auto-retries it', async () => {
       const {grant, outbox} = makeGrant(91);
       await repo.createGrantWithOutbox(
         grant, outbox, `test-lease-recovery-${uuid(91)}`, sha256Digest({g: grant.id}),
       );
       // Claim to make it PROCESSING
-      const claimed = await repo.claimNextOutbox('operator-stuck');
-      expect(claimed).not.toBeUndefined();
+      const claimed = await claimExactOutbox(outbox.id, 'operator-stuck');
       expect(claimed!.outbox.state).toBe('PROCESSING');
 
       // Manually set locked_at to 10 min ago (exceeds 5 min lease TTL)
@@ -469,11 +458,28 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
           testOrg.organizationId, claimed!.outbox.id],
       );
 
-      // Next claimNextOutbox should recover the stalled record
-      const recovered = await repo.claimNextOutbox('operator-recovery');
-      expect(recovered).not.toBeUndefined();
-      expect(recovered!.outbox.id).toBe(claimed!.outbox.id);
-      expect(recovered!.outbox.state).toBe('PROCESSING'); // now claimed again
+      // Recovery records UNKNOWN and must not make the action claimable again.
+      const recovered = await withOtherPendingOutboxesLocked(
+        outbox.id,
+        () => repo.claimNextOutbox('operator-recovery'),
+      );
+      expect(recovered).toBeUndefined();
+      const persisted = await pool.query(
+        `select state, locked_by, locked_at from outbox
+         where organization_id=$1 and id=$2`,
+        [testOrg.organizationId, outbox.id],
+      );
+      expect(persisted.rows[0]).toMatchObject({state: 'FAILED', locked_by: null, locked_at: null});
+      const unknownReceipts = await pool.query(
+        `select state, unknown_reason from action_receipts
+         where organization_id=$1 and action_grant_id=$2`,
+        [testOrg.organizationId, grant.id],
+      );
+      expect(unknownReceipts.rows).toHaveLength(1);
+      expect(unknownReceipts.rows[0]).toMatchObject({
+        state: 'UNKNOWN',
+        unknown_reason: 'Operator lease expired after dispatch may have started; reconcile before any retry.',
+      });
     });
 
     it('handoff confirmation creates a new receipt with previousReceiptId chain', async () => {
@@ -482,7 +488,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         grant, outbox, `test-ho-chain-${uuid(92)}`, sha256Digest({g: grant.id}),
       );
       // Claim + complete with HANDOFF_PENDING
-      const claimed = await repo.claimNextOutbox('operator-ho');
+      const claimed = await claimExactOutbox(outbox.id, 'operator-ho');
       const pending: ActionReceipt = {
         id: uuid(93), organizationId: testOrg.organizationId,
         campaignId: grant.campaignId, actionGrantId: grant.id,

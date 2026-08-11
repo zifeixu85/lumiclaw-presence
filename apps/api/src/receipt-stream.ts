@@ -36,15 +36,19 @@ type SseClient = {
   organizationId: string;
   campaignId: string;
   reply: FastifyReply;
+  seenReceiptIds: Set<string>;
 };
 
 export class SseManager {
   readonly #bus: ReceiptEventBus;
   readonly #clients = new Set<SseClient>();
   #heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  #pollTimer: ReturnType<typeof setInterval> | null = null;
+  readonly #loadReceipts: ((organizationId: string, campaignId: string) => Promise<ActionReceipt[]>) | undefined;
 
-  constructor(bus: ReceiptEventBus) {
+  constructor(bus: ReceiptEventBus, loadReceipts?: (organizationId: string, campaignId: string) => Promise<ActionReceipt[]>) {
     this.#bus = bus;
+    this.#loadReceipts = loadReceipts;
     // Relay receipt events to matching SSE clients
     this.#bus.on('receipt:created', (receipt) => this.#onReceipt(receipt));
   }
@@ -54,7 +58,7 @@ export class SseManager {
   // -------------------------------------------------------------------
 
   subscribe(organizationId: string, campaignId: string, reply: FastifyReply): void {
-    const client: SseClient = {organizationId, campaignId, reply};
+    const client: SseClient = {organizationId, campaignId, reply, seenReceiptIds: new Set()};
     this.#clients.add(client);
 
     // Remove when client disconnects
@@ -65,6 +69,9 @@ export class SseManager {
     // Start heartbeat if this is the first client
     if (this.#heartbeatTimer === null) {
       this.#heartbeatTimer = setInterval(() => this.#heartbeat(), 15_000);
+    }
+    if (this.#loadReceipts !== undefined && this.#pollTimer === null) {
+      this.#pollTimer = setInterval(() => { void this.#pollDatabase(); }, 1_000);
     }
   }
 
@@ -87,10 +94,24 @@ export class SseManager {
       // Isolate by Organization + Campaign — no cross-tenant leakage.
       if (client.organizationId !== receipt.organizationId) continue;
       if (client.campaignId !== receipt.campaignId) continue;
+      if (client.seenReceiptIds.has(receipt.id)) continue;
+      client.seenReceiptIds.add(receipt.id);
       try {
         client.reply.raw.write(event);
       } catch {
         this.#clients.delete(client);
+      }
+    }
+  }
+
+  async #pollDatabase(): Promise<void> {
+    if (this.#loadReceipts === undefined) return;
+    for (const client of this.#clients) {
+      try {
+        const receipts = await this.#loadReceipts(client.organizationId, client.campaignId);
+        for (const receipt of receipts.reverse()) this.#onReceipt(receipt);
+      } catch {
+        // A transient database failure must not cross scopes or close clients.
       }
     }
   }
@@ -110,6 +131,10 @@ export class SseManager {
     if (this.#heartbeatTimer !== null) {
       clearInterval(this.#heartbeatTimer);
       this.#heartbeatTimer = null;
+    }
+    if (this.#pollTimer !== null) {
+      clearInterval(this.#pollTimer);
+      this.#pollTimer = null;
     }
     for (const client of this.#clients) {
       try { client.reply.raw.end(); } catch { /* best-effort */ }

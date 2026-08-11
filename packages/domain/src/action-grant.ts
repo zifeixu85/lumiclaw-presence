@@ -12,9 +12,10 @@ import {createUuidV7} from './id.js';
 import type {ChannelAccount, DomainId, Platform, ValidationIssue, ValidationResult} from './types.js';
 
 export type ExecutionMode = 'DIRECT' | 'NATIVE_HANDOFF';
-export type ActionGrantStatus = 'ISSUED' | 'CONSUMED' | 'EXPIRED' | 'REVOKED';
-export type ActionReceiptState = 'PUBLISHED' | 'HANDOFF_PENDING' | 'HANDOFF_CONFIRMED' | 'FAILED' | 'UNKNOWN';
+export type ActionGrantStatus = 'ISSUED' | 'EXECUTING' | 'CONSUMED' | 'EXPIRED' | 'REVOKED';
+export type ActionReceiptState = 'PUBLISHED' | 'HANDOFF_PENDING' | 'HANDOFF_CONFIRMED' | 'FAILED' | 'NOT_EXECUTED' | 'UNKNOWN';
 export type ReconciliationMethod = 'PLATFORM_QUERY' | 'OWNER_MANUAL';
+export type ReconciliationOutcome = 'PUBLISHED' | 'FAILED' | 'NOT_EXECUTED';
 export type OutboxState = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'CANCELLED' | 'DEAD_LETTER';
 
 /** Composite returned by {@link ActionRepository.claimNextOutbox}. */
@@ -29,8 +30,8 @@ export type OutboxClaim = {
  * An Owner's explicit decision to authorise an action on a specific platform
  * against a Campaign.  Every ActionGrant must be bound to one OwnerDecision.
  *
- * Persistence: the decision is materialised as the {@link ActionGrant.ownerDecisionId}
- * column.  A dedicated owner_decisions table is deferred to M3-07.
+ * Persistence: the decision is stored as an immutable owner_decisions row and
+ * referenced by {@link ActionGrant.ownerDecisionId} in the same transaction.
  */
 export type OwnerDecision = {
   id: DomainId;
@@ -170,6 +171,25 @@ function isValidExecutionMode(platform: Platform, mode: ExecutionMode): boolean 
   return VALID_EXECUTION_MODES[platform]?.has(mode) ?? false;
 }
 
+const HANDOFF_HOSTS: Record<Platform, readonly string[]> = {
+  BLUESKY: ['bsky.app'],
+  LINKEDIN: ['linkedin.com'],
+  XIAOHONGSHU: ['xiaohongshu.com', 'xhslink.com'],
+  X: ['x.com'],
+};
+
+/** Accept only an HTTPS public permalink on the platform being confirmed. */
+export function isValidPlatformHandoffUrl(platform: Platform, value: string): boolean {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:' || url.username !== '' || url.password !== '') return false;
+    const hostname = url.hostname.toLowerCase();
+    return HANDOFF_HOSTS[platform].some((host) => hostname === host || hostname.endsWith(`.${host}`));
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Validate an ActionGrant against its source Campaign.
  *
@@ -278,7 +298,6 @@ export function validateActionGrant(
     issues.push(issue('ACTION_GRANT_SCOPE_INVALID', '/activationUnitId',
       'Grant activation unit does not match artifact revision.'));
   }
-
   // --- activation unit existence ---
   const activationUnit = campaign.activationPlan.units.find(
     (u) => u.id === grant.activationUnitId,
@@ -542,7 +561,12 @@ export function createActionGrantFromDecision(
     privateKey !== undefined && publicKey !== undefined
       ? {...base, privateKey, publicKey, now}
       : {...base, now};
-  return createActionGrant(grantParams);
+  const created = createActionGrant(grantParams);
+  created.outbox.payload = {
+    ...(created.outbox.payload as {grant: ActionGrant; revision: ArtifactRevision}),
+    decision,
+  };
+  return created;
 }
 
 /**
@@ -628,6 +652,8 @@ export function createActionGrant(params: {
   if (revision === undefined) {
     throw new Error('Artifact revision not found in Campaign.');
   }
+  const capabilitySnapshot = campaign.capabilitySnapshots.find((item) => item.id === capabilitySnapshotId);
+  if (capabilitySnapshot === undefined) throw new Error('Capability snapshot not found in Campaign.');
 
   // Use provided key pair or reuse the cached demo key pair
   const keyPair: {publicKey: KeyObject; privateKey: KeyObject} =
@@ -673,7 +699,7 @@ export function createActionGrant(params: {
     aggregateType: 'ACTION_GRANT',
     aggregateId: grantId,
     schemaVersion: 1,
-    payload: {grant, revision},
+    payload: {grant, revision, capabilitySnapshot},
     state: 'PENDING',
     lockedBy: null,
     lockedAt: null,
@@ -704,6 +730,9 @@ export interface ActionRepository {
 
   /** Return the Organization's registered owner Ed25519 public key. */
   getOrganizationOwnerKey(organizationId: string): Promise<KeyObject | undefined>;
+
+  getGrant(organizationId: string, grantId: string): Promise<ActionGrant | undefined>;
+  getGrantsByCampaign(organizationId: string, campaignId: string): Promise<ActionGrant[]>;
 
   revokeGrant(
     organizationId: string,
@@ -750,6 +779,9 @@ export interface ActionRepository {
     organizationId: string,
     receiptId: string,
     method: ReconciliationMethod,
+    outcome: ReconciliationOutcome,
+    platformUri?: string,
+    platformCid?: string,
     notes?: string,
   ): Promise<ActionReceipt>;
 

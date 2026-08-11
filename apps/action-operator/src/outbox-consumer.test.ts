@@ -11,6 +11,7 @@ import {
 } from '@lumiclaw/domain';
 import {MemoryActionRepository} from '@lumiclaw/db';
 import {OutboxConsumer} from './outbox-consumer.js';
+import {connectorByPlatform} from './connectors.js';
 
 const now = new Date('2026-08-08T12:00:00.000Z');
 
@@ -206,11 +207,44 @@ describe('outbox consumer', () => {
   it('refuses to consume a revoked grant', async () => {
     const {grant, outbox, ownerPublicKey} = campaignAndGrant();
     await repo.createGrantWithOutbox(grant, outbox, 'test-revoke-consume', 'digest-rvc', ownerPublicKey);
+    let connectorCalls = 0;
+    const guardedConsumer = new OutboxConsumer(repo, 'revoked-no-side-effect', 60000, () => now, undefined, {
+      ...connectorByPlatform,
+      BLUESKY: {...connectorByPlatform.BLUESKY!, execute: async (...args) => { connectorCalls += 1; return connectorByPlatform.BLUESKY!.execute(...args); }},
+    });
     // Revoke the grant before the consumer picks it up
     await repo.revokeGrant(grant.organizationId, grant.id, 'Owner changed mind');
-    const receipt = await consumer.processOne();
+    const receipt = await guardedConsumer.processOne();
     // Consumer sees REVOKED status from the authoritative grant → failOutbox
     expect(receipt).toBeNull();
+    expect(connectorCalls).toBe(0);
+  });
+
+  it('fails closed before connector when CapabilitySnapshot scope is mismatched', async () => {
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    const payload = structuredClone(outbox.payload) as Record<string, unknown>;
+    payload.capabilitySnapshot = {...(payload.capabilitySnapshot as Record<string, unknown>), channelAccountId: '01900000-0000-7000-8000-000000000099'};
+    outbox.payload = payload;
+    await repo.createGrantWithOutbox(grant, outbox, 'test-capability-mismatch', 'digest-capability', ownerPublicKey);
+    let connectorCalls = 0;
+    const guardedConsumer = new OutboxConsumer(repo, 'capability-no-side-effect', 60000, () => now, undefined, {
+      ...connectorByPlatform,
+      BLUESKY: {...connectorByPlatform.BLUESKY!, execute: async (...args) => { connectorCalls += 1; return connectorByPlatform.BLUESKY!.execute(...args); }},
+    });
+    expect(await guardedConsumer.processOne()).toBeNull();
+    expect(connectorCalls).toBe(0);
+  });
+
+  it('reconciliation appends a terminal outcome without mutating UNKNOWN', async () => {
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await repo.createGrantWithOutbox(grant, outbox, 'test-reconcile-terminal', 'digest-reconcile', ownerPublicKey);
+    const claim = await repo.claimNextOutbox('reconcile-claim');
+    const failed = await repo.failOutbox(claim!.outbox.id, 'UNKNOWN: simulated crash after dispatch');
+    const reconciled = await repo.reconcileReceipt(grant.organizationId, failed.receipt.id, 'OWNER_MANUAL', 'NOT_EXECUTED', undefined, undefined, 'Owner verified no platform post exists');
+    expect(reconciled.id).not.toBe(failed.receipt.id);
+    expect(reconciled.previousReceiptId).toBe(failed.receipt.id);
+    expect(reconciled.state).toBe('NOT_EXECUTED');
+    expect((await repo.getReceipt(grant.organizationId, failed.receipt.id))!.state).toBe('UNKNOWN');
   });
 
   it('writes UNKNOWN receipt when connector returns {ok: false}', async () => {

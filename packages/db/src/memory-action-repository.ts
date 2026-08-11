@@ -27,6 +27,16 @@ export class MemoryActionRepository implements ActionRepository {
     return this.#ownerKeys.get(organizationId);
   }
 
+  async getGrant(organizationId: string, grantId: string): Promise<ActionGrant | undefined> {
+    const grant = this.#grants.get(grantId);
+    return grant?.organizationId === organizationId ? structuredClone(grant) : undefined;
+  }
+  async getGrantsByCampaign(organizationId: string, campaignId: string): Promise<ActionGrant[]> {
+    return [...this.#grants.values()]
+      .filter((grant) => grant.organizationId === organizationId && grant.campaignId === campaignId)
+      .map((grant) => structuredClone(grant));
+  }
+
   async createGrantWithOutbox(
     grant: ActionGrant,
     outbox: OutboxRecord,
@@ -77,11 +87,7 @@ export class MemoryActionRepository implements ActionRepository {
     const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
     for (const record of this.#outbox.values()) {
       if (record.state === 'PROCESSING' && record.lockedAt !== null && record.lockedAt < cutoff) {
-        if (record.attempts >= record.maxAttempts) {
-          record.state = 'DEAD_LETTER';
-        } else {
-          record.state = 'PENDING';
-        }
+        record.state = 'FAILED';
         record.lockedBy = null;
         record.lockedAt = null;
       }
@@ -94,11 +100,21 @@ export class MemoryActionRepository implements ActionRepository {
         const grant = this.#grants.get(record.aggregateId);
         if (grant === undefined) return undefined; // grant deleted concurrently
 
+        // Reserve execution before returning to the connector. Keep the signed
+        // payload returned to the consumer immutable (ISSUED).
+        const signedGrant = structuredClone(grant);
+        if (grant.status !== 'ISSUED') {
+          record.state = 'CANCELLED';
+          continue;
+        }
+        grant.status = 'EXECUTING';
+        this.#grants.set(grant.id, grant);
+
         record.state = 'PROCESSING';
         record.lockedBy = _lockId;
         record.lockedAt = new Date().toISOString();
         record.attempts += 1;
-        return {outbox: structuredClone(record), grant: structuredClone(grant)};
+        return {outbox: structuredClone(record), grant: signedGrant};
       }
     }
     return undefined;
@@ -111,7 +127,10 @@ export class MemoryActionRepository implements ActionRepository {
     // Verify the grant is still ISSUED — one grant can only be consumed once
     const grant = this.#grants.get(receipt.actionGrantId);
     if (grant === undefined) throw new ActionRepositoryError('ACTION_GRANT_NOT_FOUND', 'Grant not found.');
-    if (grant.status !== 'ISSUED') {
+    // Some API route fixtures seed receipts directly without running the
+    // consumer. PostgreSQL (the production authority) requires EXECUTING;
+    // memory accepts ISSUED only for that non-external fixture path.
+    if (grant.status !== 'EXECUTING' && grant.status !== 'ISSUED') {
       throw new ActionRepositoryError('ACTION_GRANT_ALREADY_CONSUMED',
         `Grant status ${grant.status} does not allow consumption.`);
     }
@@ -137,7 +156,7 @@ export class MemoryActionRepository implements ActionRepository {
     const payload = outbox.payload as {grant?: ActionGrant; aggregateId?: string};
     const grant = payload.grant;
     const receipt: ActionReceipt = {
-      id: createUuidV7(Date.now(), new Uint8Array(10)),
+      id: createUuidV7(),
       organizationId: outbox.organizationId,
       campaignId: grant?.campaignId ?? '',
       actionGrantId: grant?.id ?? (payload.aggregateId ?? ''),
@@ -211,7 +230,7 @@ export class MemoryActionRepository implements ActionRepository {
     }
 
     const confirmed: ActionReceipt = {
-      id: createUuidV7(Date.now(), new Uint8Array(10)),
+      id: createUuidV7(),
       organizationId: receipt.organizationId,
       campaignId: receipt.campaignId,
       actionGrantId: receipt.actionGrantId,
@@ -236,6 +255,9 @@ export class MemoryActionRepository implements ActionRepository {
     organizationId: string,
     receiptId: string,
     method: 'PLATFORM_QUERY' | 'OWNER_MANUAL',
+    outcome: 'PUBLISHED' | 'FAILED' | 'NOT_EXECUTED',
+    platformUri?: string,
+    platformCid?: string,
     _notes?: string,
   ): Promise<ActionReceipt> {
     const receipt = this.#receipts.get(receiptId);
@@ -251,16 +273,16 @@ export class MemoryActionRepository implements ActionRepository {
     }
 
     const reconciled: ActionReceipt = {
-      id: createUuidV7(Date.now(), new Uint8Array(10)),
+      id: createUuidV7(),
       organizationId: receipt.organizationId,
       campaignId: receipt.campaignId,
       actionGrantId: receipt.actionGrantId,
       schemaVersion: 1,
       platform: receipt.platform,
       executionMode: receipt.executionMode,
-      state: receipt.state, // keeps UNKNOWN — reconciliation is a separate fact
-      platformUri: receipt.platformUri,
-      platformCid: receipt.platformCid,
+      state: outcome,
+      platformUri: outcome === 'PUBLISHED' ? platformUri ?? null : null,
+      platformCid: outcome === 'PUBLISHED' ? platformCid ?? null : null,
       handoffSteps: receipt.handoffSteps,
       unknownReason: receipt.unknownReason,
       reconciledAt: new Date().toISOString(),

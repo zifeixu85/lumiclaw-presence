@@ -1,8 +1,10 @@
 import {
   ActionRepositoryError,
+  computeOwnerKeyId,
   createUuidV7,
   importEd25519PublicKey,
   type ActionGrant,
+  type OwnerDecision,
   type ActionReceipt,
   type ActionRepository,
   type OutboxClaim,
@@ -42,6 +44,22 @@ export class PostgresActionRepository implements ActionRepository {
     return importEd25519PublicKey(result.rows[0].owner_public_key as string);
   }
 
+  async getGrant(organizationId: string, grantId: string): Promise<ActionGrant | undefined> {
+    const result = await this.#pool.query(
+      `select status, payload from action_grants where organization_id=$1 and id=$2`,
+      [organizationId, grantId],
+    );
+    return result.rowCount === 0 ? undefined : {...result.rows[0].payload as ActionGrant, status: result.rows[0].status as ActionGrant['status']};
+  }
+
+  async getGrantsByCampaign(organizationId: string, campaignId: string): Promise<ActionGrant[]> {
+    const result = await this.#pool.query(
+      `select status, payload from action_grants where organization_id=$1 and campaign_id=$2 order by created_at desc`,
+      [organizationId, campaignId],
+    );
+    return result.rows.map((row) => ({...row.payload as ActionGrant, status: row.status as ActionGrant['status']}));
+  }
+
   // -----------------------------------------------------------------------
   // Write — API layer
   // -----------------------------------------------------------------------
@@ -63,6 +81,11 @@ export class PostgresActionRepository implements ActionRepository {
            where id = $1 and owner_public_key is null`,
           [grant.organizationId, ownerPublicKey],
         );
+        const registered = await client.query(`select owner_public_key from organizations where id=$1`, [grant.organizationId]);
+        const key = registered.rows[0]?.owner_public_key as string | null | undefined;
+        if (key === undefined || key === null || computeOwnerKeyId(importEd25519PublicKey(key)) !== grant.ownerKeyId) {
+          throw new ActionRepositoryError('OWNER_SIGNING_KEY_MISMATCH', 'Grant was not signed by the Organization registered owner key.');
+        }
       }
 
       // Idempotency guard
@@ -86,7 +109,27 @@ export class PostgresActionRepository implements ActionRepository {
         return {grant: body.grant, outbox: body.outbox, replayed: true};
       }
 
-      // Atomic insert: grant + outbox
+      const decision = (outbox.payload as {decision?: OwnerDecision}).decision;
+      if (decision === undefined || decision.id !== grant.ownerDecisionId ||
+          decision.organizationId !== grant.organizationId || decision.campaignId !== grant.campaignId ||
+          decision.platform !== grant.platform || decision.executionMode !== grant.executionMode ||
+          decision.scheduleOccurrenceId !== grant.scheduleOccurrenceId ||
+          decision.artifactRevisionId !== grant.artifactRevisionId ||
+          decision.activationUnitId !== grant.activationUnitId ||
+          decision.channelAccountId !== grant.channelAccountId ||
+          decision.capabilitySnapshotId !== grant.capabilitySnapshotId) {
+        throw new ActionRepositoryError('OWNER_DECISION_SCOPE_INVALID', 'OwnerDecision does not exactly authorize this ActionGrant.');
+      }
+      await client.query(
+        `insert into owner_decisions(organization_id,id,campaign_id,platform,execution_mode,schedule_occurrence_id,artifact_revision_id,activation_unit_id,channel_account_id,capability_snapshot_id,payload,decided_at)
+         values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        [decision.organizationId, decision.id, decision.campaignId, decision.platform,
+          decision.executionMode, decision.scheduleOccurrenceId, decision.artifactRevisionId,
+          decision.activationUnitId, decision.channelAccountId, decision.capabilitySnapshotId,
+          JSON.stringify(decision), decision.decidedAt],
+      );
+
+      // Atomic insert: decision + grant + outbox
       await client.query(
         `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_key_id,owner_decision_id,payload,created_at)
          values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
@@ -199,20 +242,21 @@ export class PostgresActionRepository implements ActionRepository {
       const leaseCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       // Stalled records within retry budget → back to PENDING
       await client.query(
-        `update outbox set state='PENDING', locked_by=NULL, locked_at=NULL
-         where state='PROCESSING'
-           and locked_at < $1
-           and attempts < max_attempts`,
+        `with stalled as (
+           update outbox set state='FAILED', locked_by=NULL, locked_at=NULL,
+             payload=payload || jsonb_build_object('failureReason','UNKNOWN: operator lease expired; reconciliation required')
+           where state='PROCESSING' and locked_at < $1
+           returning organization_id, aggregate_id, payload
+         )
+         insert into action_receipts(organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,state,unknown_reason,created_at,previous_receipt_id)
+         select organization_id, gen_random_uuid(), (payload->'grant'->>'campaignId')::uuid, aggregate_id, 1,
+                payload->'grant'->>'platform', payload->'grant'->>'executionMode', 'UNKNOWN',
+                'Operator lease expired after dispatch may have started; reconcile before any retry.', now(), null
+         from stalled`,
         [leaseCutoff],
       );
       // Stalled records that exhausted retries → DEAD_LETTER
-      await client.query(
-        `update outbox set state='DEAD_LETTER', locked_by=NULL, locked_at=NULL
-         where state='PROCESSING'
-           and locked_at < $1
-           and attempts >= max_attempts`,
-        [leaseCutoff],
-      );
+      // Stalled rows were moved to UNKNOWN above; they are never auto-retried.
 
       const row = await client.query(
         `select id, organization_id, aggregate_type, aggregate_id,
@@ -224,7 +268,10 @@ export class PostgresActionRepository implements ActionRepository {
          for update skip locked`,
       );
       if (row.rowCount === 0) {
-        await client.query('rollback');
+        // Lease-expiry recovery above is authoritative business state. Even
+        // when there is no new PENDING work, persist FAILED + UNKNOWN so a
+        // later poll cannot blindly retry an externally ambiguous action.
+        await client.query('commit');
         return undefined;
       }
       const r = row.rows[0]!;
@@ -243,6 +290,17 @@ export class PostgresActionRepository implements ActionRepository {
         return undefined; // grant deleted concurrently
       }
       const grant = grantRow.rows[0].payload as ActionGrant;
+
+      const reserved = await client.query(
+        `update action_grants set status='EXECUTING'
+         where organization_id=$1 and id=$2 and status='ISSUED' returning id`,
+        [orgId, aggregateId],
+      );
+      if (reserved.rowCount === 0) {
+        await client.query(`update outbox set state='CANCELLED', locked_by=NULL, locked_at=NULL where organization_id=$1 and id=$2`, [orgId, r.id]);
+        await client.query('commit');
+        return undefined;
+      }
 
       const now = new Date().toISOString();
       await client.query(
@@ -309,7 +367,7 @@ export class PostgresActionRepository implements ActionRepository {
         );
       }
       const grantStatus = grantRow.rows[0].status as string;
-      if (grantStatus !== 'ISSUED') {
+      if (grantStatus !== 'EXECUTING') {
         throw new ActionRepositoryError(
           'ACTION_GRANT_ALREADY_CONSUMED',
           `Grant status ${grantStatus} does not allow consumption.`,
@@ -361,7 +419,7 @@ export class PostgresActionRepository implements ActionRepository {
     try {
       await client.query('begin');
       const row = await client.query(
-        `select organization_id, payload, attempts, max_attempts from outbox where id=$1 for update`,
+        `select organization_id, payload, state, attempts, max_attempts from outbox where id=$1 for update`,
         [outboxId],
       );
       if (row.rowCount === 0) {
@@ -371,17 +429,23 @@ export class PostgresActionRepository implements ActionRepository {
         );
       }
       const orgId = row.rows[0].organization_id as string;
+      if (row.rows[0].state !== 'PROCESSING') {
+        throw new ActionRepositoryError('OUTBOX_NOT_PROCESSING', 'Only a claimed PROCESSING outbox can be failed.');
+      }
       const payload = row.rows[0].payload as Record<string, unknown>;
       const grant = (payload as {grant?: ActionGrant}).grant;
 
+      const maxAttempts = (row.rows[0].max_attempts as number) ?? 3;
+      const attempts = row.rows[0].attempts as number;
+      const terminalState: OutboxState = attempts >= maxAttempts ? 'DEAD_LETTER' : 'FAILED';
       await client.query(
-        `update outbox set state='FAILED', payload=$1
-         where organization_id=$2 and id=$3`,
-        [JSON.stringify({...payload, failureReason: reason}), orgId, outboxId],
+        `update outbox set state=$1, payload=$2, locked_by=NULL, locked_at=NULL
+         where organization_id=$3 and id=$4`,
+        [terminalState, JSON.stringify({...payload, failureReason: reason}), orgId, outboxId],
       );
 
       // Write an UNKNOWN receipt so the Owner can see the failure in the Timeline
-      const receiptId = createUuidV7(Date.now(), new Uint8Array(10));
+      const receiptId = createUuidV7();
       const receipt: ActionReceipt = {
         id: receiptId,
         organizationId: orgId,
@@ -408,7 +472,7 @@ export class PostgresActionRepository implements ActionRepository {
           receipt.organizationId, receipt.id, campaignId,
           receipt.actionGrantId,
           receipt.schemaVersion, receipt.platform, receipt.executionMode,
-          receipt.state, receipt.unknownReason, receipt.createdAt,
+          receipt.state, receipt.unknownReason, receipt.createdAt, receipt.previousReceiptId,
         ],
       );
 
@@ -416,10 +480,6 @@ export class PostgresActionRepository implements ActionRepository {
 
       // Determine terminal state from the authoritative row columns, not the
       // JSONB payload (which contains {grant, revision} without retry counters).
-      const maxAttempts = (row.rows[0].max_attempts as number) ?? 3;
-      const attempts = row.rows[0].attempts as number;
-      const terminalState: OutboxState = attempts >= maxAttempts ? 'DEAD_LETTER' : 'FAILED';
-
       const outbox: OutboxRecord = {
         id: outboxId,
         organizationId: orgId,
@@ -562,11 +622,11 @@ export class PostgresActionRepository implements ActionRepository {
       }
 
       // Append a new receipt — never mutate the original.
-      const newId = createUuidV7(Date.now(), new Uint8Array(10));
+      const newId = createUuidV7();
       const createdAt = new Date().toISOString();
       await client.query(
         `insert into action_receipts(organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,state,platform_uri,platform_cid,handoff_steps,created_at,previous_receipt_id)
-         values($1,$2,$3,$4,$5,$6,'HANDOFF_CONFIRMED',$7,$8,$9,$10,$11,$12)`,
+         values($1,$2,$3,$4,$5,$6,$7,'HANDOFF_CONFIRMED',$8,$9,$10,$11,$12)`,
         [
           organizationId, newId, current.campaignId,
           current.actionGrantId,
@@ -608,6 +668,9 @@ export class PostgresActionRepository implements ActionRepository {
     organizationId: string,
     receiptId: string,
     method: 'PLATFORM_QUERY' | 'OWNER_MANUAL',
+    outcome: 'PUBLISHED' | 'FAILED' | 'NOT_EXECUTED',
+    platformUri?: string,
+    platformCid?: string,
     _notes?: string,
   ): Promise<ActionReceipt> {
     const client = await this.#pool.connect();
@@ -644,7 +707,7 @@ export class PostgresActionRepository implements ActionRepository {
       }
 
       // Append a new receipt — reconciliation is a new fact, not a mutation.
-      const newId = createUuidV7(Date.now(), new Uint8Array(10));
+      const newId = createUuidV7();
       const createdAt = new Date().toISOString();
       await client.query(
         `insert into action_receipts(organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,state,platform_uri,platform_cid,handoff_steps,unknown_reason,reconciled_at,reconciliation_method,created_at,previous_receipt_id)
@@ -653,8 +716,9 @@ export class PostgresActionRepository implements ActionRepository {
           organizationId, newId, current.campaignId,
           current.actionGrantId,
           current.schemaVersion, current.platform, current.executionMode,
-          current.state,
-          current.platformUri, current.platformCid,
+          outcome,
+          outcome === 'PUBLISHED' ? platformUri ?? null : null,
+          outcome === 'PUBLISHED' ? platformCid ?? null : null,
           current.handoffSteps !== null ? JSON.stringify(current.handoffSteps) : null,
           current.unknownReason,
           createdAt, method, createdAt, receiptId,
@@ -665,6 +729,9 @@ export class PostgresActionRepository implements ActionRepository {
       return {
         ...current,
         id: newId,
+        state: outcome,
+        platformUri: outcome === 'PUBLISHED' ? platformUri ?? null : null,
+        platformCid: outcome === 'PUBLISHED' ? platformCid ?? null : null,
         reconciledAt: createdAt,
         reconciliationMethod: method,
         createdAt,
@@ -705,7 +772,6 @@ export class PostgresActionRepository implements ActionRepository {
     }
   }
 }
-
 // ---------------------------------------------------------------------------
 // Domain error
 // ---------------------------------------------------------------------------
@@ -730,4 +796,3 @@ function rowToReceipt(row: Record<string, unknown>): ActionReceipt {
     previousReceiptId: (row.previous_receipt_id as string) ?? null,
   };
 }
-

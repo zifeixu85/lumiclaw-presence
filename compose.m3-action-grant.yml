@@ -1,0 +1,11 @@
+services:
+  api:
+    secrets:
+      - lumiclaw_action_signer_private_key
+      - lumiclaw_action_signer_public_key
+
+secrets:
+  lumiclaw_action_signer_private_key:
+    file: ${LUMICLAW_ACTION_SIGNER_PRIVATE_KEY_FILE:?verifier-owned 0600 PKCS8 base64url file required}
+  lumiclaw_action_signer_public_key:
+    file: ${LUMICLAW_ACTION_SIGNER_PUBLIC_KEY_FILE:?matching SPKI base64url file required}

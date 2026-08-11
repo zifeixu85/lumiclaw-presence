@@ -7,14 +7,15 @@ const root = process.cwd();
 const evidenceRoot = path.join(root, '.evidence/sdd-002');
 const output = path.join(evidenceRoot, 'sbom.cdx.json');
 await mkdir(evidenceRoot, {recursive: true});
-execFileSync(path.join(root, 'node_modules/.bin/cyclonedx-npm'), ['--output-file', output, '--output-format', 'JSON'], {cwd: root, stdio: 'pipe'});
+const cyclonedx = path.join(root, 'node_modules/@cyclonedx/cyclonedx-npm/bin/cyclonedx-npm-cli.js');
+execFileSync(process.execPath, [cyclonedx, '--output-file', output, '--output-format', 'JSON'], {cwd: root, stdio: 'pipe'});
 
 const [lockText, inventoryText, sbomText] = await Promise.all([
   readFile(path.join(root, 'package-lock.json'), 'utf8'),
   readFile(path.join(evidenceRoot, 'license-inventory.json'), 'utf8'),
   readFile(output, 'utf8')
 ]);
-const sourceLockSha256 = createHash('sha256').update(lockText).digest('hex');
+const sourceLockSha256 = createHash('sha256').update(lockText.replace(/\r\n/g, '\n')).digest('hex');
 const inventory = JSON.parse(inventoryText);
 if (inventory.status !== 'PASS' || inventory.sourceLockSha256 !== sourceLockSha256 || inventory.packageCount !== inventory.packages?.length) throw new Error('SBOM_INVENTORY_PROVENANCE_INVALID');
 const sbom = JSON.parse(sbomText);

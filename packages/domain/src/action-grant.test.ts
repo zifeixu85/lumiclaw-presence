@@ -6,6 +6,7 @@ import {
   digestActionGrant,
   isGrantConsumable,
   isGrantConsumed,
+  isValidPlatformHandoffUrl,
   validateActionGrant,
 } from './action-grant.js';
 import {createDemoCampaignDocument} from './campaign-fixture.js';
@@ -31,6 +32,12 @@ function demoGrantWithOrgKey(
 }
 
 describe('action grant contracts v1', () => {
+  it('rejects wrong-platform, credential-bearing, and non-HTTPS handoff URLs', () => {
+    expect(isValidPlatformHandoffUrl('LINKEDIN', 'https://www.linkedin.com/feed/update/urn:li:activity:1')).toBe(true);
+    expect(isValidPlatformHandoffUrl('LINKEDIN', 'https://x.com/not-linkedin')).toBe(false);
+    expect(isValidPlatformHandoffUrl('LINKEDIN', 'http://www.linkedin.com/feed/update/1')).toBe(false);
+    expect(isValidPlatformHandoffUrl('LINKEDIN', 'https://user:pass@www.linkedin.com/feed/update/1')).toBe(false);
+  });
   // -----------------------------------------------------------------------
   // Positive cases
   // -----------------------------------------------------------------------

@@ -57,6 +57,14 @@ describe('receipt SSE + reconciliation', () => {
       });
       expect(res.statusCode).toBe(404);
     });
+
+    it('rejects cross-Organization SSE subscription', async () => {
+      const res = await app.inject({
+        method: 'GET', url: `/api/v1/campaigns/${campaign.id}/receipts/stream`,
+        headers: {'x-lumiclaw-organization-id': '01900000-0000-7000-8000-000000000099'},
+      });
+      expect(res.statusCode).toBe(404);
+    });
   });
 
   // -----------------------------------------------------------------------
@@ -68,7 +76,7 @@ describe('receipt SSE + reconciliation', () => {
       const res = await app.inject({
         method: 'POST', url: `/api/v1/campaigns/${campaign.id}/receipts/00000000-0000-0000-0000-000000000099/reconcile`,
         headers: {'content-type': 'application/json', ...h()},
-        body: {method: 'OWNER_MANUAL', notes: 'test'},
+        body: {method: 'OWNER_MANUAL', outcome: 'NOT_EXECUTED', notes: 'test'},
       });
       expect(res.statusCode).toBe(404);
     });

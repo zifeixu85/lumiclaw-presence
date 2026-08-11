@@ -7,11 +7,11 @@ import {
   type ActionReceipt,
   type ActionRepository,
   type ArtifactRevision,
+  type CapabilitySnapshot,
+  type OwnerDecision,
   type OutboxRecord,
 } from '@lumiclaw/domain';
-import {connectorByPlatform} from './connectors.js';
-
-const entropy = new Uint8Array(10);
+import {connectorByPlatform, type PublishConnector} from './connectors.js';
 
 export class OutboxConsumer {
   readonly #repo: ActionRepository;
@@ -19,6 +19,7 @@ export class OutboxConsumer {
   readonly #pollMs: number;
   readonly #now: () => Date;
   readonly #onReceipt: ((receipt: ActionReceipt) => void) | undefined;
+  readonly #connectors: typeof connectorByPlatform;
   #timer: ReturnType<typeof setInterval> | null = null;
   #running = false;
 
@@ -30,12 +31,14 @@ export class OutboxConsumer {
     /** Optional callback invoked after every successful receipt creation
      *  so the caller can fan-out via SSE or other channels. */
     onReceipt?: (receipt: ActionReceipt) => void,
+    connectors: typeof connectorByPlatform = connectorByPlatform,
   ) {
     this.#repo = repo;
     this.#lockId = lockId;
     this.#pollMs = pollIntervalMs;
     this.#now = now;
     this.#onReceipt = onReceipt;
+    this.#connectors = connectors;
   }
 
   // -------------------------------------------------------------------
@@ -79,6 +82,8 @@ export class OutboxConsumer {
     const payload = record.payload as {
       grant: ActionGrant;
       revision: ArtifactRevision;
+      decision?: OwnerDecision;
+      capabilitySnapshot?: CapabilitySnapshot;
     };
     const artifact = payload.revision;
 
@@ -110,8 +115,32 @@ export class OutboxConsumer {
       return null;
     }
 
+    const decision = payload.decision;
+    if (decision === undefined || decision.id !== grant.ownerDecisionId ||
+        decision.organizationId !== grant.organizationId || decision.campaignId !== grant.campaignId ||
+        decision.platform !== grant.platform || decision.executionMode !== grant.executionMode ||
+        decision.channelAccountId !== grant.channelAccountId ||
+        decision.capabilitySnapshotId !== grant.capabilitySnapshotId ||
+        decision.artifactRevisionId !== grant.artifactRevisionId ||
+        decision.activationUnitId !== grant.activationUnitId ||
+        decision.scheduleOccurrenceId !== grant.scheduleOccurrenceId) {
+      await this.#repo.failOutbox(record.id, 'OwnerDecision scope mismatch.');
+      return null;
+    }
+    const capability = payload.capabilitySnapshot;
+    const capabilityMode = grant.executionMode === 'DIRECT'
+      ? 'DIRECT_PLANNED_NOT_CONNECTED'
+      : 'NATIVE_HANDOFF_PLANNED';
+    if (capability === undefined || capability.id !== grant.capabilitySnapshotId ||
+        capability.organizationId !== grant.organizationId || capability.platform !== grant.platform ||
+        capability.channelAccountId !== grant.channelAccountId || capability.executionMode !== capabilityMode ||
+        !Number.isFinite(Date.parse(capability.expiresAt)) || Date.parse(capability.expiresAt) <= n.getTime()) {
+      await this.#repo.failOutbox(record.id, 'CapabilitySnapshot scope, mode, or validity mismatch.');
+      return null;
+    }
+
     // --- dispatch to connector ---
-    const connector = connectorByPlatform[grant.platform];
+    const connector: PublishConnector | undefined = this.#connectors[grant.platform];
     if (connector === undefined) {
       await this.#repo.failOutbox(record.id,
         `No connector available for platform ${grant.platform}.`);
@@ -130,7 +159,7 @@ export class OutboxConsumer {
     // --- write receipt ---
     if (result.ok) {
       const receipt: ActionReceipt = {
-        id: createUuidV7(n.getTime(), entropy),
+        id: createUuidV7(n.getTime()),
         organizationId: grant.organizationId,
         campaignId: grant.campaignId,
         actionGrantId: grant.id,

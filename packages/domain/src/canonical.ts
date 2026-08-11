@@ -1,4 +1,4 @@
-import {createHash, createPublicKey, generateKeyPairSync, sign, verify, type KeyObject} from 'node:crypto';
+import {createHash, createPrivateKey, createPublicKey, generateKeyPairSync, sign, verify, type KeyObject} from 'node:crypto';
 
 export type JsonValue = null | boolean | number | string | JsonValue[] | {[key: string]: JsonValue};
 
@@ -55,6 +55,16 @@ export function importEd25519PublicKey(encoded: string): KeyObject {
     format: 'der',
     type: 'spki',
   });
+}
+
+/** Export/import helpers for server-side secret-file configuration. Private
+ * material must never be persisted in business tables, logs, or evidence. */
+export function exportEd25519PrivateKey(privateKey: KeyObject): string {
+  return privateKey.export({type: 'pkcs8', format: 'der'}).toString('base64url');
+}
+
+export function importEd25519PrivateKey(encoded: string): KeyObject {
+  return createPrivateKey({key: Buffer.from(encoded, 'base64url'), format: 'der', type: 'pkcs8'});
 }
 
 /**

@@ -108,6 +108,13 @@ try {
   catch { reuseRejected = true; }
   checks.idempotencyReuseRejected = reuseRejected;
 
+  const {grant: distinctGrant, outbox: distinctOutbox, ownerPublicKey: distinctKey} = createDemoActionGrant(campaign, {platform: 'BLUESKY', executionMode: 'DIRECT', now: new Date(now.getTime() + 1)});
+  const distinct = await actionRepo.createGrantWithOutbox(distinctGrant, distinctOutbox, `distinct-${Date.now()}`, sha256Digest({g: distinctGrant.id}), distinctKey);
+  checks.distinctGrantIds = distinct.grant.id !== r1.grant.id;
+  checks.distinctOutboxIds = distinct.outbox.id !== r1.outbox.id;
+  checks.distinctDecisionIds = distinct.grant.ownerDecisionId !== r1.grant.ownerDecisionId;
+  await actionRepo.revokeGrant(orgId, distinct.grant.id, 'Distinct-ID verification complete');
+
   // -------------------------------------------------------------------
   // Phase 3 — Revocation
   // -------------------------------------------------------------------
@@ -129,12 +136,13 @@ try {
   await actionRepo.createGrantWithOutbox(g2, o2, `consume-${Date.now()}`, sha256Digest({g: g2.id}), pk2);
 
   const claimed = await actionRepo.claimNextOutbox('verify-op');
-  checks.claimed = claimed !== undefined && claimed.state === 'PROCESSING';
-  checks.claimedLockedBy = claimed?.lockedBy === 'verify-op';
+  checks.claimed = claimed !== undefined && claimed.outbox.state === 'PROCESSING';
+  checks.claimedLockedBy = claimed?.outbox.lockedBy === 'verify-op';
 
   const receipt: ActionReceipt = {
     id: '01908900-0000-7000-8000-00000000cc01',
     organizationId: orgId,
+    campaignId,
     actionGrantId: g2.id,
     schemaVersion: 1,
     platform: 'BLUESKY',
@@ -146,7 +154,7 @@ try {
     reconciledAt: null, reconciliationMethod: null,
     createdAt: now.toISOString(),
   };
-  const saved = await actionRepo.completeOutbox(claimed!.id, receipt);
+  const saved = await actionRepo.completeOutbox(claimed!.outbox.id, receipt);
   checks.receiptCreated = saved.state === 'PUBLISHED';
   checks.receiptUri = saved.platformUri!.includes('bsky.app');
 
@@ -181,7 +189,7 @@ try {
 
   const ct = await actionRepo.claimNextOutbox('verify-op');
   checks.tamperedClaimable = ct !== undefined;
-  const ft = await actionRepo.failOutbox(ct!.id, 'Digest mismatch (integration test)');
+  const ft = await actionRepo.failOutbox(ct!.outbox.id, 'Digest mismatch (integration test)');
   checks.failOutbox = ft.outbox.state === 'FAILED';
   checks.unknownReceiptWritten = ft.receipt.state === 'UNKNOWN';
 

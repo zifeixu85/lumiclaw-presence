@@ -6,6 +6,9 @@ import {
   createOwnerDecision,
   createDemoCampaignDocument,
   isUuidV7,
+  isValidPlatformHandoffUrl,
+  importEd25519PrivateKey,
+  importEd25519PublicKey,
   ScheduleContractError,
   sha256Digest,
   type ActionRepository,
@@ -46,7 +49,8 @@ import {
   type ShadowMissionRepository
 } from '@lumiclaw/governed-shadow';
 import {MemoryActionRepository, PostgresActionRepository, PostgresCampaignRepository} from '@lumiclaw/db';
-import {timingSafeEqual} from 'node:crypto';
+import {timingSafeEqual, type KeyObject} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import Fastify, {type FastifyInstance, type FastifyReply, type FastifyRequest} from 'fastify';
 import {MemoryCampaignRepository} from './memory-campaign-repository.js';
 import {ReceiptEventBus, SseManager} from './receipt-stream.js';
@@ -54,7 +58,7 @@ import {liveTaskActionPhaseAllowed} from './live-ticket-policy.js';
 import {openApiDocument} from './openapi.js';
 import {LiveRuntimeTicketStore, LiveTicketError, readComposeSecret, type LiveTicketAction, type LiveTicketBinding} from './live-runtime-security.js';
 
-type BuildOptions = {repository?: CampaignRepository; actionRepository?: ActionRepository; shadowRepository?: ShadowMissionRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
+type BuildOptions = {repository?: CampaignRepository; actionRepository?: ActionRepository; shadowRepository?: ShadowMissionRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; actionGrantSigner?: {privateKey: KeyObject; publicKey: KeyObject} | undefined; requirePersistentActionSigner?: boolean | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
 type CampaignParams = {campaignId: string};
 type MissionParams = {missionId: string};
 type RuntimeEventBody =
@@ -73,12 +77,13 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   const actionRepository = options.actionRepository ?? new MemoryActionRepository();
   const shadowRepository = options.shadowRepository ?? new MemoryShadowMissionRepository();
   const receiptBus = new ReceiptEventBus();
-  const sseManager = new SseManager(receiptBus);
+  const sseManager = new SseManager(receiptBus, (organizationId, campaignId) =>
+    actionRepository.getReceiptsByCampaign(organizationId, campaignId));
   const runtimeImportToken = options.runtimeImportToken;
   const ticketStore = new LiveRuntimeTicketStore(options.runtimeBootstrapSecret, () => now().getTime());
   const deepseekApiKey = options.deepseekApiKey;
   const liveModelProviderFactory = options.liveModelProviderFactory ?? ((apiKey: string) => new DeepSeekModelProvider({apiKey, executionClass: 'CANARY'}));
-  app.addHook('onClose', async () => { await repository.close(); await shadowRepository.close(); });
+  app.addHook('onClose', async () => { sseManager.close(); await repository.close(); await shadowRepository.close(); });
 
   app.get('/health', async (_request, reply) => {
     try {
@@ -162,11 +167,8 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   app.get<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/action-grants', async (request, reply) => {
     const organizationId = requireOrganization(request, reply);
     if (organizationId === undefined) return;
-    const receipts = await actionRepository.getReceiptsByCampaign(organizationId, request.params.campaignId);
-    // Collect grant IDs from receipts and fetch grants
-    const grantIds = new Set(receipts.map((r) => r.actionGrantId));
-    // For now return receipts as proxy for grant list (grants are tracked through receipts)
-    return {code: 'ACTION_GRANT_LIST', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, receipts};
+    const grants = await actionRepository.getGrantsByCampaign(organizationId, request.params.campaignId);
+    return {code: 'ACTION_GRANT_LIST', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, grants};
   });
 
   app.post<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/action-grants', async (request, reply) => {
@@ -180,6 +182,9 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (envelope.etag !== ifMatch) return reply.status(412).header('ETag', envelope.etag).send(errorBody('CAMPAIGN_VERSION_CONFLICT'));
     if (envelope.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: envelope.digest, version: envelope.version, gapCodes: envelope.gapCodes});
     if (!isCreateActionGrantBody(request.body)) return reply.status(422).send(errorBody('ACTION_GRANT_BODY_INVALID'));
+    if (options.requirePersistentActionSigner === true && options.actionGrantSigner === undefined) {
+      return reply.status(503).send(errorBody('ACTION_GRANT_SIGNER_UNAVAILABLE'));
+    }
     try {
       const {platform, executionMode, scheduleOccurrenceId, artifactRevisionId, activationUnitId} = request.body;
 
@@ -195,9 +200,10 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
         now: now(),
       });
 
-      const {grant, outbox, ownerPublicKey} = createActionGrantFromDecision(
-        decision, envelope.document, {now: now()},
-      );
+      const signer = options.actionGrantSigner;
+      const {grant, outbox, ownerPublicKey} = signer === undefined
+        ? createActionGrantFromDecision(decision, envelope.document, {now: now()})
+        : createActionGrantFromDecision(decision, envelope.document, {now: now(), privateKey: signer.privateKey, publicKey: signer.publicKey});
       // Bind idempotency digest to the stable input parameters (not random
       // grant IDs) so replays with the same key + same Campaign revision
       // produce the matching digest.  Also binds the Campaign revision so
@@ -226,8 +232,9 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     const envelope = await repository.get(organizationId, request.params.campaignId);
     if (envelope === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
     try {
+      const existing = await actionRepository.getGrant(organizationId, request.params.grantId);
+      if (existing === undefined || existing.campaignId !== request.params.campaignId) return reply.status(404).send(errorBody('ACTION_GRANT_NOT_FOUND'));
       const grant = await actionRepository.revokeGrant(organizationId, request.params.grantId, 'Owner requested revocation');
-      if (grant.campaignId !== request.params.campaignId) return reply.status(404).send(errorBody('ACTION_GRANT_NOT_FOUND'));
       return {code: 'ACTION_GRANT_REVOKED', mode: 'DEMO_SEED', live: false, grant};
     } catch (error) {
       if (error instanceof ActionRepositoryError && error.code === 'ACTION_GRANT_NOT_FOUND') return reply.status(404).send(errorBody('ACTION_GRANT_NOT_FOUND'));
@@ -249,6 +256,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (organizationId === undefined) return;
     const receipt = await actionRepository.getReceipt(organizationId, request.params.receiptId);
     if (receipt === undefined) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    if (receipt.campaignId !== request.params.campaignId) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
     return {code: 'RECEIPT_DETAIL', mode: 'DEMO_SEED', live: false, receipt};
   });
 
@@ -285,6 +293,10 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     // Verify receipt belongs to the campaign
     const grants = await actionRepository.getReceiptsByCampaign(organizationId, request.params.campaignId);
     if (!grants.some((r) => r.id === request.params.receiptId)) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    if (receipt.state !== 'HANDOFF_PENDING') return reply.status(409).send(errorBody('HANDOFF_NOT_PENDING'));
+    if (!isValidPlatformHandoffUrl(receipt.platform, request.body.platformUri)) {
+      return reply.status(422).send(errorBody('HANDOFF_URL_INVALID'));
+    }
     try {
       const confirmed = await actionRepository.confirmHandoff(
         organizationId, request.params.receiptId,
@@ -301,7 +313,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   // --- Reconciliation ---
 
   type ReconcileParams = CampaignParams & {receiptId: string};
-  type ReconcileBody = {method: 'PLATFORM_QUERY' | 'OWNER_MANUAL'; notes?: string};
+  type ReconcileBody = {method: 'PLATFORM_QUERY' | 'OWNER_MANUAL'; outcome: 'PUBLISHED' | 'FAILED' | 'NOT_EXECUTED'; platformUri?: string; platformCid?: string; notes?: string};
 
   app.post<{Params: ReconcileParams; Body: ReconcileBody}>('/api/v1/campaigns/:campaignId/receipts/:receiptId/reconcile', async (request, reply) => {
     const organizationId = requireOrganization(request, reply);
@@ -309,11 +321,13 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (!isReconcileBody(request.body)) return reply.status(422).send(errorBody('RECONCILE_BODY_INVALID'));
     const receipt = await actionRepository.getReceipt(organizationId, request.params.receiptId);
     if (receipt === undefined) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    if (receipt.campaignId !== request.params.campaignId) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
     // Verify receipt belongs to the campaign
     const grants = await actionRepository.getReceiptsByCampaign(organizationId, request.params.campaignId);
     if (!grants.some((r) => r.id === request.params.receiptId)) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    if (request.body.outcome === 'PUBLISHED' && (request.body.platformUri === undefined || !isValidPlatformHandoffUrl(receipt.platform, request.body.platformUri))) return reply.status(422).send(errorBody('RECONCILIATION_URL_INVALID'));
     try {
-      const reconciled = await actionRepository.reconcileReceipt(organizationId, request.params.receiptId, request.body.method, request.body.notes);
+      const reconciled = await actionRepository.reconcileReceipt(organizationId, request.params.receiptId, request.body.method, request.body.outcome, request.body.platformUri, request.body.platformCid, request.body.notes);
       receiptBus.emit('receipt:reconciled', reconciled);
       return {code: 'RECEIPT_RECONCILED', mode: 'DEMO_SEED', live: false, receipt: reconciled};
     } catch (error) {
@@ -593,7 +607,7 @@ function isLiveTicketBody(value: unknown): value is LiveTicketBody {
 
 function isLiveModelBody(value: unknown): value is LiveModelBody { return isRecord(value) && Object.keys(value).sort().join(',') === 'attempt,inputProjectionDigest,roleId,taskId' && typeof value.taskId === 'string' && isRoleId(value.roleId) && Number.isSafeInteger(value.attempt) && isDigest(value.inputProjectionDigest); }
 function isLiveFailureBody(value: unknown): value is {code: string; failedTaskId: string | null; retryable: boolean} { return isRecord(value) && Object.keys(value).sort().join(',') === 'code,failedTaskId,retryable' && typeof value.code === 'string' && value.code.length > 0 && value.code.length <= 80 && (value.failedTaskId === null || typeof value.failedTaskId === 'string') && typeof value.retryable === 'boolean'; }
-function isReconcileBody(value: unknown): value is {method: 'PLATFORM_QUERY' | 'OWNER_MANUAL'; notes?: string} { return isRecord(value) && ['PLATFORM_QUERY', 'OWNER_MANUAL'].includes(String(value.method)) && (value.notes === undefined || typeof value.notes === 'string'); }
+function isReconcileBody(value: unknown): value is {method: 'PLATFORM_QUERY' | 'OWNER_MANUAL'; outcome: 'PUBLISHED' | 'FAILED' | 'NOT_EXECUTED'; platformUri?: string; platformCid?: string; notes?: string} { return isRecord(value) && ['PLATFORM_QUERY', 'OWNER_MANUAL'].includes(String(value.method)) && ['PUBLISHED', 'FAILED', 'NOT_EXECUTED'].includes(String(value.outcome)) && (value.platformUri === undefined || typeof value.platformUri === 'string') && (value.platformCid === undefined || typeof value.platformCid === 'string') && (value.notes === undefined || typeof value.notes === 'string'); }
 
 function isConfirmHandoffBody(value: unknown): value is {platformUri: string; platformCid?: string} {
   return isRecord(value) && typeof value.platformUri === 'string' && value.platformUri.length > 0
@@ -719,9 +733,20 @@ function parseSchedulePreviewBody(value: unknown): SchedulePreviewBody {
 async function start(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
   if (connectionString === undefined) throw new Error('DATABASE_URL is required.');
-  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), actionRepository: new PostgresActionRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
+  const privateKey = readOptionalSecret('/run/secrets/lumiclaw_action_signer_private_key');
+  const publicKey = readOptionalSecret('/run/secrets/lumiclaw_action_signer_public_key');
+  if ((privateKey === undefined) !== (publicKey === undefined)) throw new Error('Both ActionGrant signer key files are required.');
+  const actionGrantSigner = privateKey !== undefined && publicKey !== undefined
+    ? {privateKey: importEd25519PrivateKey(privateKey), publicKey: importEd25519PublicKey(publicKey)}
+    : undefined;
+  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), actionRepository: new PostgresActionRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap'), actionGrantSigner, requirePersistentActionSigner: true});
   const port = Number.parseInt(process.env.PORT ?? '4000', 10);
   await app.listen({host: '0.0.0.0', port});
+}
+
+function readOptionalSecret(path: string): string | undefined {
+  try { const value = readFileSync(path, 'utf8').trim(); return value.length === 0 ? undefined : value; }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined; throw error; }
 }
 
 if (process.argv[1]?.endsWith('/server.js')) {
