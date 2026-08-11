@@ -45,7 +45,7 @@ import {
   type TaskContract,
   type ShadowMissionRepository
 } from '@lumiclaw/governed-shadow';
-import {MemoryActionRepository, PostgresCampaignRepository} from '@lumiclaw/db';
+import {MemoryActionRepository, PostgresActionRepository, PostgresCampaignRepository} from '@lumiclaw/db';
 import {timingSafeEqual} from 'node:crypto';
 import Fastify, {type FastifyInstance, type FastifyReply, type FastifyRequest} from 'fastify';
 import {MemoryCampaignRepository} from './memory-campaign-repository.js';
@@ -719,7 +719,7 @@ function parseSchedulePreviewBody(value: unknown): SchedulePreviewBody {
 async function start(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
   if (connectionString === undefined) throw new Error('DATABASE_URL is required.');
-  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
+  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), actionRepository: new PostgresActionRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
   const port = Number.parseInt(process.env.PORT ?? '4000', 10);
   await app.listen({host: '0.0.0.0', port});
 }

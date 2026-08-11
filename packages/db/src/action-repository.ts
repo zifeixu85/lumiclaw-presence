@@ -361,7 +361,7 @@ export class PostgresActionRepository implements ActionRepository {
     try {
       await client.query('begin');
       const row = await client.query(
-        `select organization_id, payload from outbox where id=$1 for update`,
+        `select organization_id, payload, attempts, max_attempts from outbox where id=$1 for update`,
         [outboxId],
       );
       if (row.rowCount === 0) {
@@ -414,9 +414,10 @@ export class PostgresActionRepository implements ActionRepository {
 
       await client.query('commit');
 
-      // Determine terminal state based on retry budget
-      const maxAttempts = (payload as {maxAttempts?: number}).maxAttempts ?? 3;
-      const attempts = (payload as {attempts?: number}).attempts ?? 0;
+      // Determine terminal state from the authoritative row columns, not the
+      // JSONB payload (which contains {grant, revision} without retry counters).
+      const maxAttempts = (row.rows[0].max_attempts as number) ?? 3;
+      const attempts = row.rows[0].attempts as number;
       const terminalState: OutboxState = attempts >= maxAttempts ? 'DEAD_LETTER' : 'FAILED';
 
       const outbox: OutboxRecord = {
