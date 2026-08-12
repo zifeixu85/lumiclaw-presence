@@ -10,9 +10,9 @@ import {Pool} from 'pg';
 import {mkdir, writeFile} from 'node:fs/promises';
 
 const connectionString = process.env.DATABASE_URL;
-if (connectionString === undefined) {
-  throw new Error('DATABASE_URL is required. e.g. postgres://postgres@localhost:5432/lumiclaw');
-}
+const operatorConnectionString = process.env.OPERATOR_DATABASE_URL;
+const adminConnectionString = process.env.ADMIN_DATABASE_URL;
+if (connectionString === undefined || operatorConnectionString === undefined || adminConnectionString === undefined) throw new Error('DATABASE_URL, OPERATOR_DATABASE_URL, and ADMIN_DATABASE_URL are required; no repository fallback is allowed.');
 
 const now = new Date('2026-08-08T12:00:00.000Z');
 const template = createDemoCampaignDocument();
@@ -24,9 +24,10 @@ const schedId = '01908900-0000-7000-8000-00000000aa01';
 const checks: Record<string, unknown> = {};
 
 const actionRepo = new PostgresActionRepository(connectionString);
-const pool = new Pool({connectionString, max: 2});
+const operatorRepo = new PostgresActionRepository(operatorConnectionString);
+const pool = new Pool({connectionString: adminConnectionString, max: 2});
 
-function uid(): string { return createUuidV7(Date.now(), new Uint8Array(10)); }
+function uid(): string { return createUuidV7(); }
 
 function makeCampaign() {
   const c = structuredClone(template);
@@ -65,6 +66,24 @@ try {
      values($1,$2,1,$3,$4,'SAVED','[]'::jsonb,$5,$6,$6) on conflict do nothing`,
     [orgId, campaignId, '0'.repeat(64), '"verify-m3-etag"', JSON.stringify({id: campaignId}), now.toISOString()],
   );
+  const blueskyCapability = template.capabilitySnapshots.find((item) => item.platform === 'BLUESKY')!;
+  const blueskyAccount = template.graph.channelAccounts.find((item) => item.id === blueskyCapability.channelAccountId)!;
+  await pool.query(
+    `insert into identities(organization_id,id,schema_version,kind,display_name,public_bio)
+     values($1,$2,1,'PRODUCT','M3 verifier identity','Synthetic verifier identity') on conflict do nothing`,
+    [orgId, blueskyAccount.identityId],
+  );
+  await pool.query(
+    `insert into channel_accounts(organization_id,id,schema_version,identity_id,platform,display_handle,connection_state)
+     values($1,$2,1,$3,'BLUESKY',$4,'NOT_CONNECTED') on conflict do nothing`,
+    [orgId, blueskyAccount.id, blueskyAccount.identityId, blueskyAccount.displayHandle],
+  );
+  await pool.query(
+    `insert into capability_snapshots(organization_id,id,campaign_id,channel_account_id,platform,captured_at,expires_at,payload)
+     values($1,$2,$3,$4,'BLUESKY',$5,$6,$7) on conflict do nothing`,
+    [orgId, blueskyCapability.id, campaignId, blueskyAccount.id,
+      blueskyCapability.capturedAt, blueskyCapability.expiresAt, JSON.stringify(blueskyCapability)],
+  );
   await pool.query(
     `insert into publishing_schedules(organization_id, id, campaign_id, version, kind, time_zone, local_start, status, payload, created_at, updated_at)
      values($1,$2,$3,1,'ONCE','Asia/Shanghai',$4,'ACTIVE',$5,$6,$6) on conflict do nothing`,
@@ -79,7 +98,8 @@ try {
     `insert into artifact_revisions(organization_id, id, campaign_id, activation_unit_id, platform, revision, digest, payload, created_at)
      values($1,$2,$3,$4,'BLUESKY',1,$5,$6,$7) on conflict do nothing`,
     [orgId, artId, campaignId, '01908900-0000-7000-8000-00000000bb99',
-      '0'.repeat(64), JSON.stringify({id: artId, platform: 'BLUESKY'}), now.toISOString()],
+      sha256Digest({...template.artifactRevisions.find((item) => item.platform === 'BLUESKY')!, id: artId}),
+      JSON.stringify({...template.artifactRevisions.find((item) => item.platform === 'BLUESKY')!, id: artId}), now.toISOString()],
   );
   checks.seedComplete = true;
   checks.health = await actionRepo.health();
@@ -135,7 +155,7 @@ try {
   g2.id = uid(); o2.id = uid(); o2.aggregateId = g2.id;
   await actionRepo.createGrantWithOutbox(g2, o2, `consume-${Date.now()}`, sha256Digest({g: g2.id}), pk2);
 
-  const claimed = await actionRepo.claimNextOutbox('verify-op');
+  const claimed = await operatorRepo.claimNextOutbox('verify-op');
   checks.claimed = claimed !== undefined && claimed.outbox.state === 'PROCESSING';
   checks.claimedLockedBy = claimed?.outbox.lockedBy === 'verify-op';
 
@@ -154,7 +174,7 @@ try {
     reconciledAt: null, reconciliationMethod: null,
     createdAt: now.toISOString(),
   };
-  const saved = await actionRepo.completeOutbox(claimed!.outbox.id, receipt);
+  const saved = await operatorRepo.completeOutbox(claimed!.outbox.id, receipt);
   checks.receiptCreated = saved.state === 'PUBLISHED';
   checks.receiptUri = saved.platformUri!.includes('bsky.app');
 
@@ -170,6 +190,7 @@ try {
 
   const {grant: g3, outbox: o3} = createDemoActionGrant(campaign, { platform: 'BLUESKY', executionMode: 'DIRECT', now });
   g3.id = uid(); o3.id = uid(); o3.aggregateId = g3.id;
+  checks.generatedIdsUnique = new Set([g1.id, o1.id, g2.id, o2.id, g3.id, o3.id]).size === 6;
   const tampered = {...g3, grantDigest: '0'.repeat(64)};
   // Store tampered grant directly via raw SQL
   await pool.query(
@@ -187,9 +208,9 @@ try {
     [orgId, o3.id, g3.id, JSON.stringify({grant: tampered, revision: campaign.artifactRevisions[0]}), now.toISOString()],
   );
 
-  const ct = await actionRepo.claimNextOutbox('verify-op');
+  const ct = await operatorRepo.claimNextOutbox('verify-op');
   checks.tamperedClaimable = ct !== undefined;
-  const ft = await actionRepo.failOutbox(ct!.outbox.id, 'Digest mismatch (integration test)');
+  const ft = await operatorRepo.failOutbox(ct!.outbox.id, 'Digest mismatch (integration test)');
   checks.failOutbox = ft.outbox.state === 'FAILED';
   checks.unknownReceiptWritten = ft.receipt.state === 'UNKNOWN';
 
@@ -229,5 +250,6 @@ try {
   }
 } finally {
   await actionRepo.close().catch(() => {});
+  await operatorRepo.close().catch(() => {});
   await pool.end().catch(() => {});
 }

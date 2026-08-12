@@ -3,9 +3,9 @@
 [English](IMPLEMENTATION-STATUS.md) | [简体中文](IMPLEMENTATION-STATUS.zh-CN.md) | [Architecture](ARCHITECTURE.md) | [Roadmap](ROADMAP.md)
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
-> **Snapshot:** 2026-08-06
-> **Current phase:** M2 — Governed shadow campaign
-> **Current implementation truth:** M0 and M1 are accepted. M2 is implemented and engineering-verified, including a pinned real six-member AgentTeams mission, DeepSeek provider contracts, an Owner-controlled local DeepSeek Canary with seven accepted redacted model receipts, immutable revisions, independent audit/re-audit, exact non-executable Owner Review, trace, ledger, and deterministic fault denial. Owner UAT is pending. EvoLink live verification, ActionGrants, connectors, external platform actions, external-user calibration, and business outcomes are not claimed. The current visual shell remains a functional skeleton, not the final product design.
+> **Snapshot:** 2026-08-12
+> **Current phase:** M3 — Controlled live activation foundation
+> **Current implementation truth:** M0 and M1 are accepted. M2 remains engineering-verified with Owner UAT pending. M3-01 is implemented and engineering-verified against fresh PostgreSQL with controlled fake execution, production-shaped API/operator roles, restart, concurrency, recovery, SSE, and immutable Receipt evidence; Owner acceptance is pending. Real connectors, external platform actions, external calibration, customer UAT, and business outcomes are not claimed.
 
 ## Progress contract
 
@@ -26,11 +26,11 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | Metric | Current value |
 |---|---|
 | Accepted modules | `13 / 39` (`33.3%`) |
-| Evidence ready | `6 / 39` |
+| Evidence ready | `7 / 39` |
 | Blocked | `0 / 39` |
-| Active implementation SDD | `SDD-002 Governed SHADOW Campaign` — engineering evidence complete; Owner UAT pending |
-| Earliest owner blocker | Record SDD-002 Owner UAT before accepting M2 or starting controlled external action work |
-| Next executable module | No M3 module is authorized yet; first close M2 Owner UAT and freeze the Release-to-Presence-to-Feedback SDD |
+| Active implementation SDD | `SDD-003 PostgreSQL ActionGrant Governed Execution Foundation` — engineering evidence complete; Owner acceptance pending |
+| Earliest owner blocker | Record SDD-002 UAT and SDD-003 read-only evidence acceptance before advancing their states |
+| Next executable module | Coordinator decision required; M3-02 through M3-07 remain `NOT_STARTED` and unauthorized |
 
 ## Milestone progress
 
@@ -39,7 +39,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 accepted | [SDD-000 acceptance](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) plus fresh Compose, migrations, CI mapping, isolated AgentTeams smoke and design/i18n evidence |
 | M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 accepted | [SDD-001 acceptance](docs/reports/acceptance/SDD-001-ACCEPTANCE.md): persisted campaign, four editable previews, schedule editor, shared control-plane state; final visual/interaction refinement remains planned |
 | M2 — Governed shadow campaign | `EVIDENCE_READY` | `0 / 6` | 6 evidence ready | Six-member AgentTeams run, DeepSeek gateway/Canary, revision/audit, fault denial, trace; Owner UAT pending |
-| M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 not started | Exact grants, persistent scheduler, Bluesky Direct, honest Handoffs, receipts/reconciliation |
+| M3 — Controlled live activation | `IN_PROGRESS` | `0 / 7` | 1 evidence ready, 6 not started | M3-01 controlled-fake PostgreSQL foundation is evidence-ready; real connectors and external actions are not claimed |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 not started | Interaction → outcome → scoped learning → next mission, isolated SignalProvider PoC |
 | M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 not started | Fresh install, restore drill, conformance, accessibility, evidence export and demo |
 | M6 — External calibration | `NOT_STARTED` | `0 / 4` | 4 not started | Design-partner shadow run, isolation, reliability and external acceptance report |
@@ -84,7 +84,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
-| M3-01 | Signed ActionGrant, transactional outbox and no-LLM operator | `NOT_STARTED` | M2-04 | Replay/expiry/revocation/digest failures close; unique attempt enforced |
+| M3-01 | Signed ActionGrant, transactional outbox and no-LLM operator | `EVIDENCE_READY` | M2-04; SDD-003 | Fresh PostgreSQL, authoritative digests, UUIDv7 Receipts, role isolation, concurrency/recovery/restart/SSE and immutable evidence verified; Owner acceptance pending |
 | M3-02 | Persistent scheduler execution and occurrence recovery | `NOT_STARTED` | M1-06, M3-01 | Due occurrence leasing, restart recovery, DST/misfire tests and no perpetual grant |
 | M3-03 | Bluesky official Direct connector | `NOT_STARTED` | M3-01 | Native URI/CID read-back, duplicate prevention and unknown reconciliation |
 | M3-04 | LinkedIn Native Handoff | `NOT_STARTED` | M3-01 | Exact preview/package, steps and URL reconciliation; never false `PUBLISHED` |

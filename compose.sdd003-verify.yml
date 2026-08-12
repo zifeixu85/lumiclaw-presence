@@ -1,0 +1,24 @@
+services:
+  postgres:
+    environment:
+      POSTGRES_PASSWORD: sdd003-controlled-fake
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+  migrate:
+    environment:
+      DATABASE_URL: postgres://postgres:sdd003-controlled-fake@postgres:5432/lumiclaw
+  verifier:
+    image: lumiclaw/presence:m2-governed-shadow
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["node", "--version"]
+    environment:
+      DATABASE_URL: postgres://sdd003_api:sdd003-api-controlled@postgres:5432/lumiclaw
+      OPERATOR_DATABASE_URL: postgres://sdd003_operator:sdd003-operator-controlled@postgres:5432/lumiclaw
+      ADMIN_DATABASE_URL: postgres://postgres:sdd003-controlled-fake@postgres:5432/lumiclaw
+    networks: [data]
+    read_only: false
+    volumes:
+      - ./.evidence:/app/.evidence
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m

@@ -120,13 +120,24 @@ export class PostgresActionRepository implements ActionRepository {
           decision.capabilitySnapshotId !== grant.capabilitySnapshotId) {
         throw new ActionRepositoryError('OWNER_DECISION_SCOPE_INVALID', 'OwnerDecision does not exactly authorize this ActionGrant.');
       }
+      const authoritativeScope = await client.query(
+        `select ar.digest as artifact_revision_digest,
+                encode(sha256(convert_to(cs.payload::text, 'UTF8')), 'hex') as capability_snapshot_digest
+           from artifact_revisions ar
+           join capability_snapshots cs on cs.organization_id=ar.organization_id and cs.id=$3
+          where ar.organization_id=$1 and ar.id=$2`,
+        [decision.organizationId, decision.artifactRevisionId, decision.capabilitySnapshotId],
+      );
+      if (authoritativeScope.rowCount !== 1) throw new ActionRepositoryError('OWNER_DECISION_AUTHORITY_NOT_FOUND', 'Authoritative Revision or CapabilitySnapshot was not found.');
+      const artifactRevisionDigest = String(authoritativeScope.rows[0].artifact_revision_digest).trim();
+      const capabilitySnapshotDigest = String(authoritativeScope.rows[0].capability_snapshot_digest).trim();
       await client.query(
-        `insert into owner_decisions(organization_id,id,campaign_id,platform,execution_mode,schedule_occurrence_id,artifact_revision_id,activation_unit_id,channel_account_id,capability_snapshot_id,payload,decided_at)
-         values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+        `insert into owner_decisions(organization_id,id,campaign_id,platform,execution_mode,schedule_occurrence_id,artifact_revision_id,activation_unit_id,channel_account_id,capability_snapshot_id,artifact_revision_digest,capability_snapshot_digest,decided_by,payload,decided_at)
+         values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
         [decision.organizationId, decision.id, decision.campaignId, decision.platform,
           decision.executionMode, decision.scheduleOccurrenceId, decision.artifactRevisionId,
           decision.activationUnitId, decision.channelAccountId, decision.capabilitySnapshotId,
-          JSON.stringify(decision), decision.decidedAt],
+          artifactRevisionDigest, capabilitySnapshotDigest, 'OWNER', JSON.stringify(decision), decision.decidedAt],
       );
 
       // Atomic insert: decision + grant + outbox
@@ -241,20 +252,24 @@ export class PostgresActionRepository implements ActionRepository {
       // --- Lease recovery: reset timed-out PROCESSING records ---
       const leaseCutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
       // Stalled records within retry budget → back to PENDING
-      await client.query(
+      const stalled = await client.query(
         `with stalled as (
            update outbox set state='FAILED', locked_by=NULL, locked_at=NULL,
              payload=payload || jsonb_build_object('failureReason','UNKNOWN: operator lease expired; reconciliation required')
            where state='PROCESSING' and locked_at < $1
            returning organization_id, aggregate_id, payload
          )
-         insert into action_receipts(organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,state,unknown_reason,created_at,previous_receipt_id)
-         select organization_id, gen_random_uuid(), (payload->'grant'->>'campaignId')::uuid, aggregate_id, 1,
-                payload->'grant'->>'platform', payload->'grant'->>'executionMode', 'UNKNOWN',
-                'Operator lease expired after dispatch may have started; reconcile before any retry.', now(), null
-         from stalled`,
+         select organization_id, aggregate_id, payload from stalled`,
         [leaseCutoff],
       );
+      for (const recovered of stalled.rows) {
+        const payload = recovered.payload as {grant: ActionGrant};
+        await client.query(
+          `insert into action_receipts(organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,state,unknown_reason,created_at,previous_receipt_id)
+           values($1,$2,$3,$4,1,$5,$6,'UNKNOWN',$7,now(),null)`,
+          [recovered.organization_id, createUuidV7(), payload.grant.campaignId, recovered.aggregate_id, payload.grant.platform, payload.grant.executionMode, 'Operator lease expired after dispatch may have started; reconcile before any retry.'],
+        );
+      }
       // Stalled records that exhausted retries → DEAD_LETTER
       // Stalled rows were moved to UNKNOWN above; they are never auto-retried.
 

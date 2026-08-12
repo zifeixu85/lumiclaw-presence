@@ -49,6 +49,20 @@ async function seedOrgAndCampaign(
     [orgId, 1, `test-org-${offset}`, `Test Org ${offset}`],
   );
 
+  const fixture = createDemoCampaignDocument();
+  const blueskyCapability = fixture.capabilitySnapshots.find((item) => item.platform === 'BLUESKY')!;
+  const blueskyAccount = fixture.graph.channelAccounts.find((item) => item.id === blueskyCapability.channelAccountId)!;
+  await pool.query(
+    `insert into identities(organization_id,id,schema_version,kind,display_name,public_bio)
+     values($1,$2,1,'PRODUCT','M3 test identity','Synthetic test identity') on conflict do nothing`,
+    [orgId, blueskyAccount.identityId],
+  );
+  await pool.query(
+    `insert into channel_accounts(organization_id,id,schema_version,identity_id,platform,display_handle,connection_state)
+     values($1,$2,1,$3,'BLUESKY',$4,'NOT_CONNECTED') on conflict do nothing`,
+    [orgId, blueskyAccount.id, blueskyAccount.identityId, blueskyAccount.displayHandle],
+  );
+
   // Campaign
   await pool.query(
     `insert into campaigns(organization_id, id, version, digest, etag, readiness, gap_codes, document, created_at, updated_at)
@@ -79,6 +93,12 @@ async function seedOrgAndCampaign(
      values($1,$2,$3,$4,'BLUESKY',1,$5,$6,$7)
      on conflict do nothing`,
     [orgId, artId, campaignId, uuid(offset + 500), '0'.repeat(64), JSON.stringify({id: artId, platform: 'BLUESKY'}), now.toISOString()],
+  );
+  await pool.query(
+    `insert into capability_snapshots(organization_id,id,campaign_id,channel_account_id,platform,captured_at,expires_at,payload)
+     values($1,$2,$3,$4,'BLUESKY',$5,$6,$7) on conflict do nothing`,
+    [orgId, blueskyCapability.id, campaignId, blueskyAccount.id,
+      blueskyCapability.capturedAt, blueskyCapability.expiresAt, JSON.stringify(blueskyCapability)],
   );
 
   return {organizationId: orgId, campaignId, scheduleOccurrenceId: occId, artifactRevisionId: artId};
@@ -395,19 +415,9 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
 
   describe('immutability', () => {
     it('action_receipts rejects UPDATE', async () => {
-      const {grant} = makeGrant(70);
+      const {grant, outbox} = makeGrant(70);
       const rid = uuid(71);
-      // Insert grant + receipt directly
-      await pool.query(
-        `insert into action_grants(organization_id,id,campaign_id,schedule_occurrence_id,artifact_revision_id,activation_unit_id,schema_version,platform,execution_mode,status,issued_at,expires_at,grant_digest,channel_account_id,capability_snapshot_id,owner_signature,owner_key_id,owner_decision_id,payload,created_at)
-         values($1,$2,$3,$4,$5,$6,1,'BLUESKY','DIRECT','ISSUED',$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
-        [testOrg.organizationId, grant.id, grant.campaignId, grant.scheduleOccurrenceId,
-          grant.artifactRevisionId, grant.activationUnitId,
-          grant.issuedAt, grant.expiresAt, grant.grantDigest,
-          grant.channelAccountId, grant.capabilitySnapshotId,
-          grant.ownerSignature, grant.ownerKeyId, grant.ownerDecisionId,
-          JSON.stringify(grant), now.toISOString()],
-      );
+      await repo.createGrantWithOutbox(grant, outbox, `test-immutable-${uuid(70)}`, sha256Digest({g: grant.id}));
       await pool.query(
         `insert into action_receipts(organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,state,created_at)
          values($1,$2,$3,$4,1,'BLUESKY','DIRECT','PUBLISHED',$5)`,
@@ -480,6 +490,36 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         state: 'UNKNOWN',
         unknown_reason: 'Operator lease expired after dispatch may have started; reconcile before any retry.',
       });
+    });
+
+    it('gives concurrent lease recovery rows unique UUIDv7 receipts and repeated polls add none', async () => {
+      const first = makeGrant(190);
+      const second = makeGrant(192);
+      await repo.createGrantWithOutbox(first.grant, first.outbox, `test-batch-lease-${uuid(190)}`, sha256Digest({g: first.grant.id}));
+      await repo.createGrantWithOutbox(second.grant, second.outbox, `test-batch-lease-${uuid(192)}`, sha256Digest({g: second.grant.id}));
+      await claimExactOutbox(first.outbox.id, 'operator-batch-first');
+      await claimExactOutbox(second.outbox.id, 'operator-batch-second');
+      await pool.query(
+        `update outbox set locked_at=$1 where organization_id=$2 and id=any($3::uuid[])`,
+        [new Date(Date.now() - 10 * 60 * 1000).toISOString(), testOrg.organizationId, [first.outbox.id, second.outbox.id]],
+      );
+
+      await Promise.all([repo.claimNextOutbox('recovery-a'), repo.claimNextOutbox('recovery-b')]);
+      const recovered = await pool.query(
+        `select id::text from action_receipts where organization_id=$1 and action_grant_id=any($2::uuid[]) order by id`,
+        [testOrg.organizationId, [first.grant.id, second.grant.id]],
+      );
+      expect(recovered.rows).toHaveLength(2);
+      const ids = recovered.rows.map((row) => String(row.id));
+      expect(new Set(ids).size).toBe(2);
+      for (const id of ids) expect(id).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u);
+
+      await repo.claimNextOutbox('recovery-repeat');
+      const repeated = await pool.query(
+        `select count(*)::int as count from action_receipts where organization_id=$1 and action_grant_id=any($2::uuid[])`,
+        [testOrg.organizationId, [first.grant.id, second.grant.id]],
+      );
+      expect(repeated.rows[0].count).toBe(2);
     });
 
     it('handoff confirmation creates a new receipt with previousReceiptId chain', async () => {
