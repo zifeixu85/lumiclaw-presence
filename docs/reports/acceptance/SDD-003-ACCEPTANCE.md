@@ -75,7 +75,7 @@
 |---|---|---|---|
 | M3-01 | `NOT_STARTED` | `NOT_STARTED` | Executor 不推进 canonical 状态；等待 Coordinator 独立复核 |
 
-工作树当前未提交、未推送；最终 commit SHA 需在提交后补充。当前无已知代码 blocker，仍等待 Coordinator 独立复核。
+本报告生成时修复尚未推送；提交 SHA 与远端状态由最终交接记录提供。当前无已知代码 blocker，仍等待 Coordinator 独立复核。
 
 ## 十一、Coordinator 验收决定
 

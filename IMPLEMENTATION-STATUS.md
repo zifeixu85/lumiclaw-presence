@@ -5,7 +5,7 @@
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
 > **Snapshot:** 2026-08-12
 > **Current phase:** Coordinator decision required after M3-01 review blockers
-> **Current implementation truth:** M0 and M1 are accepted. M2 remains engineering-verified with Owner UAT pending. M3-01 review blockers are under correction and its canonical state is not advanced; Owner acceptance is not open. Real connectors, external platform actions, external calibration, customer UAT, and business outcomes are not claimed.
+> **Current implementation truth:** M0 and M1 are accepted. M2 remains engineering-verified with Owner UAT pending. M3-01 review blocker fixes are complete and await Coordinator re-verification; its canonical state is not advanced and Owner acceptance is not open. Real connectors, external platform actions, external calibration, customer UAT, and business outcomes are not claimed.
 
 ## Progress contract
 
@@ -28,7 +28,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | Accepted modules | `13 / 39` (`33.3%`) |
 | Evidence ready | `7 / 39` |
 | Blocked | `0 / 39` |
-| Active implementation SDD | `SDD-003 PostgreSQL ActionGrant Governed Execution Foundation` — review blockers under correction; Coordinator re-verification pending |
+| Active implementation SDD | `SDD-003 PostgreSQL ActionGrant Governed Execution Foundation` — review blocker fixes completed; Coordinator re-verification pending |
 | Earliest owner blocker | Record SDD-002 UAT and SDD-003 read-only evidence acceptance before advancing their states |
 | Next executable module | Coordinator decision required; M3-02 through M3-07 remain `NOT_STARTED` and unauthorized |
 
@@ -84,7 +84,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
-| M3-01 | Signed ActionGrant, transactional outbox and no-LLM operator | `NOT_STARTED` | M2-04; SDD-003 | Review blockers are being corrected; Coordinator independently decides any future progress transition |
+| M3-01 | Signed ActionGrant, transactional outbox and no-LLM operator | `NOT_STARTED` | M2-04; SDD-003 | Review blocker fixes completed; Coordinator independently verifies and decides any future progress transition |
 | M3-02 | Persistent scheduler execution and occurrence recovery | `NOT_STARTED` | M1-06, M3-01 | Due occurrence leasing, restart recovery, DST/misfire tests and no perpetual grant |
 | M3-03 | Bluesky official Direct connector | `NOT_STARTED` | M3-01 | Native URI/CID read-back, duplicate prevention and unknown reconciliation |
 | M3-04 | LinkedIn Native Handoff | `NOT_STARTED` | M3-01 | Exact preview/package, steps and URL reconciliation; never false `PUBLISHED` |
