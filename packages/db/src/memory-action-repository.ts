@@ -1,12 +1,18 @@
 import {
   createUuidV7,
   importEd25519PublicKey,
+  sha256Digest,
   ActionRepositoryError,
   type ActionGrant,
   type ArtifactRevision,
+  type AuthoritativeExecutionContext,
+  type CapabilitySnapshot,
+  type OwnerDecision,
   type ActionReceipt,
   type ActionRepository,
+  type ExecutionFailureDisposition,
   type OutboxClaim,
+  type OutboxLease,
   type OutboxRecord,
 } from '@lumiclaw/domain';
 import type {KeyObject} from 'node:crypto';
@@ -18,6 +24,10 @@ export class MemoryActionRepository implements ActionRepository {
   readonly #outbox = new Map<string, OutboxRecord>();
   readonly #receipts = new Map<string, ActionReceipt>();
   readonly #artifactRevisions = new Map<string, ArtifactRevision>();
+  readonly #decisions = new Map<string, OwnerDecision>();
+  readonly #capabilitySnapshots = new Map<string, CapabilitySnapshot>();
+  readonly #leases = new Map<string, OutboxLease>();
+  readonly #dispatchStarted = new Set<string>();
   readonly #idempotency = new Map<string, IdempotencyEntry>();
   readonly #ownerKeys = new Map<string, KeyObject>();
 
@@ -44,6 +54,20 @@ export class MemoryActionRepository implements ActionRepository {
     return revision?.organizationId === organizationId ? structuredClone(revision) : undefined;
   }
 
+  async getAuthoritativeExecutionContext(grant: ActionGrant): Promise<AuthoritativeExecutionContext | undefined> {
+    const decision = this.#decisions.get(grant.ownerDecisionId);
+    const artifactRevision = this.#artifactRevisions.get(grant.artifactRevisionId);
+    const capabilitySnapshot = this.#capabilitySnapshots.get(grant.capabilitySnapshotId);
+    if (decision === undefined || artifactRevision === undefined || capabilitySnapshot === undefined) return undefined;
+    return {
+      decision: structuredClone(decision),
+      artifactRevision: structuredClone(artifactRevision),
+      capabilitySnapshot: structuredClone(capabilitySnapshot),
+      artifactRevisionDigest: sha256Digest(artifactRevision),
+      capabilitySnapshotDigest: sha256Digest(capabilitySnapshot),
+    };
+  }
+
   async createGrantWithOutbox(
     grant: ActionGrant,
     outbox: OutboxRecord,
@@ -67,6 +91,10 @@ export class MemoryActionRepository implements ActionRepository {
 
     const revision = (outbox.payload as {revision?: ArtifactRevision}).revision;
     if (revision !== undefined) this.#artifactRevisions.set(revision.id, structuredClone(revision));
+    const decision = (outbox.payload as {decision?: OwnerDecision}).decision;
+    if (decision !== undefined) this.#decisions.set(decision.id, structuredClone(decision));
+    const capability = (outbox.payload as {capabilitySnapshot?: CapabilitySnapshot}).capabilitySnapshot;
+    if (capability !== undefined) this.#capabilitySnapshots.set(capability.id, structuredClone(capability));
     this.#grants.set(grant.id, structuredClone(grant));
     this.#outbox.set(outbox.id, structuredClone(outbox));
     this.#idempotency.set(routeKey, {requestDigest, grant: structuredClone(grant), outbox: structuredClone(outbox)});
@@ -123,18 +151,27 @@ export class MemoryActionRepository implements ActionRepository {
         record.lockedBy = _lockId;
         record.lockedAt = new Date().toISOString();
         record.attempts += 1;
-        return {outbox: structuredClone(record), grant: signedGrant};
+        const lease = {lockedBy: _lockId, attempt: record.attempts, token: createUuidV7()};
+        this.#leases.set(record.id, lease);
+        return {outbox: structuredClone(record), grant: signedGrant, lease: structuredClone(lease)};
       }
     }
     return undefined;
   }
 
-  async completeOutbox(outboxId: string, receipt: ActionReceipt): Promise<ActionReceipt> {
+  async beginDispatch(outboxId: string, lease: OutboxLease): Promise<void> {
+    this.#assertLease(outboxId, lease);
+    if (this.#dispatchStarted.has(outboxId)) throw new ActionRepositoryError('OUTBOX_LEASE_LOST', 'Dispatch already started.');
+    this.#dispatchStarted.add(outboxId);
+  }
+
+  async completeOutbox(outboxId: string, receipt: ActionReceipt, lease: OutboxLease): Promise<ActionReceipt> {
     const outbox = this.#outbox.get(outboxId);
     if (outbox === undefined) throw new ActionRepositoryError('OUTBOX_RECORD_NOT_FOUND', 'Outbox record not found.');
     if (outbox.state !== 'PROCESSING') {
       throw new ActionRepositoryError('OUTBOX_NOT_PROCESSING', `Outbox state ${outbox.state} does not allow completion.`);
     }
+    this.#assertLease(outboxId, lease);
 
     // Verify the grant is still ISSUED — one grant can only be consumed once
     const grant = this.#grants.get(receipt.actionGrantId);
@@ -153,16 +190,21 @@ export class MemoryActionRepository implements ActionRepository {
     this.#grants.set(grant.id, structuredClone(grant));
 
     outbox.state = 'COMPLETED';
+    this.#leases.delete(outboxId);
     this.#receipts.set(receipt.id, structuredClone(receipt));
     return structuredClone(receipt);
   }
 
-  async failOutbox(outboxId: string, reason: string): Promise<{outbox: OutboxRecord; receipt: ActionReceipt}> {
+  async failOutbox(outboxId: string, reason: string, lease: OutboxLease, disposition: ExecutionFailureDisposition): Promise<{outbox: OutboxRecord; receipt: ActionReceipt}> {
     const outbox = this.#outbox.get(outboxId);
     if (outbox === undefined) throw new ActionRepositoryError('OUTBOX_RECORD_NOT_FOUND', 'Outbox record not found.');
+    this.#assertLease(outboxId, lease);
+    if (disposition === 'DEFINITE_NOT_EXECUTED' && this.#dispatchStarted.has(outboxId)) {
+      throw new ActionRepositoryError('EXECUTION_DISPOSITION_INVALID', 'A dispatched attempt cannot be marked definitely not executed.');
+    }
 
     // DEAD_LETTER when retry budget exhausted; FAILED otherwise
-    outbox.state = outbox.attempts >= outbox.maxAttempts ? 'DEAD_LETTER' : 'FAILED';
+    outbox.state = disposition === 'UNKNOWN' ? 'DEAD_LETTER' : 'FAILED';
 
     // Write an UNKNOWN receipt so the Owner can see the failure in the Timeline
     const payload = outbox.payload as {grant?: ActionGrant; aggregateId?: string};
@@ -175,7 +217,7 @@ export class MemoryActionRepository implements ActionRepository {
       schemaVersion: 1,
       platform: grant?.platform ?? 'BLUESKY',
       executionMode: grant?.executionMode ?? 'DIRECT',
-      state: 'UNKNOWN',
+      state: disposition === 'UNKNOWN' ? 'UNKNOWN' : 'NOT_EXECUTED',
       platformUri: null,
       platformCid: null,
       handoffSteps: null,
@@ -186,23 +228,21 @@ export class MemoryActionRepository implements ActionRepository {
       previousReceiptId: null,
     };
     this.#receipts.set(receipt.id, structuredClone(receipt));
+    const authoritativeGrant = this.#grants.get(receipt.actionGrantId);
+    if (authoritativeGrant !== undefined) {
+      authoritativeGrant.status = disposition === 'UNKNOWN' ? 'CONSUMED' : 'REVOKED';
+      if (disposition === 'UNKNOWN') authoritativeGrant.consumedAt = new Date().toISOString();
+      else authoritativeGrant.revocationReason = reason;
+    }
+    this.#leases.delete(outboxId);
 
     return {outbox: structuredClone(outbox), receipt: structuredClone(receipt)};
   }
 
   async reprocessOutbox(organizationId: string, outboxId: string): Promise<OutboxRecord> {
-    const record = this.#outbox.get(outboxId);
-    if (record === undefined || record.organizationId !== organizationId) {
-      throw new ActionRepositoryError('OUTBOX_NOT_REPROCESSABLE', 'Outbox record not found.');
-    }
-    if (record.state !== 'FAILED' && record.state !== 'DEAD_LETTER') {
-      throw new ActionRepositoryError('OUTBOX_NOT_REPROCESSABLE', `Outbox state ${record.state} does not allow reprocessing.`);
-    }
-    record.state = 'PENDING';
-    record.lockedBy = null;
-    record.lockedAt = null;
-    record.attempts = 0;
-    return structuredClone(record);
+    void organizationId;
+    void outboxId;
+    throw new ActionRepositoryError('OUTBOX_NOT_REPROCESSABLE', 'Single-use ActionGrants are never reprocessed; issue a new governed grant.');
   }
 
   async getReceiptsByCampaign(organizationId: string, campaignId: string): Promise<ActionReceipt[]> {
@@ -312,5 +352,16 @@ export class MemoryActionRepository implements ActionRepository {
     this.#receipts.clear();
     this.#idempotency.clear();
     this.#artifactRevisions.clear();
+    this.#decisions.clear();
+    this.#capabilitySnapshots.clear();
+    this.#leases.clear();
+    this.#dispatchStarted.clear();
+  }
+
+  #assertLease(outboxId: string, lease: OutboxLease): void {
+    const current = this.#leases.get(outboxId);
+    if (current === undefined || current.lockedBy !== lease.lockedBy || current.attempt !== lease.attempt || current.token !== lease.token) {
+      throw new ActionRepositoryError('OUTBOX_LEASE_LOST', 'Outbox lease is stale.');
+    }
   }
 }

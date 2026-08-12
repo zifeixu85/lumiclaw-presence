@@ -1,5 +1,5 @@
 import {spawnSync} from 'node:child_process';
-import {existsSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 import path from 'node:path';
 
 const npmCliCandidates = [
@@ -23,7 +23,18 @@ for (const [name, args] of steps) {
   if (run.status !== 0) break;
 }
 
-const status = Object.values(results).every((value) => value === 'PASS') && Object.keys(results).length === steps.length ? 'PASS' : 'FAIL';
+const freshEvidencePath = path.join(process.cwd(), '.evidence', 'sdd-003', 'fresh-postgres.json');
+const freshEvidence = existsSync(freshEvidencePath)
+  ? JSON.parse(readFileSync(freshEvidencePath, 'utf8'))
+  : {steps: {}};
+const exactStep = (name) => freshEvidence.steps?.[name]?.status ?? 'NOT_RUN';
+
+const requiredExactSteps = ['postClaimRevoke', 'lateCompletionFencing', 'crossCampaignOccurrence', 'dispatchStateMatrix', 'outboxArtifactTamper', 'crossProcess', 'productionRoles', 'postgresRepository'];
+const status = Object.values(results).every((value) => value === 'PASS')
+  && Object.keys(results).length === steps.length
+  && requiredExactSteps.every((name) => exactStep(name) === 'PASS')
+  ? 'PASS'
+  : 'FAIL';
 const evidence = {
   schemaVersion: 1,
   sdd: 'SDD-003',
@@ -34,13 +45,15 @@ const evidence = {
   domain: results.domain ?? 'NOT_RUN',
   repositoryContract: results.repositoryContract ?? 'NOT_RUN',
   typecheck: results.typecheck ?? 'NOT_RUN',
-  concurrency: results.freshPostgres ?? 'NOT_RUN',
-  revocationRace: results.freshPostgres ?? 'NOT_RUN',
-  crashRecovery: results.freshPostgres ?? 'NOT_RUN',
-  crossProcessRestart: results.freshPostgres ?? 'NOT_RUN',
-  scopeIsolation: results.repositoryContract ?? 'NOT_RUN',
-  appendOnly: results.freshPostgres ?? 'NOT_RUN',
-  sse: results.repositoryContract ?? 'NOT_RUN',
+  postClaimRevoke: exactStep('postClaimRevoke'),
+  lateCompletionFencing: exactStep('lateCompletionFencing'),
+  crossCampaignOccurrence: exactStep('crossCampaignOccurrence'),
+  dispatchStateMatrix: exactStep('dispatchStateMatrix'),
+  outboxArtifactTamper: exactStep('outboxArtifactTamper'),
+  crossProcessRestart: exactStep('crossProcess'),
+  productionRoles: exactStep('productionRoles'),
+  appendOnly: exactStep('postgresRepository'),
+  sse: exactStep('crossProcess'),
   externalActions: 0,
   connectorMode: 'CONTROLLED_FAKE',
 };

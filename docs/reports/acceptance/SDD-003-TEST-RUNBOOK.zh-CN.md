@@ -3,7 +3,7 @@
 > 范围：M3-01 PostgreSQL ActionGrant Governed Execution Foundation
 > 外部动作：`0`
 > Connector：`CONTROLLED_FAKE`
-> 当前模块状态：`EVIDENCE_READY`；自动化门禁已通过，仍需 Owner 只读验收才能进入 `ACCEPTED`。
+> 当前模块状态：`NOT_STARTED`；修复后自动化门禁与 Coordinator 独立复核仍待完成，Owner 验收尚未开放。
 
 ## 1. 前置条件
 
@@ -84,7 +84,7 @@ npm.cmd run verify:m3-sdd003
 }
 ```
 
-`crossProcessRestart` 必须为 `PASS`；任何 `NOT_RUN` 均禁止模块进入 `EVIDENCE_READY`。
+`postClaimRevoke`、`lateCompletionFencing`、`crossCampaignOccurrence`、`dispatchStateMatrix`、`outboxArtifactTamper` 与 `crossProcessRestart` 必须分别为 `PASS`；任何 `NOT_RUN` 均禁止 Coordinator 推进模块状态。
 
 ## 5. 必须人工核对的数据库负向项
 

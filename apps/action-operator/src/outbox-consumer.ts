@@ -3,6 +3,7 @@ import {
   ed25519Verify,
   isGrantConsumable,
   createUuidV7,
+  sha256Digest,
   type ActionGrant,
   type ActionReceipt,
   type ActionRepository,
@@ -75,7 +76,12 @@ export class OutboxConsumer {
     const claim = await this.#repo.claimNextOutbox(this.#lockId);
     if (claim === undefined) return null;
 
-    const {outbox: record, grant} = claim;
+    const {outbox: record, grant, lease} = claim;
+    const failBeforeDispatch = async (reason: string): Promise<null> => {
+      const failed = await this.#repo.failOutbox(record.id, reason, lease, 'DEFINITE_NOT_EXECUTED');
+      this.#onReceipt?.(failed.receipt);
+      return null;
+    };
 
     // Use the authoritative grant from the DB (locked FOR UPDATE), not the
     // stale snapshot inside the Outbox payload.
@@ -85,17 +91,17 @@ export class OutboxConsumer {
       decision?: OwnerDecision;
       capabilitySnapshot?: CapabilitySnapshot;
     };
-    const artifact = await this.#repo.getArtifactRevision(grant.organizationId, grant.artifactRevisionId);
+    const context = await this.#repo.getAuthoritativeExecutionContext(grant);
+    if (context === undefined) return failBeforeDispatch('Authoritative execution context not found.');
+    const {artifactRevision: artifact, decision, capabilitySnapshot: capability} = context;
     if (artifact === undefined || artifact.id !== grant.artifactRevisionId ||
         artifact.organizationId !== grant.organizationId || artifact.campaignId !== grant.campaignId ||
         artifact.activationUnitId !== grant.activationUnitId || artifact.platform !== grant.platform ||
         artifact.capabilitySnapshotId !== grant.capabilitySnapshotId) {
-      await this.#repo.failOutbox(record.id, 'Authoritative ArtifactRevision scope mismatch.');
-      return null;
+      return failBeforeDispatch('Authoritative ArtifactRevision scope mismatch.');
     }
     if (JSON.stringify(payload.revision) !== JSON.stringify(artifact)) {
-      await this.#repo.failOutbox(record.id, 'Outbox ArtifactRevision differs from the authoritative Revision.');
-      return null;
+      return failBeforeDispatch('Outbox ArtifactRevision differs from the authoritative Revision.');
     }
 
     // --- grant validation ---
@@ -106,28 +112,23 @@ export class OutboxConsumer {
         : grant.status === 'REVOKED'
           ? 'Grant was revoked.'
           : 'Grant is not consumable.';
-      await this.#repo.failOutbox(record.id, reason);
-      return null;
+      return failBeforeDispatch(reason);
     }
     const calculated = digestActionGrant(grant);
     if (calculated !== grant.grantDigest) {
-      await this.#repo.failOutbox(record.id, 'Grant digest mismatch.');
-      return null;
+      return failBeforeDispatch('Grant digest mismatch.');
     }
 
     // --- Ed25519 signature (using Organization's registered key, not self-asserted) ---
     const orgKey = await this.#repo.getOrganizationOwnerKey(grant.organizationId);
     if (orgKey === undefined) {
-      await this.#repo.failOutbox(record.id, 'Organization owner key not registered.');
-      return null;
+      return failBeforeDispatch('Organization owner key not registered.');
     }
     if (!ed25519Verify(orgKey, grant.grantDigest, grant.ownerSignature)) {
-      await this.#repo.failOutbox(record.id, 'Grant signature invalid against Organization owner key.');
-      return null;
+      return failBeforeDispatch('Grant signature invalid against Organization owner key.');
     }
 
-    const decision = payload.decision;
-    if (decision === undefined || decision.id !== grant.ownerDecisionId ||
+    if (decision.id !== grant.ownerDecisionId ||
         decision.organizationId !== grant.organizationId || decision.campaignId !== grant.campaignId ||
         decision.platform !== grant.platform || decision.executionMode !== grant.executionMode ||
         decision.channelAccountId !== grant.channelAccountId ||
@@ -135,10 +136,16 @@ export class OutboxConsumer {
         decision.artifactRevisionId !== grant.artifactRevisionId ||
         decision.activationUnitId !== grant.activationUnitId ||
         decision.scheduleOccurrenceId !== grant.scheduleOccurrenceId) {
-      await this.#repo.failOutbox(record.id, 'OwnerDecision scope mismatch.');
-      return null;
+      return failBeforeDispatch('OwnerDecision scope mismatch.');
     }
-    const capability = payload.capabilitySnapshot;
+    if (payload.decision === undefined || JSON.stringify(payload.decision) !== JSON.stringify(decision) ||
+        payload.capabilitySnapshot === undefined || JSON.stringify(payload.capabilitySnapshot) !== JSON.stringify(capability)) {
+      return failBeforeDispatch('Outbox governance snapshots differ from authoritative records.');
+    }
+    if (sha256Digest(artifact) !== context.artifactRevisionDigest ||
+        sha256Digest(capability) !== context.capabilitySnapshotDigest) {
+      return failBeforeDispatch('Authoritative execution digest mismatch.');
+    }
     const capabilityMode = grant.executionMode === 'DIRECT'
       ? 'DIRECT_PLANNED_NOT_CONNECTED'
       : 'NATIVE_HANDOFF_PLANNED';
@@ -146,25 +153,21 @@ export class OutboxConsumer {
         capability.organizationId !== grant.organizationId || capability.platform !== grant.platform ||
         capability.channelAccountId !== grant.channelAccountId || capability.executionMode !== capabilityMode ||
         !Number.isFinite(Date.parse(capability.expiresAt)) || Date.parse(capability.expiresAt) <= n.getTime()) {
-      await this.#repo.failOutbox(record.id, 'CapabilitySnapshot scope, mode, or validity mismatch.');
-      return null;
+      return failBeforeDispatch('CapabilitySnapshot scope, mode, or validity mismatch.');
     }
 
     // --- dispatch to connector ---
     const connector: PublishConnector | undefined = this.#connectors[grant.platform];
     if (connector === undefined) {
-      await this.#repo.failOutbox(record.id,
-        `No connector available for platform ${grant.platform}.`);
-      return null;
+      return failBeforeDispatch(`No connector available for platform ${grant.platform}.`);
     }
 
     // Guard: grant.executionMode must match the connector's declared mode (P2-7).
     if (connector.executionMode !== grant.executionMode) {
-      await this.#repo.failOutbox(record.id,
-        `Execution mode mismatch: grant=${grant.executionMode}, connector=${connector.executionMode}`);
-      return null;
+      return failBeforeDispatch(`Execution mode mismatch: grant=${grant.executionMode}, connector=${connector.executionMode}`);
     }
 
+    await this.#repo.beginDispatch(record.id, lease);
     const result = await connector.execute(grant, artifact.content);
 
     // --- write receipt ---
@@ -187,14 +190,14 @@ export class OutboxConsumer {
         createdAt: n.toISOString(),
         previousReceiptId: null,
       };
-      const saved = await this.#repo.completeOutbox(record.id, receipt);
+      const saved = await this.#repo.completeOutbox(record.id, receipt, lease);
       this.#onReceipt?.(saved); // fan-out via SSE
       return saved;
     }
 
     // UNKNOWN result — fail closed, never blind-retry
     const failed = await this.#repo.failOutbox(record.id,
-      `UNKNOWN: ${result.message}`);
+      `UNKNOWN: ${result.message}`, lease, 'UNKNOWN');
     this.#onReceipt?.(failed.receipt); // fan-out UNKNOWN receipt via SSE
     return null;
   }

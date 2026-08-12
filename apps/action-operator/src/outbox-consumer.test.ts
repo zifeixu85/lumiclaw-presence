@@ -168,7 +168,7 @@ describe('outbox consumer', () => {
       createdAt: now.toISOString(),
       previousReceiptId: null,
     };
-    const result1 = await repo.completeOutbox(claimed!.outbox.id, receipt1);
+    const result1 = await repo.completeOutbox(claimed!.outbox.id, receipt1, claimed!.lease);
     expect(result1.state).toBe('PUBLISHED');
 
     // Second consumption with a different outbox but same grant — must reject
@@ -191,7 +191,7 @@ describe('outbox consumer', () => {
         createdAt: now.toISOString(),
         previousReceiptId: null,
       };
-      await repo.completeOutbox('non-existent-outbox', receipt2);
+      await repo.completeOutbox('non-existent-outbox', receipt2, claimed!.lease);
       expect.unreachable('Should have thrown');
     } catch (error) {
       // The exact error depends on whether the outbox lookup or the grant check fails first.
@@ -295,7 +295,8 @@ describe('outbox consumer', () => {
     const {grant, outbox, ownerPublicKey} = campaignAndGrant();
     await repo.createGrantWithOutbox(grant, outbox, 'test-reconcile-terminal', 'digest-reconcile', ownerPublicKey);
     const claim = await repo.claimNextOutbox('reconcile-claim');
-    const failed = await repo.failOutbox(claim!.outbox.id, 'UNKNOWN: simulated crash after dispatch');
+    await repo.beginDispatch(claim!.outbox.id, claim!.lease);
+    const failed = await repo.failOutbox(claim!.outbox.id, 'UNKNOWN: simulated crash after dispatch', claim!.lease, 'UNKNOWN');
     const reconciled = await repo.reconcileReceipt(grant.organizationId, failed.receipt.id, 'OWNER_MANUAL', 'NOT_EXECUTED', undefined, undefined, 'Owner verified no platform post exists');
     expect(reconciled.id).not.toBe(failed.receipt.id);
     expect(reconciled.previousReceiptId).toBe(failed.receipt.id);
@@ -382,6 +383,6 @@ describe('outbox consumer', () => {
       reconciledAt: null, reconciliationMethod: null,
       createdAt: now.toISOString(), previousReceiptId: null,
     };
-    await repo.completeOutbox(claimed!.outbox.id, done);
+    await repo.completeOutbox(claimed!.outbox.id, done, claimed!.lease);
   });
 });

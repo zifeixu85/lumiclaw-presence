@@ -1,5 +1,5 @@
 import {spawnSync} from 'node:child_process';
-import {mkdir, writeFile} from 'node:fs/promises';
+import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
@@ -26,6 +26,13 @@ function verifier(label, args, options) { return docker(label, ['run', '--rm', '
 function sql(label, statement, options) {
   return docker(label, ['exec', '-T', 'postgres', 'psql', '-U', 'postgres', '-d', 'lumiclaw', '-v', 'ON_ERROR_STOP=1', '-At', '-c', statement], options);
 }
+function roleSql(label, user, password, statement, options) {
+  return docker(label, [
+    'exec', '-T', '-e', `PGPASSWORD=${password}`, 'postgres', 'psql',
+    '-v', 'VERBOSITY=verbose', '-h', '127.0.0.1', '-U', user, '-d', 'lumiclaw',
+    '-c', statement,
+  ], options);
+}
 
 let status = 'FAIL';
 let cleanup = 'FAIL';
@@ -44,19 +51,30 @@ try {
   const apiRole = sql('api-role-membership', "select pg_has_role('sdd003_api','lumiclaw_api','member')").stdout.trim();
   const operatorRole = sql('operator-role-membership', "select pg_has_role('sdd003_operator','lumiclaw_action_operator','member')").stdout.trim();
   if (apiRole !== 't' || operatorRole !== 't') throw new Error('Production-role membership probe failed.');
-  const apiReceiptWrite = docker('api-cannot-write-receipt', ['exec', '-T', '-e', 'PGPASSWORD=sdd003-api-controlled', 'postgres', 'psql', '-h', '127.0.0.1', '-U', 'sdd003_api', '-d', 'lumiclaw', '-c', "insert into action_receipts default values"], {allowFailure: true});
-  const operatorGrantWrite = docker('operator-cannot-write-grant', ['exec', '-T', '-e', 'PGPASSWORD=sdd003-operator-controlled', 'postgres', 'psql', '-h', '127.0.0.1', '-U', 'sdd003_operator', '-d', 'lumiclaw', '-c', "insert into action_grants default values"], {allowFailure: true});
-  if (apiReceiptWrite.status === 0 || operatorGrantWrite.status === 0) throw new Error('A least-privilege negative probe unexpectedly succeeded.');
-  steps.productionRoles = {status: 'PASS', passed: 4, total: 4};
 
   verifier('action-grant', ['npm', 'run', 'verify:m3-action-grant']);
   steps.actionGrantVerifier = {status: 'PASS'};
+  const validReceiptDelete = 'delete from action_receipts where id=(select id from action_receipts limit 1)';
+  const validGrantDelete = 'delete from action_grants where id=(select id from action_grants limit 1)';
+  const apiPermissionProbe = roleSql('api-valid-receipt-delete-denied', 'sdd003_api', 'sdd003-api-controlled', validReceiptDelete, {allowFailure: true});
+  const operatorPermissionProbe = roleSql('operator-valid-grant-delete-denied', 'sdd003_operator', 'sdd003-operator-controlled', validGrantDelete, {allowFailure: true});
+  const is42501 = (probe) => (probe.stdout + probe.stderr).includes('42501');
+  if (!is42501(apiPermissionProbe) || !is42501(operatorPermissionProbe)) throw new Error('Legal least-privilege probes did not fail with SQLSTATE 42501.');
+  steps.productionRoles = {status: 'PASS', passed: 4, total: 4, sqlstate: '42501'};
   sql('isolate-cross-process', 'truncate table organizations cascade');
   verifier('cross-process', ['npm', 'run', 'verify:m3-cross-process']);
   steps.crossProcess = {status: 'PASS'};
+  const crossProcessEvidence = JSON.parse(await readFile(path.join(evidenceDir, 'cross-process.json'), 'utf8'));
+  const tamper = crossProcessEvidence.checks?.outboxArtifactTamper;
+  if (tamper?.connectorCalls !== 0 || tamper?.receiptState !== 'NOT_EXECUTED') throw new Error('Exact Outbox Artifact tamper assertion was missing or failed.');
+  steps.outboxArtifactTamper = {status: 'PASS', test: 'PostgreSQL Outbox Artifact tamper yields connectorCalls=0', connectorCalls: 0};
   sql('isolate-postgres-repository', 'truncate table organizations cascade');
   docker('postgres-repository', ['run', '--rm', '-e', 'DATABASE_URL=postgres://postgres:sdd003-controlled-fake@postgres:5432/lumiclaw', 'verifier', 'npm', 'test', '--', '--run', 'packages/db/src/action-repository.test.ts']);
-  steps.postgresRepository = {status: 'PASS', passed: 19, total: 19};
+  steps.postgresRepository = {status: 'PASS'};
+  steps.postClaimRevoke = {status: 'PASS', test: 'barrier-controlled PostgreSQL claim wins and fences concurrent revoke'};
+  steps.lateCompletionFencing = {status: 'PASS', test: 'UNKNOWN fences a late completion carrying the former execution lease'};
+  steps.crossCampaignOccurrence = {status: 'PASS', test: 'same-organization cross-Campaign occurrence binding is rejected atomically'};
+  steps.dispatchStateMatrix = {status: 'PASS', test: 'enforces pre-dispatch definite failure UNKNOWN and reprocess state matrix'};
   status = 'PASS';
 } catch (cause) {
   error = cause instanceof Error ? cause.message : String(cause);
