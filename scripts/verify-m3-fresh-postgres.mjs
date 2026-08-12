@@ -1,13 +1,25 @@
 import {spawnSync} from 'node:child_process';
-import {mkdir, readFile, writeFile} from 'node:fs/promises';
+import {chmod, mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
 const project = 'lumiclaw-sdd003-verify';
 const compose = ['compose', '--project-name', project, '-f', 'compose.yml', '-f', 'compose.sdd003-verify.yml'];
 const evidenceDir = path.join(root, '.evidence', 'sdd-003');
+const actionGrantEvidenceDir = path.join(root, '.evidence', 'm3-01');
 const transcriptPath = path.join(evidenceDir, 'fresh-postgres-transcript.log');
-await mkdir(evidenceDir, {recursive: true});
+await Promise.all([
+  mkdir(evidenceDir, {recursive: true}),
+  mkdir(actionGrantEvidenceDir, {recursive: true}),
+]);
+if (process.platform !== 'win32') {
+  // The verifier image runs as a non-root UID which can differ from the
+  // GitHub runner UID. Limit cross-UID writes to ignored evidence folders.
+  await Promise.all([
+    chmod(evidenceDir, 0o777),
+    chmod(actionGrantEvidenceDir, 0o777),
+  ]);
+}
 
 const transcript = [];
 const steps = {};
