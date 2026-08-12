@@ -235,6 +235,62 @@ describe('outbox consumer', () => {
     expect(connectorCalls).toBe(0);
   });
 
+  it('records pre-dispatch failure without leaving Grant EXECUTING', async () => {
+    const localRepo = new MemoryActionRepository();
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    const payload = structuredClone(outbox.payload) as Record<string, unknown>;
+    payload.capabilitySnapshot = {...(payload.capabilitySnapshot as Record<string, unknown>), channelAccountId: '01900000-0000-7000-8000-000000000099'};
+    outbox.payload = payload;
+    await localRepo.createGrantWithOutbox(grant, outbox, 'test-pre-dispatch-terminal', 'digest-pre-dispatch', ownerPublicKey);
+    let connectorCalls = 0;
+    const guardedConsumer = new OutboxConsumer(localRepo, 'pre-dispatch-terminal', 60000, () => now, undefined, {
+      ...connectorByPlatform,
+      BLUESKY: {...connectorByPlatform.BLUESKY!, execute: async (...args) => {
+        connectorCalls += 1;
+        return connectorByPlatform.BLUESKY!.execute(...args);
+      }},
+    });
+    expect(await guardedConsumer.processOne()).toBeNull();
+    expect(connectorCalls).toBe(0);
+    const receipts = await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId);
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]!.state).toBe('NOT_EXECUTED');
+    expect((await localRepo.getGrant(grant.organizationId, grant.id))!.status).not.toBe('EXECUTING');
+    expect(await localRepo.claimNextOutbox('pre-dispatch-repeat')).toBeUndefined();
+  });
+
+  it('rejects tampered Outbox Artifact before connector invocation', async () => {
+    const localRepo = new MemoryActionRepository();
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await localRepo.createGrantWithOutbox(grant, outbox, 'test-tampered-outbox-artifact', 'digest-tampered-artifact', ownerPublicKey);
+    const repoWithTamperedDelivery = new Proxy(localRepo, {
+      get(target, property, receiver) {
+        if (property !== 'claimNextOutbox') {
+          const value = Reflect.get(target, property, target) as unknown;
+          return typeof value === 'function' ? value.bind(target) : value;
+        }
+        return async (lockId: string) => {
+          const claim = await target.claimNextOutbox(lockId);
+          if (claim === undefined) return undefined;
+          const payload = structuredClone(claim.outbox.payload) as {revision: {content: {kind: string; posts?: string[]}}};
+          payload.revision.content = {kind: 'BLUESKY', posts: ['tampered content that was never approved']};
+          claim.outbox.payload = payload;
+          return claim;
+        };
+      },
+    });
+    let connectorCalls = 0;
+    const guardedConsumer = new OutboxConsumer(repoWithTamperedDelivery, 'tampered-artifact', 60000, () => now, undefined, {
+      ...connectorByPlatform,
+      BLUESKY: {...connectorByPlatform.BLUESKY!, execute: async (...args) => {
+        connectorCalls += 1;
+        return connectorByPlatform.BLUESKY!.execute(...args);
+      }},
+    });
+    expect(await guardedConsumer.processOne()).toBeNull();
+    expect(connectorCalls).toBe(0);
+  });
+
   it('reconciliation appends a terminal outcome without mutating UNKNOWN', async () => {
     const {grant, outbox, ownerPublicKey} = campaignAndGrant();
     await repo.createGrantWithOutbox(grant, outbox, 'test-reconcile-terminal', 'digest-reconcile', ownerPublicKey);

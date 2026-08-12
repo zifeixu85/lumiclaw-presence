@@ -733,6 +733,7 @@ export interface ActionRepository {
 
   getGrant(organizationId: string, grantId: string): Promise<ActionGrant | undefined>;
   getGrantsByCampaign(organizationId: string, campaignId: string): Promise<ActionGrant[]>;
+  getArtifactRevision(organizationId: string, revisionId: string): Promise<ArtifactRevision | undefined>;
 
   revokeGrant(
     organizationId: string,

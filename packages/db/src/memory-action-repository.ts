@@ -3,6 +3,7 @@ import {
   importEd25519PublicKey,
   ActionRepositoryError,
   type ActionGrant,
+  type ArtifactRevision,
   type ActionReceipt,
   type ActionRepository,
   type OutboxClaim,
@@ -16,6 +17,7 @@ export class MemoryActionRepository implements ActionRepository {
   readonly #grants = new Map<string, ActionGrant>();
   readonly #outbox = new Map<string, OutboxRecord>();
   readonly #receipts = new Map<string, ActionReceipt>();
+  readonly #artifactRevisions = new Map<string, ArtifactRevision>();
   readonly #idempotency = new Map<string, IdempotencyEntry>();
   readonly #ownerKeys = new Map<string, KeyObject>();
 
@@ -35,6 +37,11 @@ export class MemoryActionRepository implements ActionRepository {
     return [...this.#grants.values()]
       .filter((grant) => grant.organizationId === organizationId && grant.campaignId === campaignId)
       .map((grant) => structuredClone(grant));
+  }
+
+  async getArtifactRevision(organizationId: string, revisionId: string): Promise<ArtifactRevision | undefined> {
+    const revision = this.#artifactRevisions.get(revisionId);
+    return revision?.organizationId === organizationId ? structuredClone(revision) : undefined;
   }
 
   async createGrantWithOutbox(
@@ -58,6 +65,8 @@ export class MemoryActionRepository implements ActionRepository {
       this.#ownerKeys.set(grant.organizationId, importEd25519PublicKey(ownerPublicKey));
     }
 
+    const revision = (outbox.payload as {revision?: ArtifactRevision}).revision;
+    if (revision !== undefined) this.#artifactRevisions.set(revision.id, structuredClone(revision));
     this.#grants.set(grant.id, structuredClone(grant));
     this.#outbox.set(outbox.id, structuredClone(outbox));
     this.#idempotency.set(routeKey, {requestDigest, grant: structuredClone(grant), outbox: structuredClone(outbox)});
@@ -123,6 +132,9 @@ export class MemoryActionRepository implements ActionRepository {
   async completeOutbox(outboxId: string, receipt: ActionReceipt): Promise<ActionReceipt> {
     const outbox = this.#outbox.get(outboxId);
     if (outbox === undefined) throw new ActionRepositoryError('OUTBOX_RECORD_NOT_FOUND', 'Outbox record not found.');
+    if (outbox.state !== 'PROCESSING') {
+      throw new ActionRepositoryError('OUTBOX_NOT_PROCESSING', `Outbox state ${outbox.state} does not allow completion.`);
+    }
 
     // Verify the grant is still ISSUED — one grant can only be consumed once
     const grant = this.#grants.get(receipt.actionGrantId);
@@ -299,5 +311,6 @@ export class MemoryActionRepository implements ActionRepository {
     this.#outbox.clear();
     this.#receipts.clear();
     this.#idempotency.clear();
+    this.#artifactRevisions.clear();
   }
 }

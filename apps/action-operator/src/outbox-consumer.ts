@@ -85,7 +85,18 @@ export class OutboxConsumer {
       decision?: OwnerDecision;
       capabilitySnapshot?: CapabilitySnapshot;
     };
-    const artifact = payload.revision;
+    const artifact = await this.#repo.getArtifactRevision(grant.organizationId, grant.artifactRevisionId);
+    if (artifact === undefined || artifact.id !== grant.artifactRevisionId ||
+        artifact.organizationId !== grant.organizationId || artifact.campaignId !== grant.campaignId ||
+        artifact.activationUnitId !== grant.activationUnitId || artifact.platform !== grant.platform ||
+        artifact.capabilitySnapshotId !== grant.capabilitySnapshotId) {
+      await this.#repo.failOutbox(record.id, 'Authoritative ArtifactRevision scope mismatch.');
+      return null;
+    }
+    if (JSON.stringify(payload.revision) !== JSON.stringify(artifact)) {
+      await this.#repo.failOutbox(record.id, 'Outbox ArtifactRevision differs from the authoritative Revision.');
+      return null;
+    }
 
     // --- grant validation ---
     const n = this.#now();

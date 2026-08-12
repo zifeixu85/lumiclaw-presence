@@ -4,6 +4,7 @@ import {
   createUuidV7,
   importEd25519PublicKey,
   type ActionGrant,
+  type ArtifactRevision,
   type OwnerDecision,
   type ActionReceipt,
   type ActionRepository,
@@ -58,6 +59,23 @@ export class PostgresActionRepository implements ActionRepository {
       [organizationId, campaignId],
     );
     return result.rows.map((row) => ({...row.payload as ActionGrant, status: row.status as ActionGrant['status']}));
+  }
+
+  async getArtifactRevision(organizationId: string, revisionId: string): Promise<ArtifactRevision | undefined> {
+    const result = await this.#pool.query(
+      `select id, organization_id, campaign_id, platform, payload
+         from artifact_revisions where organization_id=$1 and id=$2`,
+      [organizationId, revisionId],
+    );
+    if (result.rowCount === 0) return undefined;
+    const row = result.rows[0]!;
+    return {
+      ...row.payload as ArtifactRevision,
+      id: row.id as string,
+      organizationId: row.organization_id as string,
+      campaignId: row.campaign_id as string,
+      platform: row.platform as ArtifactRevision['platform'],
+    };
   }
 
   // -----------------------------------------------------------------------
@@ -125,10 +143,16 @@ export class PostgresActionRepository implements ActionRepository {
                 encode(sha256(convert_to(cs.payload::text, 'UTF8')), 'hex') as capability_snapshot_digest
            from artifact_revisions ar
            join capability_snapshots cs on cs.organization_id=ar.organization_id and cs.id=$3
-          where ar.organization_id=$1 and ar.id=$2`,
-        [decision.organizationId, decision.artifactRevisionId, decision.capabilitySnapshotId],
+           join schedule_occurrences so on so.organization_id=ar.organization_id and so.id=$4
+          where ar.organization_id=$1 and ar.id=$2
+            and ar.campaign_id=$5 and ar.platform=$6
+            and cs.campaign_id=$5 and cs.channel_account_id=$7 and cs.platform=$6
+            and so.campaign_id=$5`,
+        [decision.organizationId, decision.artifactRevisionId, decision.capabilitySnapshotId,
+          decision.scheduleOccurrenceId, decision.campaignId, decision.platform,
+          decision.channelAccountId],
       );
-      if (authoritativeScope.rowCount !== 1) throw new ActionRepositoryError('OWNER_DECISION_AUTHORITY_NOT_FOUND', 'Authoritative Revision or CapabilitySnapshot was not found.');
+      if (authoritativeScope.rowCount !== 1) throw new ActionRepositoryError('OWNER_DECISION_SCOPE_INVALID', 'OwnerDecision references do not share one authoritative Campaign scope.');
       const artifactRevisionDigest = String(authoritativeScope.rows[0].artifact_revision_digest).trim();
       const capabilitySnapshotDigest = String(authoritativeScope.rows[0].capability_snapshot_digest).trim();
       await client.query(
@@ -192,7 +216,7 @@ export class PostgresActionRepository implements ActionRepository {
     try {
       await client.query('begin');
       const locked = await client.query(
-        `select payload from action_grants
+        `select status, payload from action_grants
          where organization_id=$1 and id=$2 for update`,
         [organizationId, grantId],
       );
@@ -202,10 +226,10 @@ export class PostgresActionRepository implements ActionRepository {
           'Grant not found.',
         );
       }
-      const grant = locked.rows[0].payload as ActionGrant;
+      const grant = {...locked.rows[0].payload as ActionGrant, status: locked.rows[0].status as ActionGrant['status']};
       if (grant.status !== 'ISSUED') {
         throw new ActionRepositoryError(
-          'ACTION_GRANT_NOT_REVOCABLE',
+          grant.status === 'EXECUTING' ? 'ACTION_ALREADY_EXECUTING' : 'ACTION_GRANT_NOT_REVOCABLE',
           `Grant status ${grant.status} does not allow revocation.`,
         );
       }
@@ -307,7 +331,8 @@ export class PostgresActionRepository implements ActionRepository {
       const grant = grantRow.rows[0].payload as ActionGrant;
 
       const reserved = await client.query(
-        `update action_grants set status='EXECUTING'
+        `update action_grants set status='EXECUTING',
+             payload=jsonb_set(payload, '{status}', to_jsonb('EXECUTING'::text))
          where organization_id=$1 and id=$2 and status='ISSUED' returning id`,
         [orgId, aggregateId],
       );
@@ -357,7 +382,7 @@ export class PostgresActionRepository implements ActionRepository {
     try {
       await client.query('begin');
       const row = await client.query(
-        `select organization_id, aggregate_id from outbox where id=$1 for update`,
+        `select organization_id, aggregate_id, state from outbox where id=$1 for update`,
         [outboxId],
       );
       if (row.rowCount === 0) {
@@ -368,6 +393,12 @@ export class PostgresActionRepository implements ActionRepository {
       }
       const orgId = row.rows[0].organization_id as string;
       const grantId = row.rows[0].aggregate_id as string;
+      if (row.rows[0].state !== 'PROCESSING') {
+        if (row.rows[0].state === 'COMPLETED') {
+          throw new ActionRepositoryError('ACTION_GRANT_ALREADY_CONSUMED', 'ActionGrant has already been consumed.');
+        }
+        throw new ActionRepositoryError('OUTBOX_NOT_PROCESSING', `Outbox state ${String(row.rows[0].state)} does not allow completion.`);
+      }
 
       // Lock the grant row and verify it is still ISSUED
       const grantRow = await client.query(

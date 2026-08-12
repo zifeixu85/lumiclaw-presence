@@ -244,6 +244,21 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         expect((error as ActionRepositoryError).code).toBe('ACTION_GRANT_NOT_FOUND');
       }
     });
+
+    it('rejects revocation after claim moves Grant to EXECUTING', async () => {
+      const {grant, outbox} = makeGrant(220);
+      await repo.createGrantWithOutbox(grant, outbox, `test-revoke-executing-${uuid(220)}`, sha256Digest({g: grant.id}));
+      await claimExactOutbox(outbox.id, 'operator-revoke-executing');
+      await expect(repo.revokeGrant(testOrg.organizationId, grant.id, 'Too late to revoke'))
+        .rejects.toMatchObject({code: 'ACTION_ALREADY_EXECUTING'});
+      const persisted = await pool.query(
+        `select status, payload->>'status' as payload_status from action_grants where organization_id=$1 and id=$2`,
+        [testOrg.organizationId, grant.id],
+      );
+      expect(persisted.rows[0]).toMatchObject({status: 'EXECUTING', payload_status: 'EXECUTING'});
+      const attempt = await pool.query(`select state from outbox where organization_id=$1 and id=$2`, [testOrg.organizationId, outbox.id]);
+      expect(attempt.rows[0].state).toBe('PROCESSING');
+    });
   });
 
   describe('outbox consumer', () => {
@@ -288,6 +303,51 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       expect(result.receipt.state).toBe('UNKNOWN');
       expect(result.receipt.unknownReason).toBe('Bluesky API timeout');
       expect(result.receipt.actionGrantId).toBe(grant.id);
+    });
+
+    it('rejects late PUBLISHED completion after UNKNOWN receipt', async () => {
+      const {grant, outbox} = makeGrant(230);
+      await repo.createGrantWithOutbox(grant, outbox, `test-late-completion-${uuid(230)}`, sha256Digest({g: grant.id}));
+      const claimed = await claimExactOutbox(outbox.id, 'operator-late-completion');
+      const failed = await repo.failOutbox(claimed.outbox.id, 'UNKNOWN: worker result was not observed');
+      const lateReceipt: ActionReceipt = {
+        id: uuid(231), organizationId: testOrg.organizationId, campaignId: grant.campaignId,
+        actionGrantId: grant.id, schemaVersion: 1, platform: 'BLUESKY', executionMode: 'DIRECT',
+        state: 'PUBLISHED', platformUri: 'https://bsky.app/profile/test/post/late',
+        platformCid: 'bafyrei-late', handoffSteps: null, unknownReason: null,
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
+      };
+      await expect(repo.completeOutbox(claimed.outbox.id, lateReceipt)).rejects.toBeInstanceOf(ActionRepositoryError);
+      const receipts = await pool.query(
+        `select id::text, state, previous_receipt_id from action_receipts where organization_id=$1 and action_grant_id=$2 order by created_at, id`,
+        [testOrg.organizationId, grant.id],
+      );
+      expect(receipts.rows).toEqual([{id: failed.receipt.id, state: 'UNKNOWN', previous_receipt_id: null}]);
+      const persisted = await pool.query(`select state from outbox where organization_id=$1 and id=$2`, [testOrg.organizationId, outbox.id]);
+      expect(persisted.rows[0].state).toBe('FAILED');
+    });
+  });
+
+  describe('authoritative campaign scope', () => {
+    it('rejects Campaign A Grant bound to Campaign B occurrence atomically', async () => {
+      const other = await seedOrgAndCampaign(pool, testOrg.organizationId, (runId % 10000) + 20000, now);
+      const {grant, outbox} = makeGrant(240);
+      grant.scheduleOccurrenceId = other.scheduleOccurrenceId;
+      const payload = structuredClone(outbox.payload) as {grant: typeof grant; decision: {id: string; scheduleOccurrenceId: string}};
+      payload.grant.scheduleOccurrenceId = other.scheduleOccurrenceId;
+      payload.decision.scheduleOccurrenceId = other.scheduleOccurrenceId;
+      outbox.payload = payload;
+      await expect(repo.createGrantWithOutbox(
+        grant, outbox, `test-cross-campaign-occurrence-${uuid(240)}`, sha256Digest({g: grant.id}),
+      )).rejects.toMatchObject({code: 'OWNER_DECISION_SCOPE_INVALID'});
+      const persisted = await pool.query(
+        `select
+           (select count(*)::int from owner_decisions where organization_id=$1 and id=$2) as decisions,
+           (select count(*)::int from action_grants where organization_id=$1 and id=$3) as grants,
+           (select count(*)::int from outbox where organization_id=$1 and aggregate_id=$3) as attempts`,
+        [testOrg.organizationId, payload.decision.id, grant.id],
+      );
+      expect(persisted.rows[0]).toEqual({decisions: 0, grants: 0, attempts: 0});
     });
   });
 
