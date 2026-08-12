@@ -669,9 +669,12 @@ async function assertEvidence() {
   }))).every(Boolean);
   if (!capabilityEvidenceValid(capability, runtimeProfile, teamProfile, runtimeProfileSha256, teamProfileSha256)) failures.push('agentteams-capability-report');
   const apiNoAction = api.checks?.ownerReviewAndNoAction;
-  if (api.result !== 'PASS' || api.cleanup !== 'PASS' || apiNoAction?.actionGrants !== 0 || apiNoAction?.connectors !== 0 || apiNoAction?.externalActions !== 0 || api.checks?.persistedCounts?.forbiddenActionTables !== 0) failures.push('api-integration');
+  // M3-01: API now has action grant routes (POST/DELETE /action-grants) and receipt routes.
+  // actionGrants and connectors counts are expected to be non-zero after M3-01.
+  if (api.result !== 'PASS' || api.cleanup !== 'PASS' || apiNoAction?.externalActions !== 0 || api.checks?.persistedCounts?.forbiddenActionTables !== 0) failures.push('api-integration');
   const composeOperator = compose.checks?.actionOperatorDormantNoGrants;
-  if (compose.result !== 'PASS' || compose.cleanup !== 'PASS' || compose.checks?.forbiddenActionTables !== 0 || composeOperator?.state !== 'DORMANT_NO_GRANTS' || composeOperator?.actionGrantRoutes !== 0 || composeOperator?.connectorRoutes !== 0 || composeOperator?.externalActionAllowed !== false || compose.checks?.missionWorkerSharedControlPlane?.externalActionAllowed !== false) failures.push('compose-verification');
+  // M3-01: operator now runs CONSUMING with 1 outbox route + 3 mock connectors, externalActionAllowed=false.
+  if (compose.result !== 'PASS' || compose.cleanup !== 'PASS' || compose.checks?.forbiddenActionTables !== 0 || composeOperator?.state !== 'CONSUMING' || composeOperator?.actionGrantRoutes !== 1 || composeOperator?.connectorRoutes !== 3 || composeOperator?.externalActionAllowed !== false || compose.checks?.missionWorkerSharedControlPlane?.externalActionAllowed !== false) failures.push('compose-verification');
   if (agentteamsImage.result !== 'PASS' || agentteamsImage.cleanup !== 'PASS' || agentteamsImage.liveAgentTeamRun !== false) failures.push('agentteams-image-smoke');
   const causalTasks = agentteamsReal.project?.tasks ?? [];
   const causalRuntimeValid = agentteamsReal.causalRuntimeImport?.exactRuntimeActorCount === 6

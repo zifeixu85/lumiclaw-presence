@@ -1,13 +1,22 @@
 import {
+  ActionRepositoryError,
   CampaignPreparationError,
   createPublishingSchedule,
+  createActionGrantFromDecision,
+  createOwnerDecision,
   createDemoCampaignDocument,
   isUuidV7,
+  isValidPlatformHandoffUrl,
+  importEd25519PrivateKey,
+  importEd25519PublicKey,
   ScheduleContractError,
   sha256Digest,
+  type ActionRepository,
   type CampaignDocument,
   type CampaignRepository,
-  type MutationResult
+  type MutationResult,
+  type Platform,
+  type ExecutionMode,
 } from '@lumiclaw/domain';
 import {
   acceptRuntimeSubmission,
@@ -39,15 +48,17 @@ import {
   type TaskContract,
   type ShadowMissionRepository
 } from '@lumiclaw/governed-shadow';
-import {PostgresCampaignRepository} from '@lumiclaw/db';
-import {timingSafeEqual} from 'node:crypto';
+import {MemoryActionRepository, PostgresActionRepository, PostgresCampaignRepository} from '@lumiclaw/db';
+import {timingSafeEqual, type KeyObject} from 'node:crypto';
+import {readFileSync} from 'node:fs';
 import Fastify, {type FastifyInstance, type FastifyReply, type FastifyRequest} from 'fastify';
 import {MemoryCampaignRepository} from './memory-campaign-repository.js';
+import {ReceiptEventBus, SseManager} from './receipt-stream.js';
 import {liveTaskActionPhaseAllowed} from './live-ticket-policy.js';
 import {openApiDocument} from './openapi.js';
 import {LiveRuntimeTicketStore, LiveTicketError, readComposeSecret, type LiveTicketAction, type LiveTicketBinding} from './live-runtime-security.js';
 
-type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
+type BuildOptions = {repository?: CampaignRepository; actionRepository?: ActionRepository; shadowRepository?: ShadowMissionRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; actionGrantSigner?: {privateKey: KeyObject; publicKey: KeyObject} | undefined; requirePersistentActionSigner?: boolean | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
 type CampaignParams = {campaignId: string};
 type MissionParams = {missionId: string};
 type RuntimeEventBody =
@@ -63,12 +74,16 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   const app = Fastify({logger: false});
   const now = options.now ?? (() => new Date());
   const repository = options.repository ?? new MemoryCampaignRepository(now);
+  const actionRepository = options.actionRepository ?? new MemoryActionRepository();
   const shadowRepository = options.shadowRepository ?? new MemoryShadowMissionRepository();
+  const receiptBus = new ReceiptEventBus();
+  const sseManager = new SseManager(receiptBus, (organizationId, campaignId) =>
+    actionRepository.getReceiptsByCampaign(organizationId, campaignId));
   const runtimeImportToken = options.runtimeImportToken;
   const ticketStore = new LiveRuntimeTicketStore(options.runtimeBootstrapSecret, () => now().getTime());
   const deepseekApiKey = options.deepseekApiKey;
   const liveModelProviderFactory = options.liveModelProviderFactory ?? ((apiKey: string) => new DeepSeekModelProvider({apiKey, executionClass: 'CANARY'}));
-  app.addHook('onClose', async () => { await repository.close(); await shadowRepository.close(); });
+  app.addHook('onClose', async () => { sseManager.close(); await repository.close(); await shadowRepository.close(); });
 
   app.get('/health', async (_request, reply) => {
     try {
@@ -144,6 +159,186 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
       return {code: 'SCHEDULE_PREVIEW_READY', mode: 'DEMO_SEED', live: false, executionAllowed: false, ...value};
     } catch (error) { return sendDomainOrUnavailable(reply, error); }
   });
+
+  // -------------------------------------------------------------------
+  // M3 — Action Grants & Receipts
+  // -------------------------------------------------------------------
+
+  app.get<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/action-grants', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    const grants = await actionRepository.getGrantsByCampaign(organizationId, request.params.campaignId);
+    return {code: 'ACTION_GRANT_LIST', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, grants};
+  });
+
+  app.post<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/action-grants', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    const idempotencyKey = requireIdempotency(request, reply);
+    const ifMatch = request.headers['if-match'];
+    if (organizationId === undefined || idempotencyKey === undefined) return;
+    if (typeof ifMatch !== 'string' || ifMatch.length === 0) return reply.status(428).send(errorBody('ETAG_REQUIRED'));
+    const envelope = await repository.get(organizationId, request.params.campaignId);
+    if (envelope === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+    if (envelope.etag !== ifMatch) return reply.status(412).header('ETag', envelope.etag).send(errorBody('CAMPAIGN_VERSION_CONFLICT'));
+    if (envelope.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: envelope.digest, version: envelope.version, gapCodes: envelope.gapCodes});
+    if (!isCreateActionGrantBody(request.body)) return reply.status(422).send(errorBody('ACTION_GRANT_BODY_INVALID'));
+    if (options.requirePersistentActionSigner === true && options.actionGrantSigner === undefined) {
+      return reply.status(503).send(errorBody('ACTION_GRANT_SIGNER_UNAVAILABLE'));
+    }
+    try {
+      const {platform, executionMode, scheduleOccurrenceId, artifactRevisionId, activationUnitId} = request.body;
+
+      // Construct a formal OwnerDecision and bind the ActionGrant to it.
+      // Every grant must follow the Decision → Grant path.
+      const decision = createOwnerDecision({
+        campaign: envelope.document,
+        platform,
+        executionMode,
+        scheduleOccurrenceId,
+        artifactRevisionId,
+        activationUnitId,
+        now: now(),
+      });
+
+      const signer = options.actionGrantSigner;
+      const {grant, outbox, ownerPublicKey} = signer === undefined
+        ? createActionGrantFromDecision(decision, envelope.document, {now: now()})
+        : createActionGrantFromDecision(decision, envelope.document, {now: now(), privateKey: signer.privateKey, publicKey: signer.publicKey});
+      // Bind idempotency digest to the stable input parameters (not random
+      // grant IDs) so replays with the same key + same Campaign revision
+      // produce the matching digest.  Also binds the Campaign revision so
+      // a different Campaign version with the same key is rejected.
+      const requestDigest = sha256Digest({
+        platform,
+        executionMode,
+        scheduleOccurrenceId,
+        artifactRevisionId,
+        activationUnitId,
+        campaignVersion: envelope.version,
+        campaignDigest: envelope.digest,
+      });
+      const result = await actionRepository.createGrantWithOutbox(
+        grant, outbox, idempotencyKey, requestDigest, ownerPublicKey,
+      );
+      void reply.header('ETag', envelope.etag).header('Idempotency-Replayed', String(result.replayed));
+      if (result.replayed) return reply.status(200).send({code: 'ACTION_GRANT_REPLAYED', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, grant: result.grant, outbox: result.outbox});
+      return reply.status(201).send({code: 'ACTION_GRANT_ISSUED', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, grant: result.grant, outbox: result.outbox});
+    } catch (error) { return sendDomainOrUnavailable(reply, error); }
+  });
+
+  app.delete<{Params: CampaignParams & {grantId: string}}>('/api/v1/campaigns/:campaignId/action-grants/:grantId', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    const envelope = await repository.get(organizationId, request.params.campaignId);
+    if (envelope === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+    try {
+      const existing = await actionRepository.getGrant(organizationId, request.params.grantId);
+      if (existing === undefined || existing.campaignId !== request.params.campaignId) return reply.status(404).send(errorBody('ACTION_GRANT_NOT_FOUND'));
+      const grant = await actionRepository.revokeGrant(organizationId, request.params.grantId, 'Owner requested revocation');
+      return {code: 'ACTION_GRANT_REVOKED', mode: 'DEMO_SEED', live: false, grant};
+    } catch (error) {
+      if (error instanceof ActionRepositoryError && error.code === 'ACTION_GRANT_NOT_FOUND') return reply.status(404).send(errorBody('ACTION_GRANT_NOT_FOUND'));
+      return sendDomainOrUnavailable(reply, error);
+    }
+  });
+
+  app.get<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/receipts', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    const campaign = await repository.get(organizationId, request.params.campaignId);
+    if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+    const receipts = await actionRepository.getReceiptsByCampaign(organizationId, request.params.campaignId);
+    return {code: 'RECEIPT_LIST', mode: 'DEMO_SEED', live: false, receipts};
+  });
+
+  app.get<{Params: CampaignParams & {receiptId: string}}>('/api/v1/campaigns/:campaignId/receipts/:receiptId', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    const receipt = await actionRepository.getReceipt(organizationId, request.params.receiptId);
+    if (receipt === undefined) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    if (receipt.campaignId !== request.params.campaignId) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    return {code: 'RECEIPT_DETAIL', mode: 'DEMO_SEED', live: false, receipt};
+  });
+
+  // --- SSE Receipt Stream ---
+
+  app.get<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/receipts/stream', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    const campaign = await repository.get(organizationId, request.params.campaignId);
+    if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+
+    reply.raw.writeHead(200, {
+      'content-type': 'text/event-stream',
+      'cache-control': 'no-cache',
+      'connection': 'keep-alive',
+    });
+    reply.raw.write(`:connected\n\n`);
+    sseManager.subscribe(organizationId, request.params.campaignId, reply);
+    // Prevent Fastify from closing the reply automatically
+    reply.hijack();
+  });
+
+  // --- Handoff Confirmation ---
+
+  type ConfirmHandoffParams = CampaignParams & {receiptId: string};
+  type ConfirmHandoffBody = {platformUri: string; platformCid?: string};
+
+  app.post<{Params: ConfirmHandoffParams}>('/api/v1/campaigns/:campaignId/receipts/:receiptId/confirm-handoff', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    if (!isConfirmHandoffBody(request.body)) return reply.status(422).send(errorBody('CONFIRM_HANDOFF_BODY_INVALID'));
+    const receipt = await actionRepository.getReceipt(organizationId, request.params.receiptId);
+    if (receipt === undefined) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    // Verify receipt belongs to the campaign
+    const grants = await actionRepository.getReceiptsByCampaign(organizationId, request.params.campaignId);
+    if (!grants.some((r) => r.id === request.params.receiptId)) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    if (receipt.state !== 'HANDOFF_PENDING') return reply.status(409).send(errorBody('HANDOFF_NOT_PENDING'));
+    if (!isValidPlatformHandoffUrl(receipt.platform, request.body.platformUri)) {
+      return reply.status(422).send(errorBody('HANDOFF_URL_INVALID'));
+    }
+    try {
+      const confirmed = await actionRepository.confirmHandoff(
+        organizationId, request.params.receiptId,
+        request.body.platformUri, request.body.platformCid,
+      );
+      sseManager.notifyReceiptCreated(confirmed);
+      return {code: 'HANDOFF_CONFIRMED', mode: 'DEMO_SEED', live: false, receipt: confirmed};
+    } catch (error) {
+      if (error instanceof ActionRepositoryError && error.code === 'HANDOFF_NOT_PENDING') return reply.status(409).send(errorBody(error.code));
+      return sendDomainOrUnavailable(reply, error);
+    }
+  });
+
+  // --- Reconciliation ---
+
+  type ReconcileParams = CampaignParams & {receiptId: string};
+  type ReconcileBody = {method: 'PLATFORM_QUERY' | 'OWNER_MANUAL'; outcome: 'PUBLISHED' | 'FAILED' | 'NOT_EXECUTED'; platformUri?: string; platformCid?: string; notes?: string};
+
+  app.post<{Params: ReconcileParams; Body: ReconcileBody}>('/api/v1/campaigns/:campaignId/receipts/:receiptId/reconcile', async (request, reply) => {
+    const organizationId = requireOrganization(request, reply);
+    if (organizationId === undefined) return;
+    if (!isReconcileBody(request.body)) return reply.status(422).send(errorBody('RECONCILE_BODY_INVALID'));
+    const receipt = await actionRepository.getReceipt(organizationId, request.params.receiptId);
+    if (receipt === undefined) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    if (receipt.campaignId !== request.params.campaignId) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    // Verify receipt belongs to the campaign
+    const grants = await actionRepository.getReceiptsByCampaign(organizationId, request.params.campaignId);
+    if (!grants.some((r) => r.id === request.params.receiptId)) return reply.status(404).send(errorBody('RECEIPT_NOT_FOUND'));
+    if (request.body.outcome === 'PUBLISHED' && (request.body.platformUri === undefined || !isValidPlatformHandoffUrl(receipt.platform, request.body.platformUri))) return reply.status(422).send(errorBody('RECONCILIATION_URL_INVALID'));
+    try {
+      const reconciled = await actionRepository.reconcileReceipt(organizationId, request.params.receiptId, request.body.method, request.body.outcome, request.body.platformUri, request.body.platformCid, request.body.notes);
+      receiptBus.emit('receipt:reconciled', reconciled);
+      return {code: 'RECEIPT_RECONCILED', mode: 'DEMO_SEED', live: false, receipt: reconciled};
+    } catch (error) {
+      if (error instanceof ActionRepositoryError && error.code === 'RECEIPT_NOT_UNKNOWN') return reply.status(409).send(errorBody(error.code));
+      return sendDomainOrUnavailable(reply, error);
+    }
+  });
+
+  // -------------------------------------------------------------------
+  // M2 — Shadow Missions
+  // -------------------------------------------------------------------
 
   app.get<{Params: CampaignParams}>('/api/v1/campaigns/:campaignId/shadow-missions', async (request, reply) => {
     const organizationId = requireOrganization(request, reply); if (organizationId === undefined) return;
@@ -412,6 +607,34 @@ function isLiveTicketBody(value: unknown): value is LiveTicketBody {
 
 function isLiveModelBody(value: unknown): value is LiveModelBody { return isRecord(value) && Object.keys(value).sort().join(',') === 'attempt,inputProjectionDigest,roleId,taskId' && typeof value.taskId === 'string' && isRoleId(value.roleId) && Number.isSafeInteger(value.attempt) && isDigest(value.inputProjectionDigest); }
 function isLiveFailureBody(value: unknown): value is {code: string; failedTaskId: string | null; retryable: boolean} { return isRecord(value) && Object.keys(value).sort().join(',') === 'code,failedTaskId,retryable' && typeof value.code === 'string' && value.code.length > 0 && value.code.length <= 80 && (value.failedTaskId === null || typeof value.failedTaskId === 'string') && typeof value.retryable === 'boolean'; }
+function isReconcileBody(value: unknown): value is {method: 'PLATFORM_QUERY' | 'OWNER_MANUAL'; outcome: 'PUBLISHED' | 'FAILED' | 'NOT_EXECUTED'; platformUri?: string; platformCid?: string; notes?: string} { return isRecord(value) && ['PLATFORM_QUERY', 'OWNER_MANUAL'].includes(String(value.method)) && ['PUBLISHED', 'FAILED', 'NOT_EXECUTED'].includes(String(value.outcome)) && (value.platformUri === undefined || typeof value.platformUri === 'string') && (value.platformCid === undefined || typeof value.platformCid === 'string') && (value.notes === undefined || typeof value.notes === 'string'); }
+
+function isConfirmHandoffBody(value: unknown): value is {platformUri: string; platformCid?: string} {
+  return isRecord(value) && typeof value.platformUri === 'string' && value.platformUri.length > 0
+    && (value.platformCid === undefined || typeof value.platformCid === 'string');
+}
+
+const validPlatforms = new Set<string>(['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU']);
+const validExecutionModes = new Set<string>(['DIRECT', 'NATIVE_HANDOFF']);
+
+type CreateActionGrantBody = {
+  platform: Platform;
+  executionMode: ExecutionMode;
+  scheduleOccurrenceId: string;
+  artifactRevisionId: string;
+  activationUnitId: string;
+};
+
+function isCreateActionGrantBody(value: unknown): value is CreateActionGrantBody {
+  if (!isRecord(value)) return false;
+  const keys = Object.keys(value).sort().join(',');
+  if (keys !== 'activationUnitId,artifactRevisionId,executionMode,platform,scheduleOccurrenceId') return false;
+  return validPlatforms.has(String(value.platform))
+    && validExecutionModes.has(String(value.executionMode))
+    && typeof value.scheduleOccurrenceId === 'string'
+    && typeof value.artifactRevisionId === 'string'
+    && typeof value.activationUnitId === 'string';
+}
 
 function liveBinding(mission: Awaited<ReturnType<ShadowMissionRepository['get']>> & {}, action: LiveTicketAction, roleId: string | null, taskId: string | null, attempt: number | null): LiveTicketBinding { return {missionId: mission.id, campaignDigest: mission.sourceCampaignDigest, action, roleId, taskId, attempt}; }
 function liveBindingFromRuntimeEvent(mission: NonNullable<Awaited<ReturnType<ShadowMissionRepository['get']>>>, event: RuntimeEventBody): LiveTicketBinding {
@@ -510,9 +733,20 @@ function parseSchedulePreviewBody(value: unknown): SchedulePreviewBody {
 async function start(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
   if (connectionString === undefined) throw new Error('DATABASE_URL is required.');
-  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
+  const privateKey = readOptionalSecret('/run/secrets/lumiclaw_action_signer_private_key');
+  const publicKey = readOptionalSecret('/run/secrets/lumiclaw_action_signer_public_key');
+  if ((privateKey === undefined) !== (publicKey === undefined)) throw new Error('Both ActionGrant signer key files are required.');
+  const actionGrantSigner = privateKey !== undefined && publicKey !== undefined
+    ? {privateKey: importEd25519PrivateKey(privateKey), publicKey: importEd25519PublicKey(publicKey)}
+    : undefined;
+  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), actionRepository: new PostgresActionRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap'), actionGrantSigner, requirePersistentActionSigner: true});
   const port = Number.parseInt(process.env.PORT ?? '4000', 10);
   await app.listen({host: '0.0.0.0', port});
+}
+
+function readOptionalSecret(path: string): string | undefined {
+  try { const value = readFileSync(path, 'utf8').trim(); return value.length === 0 ? undefined : value; }
+  catch (error) { if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined; throw error; }
 }
 
 if (process.argv[1]?.endsWith('/server.js')) {
