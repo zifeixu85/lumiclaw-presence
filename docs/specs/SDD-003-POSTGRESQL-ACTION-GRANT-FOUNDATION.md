@@ -7,7 +7,7 @@
 > Goal objective: engineering-verify the governed PostgreSQL ActionGrant foundation
 > Target evidence maturity: `ENGINEERING_VERIFIED`
 > Acceptance report: `docs/reports/acceptance/SDD-003-ACCEPTANCE.md`
-> Last updated: `2026-08-12`
+> Last updated: `2026-08-13`
 
 ## 1. User problem and outcome
 
@@ -131,6 +131,8 @@ No new third-party dependency is introduced.
 Passing permits `IMPLEMENTED` and `ENGINEERING_VERIFIED` only for the controlled fake connector PostgreSQL foundation. Real publishing/handoff, customer UAT, external calibration, and business outcomes remain `NOT_CLAIMED`.
 
 The aggregate JSON reports database freshness, migrations, domain, repository contract, concurrency, revocation race, crash recovery, cross-process restart, scope isolation, append-only, SSE, external action count, and connector mode.
+
+The unique aggregate entry point is `npm run verify:m3-sdd003` (the same command runs in CI). Machine-readable evidence lives in `.evidence/sdd-003/aggregate.json`, `.evidence/sdd-003/fresh-postgres.json`, `.evidence/sdd-003/postgres-repository-vitest.json`, `.evidence/sdd-003/named-postgres-tests.json`, and `.evidence/m3-01/action-grant-integration.json`. The four named PostgreSQL adversarial tests (`M3_PG_POST_CLAIM_REVOKE`, `M3_PG_LATE_COMPLETION_FENCING`, `M3_PG_CROSS_CAMPAIGN_SCOPE`, `M3_PG_DISPATCH_STATE_MATRIX`) are bound to the raw Vitest JSON reporter by SHA-256 and re-verified by the evidence-integrity step.
 
 ## 12. Delivery plan
 

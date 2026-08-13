@@ -257,7 +257,7 @@ describe('action grant routes', () => {
         createdAt: now.toISOString(),
         previousReceiptId: null,
       };
-      await repo.completeOutbox(claimed!.outbox.id, pending);
+      await repo.completeOutbox(claimed!.outbox.id, pending, claimed!.lease);
 
       // Now call confirm-handoff via the API
       const res = await app.inject({
@@ -308,7 +308,7 @@ describe('action grant routes', () => {
         createdAt: now.toISOString(),
         previousReceiptId: null,
       };
-      await repo.completeOutbox(claimed!.outbox.id, published);
+      await repo.completeOutbox(claimed!.outbox.id, published, claimed!.lease);
 
       const res = await app.inject({
         method: 'POST',
@@ -402,7 +402,7 @@ describe('action grant routes', () => {
       };
       await repo.createGrantWithOutbox(grant, outbox, `iso-${Date.now()}`, sha256Digest({g: grant.id}), ownerPublicKey);
       const claimed = await repo.claimNextOutbox('test-iso');
-      await repo.completeOutbox(claimed!.outbox.id, pubReceipt);
+      await repo.completeOutbox(claimed!.outbox.id, pubReceipt, claimed!.lease);
 
       // Query campaign A receipts — should include ours
       const resA = await app.inject({

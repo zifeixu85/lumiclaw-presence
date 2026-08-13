@@ -244,6 +244,52 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         expect((error as ActionRepositoryError).code).toBe('ACTION_GRANT_NOT_FOUND');
       }
     });
+
+    it('post-claim revoke is rejected after the claim transaction commits', async () => {
+      const {grant, outbox} = makeGrant(220);
+      await repo.createGrantWithOutbox(grant, outbox, `test-revoke-executing-${uuid(220)}`, sha256Digest({g: grant.id}));
+      await claimExactOutbox(outbox.id, 'operator-revoke-executing');
+      await expect(repo.revokeGrant(testOrg.organizationId, grant.id, 'Too late to revoke'))
+        .rejects.toMatchObject({code: 'ACTION_ALREADY_EXECUTING'});
+      const persisted = await pool.query(
+        `select status, payload->>'status' as payload_status from action_grants where organization_id=$1 and id=$2`,
+        [testOrg.organizationId, grant.id],
+      );
+      expect(persisted.rows[0]).toMatchObject({status: 'EXECUTING', payload_status: 'EXECUTING'});
+      const attempt = await pool.query(`select state from outbox where organization_id=$1 and id=$2`, [testOrg.organizationId, outbox.id]);
+      expect(attempt.rows[0].state).toBe('PROCESSING');
+    });
+
+    it('[M3_PG_POST_CLAIM_REVOKE] barrier-controlled PostgreSQL claim wins and fences concurrent revoke', async () => {
+      const {grant, outbox} = makeGrant(222);
+      await repo.createGrantWithOutbox(grant, outbox, `test-barrier-claim-revoke-${uuid(222)}`, sha256Digest({g: grant.id}));
+      const barrier = await pool.connect();
+      try {
+        await barrier.query('begin');
+        await barrier.query(
+          `select id from action_grants where organization_id=$1 and id=$2 for update`,
+          [testOrg.organizationId, grant.id],
+        );
+        const claimPromise = claimExactOutbox(outbox.id, 'operator-barrier-claim');
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const revokePromise = repo.revokeGrant(testOrg.organizationId, grant.id, 'Concurrent revoke');
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        await barrier.query('commit');
+        const claimed = await claimPromise;
+        expect(claimed.outbox.state).toBe('PROCESSING');
+        await expect(revokePromise).rejects.toMatchObject({code: 'ACTION_ALREADY_EXECUTING'});
+      } finally {
+        await barrier.query('rollback').catch(() => {});
+        barrier.release();
+      }
+      const final = await pool.query(
+        `select g.status, o.state from action_grants g join outbox o
+           on o.organization_id=g.organization_id and o.aggregate_id=g.id
+          where g.organization_id=$1 and g.id=$2`,
+        [testOrg.organizationId, grant.id],
+      );
+      expect(final.rows[0]).toMatchObject({status: 'EXECUTING', state: 'PROCESSING'});
+    });
   });
 
   describe('outbox consumer', () => {
@@ -272,7 +318,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         handoffSteps: null, unknownReason: null,
         reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
       };
-      const saved = await repo.completeOutbox(claimed!.outbox.id, receipt);
+      const saved = await repo.completeOutbox(claimed!.outbox.id, receipt, claimed!.lease);
       expect(saved.state).toBe('PUBLISHED');
       expect(saved.platformUri).toBe('https://bsky.app/profile/test/post/abc');
     });
@@ -283,11 +329,98 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         grant, outbox, `test-fail-${uuid(50)}`, sha256Digest({g: grant.id}),
       );
       const claimed = await claimExactOutbox(outbox.id, 'operator-4');
-      const result = await repo.failOutbox(claimed!.outbox.id, 'Bluesky API timeout');
-      expect(result.outbox.state).toBe('FAILED');
+      await repo.beginDispatch(claimed!.outbox.id, claimed!.lease);
+      const result = await repo.failOutbox(claimed!.outbox.id, 'Bluesky API timeout', claimed!.lease, 'UNKNOWN');
+      expect(result.outbox.state).toBe('DEAD_LETTER');
       expect(result.receipt.state).toBe('UNKNOWN');
       expect(result.receipt.unknownReason).toBe('Bluesky API timeout');
       expect(result.receipt.actionGrantId).toBe(grant.id);
+    });
+
+    it('[M3_PG_LATE_COMPLETION_FENCING] UNKNOWN fences a late completion carrying the former execution lease', async () => {
+      const {grant, outbox} = makeGrant(230);
+      await repo.createGrantWithOutbox(grant, outbox, `test-late-completion-${uuid(230)}`, sha256Digest({g: grant.id}));
+      const claimed = await claimExactOutbox(outbox.id, 'operator-late-completion');
+      await repo.beginDispatch(claimed.outbox.id, claimed.lease);
+      const failed = await repo.failOutbox(claimed.outbox.id, 'UNKNOWN: worker result was not observed', claimed.lease, 'UNKNOWN');
+      const lateReceipt: ActionReceipt = {
+        id: uuid(231), organizationId: testOrg.organizationId, campaignId: grant.campaignId,
+        actionGrantId: grant.id, schemaVersion: 1, platform: 'BLUESKY', executionMode: 'DIRECT',
+        state: 'PUBLISHED', platformUri: 'https://bsky.app/profile/test/post/late',
+        platformCid: 'bafyrei-late', handoffSteps: null, unknownReason: null,
+        reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
+      };
+      await expect(repo.completeOutbox(claimed.outbox.id, lateReceipt, claimed.lease)).rejects.toBeInstanceOf(ActionRepositoryError);
+      const receipts = await pool.query(
+        `select id::text, state, previous_receipt_id from action_receipts where organization_id=$1 and action_grant_id=$2 order by created_at, id`,
+        [testOrg.organizationId, grant.id],
+      );
+      expect(receipts.rows).toEqual([{id: failed.receipt.id, state: 'UNKNOWN', previous_receipt_id: null}]);
+      const persisted = await pool.query(`select state from outbox where organization_id=$1 and id=$2`, [testOrg.organizationId, outbox.id]);
+      expect(persisted.rows[0].state).toBe('DEAD_LETTER');
+    });
+
+    it('rejects completion with a mismatched locked_by attempt or lease token', async () => {
+      const {grant, outbox} = makeGrant(232);
+      await repo.createGrantWithOutbox(grant, outbox, `test-stale-token-${uuid(232)}`, sha256Digest({g: grant.id}));
+      const claimed = await claimExactOutbox(outbox.id, 'operator-current');
+      const receipt: ActionReceipt = {
+        id: uuid(233), organizationId: testOrg.organizationId, campaignId: grant.campaignId,
+        actionGrantId: grant.id, schemaVersion: 1, platform: 'BLUESKY', executionMode: 'DIRECT',
+        state: 'PUBLISHED', platformUri: 'https://bsky.app/profile/test/post/fenced', platformCid: 'fenced',
+        handoffSteps: null, unknownReason: null, reconciledAt: null, reconciliationMethod: null,
+        createdAt: now.toISOString(), previousReceiptId: null,
+      };
+      await expect(repo.completeOutbox(outbox.id, receipt, {...claimed.lease, lockedBy: 'operator-stale'}))
+        .rejects.toMatchObject({code: 'OUTBOX_LEASE_LOST'});
+      await expect(repo.completeOutbox(outbox.id, receipt, {...claimed.lease, attempt: claimed.lease.attempt + 1}))
+        .rejects.toMatchObject({code: 'OUTBOX_LEASE_LOST'});
+      await expect(repo.completeOutbox(outbox.id, receipt, {...claimed.lease, token: uuid(234)}))
+        .rejects.toMatchObject({code: 'OUTBOX_LEASE_LOST'});
+      expect((await pool.query(`select count(*)::int as count from action_receipts where action_grant_id=$1`, [grant.id])).rows[0].count).toBe(0);
+    });
+
+    it('[M3_PG_DISPATCH_STATE_MATRIX] enforces pre-dispatch definite failure UNKNOWN and reprocess state matrix', async () => {
+      const definite = makeGrant(235);
+      await repo.createGrantWithOutbox(definite.grant, definite.outbox, `test-definite-${uuid(235)}`, sha256Digest({g: definite.grant.id}));
+      const definiteClaim = await claimExactOutbox(definite.outbox.id, 'operator-definite');
+      const definiteResult = await repo.failOutbox(definite.outbox.id, 'Digest mismatch before dispatch', definiteClaim.lease, 'DEFINITE_NOT_EXECUTED');
+      expect(definiteResult.receipt.state).toBe('NOT_EXECUTED');
+      expect((await repo.getGrant(testOrg.organizationId, definite.grant.id))!.status).toBe('REVOKED');
+      await expect(repo.reprocessOutbox(testOrg.organizationId, definite.outbox.id)).rejects.toMatchObject({code: 'OUTBOX_NOT_REPROCESSABLE'});
+
+      const ambiguous = makeGrant(237);
+      await repo.createGrantWithOutbox(ambiguous.grant, ambiguous.outbox, `test-unknown-${uuid(237)}`, sha256Digest({g: ambiguous.grant.id}));
+      const ambiguousClaim = await claimExactOutbox(ambiguous.outbox.id, 'operator-unknown');
+      await repo.beginDispatch(ambiguous.outbox.id, ambiguousClaim.lease);
+      const ambiguousResult = await repo.failOutbox(ambiguous.outbox.id, 'Connector timeout after send', ambiguousClaim.lease, 'UNKNOWN');
+      expect(ambiguousResult.receipt.state).toBe('UNKNOWN');
+      expect(ambiguousResult.outbox.state).toBe('DEAD_LETTER');
+      expect((await repo.getGrant(testOrg.organizationId, ambiguous.grant.id))!.status).toBe('CONSUMED');
+      await expect(repo.reprocessOutbox(testOrg.organizationId, ambiguous.outbox.id)).rejects.toMatchObject({code: 'OUTBOX_NOT_REPROCESSABLE'});
+    });
+  });
+
+  describe('authoritative campaign scope', () => {
+    it('[M3_PG_CROSS_CAMPAIGN_SCOPE] same-organization cross-Campaign occurrence binding is rejected atomically', async () => {
+      const other = await seedOrgAndCampaign(pool, testOrg.organizationId, (runId % 10000) + 20000, now);
+      const {grant, outbox} = makeGrant(240);
+      grant.scheduleOccurrenceId = other.scheduleOccurrenceId;
+      const payload = structuredClone(outbox.payload) as {grant: typeof grant; decision: {id: string; scheduleOccurrenceId: string}};
+      payload.grant.scheduleOccurrenceId = other.scheduleOccurrenceId;
+      payload.decision.scheduleOccurrenceId = other.scheduleOccurrenceId;
+      outbox.payload = payload;
+      await expect(repo.createGrantWithOutbox(
+        grant, outbox, `test-cross-campaign-occurrence-${uuid(240)}`, sha256Digest({g: grant.id}),
+      )).rejects.toMatchObject({code: 'OWNER_DECISION_SCOPE_INVALID'});
+      const persisted = await pool.query(
+        `select
+           (select count(*)::int from owner_decisions where organization_id=$1 and id=$2) as decisions,
+           (select count(*)::int from action_grants where organization_id=$1 and id=$3) as grants,
+           (select count(*)::int from outbox where organization_id=$1 and aggregate_id=$3) as attempts`,
+        [testOrg.organizationId, payload.decision.id, grant.id],
+      );
+      expect(persisted.rows[0]).toEqual({decisions: 0, grants: 0, attempts: 0});
     });
   });
 
@@ -306,7 +439,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         handoffSteps: null, unknownReason: null,
         reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
       };
-      await repo.completeOutbox(claimed!.outbox.id, receipt);
+      await repo.completeOutbox(claimed!.outbox.id, receipt, claimed!.lease);
 
       // Verify grant was consumed via raw SQL query
       const grantRow = await pool.query(
@@ -363,8 +496,8 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       };
 
       const results = await Promise.allSettled([
-        repo.completeOutbox(claimed.outbox.id, receiptA),
-        repo.completeOutbox(claimed.outbox.id, receiptB),
+        repo.completeOutbox(claimed.outbox.id, receiptA, claimed.lease),
+        repo.completeOutbox(claimed.outbox.id, receiptB, claimed.lease),
       ]);
 
       const fulfilled = results.filter((r) => r.status === 'fulfilled').length;
@@ -402,7 +535,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         handoffSteps: null, unknownReason: null,
         reconciledAt: null, reconciliationMethod: null, createdAt: now.toISOString(), previousReceiptId: null,
       };
-      await repo.completeOutbox(claimed!.outbox.id, receipt);
+      await repo.completeOutbox(claimed!.outbox.id, receipt, claimed!.lease);
       const receipts = await repo.getReceiptsByCampaign(testOrg.organizationId, testOrg.campaignId);
       expect(receipts.length).toBeGreaterThanOrEqual(1);
     });
@@ -452,7 +585,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       ).rejects.toThrow('Idempotency key was reused');
     });
 
-    it('marks a stalled PROCESSING outbox UNKNOWN and never auto-retries it', async () => {
+    it('marks a pre-dispatch expired lease NOT_EXECUTED and never auto-retries it', async () => {
       const {grant, outbox} = makeGrant(91);
       await repo.createGrantWithOutbox(
         grant, outbox, `test-lease-recovery-${uuid(91)}`, sha256Digest({g: grant.id}),
@@ -468,7 +601,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
           testOrg.organizationId, claimed!.outbox.id],
       );
 
-      // Recovery records UNKNOWN and must not make the action claimable again.
+      // Before beginDispatch, recovery is definite and must not make the action claimable again.
       const recovered = await withOtherPendingOutboxesLocked(
         outbox.id,
         () => repo.claimNextOutbox('operator-recovery'),
@@ -480,16 +613,21 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         [testOrg.organizationId, outbox.id],
       );
       expect(persisted.rows[0]).toMatchObject({state: 'FAILED', locked_by: null, locked_at: null});
-      const unknownReceipts = await pool.query(
+      const recoveredReceipts = await pool.query(
         `select state, unknown_reason from action_receipts
          where organization_id=$1 and action_grant_id=$2`,
         [testOrg.organizationId, grant.id],
       );
-      expect(unknownReceipts.rows).toHaveLength(1);
-      expect(unknownReceipts.rows[0]).toMatchObject({
-        state: 'UNKNOWN',
-        unknown_reason: 'Operator lease expired after dispatch may have started; reconcile before any retry.',
+      expect(recoveredReceipts.rows).toHaveLength(1);
+      expect(recoveredReceipts.rows[0]).toMatchObject({
+        state: 'NOT_EXECUTED',
+        unknown_reason: 'Operator lease expired before dispatch.',
       });
+      const persistedGrant = await pool.query(
+        `select status from action_grants where organization_id=$1 and id=$2`,
+        [testOrg.organizationId, grant.id],
+      );
+      expect(persistedGrant.rows[0]).toMatchObject({status: 'REVOKED'});
     });
 
     it('gives concurrent lease recovery rows unique UUIDv7 receipts and repeated polls add none', async () => {
@@ -538,7 +676,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
         reconciledAt: null, reconciliationMethod: null,
         createdAt: now.toISOString(), previousReceiptId: null,
       };
-      await repo.completeOutbox(claimed!.outbox.id, pending);
+      await repo.completeOutbox(claimed!.outbox.id, pending, claimed!.lease);
 
       // Confirm handoff → should create a NEW receipt (append-only)
       const confirmed = await repo.confirmHandoff(

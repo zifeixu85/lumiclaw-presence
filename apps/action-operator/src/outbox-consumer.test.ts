@@ -168,7 +168,7 @@ describe('outbox consumer', () => {
       createdAt: now.toISOString(),
       previousReceiptId: null,
     };
-    const result1 = await repo.completeOutbox(claimed!.outbox.id, receipt1);
+    const result1 = await repo.completeOutbox(claimed!.outbox.id, receipt1, claimed!.lease);
     expect(result1.state).toBe('PUBLISHED');
 
     // Second consumption with a different outbox but same grant — must reject
@@ -191,7 +191,7 @@ describe('outbox consumer', () => {
         createdAt: now.toISOString(),
         previousReceiptId: null,
       };
-      await repo.completeOutbox('non-existent-outbox', receipt2);
+      await repo.completeOutbox('non-existent-outbox', receipt2, claimed!.lease);
       expect.unreachable('Should have thrown');
     } catch (error) {
       // The exact error depends on whether the outbox lookup or the grant check fails first.
@@ -235,11 +235,68 @@ describe('outbox consumer', () => {
     expect(connectorCalls).toBe(0);
   });
 
+  it('records pre-dispatch failure without leaving Grant EXECUTING', async () => {
+    const localRepo = new MemoryActionRepository();
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    const payload = structuredClone(outbox.payload) as Record<string, unknown>;
+    payload.capabilitySnapshot = {...(payload.capabilitySnapshot as Record<string, unknown>), channelAccountId: '01900000-0000-7000-8000-000000000099'};
+    outbox.payload = payload;
+    await localRepo.createGrantWithOutbox(grant, outbox, 'test-pre-dispatch-terminal', 'digest-pre-dispatch', ownerPublicKey);
+    let connectorCalls = 0;
+    const guardedConsumer = new OutboxConsumer(localRepo, 'pre-dispatch-terminal', 60000, () => now, undefined, {
+      ...connectorByPlatform,
+      BLUESKY: {...connectorByPlatform.BLUESKY!, execute: async (...args) => {
+        connectorCalls += 1;
+        return connectorByPlatform.BLUESKY!.execute(...args);
+      }},
+    });
+    expect(await guardedConsumer.processOne()).toBeNull();
+    expect(connectorCalls).toBe(0);
+    const receipts = await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId);
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]!.state).toBe('NOT_EXECUTED');
+    expect((await localRepo.getGrant(grant.organizationId, grant.id))!.status).not.toBe('EXECUTING');
+    expect(await localRepo.claimNextOutbox('pre-dispatch-repeat')).toBeUndefined();
+  });
+
+  it('rejects tampered Outbox Artifact before connector invocation', async () => {
+    const localRepo = new MemoryActionRepository();
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await localRepo.createGrantWithOutbox(grant, outbox, 'test-tampered-outbox-artifact', 'digest-tampered-artifact', ownerPublicKey);
+    const repoWithTamperedDelivery = new Proxy(localRepo, {
+      get(target, property, receiver) {
+        if (property !== 'claimNextOutbox') {
+          const value = Reflect.get(target, property, target) as unknown;
+          return typeof value === 'function' ? value.bind(target) : value;
+        }
+        return async (lockId: string) => {
+          const claim = await target.claimNextOutbox(lockId);
+          if (claim === undefined) return undefined;
+          const payload = structuredClone(claim.outbox.payload) as {revision: {content: {kind: string; posts?: string[]}}};
+          payload.revision.content = {kind: 'BLUESKY', posts: ['tampered content that was never approved']};
+          claim.outbox.payload = payload;
+          return claim;
+        };
+      },
+    });
+    let connectorCalls = 0;
+    const guardedConsumer = new OutboxConsumer(repoWithTamperedDelivery, 'tampered-artifact', 60000, () => now, undefined, {
+      ...connectorByPlatform,
+      BLUESKY: {...connectorByPlatform.BLUESKY!, execute: async (...args) => {
+        connectorCalls += 1;
+        return connectorByPlatform.BLUESKY!.execute(...args);
+      }},
+    });
+    expect(await guardedConsumer.processOne()).toBeNull();
+    expect(connectorCalls).toBe(0);
+  });
+
   it('reconciliation appends a terminal outcome without mutating UNKNOWN', async () => {
     const {grant, outbox, ownerPublicKey} = campaignAndGrant();
     await repo.createGrantWithOutbox(grant, outbox, 'test-reconcile-terminal', 'digest-reconcile', ownerPublicKey);
     const claim = await repo.claimNextOutbox('reconcile-claim');
-    const failed = await repo.failOutbox(claim!.outbox.id, 'UNKNOWN: simulated crash after dispatch');
+    await repo.beginDispatch(claim!.outbox.id, claim!.lease);
+    const failed = await repo.failOutbox(claim!.outbox.id, 'UNKNOWN: simulated crash after dispatch', claim!.lease, 'UNKNOWN');
     const reconciled = await repo.reconcileReceipt(grant.organizationId, failed.receipt.id, 'OWNER_MANUAL', 'NOT_EXECUTED', undefined, undefined, 'Owner verified no platform post exists');
     expect(reconciled.id).not.toBe(failed.receipt.id);
     expect(reconciled.previousReceiptId).toBe(failed.receipt.id);
@@ -308,24 +365,119 @@ describe('outbox consumer', () => {
     expect(receipt).toBeNull();
   });
 
-  it('lease recovery: stalled PROCESSING record returns to PENDING', async () => {
+  it('recovers an expired pre-dispatch lease as NOT_EXECUTED and fences the old worker', async () => {
+    let clock = new Date('2026-08-08T12:00:00.000Z');
+    const localRepo = new MemoryActionRepository(() => clock);
     const {grant, outbox, ownerPublicKey} = campaignAndGrant();
-    await repo.createGrantWithOutbox(grant, outbox, 'test-lease', 'digest-ls', ownerPublicKey);
-    // Claim it → PROCESSING
-    const claimed = await repo.claimNextOutbox('operator-stuck');
-    expect(claimed).not.toBeUndefined();
-    expect(claimed!.outbox.state).toBe('PROCESSING');
-    // Complete it so it doesn't block subsequent tests
-    const done: ActionReceipt = {
-      id: '01908900-0000-7000-8000-00000000ee01',
-      organizationId: grant.organizationId, campaignId: grant.campaignId,
-      actionGrantId: grant.id, schemaVersion: 1,
-      platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
-      platformUri: 'https://bsky.app/lease-test', platformCid: 'bafyrei-lease',
-      handoffSteps: null, unknownReason: null,
-      reconciledAt: null, reconciliationMethod: null,
-      createdAt: now.toISOString(), previousReceiptId: null,
+    await localRepo.createGrantWithOutbox(
+      grant, outbox, 'expired-before-dispatch', 'digest-expired-before-dispatch', ownerPublicKey,
+    );
+
+    const claim = await localRepo.claimNextOutbox('expired-before-dispatch-worker');
+    expect(claim).not.toBeUndefined();
+    clock = new Date('2026-08-08T12:06:00.000Z');
+
+    expect(await localRepo.claimNextOutbox('recovery-scanner')).toBeUndefined();
+    expect((await localRepo.getOutbox(grant.organizationId, outbox.id))!.state).toBe('FAILED');
+    expect((await localRepo.getGrant(grant.organizationId, grant.id))!.status).toBe('REVOKED');
+    const receipts = await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId);
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]!.state).toBe('NOT_EXECUTED');
+
+    const lateReceipt: ActionReceipt = {
+      id: '01908900-0000-7000-8000-00000000ef01',
+      organizationId: grant.organizationId,
+      campaignId: grant.campaignId,
+      actionGrantId: grant.id,
+      schemaVersion: 1,
+      platform: grant.platform,
+      executionMode: grant.executionMode,
+      state: 'PUBLISHED',
+      platformUri: 'https://bsky.app/profile/test/post/late',
+      platformCid: 'bafyrei-late',
+      handoffSteps: null,
+      unknownReason: null,
+      reconciledAt: null,
+      reconciliationMethod: null,
+      createdAt: clock.toISOString(),
+      previousReceiptId: null,
     };
-    await repo.completeOutbox(claimed!.outbox.id, done);
+    await expect(localRepo.completeOutbox(outbox.id, lateReceipt, claim!.lease))
+      .rejects.toMatchObject({code: 'OUTBOX_LEASE_LOST'});
+    expect(await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId)).toHaveLength(1);
+
+    expect(await localRepo.claimNextOutbox('second-recovery-scan')).toBeUndefined();
+    expect(await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId)).toHaveLength(1);
+    await localRepo.close();
+  });
+
+  it('recovers an expired post-dispatch lease as UNKNOWN and never retries it', async () => {
+    let clock = new Date('2026-08-08T12:00:00.000Z');
+    const localRepo = new MemoryActionRepository(() => clock);
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await localRepo.createGrantWithOutbox(
+      grant, outbox, 'expired-after-dispatch', 'digest-expired-after-dispatch', ownerPublicKey,
+    );
+
+    const claim = await localRepo.claimNextOutbox('expired-after-dispatch-worker');
+    expect(claim).not.toBeUndefined();
+    await localRepo.beginDispatch(outbox.id, claim!.lease);
+    clock = new Date('2026-08-08T12:06:00.000Z');
+
+    expect(await localRepo.claimNextOutbox('recovery-scanner')).toBeUndefined();
+    expect((await localRepo.getOutbox(grant.organizationId, outbox.id))!.state).toBe('DEAD_LETTER');
+    const recoveredGrant = await localRepo.getGrant(grant.organizationId, grant.id);
+    expect(recoveredGrant!.status).toBe('CONSUMED');
+    expect(recoveredGrant!.consumedAt).toBe(clock.toISOString());
+    const receipts = await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId);
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]!.state).toBe('UNKNOWN');
+
+    await expect(localRepo.failOutbox(
+      outbox.id,
+      'late failure',
+      claim!.lease,
+      'UNKNOWN',
+    )).rejects.toMatchObject({code: 'OUTBOX_LEASE_LOST'});
+    expect(await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId)).toHaveLength(1);
+    expect(await localRepo.claimNextOutbox('blind-retry')).toBeUndefined();
+    await localRepo.close();
+  });
+
+  it('does not recover a PROCESSING lease before its timeout', async () => {
+    let clock = new Date('2026-08-08T12:00:00.000Z');
+    const localRepo = new MemoryActionRepository(() => clock);
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await localRepo.createGrantWithOutbox(
+      grant, outbox, 'unexpired-processing', 'digest-unexpired-processing', ownerPublicKey,
+    );
+    const claim = await localRepo.claimNextOutbox('active-worker');
+    clock = new Date('2026-08-08T12:04:59.999Z');
+
+    expect(await localRepo.claimNextOutbox('early-scanner')).toBeUndefined();
+    expect((await localRepo.getOutbox(grant.organizationId, outbox.id))!.state).toBe('PROCESSING');
+    expect((await localRepo.getGrant(grant.organizationId, grant.id))!.status).toBe('EXECUTING');
+    expect(await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId)).toHaveLength(0);
+
+    const done: ActionReceipt = {
+      id: '01908900-0000-7000-8000-00000000ef02',
+      organizationId: grant.organizationId,
+      campaignId: grant.campaignId,
+      actionGrantId: grant.id,
+      schemaVersion: 1,
+      platform: grant.platform,
+      executionMode: grant.executionMode,
+      state: 'PUBLISHED',
+      platformUri: 'https://bsky.app/profile/test/post/on-time',
+      platformCid: 'bafyrei-on-time',
+      handoffSteps: null,
+      unknownReason: null,
+      reconciledAt: null,
+      reconciliationMethod: null,
+      createdAt: clock.toISOString(),
+      previousReceiptId: null,
+    };
+    expect((await localRepo.completeOutbox(outbox.id, done, claim!.lease)).state).toBe('PUBLISHED');
+    await localRepo.close();
   });
 });

@@ -389,3 +389,6 @@ claimNextOutbox → 有 PENDING 记录？
 3. **SSE fan-out 未按 campaignId 过滤**：当前推送给所有连接的 SSE 客户端，由客户端自行过滤。
 4. **Postgres 版 reconcileReceipt 未实现**：标注 M3-07，当前抛 `RECONCILIATION_NOT_AVAILABLE`。
 5. **✅ 已修复 (098078a)**：~~HANDOFF 缺少 Owner 确认环节~~：Connector 返回 handoff steps 后写入 `HANDOFF_PENDING` + `platformUri: null`；Owner 通过 `POST /confirm-handoff` 回填 URL 后转为 `HANDOFF_CONFIRMED`；DB 触发器强制唯一合法转移。
+# 历史冻结草案（非当前真源）
+
+> **SUPERSEDED:** 本文件仅保留历史背景，不再描述当前实现或验收状态。SDD-003 唯一真源为 `docs/specs/SDD-003-POSTGRESQL-ACTION-GRANT-FOUNDATION.md`；如有冲突，以 canonical SDD 为准。

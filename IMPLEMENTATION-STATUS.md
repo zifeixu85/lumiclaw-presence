@@ -4,8 +4,8 @@
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
 > **Snapshot:** 2026-08-12
-> **Current phase:** M3 — Controlled live activation foundation
-> **Current implementation truth:** M0 and M1 are accepted. M2 remains engineering-verified with Owner UAT pending. M3-01 is implemented and engineering-verified against fresh PostgreSQL with controlled fake execution, production-shaped API/operator roles, restart, concurrency, recovery, SSE, and immutable Receipt evidence; Owner acceptance is pending. Real connectors, external platform actions, external calibration, customer UAT, and business outcomes are not claimed.
+> **Current phase:** Coordinator decision required after M3-01 review blockers
+> **Current implementation truth:** M0 and M1 are accepted. M2 remains engineering-verified with Owner UAT pending. M3-01 independent-review blocker fixes are machine-verified on the current candidate working tree and await Coordinator independent re-verification; its canonical state is not advanced and Owner acceptance is not open. Real connectors, external platform actions, external calibration, customer UAT, and business outcomes are not claimed.
 
 ## Progress contract
 
@@ -28,7 +28,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | Accepted modules | `13 / 39` (`33.3%`) |
 | Evidence ready | `7 / 39` |
 | Blocked | `0 / 39` |
-| Active implementation SDD | `SDD-003 PostgreSQL ActionGrant Governed Execution Foundation` — engineering evidence complete; Owner acceptance pending |
+| Active implementation SDD | `SDD-003 PostgreSQL ActionGrant Governed Execution Foundation` — independent-review blocker fixes machine-verified; Coordinator re-verification pending |
 | Earliest owner blocker | Record SDD-002 UAT and SDD-003 read-only evidence acceptance before advancing their states |
 | Next executable module | Coordinator decision required; M3-02 through M3-07 remain `NOT_STARTED` and unauthorized |
 
@@ -39,7 +39,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 accepted | [SDD-000 acceptance](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) plus fresh Compose, migrations, CI mapping, isolated AgentTeams smoke and design/i18n evidence |
 | M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 accepted | [SDD-001 acceptance](docs/reports/acceptance/SDD-001-ACCEPTANCE.md): persisted campaign, four editable previews, schedule editor, shared control-plane state; final visual/interaction refinement remains planned |
 | M2 — Governed shadow campaign | `EVIDENCE_READY` | `0 / 6` | 6 evidence ready | Six-member AgentTeams run, DeepSeek gateway/Canary, revision/audit, fault denial, trace; Owner UAT pending |
-| M3 — Controlled live activation | `IN_PROGRESS` | `0 / 7` | 1 evidence ready, 6 not started | M3-01 controlled-fake PostgreSQL foundation is evidence-ready; real connectors and external actions are not claimed |
+| M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 not started | Coordinator review is required before advancing M3-01; real connectors and external actions are not claimed |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 not started | Interaction → outcome → scoped learning → next mission, isolated SignalProvider PoC |
 | M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 not started | Fresh install, restore drill, conformance, accessibility, evidence export and demo |
 | M6 — External calibration | `NOT_STARTED` | `0 / 4` | 4 not started | Design-partner shadow run, isolation, reliability and external acceptance report |
@@ -84,7 +84,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
-| M3-01 | Signed ActionGrant, transactional outbox and no-LLM operator | `EVIDENCE_READY` | M2-04; SDD-003 | Fresh PostgreSQL, authoritative digests, UUIDv7 Receipts, role isolation, concurrency/recovery/restart/SSE and immutable evidence verified; Owner acceptance pending |
+| M3-01 | Signed ActionGrant, transactional outbox and no-LLM operator | `NOT_STARTED` | M2-04; SDD-003 | Independent-review blocker fixes machine-verified; Coordinator independently verifies and decides any future progress transition |
 | M3-02 | Persistent scheduler execution and occurrence recovery | `NOT_STARTED` | M1-06, M3-01 | Due occurrence leasing, restart recovery, DST/misfire tests and no perpetual grant |
 | M3-03 | Bluesky official Direct connector | `NOT_STARTED` | M3-01 | Native URI/CID read-back, duplicate prevention and unknown reconciliation |
 | M3-04 | LinkedIn Native Handoff | `NOT_STARTED` | M3-01 | Exact preview/package, steps and URL reconciliation; never false `PUBLISHED` |

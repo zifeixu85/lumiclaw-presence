@@ -4,8 +4,8 @@
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
 > **快照日期：** 2026-08-12
-> **当前阶段：** M3 — Controlled live activation foundation
-> **当前实现真相：** M0 与 M1 已验收。M2 已完成工程验证，Owner UAT 仍待完成。M3-01 已在 fresh PostgreSQL、受控 fake 执行、生产形态 API/operator 角色、重启、并发、恢复、SSE 与不可变 Receipt 证据下完成实现和工程验证，等待 Owner 验收。不声明真实 Connector、外部平台动作、外部校准、客户 UAT 或业务结果。
+> **当前阶段：** M3-01 审查阻断修复后等待 Coordinator 决定
+> **当前实现真相：** M0 与 M1 已验收。M2 已完成工程验证，Owner UAT 仍待完成。M3-01 独立复审阻断修复已在当前候选工作树上完成机器验证，等待 Coordinator 独立复核；canonical 状态不提前推进，尚未开放 Owner 验收。不声明真实 Connector、外部平台动作、外部校准、客户 UAT 或业务结果。
 
 ## 进度状态合同
 
@@ -28,7 +28,7 @@
 | 已验收模块 | `13 / 39`（`33.3%`） |
 | 证据已就绪 | `7 / 39` |
 | 被阻塞 | `0 / 39` |
-| 当前实现 SDD | `SDD-003 PostgreSQL ActionGrant Governed Execution Foundation` — 工程证据完成，等待 Owner 验收 |
+| 当前实现 SDD | `SDD-003 PostgreSQL ActionGrant Governed Execution Foundation` — 独立复审阻断修复已完成机器验证，等待 Coordinator 独立复核 |
 | 最早 Owner 阻塞项 | 在推进相应状态前记录 SDD-002 UAT 与 SDD-003 只读证据验收 |
 | 下一个可执行模块 | 等待 Coordinator 决定；M3-02 至 M3-07 保持 `NOT_STARTED` 且未授权 |
 
@@ -39,7 +39,7 @@
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 个已验收 | [SDD-000 验收报告](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)，以及 Compose、Migration、CI 映射、隔离 AgentTeams Smoke、设计与 i18n 证据 |
 | M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 个已验收 | [SDD-001 验收报告](docs/reports/acceptance/SDD-001-ACCEPTANCE.md)：持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State；最终视觉与交互收敛仍在规划中 |
 | M2 — Governed shadow campaign | `EVIDENCE_READY` | `0 / 6` | 6 个证据已就绪 | 六成员 AgentTeams、DeepSeek Gateway/Canary、Revision/Audit、故障拒绝与 Trace；Owner UAT 待完成 |
-| M3 — Controlled live activation | `IN_PROGRESS` | `0 / 7` | 1 个证据已就绪、6 个未开始 | M3-01 受控 fake PostgreSQL 基础已就绪；不声明真实 Connector 或外部动作 |
+| M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 个未开始 | M3-01 推进前须由 Coordinator 独立复核；不声明真实 Connector 或外部动作 |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 个未开始 | Interaction → Outcome → Scoped Learning → 下一 Mission，隔离 SignalProvider PoC |
 | M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 个未开始 | Fresh Install、恢复演练、Conformance、可访问性、Evidence Export 与 Demo |
 | M6 — External calibration | `NOT_STARTED` | `0 / 4` | 4 个未开始 | 设计伙伴 Shadow、隔离、可靠性与外部验收报告 |
@@ -84,7 +84,7 @@
 
 | ID | 模块 | 状态 | 依赖 | 必须提交的证据 / 验收 |
 |---|---|---|---|---|
-| M3-01 | 签名 ActionGrant、Transactional Outbox 与无 LLM Operator | `EVIDENCE_READY` | M2-04；SDD-003 | Fresh PostgreSQL、权威 digest、UUIDv7 Receipt、角色隔离、并发/恢复/重启/SSE 与不可变证据已验证；等待 Owner 验收 |
+| M3-01 | 签名 ActionGrant、Transactional Outbox 与无 LLM Operator | `NOT_STARTED` | M2-04；SDD-003 | 独立复审阻断修复已完成机器验证；由 Coordinator 独立复核并决定后续状态转换 |
 | M3-02 | 持久化 Scheduler 执行与 Occurrence 恢复 | `NOT_STARTED` | M1-06、M3-01 | 到期租约、重启恢复、DST/Misfire 测试且不存在永久 Grant |
 | M3-03 | Bluesky 官方 Direct Connector | `NOT_STARTED` | M3-01 | 原生 URI/CID 读回、重复预防与 Unknown Reconciliation |
 | M3-04 | LinkedIn Native Handoff | `NOT_STARTED` | M3-01 | 精确 Preview/Package、步骤与 URL 对账；绝不虚假 `PUBLISHED` |

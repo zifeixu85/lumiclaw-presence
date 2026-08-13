@@ -25,6 +25,7 @@ const checks: Record<string, unknown> = {};
 
 const actionRepo = new PostgresActionRepository(connectionString);
 const operatorRepo = new PostgresActionRepository(operatorConnectionString);
+const apiPool = new Pool({connectionString, max: 1});
 const pool = new Pool({connectionString: adminConnectionString, max: 2});
 
 function uid(): string { return createUuidV7(); }
@@ -174,7 +175,7 @@ try {
     reconciledAt: null, reconciliationMethod: null,
     createdAt: now.toISOString(),
   };
-  const saved = await operatorRepo.completeOutbox(claimed!.outbox.id, receipt);
+  const saved = await operatorRepo.completeOutbox(claimed!.outbox.id, receipt, claimed!.lease);
   checks.receiptCreated = saved.state === 'PUBLISHED';
   checks.receiptUri = saved.platformUri!.includes('bsky.app');
 
@@ -210,9 +211,122 @@ try {
 
   const ct = await operatorRepo.claimNextOutbox('verify-op');
   checks.tamperedClaimable = ct !== undefined;
-  const ft = await operatorRepo.failOutbox(ct!.outbox.id, 'Digest mismatch (integration test)');
+  const ft = await operatorRepo.failOutbox(ct!.outbox.id, 'Digest mismatch (integration test)', ct!.lease, 'DEFINITE_NOT_EXECUTED');
   checks.failOutbox = ft.outbox.state === 'FAILED';
-  checks.unknownReceiptWritten = ft.receipt.state === 'UNKNOWN';
+  checks.definiteNotExecutedReceiptWritten = ft.receipt.state === 'NOT_EXECUTED';
+
+  // Phase 5b — real API-role successor Receipt writes
+  const handoffGrant = createDemoActionGrant(campaign, {platform: 'BLUESKY', executionMode: 'DIRECT', now});
+  handoffGrant.grant.id = uid(); handoffGrant.outbox.id = uid(); handoffGrant.outbox.aggregateId = handoffGrant.grant.id;
+  await actionRepo.createGrantWithOutbox(handoffGrant.grant, handoffGrant.outbox, `api-role-handoff-${Date.now()}`, sha256Digest({g: handoffGrant.grant.id}), handoffGrant.ownerPublicKey);
+  const handoffClaim = await operatorRepo.claimNextOutbox('verify-api-role-handoff');
+  const pendingReceipt: ActionReceipt = {
+    id: uid(), organizationId: orgId, campaignId, actionGrantId: handoffGrant.grant.id,
+    schemaVersion: 1, platform: 'BLUESKY', executionMode: 'DIRECT', state: 'HANDOFF_PENDING',
+    platformUri: null, platformCid: null, handoffSteps: ['Owner completes native handoff'],
+    unknownReason: null, reconciledAt: null, reconciliationMethod: null,
+    createdAt: now.toISOString(), previousReceiptId: null,
+  };
+  await operatorRepo.completeOutbox(handoffClaim!.outbox.id, pendingReceipt, handoffClaim!.lease);
+  const confirmed = await actionRepo.confirmHandoff(orgId, pendingReceipt.id, 'https://bsky.app/profile/test/post/api-role');
+  checks.apiRoleConfirmHandoff = confirmed.state === 'HANDOFF_CONFIRMED' && confirmed.previousReceiptId === pendingReceipt.id;
+
+  const unknownGrant = createDemoActionGrant(campaign, {platform: 'BLUESKY', executionMode: 'DIRECT', now});
+  unknownGrant.grant.id = uid(); unknownGrant.outbox.id = uid(); unknownGrant.outbox.aggregateId = unknownGrant.grant.id;
+  await actionRepo.createGrantWithOutbox(unknownGrant.grant, unknownGrant.outbox, `api-role-reconcile-${Date.now()}`, sha256Digest({g: unknownGrant.grant.id}), unknownGrant.ownerPublicKey);
+  const unknownClaim = await operatorRepo.claimNextOutbox('verify-api-role-reconcile');
+  await operatorRepo.beginDispatch(unknownClaim!.outbox.id, unknownClaim!.lease);
+  const unknownResult = await operatorRepo.failOutbox(unknownClaim!.outbox.id, 'Controlled ambiguous result', unknownClaim!.lease, 'UNKNOWN');
+  const reconciled = await actionRepo.reconcileReceipt(orgId, unknownResult.receipt.id, 'OWNER_MANUAL', 'NOT_EXECUTED', undefined, undefined, 'Owner verified no action');
+  checks.apiRoleReconcile = reconciled.state === 'NOT_EXECUTED' && reconciled.previousReceiptId === unknownResult.receipt.id;
+
+  const receiptCount = async (): Promise<number> => Number((await pool.query(
+    `select count(*)::int as count from action_receipts where organization_id=$1`,
+    [orgId],
+  )).rows[0].count);
+
+  const apiSuccessorInsert = async (input: {
+    id: string;
+    campaignId?: string;
+    actionGrantId: string;
+    state: ActionReceipt['state'];
+    previousReceiptId: string;
+  }): Promise<void> => {
+    const reconciliation = input.state === 'PUBLISHED' || input.state === 'FAILED' || input.state === 'NOT_EXECUTED';
+    await apiPool.query(
+      `insert into action_receipts(
+         organization_id,id,campaign_id,action_grant_id,schema_version,platform,execution_mode,
+         state,platform_uri,platform_cid,handoff_steps,unknown_reason,reconciled_at,
+         reconciliation_method,created_at,previous_receipt_id
+       ) values($1,$2,$3,$4,1,'BLUESKY','DIRECT',$5,$6,null,null,null,$7,$8,$9,$10)`,
+      [
+        orgId,
+        input.id,
+        input.campaignId ?? campaignId,
+        input.actionGrantId,
+        input.state,
+        input.state === 'HANDOFF_CONFIRMED' || input.state === 'PUBLISHED'
+          ? 'https://bsky.app/profile/test/post/adversarial'
+          : null,
+        reconciliation ? now.toISOString() : null,
+        reconciliation ? 'OWNER_MANUAL' : null,
+        now.toISOString(),
+        input.previousReceiptId,
+      ],
+    );
+  };
+
+  const expectApi42501WithoutReceipt = async (
+    name: string,
+    insert: () => Promise<void>,
+  ): Promise<void> => {
+    const before = await receiptCount();
+    let sqlstate: string | undefined;
+    try {
+      await insert();
+    } catch (cause) {
+      sqlstate = cause !== null && typeof cause === 'object' && 'code' in cause
+        ? String((cause as {code?: unknown}).code)
+        : undefined;
+    }
+    const after = await receiptCount();
+    checks[name] = {
+      status: sqlstate === '42501' && after === before ? 'PASS' : 'FAIL',
+      sqlstate,
+      before,
+      after,
+    };
+  };
+
+  await expectApi42501WithoutReceipt(
+    'receiptPredecessorMissing',
+    () => apiSuccessorInsert({
+      id: uid(),
+      actionGrantId: unknownGrant.grant.id,
+      state: 'PUBLISHED',
+      previousReceiptId: uid(),
+    }),
+  );
+
+  await expectApi42501WithoutReceipt(
+    'receiptPredecessorCrossGrant',
+    () => apiSuccessorInsert({
+      id: uid(),
+      actionGrantId: unknownGrant.grant.id,
+      state: 'HANDOFF_CONFIRMED',
+      previousReceiptId: pendingReceipt.id,
+    }),
+  );
+
+  await expectApi42501WithoutReceipt(
+    'receiptPredecessorIllegalTransition',
+    () => apiSuccessorInsert({
+      id: uid(),
+      actionGrantId: handoffGrant.grant.id,
+      state: 'FAILED',
+      previousReceiptId: pendingReceipt.id,
+    }),
+  );
 
   // -------------------------------------------------------------------
   // Phase 6 — Immutability
@@ -237,7 +351,11 @@ try {
   );
   checks.entryCounts = entryCounts;
 
-  const passed = Object.entries(checks).filter(([, v]) => Boolean(v)).length;
+  const passed = Object.entries(checks).filter(([, value]) =>
+    typeof value === 'object' && value !== null && 'status' in value
+      ? (value as {status: unknown}).status === 'PASS'
+      : Boolean(value)
+  ).length;
   const total = Object.keys(checks).length;
   const result = {schemaVersion: 1, status: passed === total ? 'PASS' : 'FAIL', passed, total, checks};
 
@@ -251,5 +369,6 @@ try {
 } finally {
   await actionRepo.close().catch(() => {});
   await operatorRepo.close().catch(() => {});
+  await apiPool.end().catch(() => {});
   await pool.end().catch(() => {});
 }

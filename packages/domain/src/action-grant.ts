@@ -24,6 +24,23 @@ export type OutboxClaim = {
   /** The authoritative ActionGrant from the database (locked FOR UPDATE),
    *  NOT the stale snapshot inside the Outbox payload. */
   grant: ActionGrant;
+  lease: OutboxLease;
+};
+
+export type OutboxLease = {
+  lockedBy: string;
+  attempt: number;
+  token: string;
+};
+
+export type ExecutionFailureDisposition = 'DEFINITE_NOT_EXECUTED' | 'UNKNOWN';
+
+export type AuthoritativeExecutionContext = {
+  decision: OwnerDecision;
+  artifactRevision: ArtifactRevision;
+  capabilitySnapshot: CapabilitySnapshot;
+  artifactRevisionDigest: string;
+  capabilitySnapshotDigest: string;
 };
 
 /**
@@ -733,6 +750,8 @@ export interface ActionRepository {
 
   getGrant(organizationId: string, grantId: string): Promise<ActionGrant | undefined>;
   getGrantsByCampaign(organizationId: string, campaignId: string): Promise<ActionGrant[]>;
+  getArtifactRevision(organizationId: string, revisionId: string): Promise<ArtifactRevision | undefined>;
+  getAuthoritativeExecutionContext(grant: ActionGrant): Promise<AuthoritativeExecutionContext | undefined>;
 
   revokeGrant(
     organizationId: string,
@@ -745,14 +764,20 @@ export interface ActionRepository {
    *  grant — never the stale snapshot inside the Outbox payload. */
   claimNextOutbox(lockId: string): Promise<OutboxClaim | undefined>;
 
+  /** Atomically fences and records the point immediately before connector invocation. */
+  beginDispatch(outboxId: string, lease: OutboxLease): Promise<void>;
+
   completeOutbox(
     outboxId: string,
     receipt: ActionReceipt,
+    lease: OutboxLease,
   ): Promise<ActionReceipt>;
 
   failOutbox(
     outboxId: string,
     reason: string,
+    lease: OutboxLease,
+    disposition: ExecutionFailureDisposition,
   ): Promise<{outbox: OutboxRecord; receipt: ActionReceipt}>;
 
   /**

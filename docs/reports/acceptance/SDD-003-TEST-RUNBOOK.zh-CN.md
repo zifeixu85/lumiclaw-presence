@@ -3,7 +3,7 @@
 > 范围：M3-01 PostgreSQL ActionGrant Governed Execution Foundation
 > 外部动作：`0`
 > Connector：`CONTROLLED_FAKE`
-> 当前模块状态：`EVIDENCE_READY`；自动化门禁已通过，仍需 Owner 只读验收才能进入 `ACCEPTED`。
+> 当前模块状态：`NOT_STARTED`；修复后自动化门禁与 Coordinator 独立复核仍待完成，Owner 验收尚未开放。
 
 ## 1. 前置条件
 
@@ -36,7 +36,7 @@ npm.cmd run typecheck
 
 ## 3. Fresh PostgreSQL 与跨进程验证
 
-推荐直接运行一键门禁。它使用固定的 verifier 专用 Compose project 和内部网络，从空 volume 开始，依次执行两次 migration、19 项 PG tests、25 项 ActionGrant verifier、API A/独立 Operator/API B restart/SSE verifier，最后只清理 verifier volume：
+推荐直接运行唯一聚合门禁。它使用固定的 verifier 专用 Compose project 和内部网络，从空 volume 开始，执行领域与 Repository Contract 测试、workspace typecheck、两次 fresh migration、真实 API/Operator 数据库角色探针、PostgreSQL 命名对抗测试、跨进程 restart/SSE 和 evidence integrity，最后只清理 verifier-owned volume。测试总数属于候选 HEAD 的运行事实，以 aggregate、Vitest reporter 和 ActionGrant integration JSON 为准，不作为长期安全门禁。
 
 ```powershell
 npm.cmd run verify:m3-fresh-postgres
@@ -62,7 +62,7 @@ docker compose --project-name lumiclaw-sdd003-verify -f compose.yml -f compose.s
 docker compose --project-name lumiclaw-sdd003-verify -f compose.yml -f compose.sdd003-verify.yml run --rm verifier npm run verify:m3-cross-process
 ```
 
-预期：PostgreSQL repository 19/19、ActionGrant 25/25 和跨进程 verifier 全部 PASS。不得把跳过 PG tests 当作 PASS；输出必须证明三个 PostgreSQL URL 已生效。
+预期：aggregate 的所有步骤均为 PASS；PostgreSQL reporter 中四个稳定 ID 各出现一次且实际执行通过；ActionGrant integration 中 predecessor 不存在、跨 Grant、非法状态转换的真实 API-role 探针均返回 SQLSTATE 42501 且插入前后 Receipt 数量不变；合法 Handoff 与 UNKNOWN reconciliation 正向路径通过。不得把 skip、todo、缺失 reporter 或 NOT_RUN 当作 PASS。
 
 ## 4. SDD-003 总门禁
 
@@ -84,7 +84,7 @@ npm.cmd run verify:m3-sdd003
 }
 ```
 
-`crossProcessRestart` 必须为 `PASS`；任何 `NOT_RUN` 均禁止模块进入 `EVIDENCE_READY`。
+`postClaimRevoke`、`lateCompletionFencing`、`crossCampaignOccurrence`、`dispatchStateMatrix`、`outboxArtifactTamper` 与 `crossProcessRestart` 必须分别为 `PASS`；任何 `NOT_RUN` 均禁止 Coordinator 推进模块状态。
 
 ## 5. 必须人工核对的数据库负向项
 
@@ -122,6 +122,23 @@ npm.cmd run build
 - Fresh PG migration 列表与 PG test 汇总。
 - 撤销竞态、UNKNOWN、不重发、append-only、scope/SSE 的具体测试名和结果。
 - 明确声明 `externalActions=0`、真实平台能力 `NOT_CLAIMED`。
+
+机器证据清单（ignored runtime evidence，不提交 credentials、数据库卷或 private runtime evidence）：
+
+```text
+.evidence/sdd-003/aggregate.json
+.evidence/sdd-003/fresh-postgres.json
+.evidence/sdd-003/fresh-postgres-transcript.log
+.evidence/sdd-003/postgres-repository-vitest.json
+.evidence/sdd-003/named-postgres-tests.json
+.evidence/m3-01/action-grant-integration.json
+```
+
+候选快照（仅记录本次候选 HEAD 的运行事实，不作为长期安全门禁）：
+
+| 候选 HEAD | 日期 | PostgreSQL tests | ActionGrant checks | 全仓 passed/skipped |
+|---|---|---:|---:|---:|
+| `<SHA 待提交后回填>` | 2026-08-13 | 25 | 30 | 395 / 25 |
 
 ## 8. 清理
 
