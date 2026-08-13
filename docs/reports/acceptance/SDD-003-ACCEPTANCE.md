@@ -10,7 +10,7 @@
 
 ## 一、交付结果
 
-本轮关闭复审指出的执行安全阻断：claim 与 revoke 在 PostgreSQL 事务中线性化；Operator 只从权威 OwnerDecision、ArtifactRevision、CapabilitySnapshot 读取执行材料并校验 digest；Occurrence 按 organization、campaign、occurrence 精确绑定；pre-dispatch definite failure 与 post-dispatch UNKNOWN 分流；completion 受 locked_by、attempt、lease token fencing；API 角色仅能追加合法 successor Receipt。
+当前候选工作树（分支 `backup/pre-sdd003-review-fixes`，SHA 待提交后记录）已对独立复审的四项技术阻断完成机器验证：Receipt predecessor 的存在性、组织/Campaign/Grant scope、单 successor 与状态矩阵由 migration `000020_receipt_predecessor_boundary` 和真实 API-role 42501 探针闭合；Memory/PostgreSQL expired-lease 的 pre/post-dispatch 终态一致；`npm run verify:m3-sdd003` 使用 PATH 中的跨平台 npm launcher 并进入 CI；四项 PostgreSQL 对抗测试由稳定 ID、原始 Vitest reporter 和 SHA-256 evidence binding 逐项证明。该结论为 ENGINEERING_VERIFIED 候选，不是 Owner acceptance、真实 Connector 或业务结果。
 
 当前不声明 `EVIDENCE_READY`，不开放 Owner 验收。M3 与 M3-01 canonical 状态保持 `NOT_STARTED`，由 Coordinator 独立复核后决定转换。
 
@@ -24,30 +24,31 @@
 
 | 范围 | 文件 / 对象 | Evidence |
 |---|---|---|
-| Domain / Database | `action-grant.ts`、migration 000019、Postgres/Memory Repository | lease token、dispatch boundary、复合 FK、权威 execution context |
+| Domain / Database | `action-grant.ts`、migration 000019、migration 000020、Postgres/Memory Repository | lease token、dispatch boundary、复合 FK、权威 execution context、predecessor 边界与 42501 探针 |
 | Operator | `outbox-consumer.ts` | tamper/digest/scope 校验失败时 connector 调用数为 0 |
-| Security | migration 000019、action-grant verifier | API successor Receipt 与 Operator initial Receipt 分权；合法 SQL 负向探针返回 42501 |
-| CI / Evidence | `m3-sdd003.yml`、fresh/aggregate verifier | 精确子项读取，任一 NOT_RUN/FAIL 均不能聚合 PASS |
+| Repository parity | `memory-action-repository.ts`、Memory expired-lease contract tests | pre/post-dispatch 过期租约终态与 PostgreSQL 一致，绝不复归 PENDING |
+| Security | migration 000019/000020、action-grant verifier | API successor Receipt 与 Operator initial Receipt 分权；合法 SQL 负向探针返回 42501 |
+| CI / Evidence | `m3-sdd003.yml`、portable aggregate runner、fresh/aggregate verifier | 精确子项读取，任一 NOT_RUN/FAIL 均不能聚合 PASS；四个命名 PG 测试绑定 `postgres-repository-vitest.json`、`named-postgres-tests.json`、`aggregate.json` |
 
 ## 四、自动化验证
 
 | 检查 | 命令 | 当前结果 |
 |---|---|---|
-| 全仓测试 | `npm.cmd test -- --run` | PASS：378 passed，25 skipped（无 DATABASE_URL 的 PG suite 跳过） |
+| 全仓测试 | `npm.cmd test -- --run` | PASS：395 passed，25 skipped（无 DATABASE_URL 的 PG suite 跳过） |
 | Typecheck | `npm.cmd run typecheck` | PASS：全 workspace |
-| Lint | `npm.cmd run lint` | PASS：0 error；既有 warning 另行记录 |
+| Lint | `npm.cmd run lint` | PASS：0 error；11 项既有 warning |
 | 状态镜像 | `npm.cmd run check:status` | PASS：39 modules |
-| Fresh PostgreSQL | `npm.cmd run verify:m3-fresh-postgres` | PASS：25/25 PostgreSQL tests；角色、跨进程及五项精确证据均 PASS |
-| SDD 聚合门禁 | `npm.cmd run verify:m3-sdd003` | PASS：domain 32/32、repository contracts 43/43、typecheck、fresh-PG 及八个精确字段 |
+| Fresh PostgreSQL | `npm.cmd run verify:m3-fresh-postgres` | PASS：reporter 25 passed / 0 failed / 0 pending；三项真实 API-role 42501 predecessor 探针及 Handoff/Reconciliation 正向路径 PASS |
+| SDD 聚合门禁 | `npm.cmd run verify:m3-sdd003` | PASS：domain、repositoryContract、typecheck、freshPostgres、evidenceIntegrity 五个步骤全部 PASS |
 
 ## 五、复审五项入口
 
 | 项目 | 精确测试 / 断言 |
 |---|---|
-| post-claim revoke | `barrier-controlled PostgreSQL claim wins and fences concurrent revoke` |
-| UNKNOWN 后迟到 completion fencing | `UNKNOWN fences a late completion carrying the former execution lease` |
-| 同组织跨 Campaign occurrence | `same-organization cross-Campaign occurrence binding is rejected atomically` |
-| pre-dispatch / UNKNOWN / reprocess | `enforces pre-dispatch definite failure UNKNOWN and reprocess state matrix` |
+| post-claim revoke | `[M3_PG_POST_CLAIM_REVOKE] barrier-controlled PostgreSQL claim wins and fences concurrent revoke` |
+| UNKNOWN 后迟到 completion fencing | `[M3_PG_LATE_COMPLETION_FENCING] UNKNOWN fences a late completion carrying the former execution lease` |
+| 同组织跨 Campaign occurrence | `[M3_PG_CROSS_CAMPAIGN_SCOPE] same-organization cross-Campaign occurrence binding is rejected atomically` |
+| pre-dispatch / UNKNOWN / reprocess | `[M3_PG_DISPATCH_STATE_MATRIX] enforces pre-dispatch definite failure UNKNOWN and reprocess state matrix` |
 | Outbox Artifact tamper | `PostgreSQL Outbox Artifact tamper yields connectorCalls=0` |
 
 ## 六、Owner 参与验收
@@ -75,7 +76,7 @@
 |---|---|---|---|
 | M3-01 | `NOT_STARTED` | `NOT_STARTED` | Executor 不推进 canonical 状态；等待 Coordinator 独立复核 |
 
-本报告生成时修复尚未推送；提交 SHA 与远端状态由最终交接记录提供。当前无已知代码 blocker，仍等待 Coordinator 独立复核。
+本报告生成时修复尚未提交；提交 SHA 与远端状态由最终交接记录提供。上述四项独立复审技术 blocker 已在当前候选工作树上取得机器验证证据；是否关闭 review blocker、是否集成以及任何 canonical 状态转换仍由 Coordinator 独立决定。Owner acceptance 仍未开放。
 
 ## 十一、Coordinator 验收决定
 

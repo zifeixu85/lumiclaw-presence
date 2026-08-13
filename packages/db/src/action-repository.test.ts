@@ -260,7 +260,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       expect(attempt.rows[0].state).toBe('PROCESSING');
     });
 
-    it('barrier-controlled PostgreSQL claim wins and fences concurrent revoke', async () => {
+    it('[M3_PG_POST_CLAIM_REVOKE] barrier-controlled PostgreSQL claim wins and fences concurrent revoke', async () => {
       const {grant, outbox} = makeGrant(222);
       await repo.createGrantWithOutbox(grant, outbox, `test-barrier-claim-revoke-${uuid(222)}`, sha256Digest({g: grant.id}));
       const barrier = await pool.connect();
@@ -337,7 +337,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       expect(result.receipt.actionGrantId).toBe(grant.id);
     });
 
-    it('UNKNOWN fences a late completion carrying the former execution lease', async () => {
+    it('[M3_PG_LATE_COMPLETION_FENCING] UNKNOWN fences a late completion carrying the former execution lease', async () => {
       const {grant, outbox} = makeGrant(230);
       await repo.createGrantWithOutbox(grant, outbox, `test-late-completion-${uuid(230)}`, sha256Digest({g: grant.id}));
       const claimed = await claimExactOutbox(outbox.id, 'operator-late-completion');
@@ -380,7 +380,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
       expect((await pool.query(`select count(*)::int as count from action_receipts where action_grant_id=$1`, [grant.id])).rows[0].count).toBe(0);
     });
 
-    it('enforces pre-dispatch definite failure UNKNOWN and reprocess state matrix', async () => {
+    it('[M3_PG_DISPATCH_STATE_MATRIX] enforces pre-dispatch definite failure UNKNOWN and reprocess state matrix', async () => {
       const definite = makeGrant(235);
       await repo.createGrantWithOutbox(definite.grant, definite.outbox, `test-definite-${uuid(235)}`, sha256Digest({g: definite.grant.id}));
       const definiteClaim = await claimExactOutbox(definite.outbox.id, 'operator-definite');
@@ -402,7 +402,7 @@ describe.runIf(runIntegration)('action repository (postgres)', () => {
   });
 
   describe('authoritative campaign scope', () => {
-    it('same-organization cross-Campaign occurrence binding is rejected atomically', async () => {
+    it('[M3_PG_CROSS_CAMPAIGN_SCOPE] same-organization cross-Campaign occurrence binding is rejected atomically', async () => {
       const other = await seedOrgAndCampaign(pool, testOrg.organizationId, (runId % 10000) + 20000, now);
       const {grant, outbox} = makeGrant(240);
       grant.scheduleOccurrenceId = other.scheduleOccurrenceId;

@@ -63,3 +63,34 @@ jobs:
           path: .evidence/sdd-003
       - name: Verify exact M3 evidence fields
         run: node scripts/verify-m3-evidence-integrity.mjs
+
+  aggregate:
+    name: M3 SDD-003 / exact aggregate gate
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - name: Verify exact npm version
+        run: test "$(npm --version)" = "11.13.0"
+      - name: Reproducible install
+        run: npm ci
+      - name: Run exact M3 SDD-003 aggregate gate
+        run: npm run verify:m3-sdd003
+      - name: Upload aggregate and underlying public-safe evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: m3-sdd003-aggregate-evidence
+          path: |
+            .evidence/sdd-003/aggregate.json
+            .evidence/sdd-003/fresh-postgres.json
+            .evidence/sdd-003/fresh-postgres-transcript.log
+            .evidence/sdd-003/postgres-repository-vitest.json
+            .evidence/sdd-003/named-postgres-tests.json
+            .evidence/m3-01/action-grant-integration.json
+          if-no-files-found: warn
+          retention-days: 7

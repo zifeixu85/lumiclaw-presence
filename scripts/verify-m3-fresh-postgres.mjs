@@ -57,6 +57,13 @@ try {
   docker('migrate-second', ['run', '--rm', 'migrate']);
   const migrationCount = sql('migration-count', "select count(*) from pgmigrations where name='000018_sdd003_authoritative_action_scope'").stdout.trim();
   if (migrationCount !== '1') throw new Error(`Migration 000018 count was ${migrationCount}.`);
+  const predecessorMigrationCount = sql(
+    'receipt-predecessor-migration-count',
+    "select count(*) from pgmigrations where name='000020_receipt_predecessor_boundary'",
+  ).stdout.trim();
+  if (predecessorMigrationCount !== '1') {
+    throw new Error(`Migration 000020 count was ${predecessorMigrationCount}.`);
+  }
   steps.freshMigrations = {status: 'PASS', passed: 2, total: 2};
 
   sql('create-login-principals', "create role sdd003_api login password 'sdd003-api-controlled' in role lumiclaw_api; create role sdd003_operator login password 'sdd003-operator-controlled' in role lumiclaw_action_operator;");
@@ -65,7 +72,38 @@ try {
   if (apiRole !== 't' || operatorRole !== 't') throw new Error('Production-role membership probe failed.');
 
   verifier('action-grant', ['npm', 'run', 'verify:m3-action-grant']);
+  const actionGrantEvidence = JSON.parse(await readFile(
+    path.join(actionGrantEvidenceDir, 'action-grant-integration.json'),
+    'utf8',
+  ));
+  const predecessorChecks = [
+    'receiptPredecessorMissing',
+    'receiptPredecessorCrossGrant',
+    'receiptPredecessorIllegalTransition',
+  ];
+  const failedPredecessorChecks = predecessorChecks.filter(
+    (name) => actionGrantEvidence.checks?.[name]?.status !== 'PASS'
+      || actionGrantEvidence.checks?.[name]?.sqlstate !== '42501'
+      || actionGrantEvidence.checks?.[name]?.before !== actionGrantEvidence.checks?.[name]?.after,
+  );
+  if (failedPredecessorChecks.length > 0) {
+    throw new Error(`Receipt predecessor probes failed: ${failedPredecessorChecks.join(', ')}`);
+  }
   steps.actionGrantVerifier = {status: 'PASS'};
+  steps.receiptPredecessorBoundary = {
+    status: 'PASS',
+    role: 'sdd003_api',
+    expectedSqlstate: '42501',
+    probes: Object.fromEntries(predecessorChecks.map((name) => [name, actionGrantEvidence.checks[name]])),
+    positivePaths: {
+      confirmHandoff: actionGrantEvidence.checks?.apiRoleConfirmHandoff === true,
+      reconcile: actionGrantEvidence.checks?.apiRoleReconcile === true,
+    },
+  };
+  if (!steps.receiptPredecessorBoundary.positivePaths.confirmHandoff
+      || !steps.receiptPredecessorBoundary.positivePaths.reconcile) {
+    throw new Error('Receipt predecessor positive API-role paths were not both proven.');
+  }
   const validReceiptDelete = 'delete from action_receipts where id=(select id from action_receipts limit 1)';
   const validGrantDelete = 'delete from action_grants where id=(select id from action_grants limit 1)';
   const apiPermissionProbe = roleSql('api-valid-receipt-delete-denied', 'sdd003_api', 'sdd003-api-controlled', validReceiptDelete, {allowFailure: true});
@@ -81,12 +119,40 @@ try {
   if (tamper?.connectorCalls !== 0 || tamper?.receiptState !== 'NOT_EXECUTED') throw new Error('Exact Outbox Artifact tamper assertion was missing or failed.');
   steps.outboxArtifactTamper = {status: 'PASS', test: 'PostgreSQL Outbox Artifact tamper yields connectorCalls=0', connectorCalls: 0};
   sql('isolate-postgres-repository', 'truncate table organizations cascade');
-  docker('postgres-repository', ['run', '--rm', '-e', 'DATABASE_URL=postgres://postgres:sdd003-controlled-fake@postgres:5432/lumiclaw', 'verifier', 'npm', 'test', '--', '--run', 'packages/db/src/action-repository.test.ts']);
-  steps.postgresRepository = {status: 'PASS'};
-  steps.postClaimRevoke = {status: 'PASS', test: 'barrier-controlled PostgreSQL claim wins and fences concurrent revoke'};
-  steps.lateCompletionFencing = {status: 'PASS', test: 'UNKNOWN fences a late completion carrying the former execution lease'};
-  steps.crossCampaignOccurrence = {status: 'PASS', test: 'same-organization cross-Campaign occurrence binding is rejected atomically'};
-  steps.dispatchStateMatrix = {status: 'PASS', test: 'enforces pre-dispatch definite failure UNKNOWN and reprocess state matrix'};
+  docker('postgres-repository', [
+    'run', '--rm',
+    '-e', 'DATABASE_URL=postgres://postgres:sdd003-controlled-fake@postgres:5432/lumiclaw',
+    'verifier',
+    'npm', 'test', '--', '--run',
+    'packages/db/src/action-repository.test.ts',
+    '--reporter=json',
+    '--outputFile=.evidence/sdd-003/postgres-repository-vitest.json',
+  ]);
+  verifier('named-postgres-tests', ['node', 'scripts/verify-m3-named-postgres-tests.mjs']);
+  const namedEvidence = JSON.parse(await readFile(
+    path.join(evidenceDir, 'named-postgres-tests.json'),
+    'utf8',
+  ));
+  if (namedEvidence.status !== 'PASS') {
+    throw new Error('Named PostgreSQL adversarial evidence did not pass.');
+  }
+  steps.postgresRepository = {
+    status: 'PASS',
+    reporter: '.evidence/sdd-003/postgres-repository-vitest.json',
+    reporterSha256: namedEvidence.reporterSha256,
+  };
+  for (const name of [
+    'postClaimRevoke',
+    'lateCompletionFencing',
+    'crossCampaignOccurrence',
+    'dispatchStateMatrix',
+  ]) {
+    const namedTest = namedEvidence.tests?.[name];
+    if (namedTest?.status !== 'PASS' || namedTest?.executed !== true) {
+      throw new Error(`Named PostgreSQL adversarial test ${name} was not executed and passed.`);
+    }
+    steps[name] = namedTest;
+  }
   status = 'PASS';
 } catch (cause) {
   error = cause instanceof Error ? cause.message : String(cause);

@@ -365,24 +365,119 @@ describe('outbox consumer', () => {
     expect(receipt).toBeNull();
   });
 
-  it('lease recovery: stalled PROCESSING record returns to PENDING', async () => {
+  it('recovers an expired pre-dispatch lease as NOT_EXECUTED and fences the old worker', async () => {
+    let clock = new Date('2026-08-08T12:00:00.000Z');
+    const localRepo = new MemoryActionRepository(() => clock);
     const {grant, outbox, ownerPublicKey} = campaignAndGrant();
-    await repo.createGrantWithOutbox(grant, outbox, 'test-lease', 'digest-ls', ownerPublicKey);
-    // Claim it → PROCESSING
-    const claimed = await repo.claimNextOutbox('operator-stuck');
-    expect(claimed).not.toBeUndefined();
-    expect(claimed!.outbox.state).toBe('PROCESSING');
-    // Complete it so it doesn't block subsequent tests
-    const done: ActionReceipt = {
-      id: '01908900-0000-7000-8000-00000000ee01',
-      organizationId: grant.organizationId, campaignId: grant.campaignId,
-      actionGrantId: grant.id, schemaVersion: 1,
-      platform: 'BLUESKY', executionMode: 'DIRECT', state: 'PUBLISHED',
-      platformUri: 'https://bsky.app/lease-test', platformCid: 'bafyrei-lease',
-      handoffSteps: null, unknownReason: null,
-      reconciledAt: null, reconciliationMethod: null,
-      createdAt: now.toISOString(), previousReceiptId: null,
+    await localRepo.createGrantWithOutbox(
+      grant, outbox, 'expired-before-dispatch', 'digest-expired-before-dispatch', ownerPublicKey,
+    );
+
+    const claim = await localRepo.claimNextOutbox('expired-before-dispatch-worker');
+    expect(claim).not.toBeUndefined();
+    clock = new Date('2026-08-08T12:06:00.000Z');
+
+    expect(await localRepo.claimNextOutbox('recovery-scanner')).toBeUndefined();
+    expect((await localRepo.getOutbox(grant.organizationId, outbox.id))!.state).toBe('FAILED');
+    expect((await localRepo.getGrant(grant.organizationId, grant.id))!.status).toBe('REVOKED');
+    const receipts = await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId);
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]!.state).toBe('NOT_EXECUTED');
+
+    const lateReceipt: ActionReceipt = {
+      id: '01908900-0000-7000-8000-00000000ef01',
+      organizationId: grant.organizationId,
+      campaignId: grant.campaignId,
+      actionGrantId: grant.id,
+      schemaVersion: 1,
+      platform: grant.platform,
+      executionMode: grant.executionMode,
+      state: 'PUBLISHED',
+      platformUri: 'https://bsky.app/profile/test/post/late',
+      platformCid: 'bafyrei-late',
+      handoffSteps: null,
+      unknownReason: null,
+      reconciledAt: null,
+      reconciliationMethod: null,
+      createdAt: clock.toISOString(),
+      previousReceiptId: null,
     };
-    await repo.completeOutbox(claimed!.outbox.id, done, claimed!.lease);
+    await expect(localRepo.completeOutbox(outbox.id, lateReceipt, claim!.lease))
+      .rejects.toMatchObject({code: 'OUTBOX_LEASE_LOST'});
+    expect(await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId)).toHaveLength(1);
+
+    expect(await localRepo.claimNextOutbox('second-recovery-scan')).toBeUndefined();
+    expect(await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId)).toHaveLength(1);
+    await localRepo.close();
+  });
+
+  it('recovers an expired post-dispatch lease as UNKNOWN and never retries it', async () => {
+    let clock = new Date('2026-08-08T12:00:00.000Z');
+    const localRepo = new MemoryActionRepository(() => clock);
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await localRepo.createGrantWithOutbox(
+      grant, outbox, 'expired-after-dispatch', 'digest-expired-after-dispatch', ownerPublicKey,
+    );
+
+    const claim = await localRepo.claimNextOutbox('expired-after-dispatch-worker');
+    expect(claim).not.toBeUndefined();
+    await localRepo.beginDispatch(outbox.id, claim!.lease);
+    clock = new Date('2026-08-08T12:06:00.000Z');
+
+    expect(await localRepo.claimNextOutbox('recovery-scanner')).toBeUndefined();
+    expect((await localRepo.getOutbox(grant.organizationId, outbox.id))!.state).toBe('DEAD_LETTER');
+    const recoveredGrant = await localRepo.getGrant(grant.organizationId, grant.id);
+    expect(recoveredGrant!.status).toBe('CONSUMED');
+    expect(recoveredGrant!.consumedAt).toBe(clock.toISOString());
+    const receipts = await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId);
+    expect(receipts).toHaveLength(1);
+    expect(receipts[0]!.state).toBe('UNKNOWN');
+
+    await expect(localRepo.failOutbox(
+      outbox.id,
+      'late failure',
+      claim!.lease,
+      'UNKNOWN',
+    )).rejects.toMatchObject({code: 'OUTBOX_LEASE_LOST'});
+    expect(await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId)).toHaveLength(1);
+    expect(await localRepo.claimNextOutbox('blind-retry')).toBeUndefined();
+    await localRepo.close();
+  });
+
+  it('does not recover a PROCESSING lease before its timeout', async () => {
+    let clock = new Date('2026-08-08T12:00:00.000Z');
+    const localRepo = new MemoryActionRepository(() => clock);
+    const {grant, outbox, ownerPublicKey} = campaignAndGrant();
+    await localRepo.createGrantWithOutbox(
+      grant, outbox, 'unexpired-processing', 'digest-unexpired-processing', ownerPublicKey,
+    );
+    const claim = await localRepo.claimNextOutbox('active-worker');
+    clock = new Date('2026-08-08T12:04:59.999Z');
+
+    expect(await localRepo.claimNextOutbox('early-scanner')).toBeUndefined();
+    expect((await localRepo.getOutbox(grant.organizationId, outbox.id))!.state).toBe('PROCESSING');
+    expect((await localRepo.getGrant(grant.organizationId, grant.id))!.status).toBe('EXECUTING');
+    expect(await localRepo.getReceiptsByCampaign(grant.organizationId, grant.campaignId)).toHaveLength(0);
+
+    const done: ActionReceipt = {
+      id: '01908900-0000-7000-8000-00000000ef02',
+      organizationId: grant.organizationId,
+      campaignId: grant.campaignId,
+      actionGrantId: grant.id,
+      schemaVersion: 1,
+      platform: grant.platform,
+      executionMode: grant.executionMode,
+      state: 'PUBLISHED',
+      platformUri: 'https://bsky.app/profile/test/post/on-time',
+      platformCid: 'bafyrei-on-time',
+      handoffSteps: null,
+      unknownReason: null,
+      reconciledAt: null,
+      reconciliationMethod: null,
+      createdAt: clock.toISOString(),
+      previousReceiptId: null,
+    };
+    expect((await localRepo.completeOutbox(outbox.id, done, claim!.lease)).state).toBe('PUBLISHED');
+    await localRepo.close();
   });
 });

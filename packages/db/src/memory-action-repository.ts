@@ -18,6 +18,7 @@ import {
 import type {KeyObject} from 'node:crypto';
 
 type IdempotencyEntry = {requestDigest: string; grant: ActionGrant; outbox: OutboxRecord};
+type Clock = () => Date;
 
 export class MemoryActionRepository implements ActionRepository {
   readonly #grants = new Map<string, ActionGrant>();
@@ -30,6 +31,11 @@ export class MemoryActionRepository implements ActionRepository {
   readonly #dispatchStarted = new Set<string>();
   readonly #idempotency = new Map<string, IdempotencyEntry>();
   readonly #ownerKeys = new Map<string, KeyObject>();
+  readonly #now: Clock;
+
+  constructor(now: Clock = () => new Date()) {
+    this.#now = now;
+  }
 
   async health(): Promise<boolean> {
     return true;
@@ -42,6 +48,11 @@ export class MemoryActionRepository implements ActionRepository {
   async getGrant(organizationId: string, grantId: string): Promise<ActionGrant | undefined> {
     const grant = this.#grants.get(grantId);
     return grant?.organizationId === organizationId ? structuredClone(grant) : undefined;
+  }
+
+  async getOutbox(organizationId: string, outboxId: string): Promise<OutboxRecord | undefined> {
+    const outbox = this.#outbox.get(outboxId);
+    return outbox?.organizationId === organizationId ? structuredClone(outbox) : undefined;
   }
   async getGrantsByCampaign(organizationId: string, campaignId: string): Promise<ActionGrant[]> {
     return [...this.#grants.values()]
@@ -119,42 +130,43 @@ export class MemoryActionRepository implements ActionRepository {
     return structuredClone(revoked);
   }
 
-  async claimNextOutbox(_lockId: string): Promise<OutboxClaim | undefined> {
-    // --- Lease recovery: reset timed-out PROCESSING records ---
-    const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    for (const record of this.#outbox.values()) {
-      if (record.state === 'PROCESSING' && record.lockedAt !== null && record.lockedAt < cutoff) {
-        record.state = 'FAILED';
-        record.lockedBy = null;
-        record.lockedAt = null;
-      }
-    }
+  async claimNextOutbox(lockId: string): Promise<OutboxClaim | undefined> {
+    const now = this.#now();
+    this.#recoverExpiredProcessing(now);
 
     for (const record of this.#outbox.values()) {
-      if (record.state === 'PENDING') {
-        // Fetch the authoritative grant from the store — never trust the
-        // Outbox payload snapshot which may be stale.
-        const grant = this.#grants.get(record.aggregateId);
-        if (grant === undefined) return undefined; // grant deleted concurrently
+      if (record.state !== 'PENDING') continue;
 
-        // Reserve execution before returning to the connector. Keep the signed
-        // payload returned to the consumer immutable (ISSUED).
-        const signedGrant = structuredClone(grant);
-        if (grant.status !== 'ISSUED') {
-          record.state = 'CANCELLED';
-          continue;
-        }
-        grant.status = 'EXECUTING';
-        this.#grants.set(grant.id, grant);
+      // Fetch the authoritative grant from the store — never trust the
+      // Outbox payload snapshot which may be stale.
+      const grant = this.#grants.get(record.aggregateId);
+      if (grant === undefined) return undefined; // grant deleted concurrently
 
-        record.state = 'PROCESSING';
-        record.lockedBy = _lockId;
-        record.lockedAt = new Date().toISOString();
-        record.attempts += 1;
-        const lease = {lockedBy: _lockId, attempt: record.attempts, token: createUuidV7()};
-        this.#leases.set(record.id, lease);
-        return {outbox: structuredClone(record), grant: signedGrant, lease: structuredClone(lease)};
+      // Reserve execution before returning to the connector. Keep the signed
+      // payload returned to the consumer immutable (ISSUED).
+      const signedGrant = structuredClone(grant);
+      if (grant.status !== 'ISSUED') {
+        record.state = 'CANCELLED';
+        continue;
       }
+      grant.status = 'EXECUTING';
+      this.#grants.set(grant.id, grant);
+
+      record.state = 'PROCESSING';
+      record.lockedBy = lockId;
+      record.lockedAt = now.toISOString();
+      record.attempts += 1;
+      const lease = {
+        lockedBy: lockId,
+        attempt: record.attempts,
+        token: createUuidV7(now.getTime()),
+      };
+      this.#leases.set(record.id, lease);
+      return {
+        outbox: structuredClone(record),
+        grant: signedGrant,
+        lease: structuredClone(lease),
+      };
     }
     return undefined;
   }
@@ -168,10 +180,10 @@ export class MemoryActionRepository implements ActionRepository {
   async completeOutbox(outboxId: string, receipt: ActionReceipt, lease: OutboxLease): Promise<ActionReceipt> {
     const outbox = this.#outbox.get(outboxId);
     if (outbox === undefined) throw new ActionRepositoryError('OUTBOX_RECORD_NOT_FOUND', 'Outbox record not found.');
+    this.#assertLease(outboxId, lease);
     if (outbox.state !== 'PROCESSING') {
       throw new ActionRepositoryError('OUTBOX_NOT_PROCESSING', `Outbox state ${outbox.state} does not allow completion.`);
     }
-    this.#assertLease(outboxId, lease);
 
     // Verify the grant is still ISSUED — one grant can only be consumed once
     const grant = this.#grants.get(receipt.actionGrantId);
@@ -186,11 +198,12 @@ export class MemoryActionRepository implements ActionRepository {
 
     // Mark grant as CONSUMED atomically (single-threaded, but models the DB constraint)
     grant.status = 'CONSUMED';
-    grant.consumedAt = new Date().toISOString();
+    grant.consumedAt = this.#now().toISOString();
     this.#grants.set(grant.id, structuredClone(grant));
 
     outbox.state = 'COMPLETED';
     this.#leases.delete(outboxId);
+    this.#dispatchStarted.delete(outboxId);
     this.#receipts.set(receipt.id, structuredClone(receipt));
     return structuredClone(receipt);
   }
@@ -203,39 +216,7 @@ export class MemoryActionRepository implements ActionRepository {
       throw new ActionRepositoryError('EXECUTION_DISPOSITION_INVALID', 'A dispatched attempt cannot be marked definitely not executed.');
     }
 
-    // DEAD_LETTER when retry budget exhausted; FAILED otherwise
-    outbox.state = disposition === 'UNKNOWN' ? 'DEAD_LETTER' : 'FAILED';
-
-    // Write an UNKNOWN receipt so the Owner can see the failure in the Timeline
-    const payload = outbox.payload as {grant?: ActionGrant; aggregateId?: string};
-    const grant = payload.grant;
-    const receipt: ActionReceipt = {
-      id: createUuidV7(),
-      organizationId: outbox.organizationId,
-      campaignId: grant?.campaignId ?? '',
-      actionGrantId: grant?.id ?? (payload.aggregateId ?? ''),
-      schemaVersion: 1,
-      platform: grant?.platform ?? 'BLUESKY',
-      executionMode: grant?.executionMode ?? 'DIRECT',
-      state: disposition === 'UNKNOWN' ? 'UNKNOWN' : 'NOT_EXECUTED',
-      platformUri: null,
-      platformCid: null,
-      handoffSteps: null,
-      unknownReason: reason,
-      reconciledAt: null,
-      reconciliationMethod: null,
-      createdAt: new Date().toISOString(),
-      previousReceiptId: null,
-    };
-    this.#receipts.set(receipt.id, structuredClone(receipt));
-    const authoritativeGrant = this.#grants.get(receipt.actionGrantId);
-    if (authoritativeGrant !== undefined) {
-      authoritativeGrant.status = disposition === 'UNKNOWN' ? 'CONSUMED' : 'REVOKED';
-      if (disposition === 'UNKNOWN') authoritativeGrant.consumedAt = new Date().toISOString();
-      else authoritativeGrant.revocationReason = reason;
-    }
-    this.#leases.delete(outboxId);
-
+    const receipt = this.#finalizeFailure(outbox, disposition, reason, this.#now());
     return {outbox: structuredClone(outbox), receipt: structuredClone(receipt)};
   }
 
@@ -356,6 +337,79 @@ export class MemoryActionRepository implements ActionRepository {
     this.#capabilitySnapshots.clear();
     this.#leases.clear();
     this.#dispatchStarted.clear();
+  }
+
+  #recoverExpiredProcessing(now: Date): void {
+    const cutoff = now.getTime() - 5 * 60 * 1000;
+    for (const record of this.#outbox.values()) {
+      if (record.state !== 'PROCESSING' || record.lockedAt === null) continue;
+      if (new Date(record.lockedAt).getTime() >= cutoff) continue;
+
+      const dispatchStarted = this.#dispatchStarted.has(record.id);
+      this.#finalizeFailure(
+        record,
+        dispatchStarted ? 'UNKNOWN' : 'DEFINITE_NOT_EXECUTED',
+        dispatchStarted
+          ? 'Operator lease expired after dispatch may have started; reconcile before any retry.'
+          : 'Operator lease expired before dispatch.',
+        now,
+      );
+    }
+  }
+
+  #finalizeFailure(
+    outbox: OutboxRecord,
+    disposition: ExecutionFailureDisposition,
+    reason: string,
+    now: Date,
+  ): ActionReceipt {
+    outbox.state = disposition === 'UNKNOWN' ? 'DEAD_LETTER' : 'FAILED';
+    outbox.lockedBy = null;
+    outbox.lockedAt = null;
+
+    const authoritativeGrant = this.#grants.get(outbox.aggregateId);
+    const payloadGrant = (outbox.payload as {grant?: ActionGrant}).grant;
+    const grant = authoritativeGrant ?? payloadGrant;
+    if (grant === undefined) {
+      throw new ActionRepositoryError(
+        'ACTION_GRANT_NOT_FOUND',
+        'Cannot finalize an Outbox without its authoritative ActionGrant.',
+      );
+    }
+
+    const receipt: ActionReceipt = {
+      id: createUuidV7(now.getTime()),
+      organizationId: outbox.organizationId,
+      campaignId: grant.campaignId,
+      actionGrantId: grant.id,
+      schemaVersion: 1,
+      platform: grant.platform,
+      executionMode: grant.executionMode,
+      state: disposition === 'UNKNOWN' ? 'UNKNOWN' : 'NOT_EXECUTED',
+      platformUri: null,
+      platformCid: null,
+      handoffSteps: null,
+      unknownReason: reason,
+      reconciledAt: null,
+      reconciliationMethod: null,
+      createdAt: now.toISOString(),
+      previousReceiptId: null,
+    };
+    this.#receipts.set(receipt.id, structuredClone(receipt));
+
+    if (authoritativeGrant !== undefined) {
+      authoritativeGrant.status = disposition === 'UNKNOWN' ? 'CONSUMED' : 'REVOKED';
+      if (disposition === 'UNKNOWN') {
+        authoritativeGrant.consumedAt = now.toISOString();
+      } else {
+        authoritativeGrant.revocationReason = reason;
+      }
+      this.#grants.set(authoritativeGrant.id, authoritativeGrant);
+    }
+
+    this.#leases.delete(outbox.id);
+    this.#dispatchStarted.delete(outbox.id);
+    return receipt;
   }
 
   #assertLease(outboxId: string, lease: OutboxLease): void {
