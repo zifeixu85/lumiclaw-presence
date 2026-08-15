@@ -98,7 +98,7 @@ CR1 在冲突处优先于父 SDD；下表保留父 SDD `AC-01`～`AC-10` ID 并�
 | AC-06 | `PASS (CR1 OVERRIDE)` | outcome state tests | 当前无 `PUBLISHED`、无 `HANDOFF_RECONCILED`；手工完成只到 awaiting；UNKNOWN 仅 reconcile，无 resend。 |
 | AC-07 | `PASS` | exact-four test + 338 full tests | M1 Campaign 仍严格为 X/Bluesky/LinkedIn/小红书四 active units/revisions；schema/API 回归不变。 |
 | AC-08 | `PASS (CR1 OVERRIDE)` | isolated Story + DOM + screenshot | 只展示桌面“去发布”单一路径、六平台限制/状态；无三级模式、URL input、导航、credential 或 live call。 |
-| AC-09 | `PASS` | i18n/typecheck/lint/test/build/secret/dependency rows | 所有已运行门禁 PASS；最终 `npm run verify` 待报告收敛后重跑。 |
+| AC-09 | `PASS` | i18n/typecheck/lint/test/build/secret/dependency rows | 所有门禁 PASS；报告收敛后已再次运行完整 `npm run verify` 与 report-shape check。 |
 | AC-10 | `PASS` | diff/lock/secret/bundle scans | 无 Postiz/AGPL source/dependency、DOM automation、credential、live account 或 external platform action。 |
 
 CR1-AC-01～CR1-AC-07 均由上述 AC-01～AC-10 组合覆盖。Owner UAT 未完成，因此不能宣称 `ACCEPTED`。
