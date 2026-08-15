@@ -169,4 +169,4 @@ Executor 未修改 `IMPLEMENTATION-STATUS.md` 或 `IMPLEMENTATION-STATUS.zh-CN.m
 - 是否需要 Owner 验收：`YES`
 - Owner UAT：`PENDING`
 - 最终模块状态：`PENDING`；Executor 未改 canonical progress
-- Draft PR：`PENDING`；不得 merge
+- Draft PR：[PR #6](https://github.com/zifeixu85/lumiclaw-presence/pull/6)，`OPEN / DRAFT`；不得 merge。创建时远端 CI 为 `IN_PROGRESS`，不替代已通过的本地门禁或后续 Coordinator 决策。
