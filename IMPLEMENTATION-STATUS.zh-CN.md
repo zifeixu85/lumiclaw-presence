@@ -3,7 +3,7 @@
 [English](IMPLEMENTATION-STATUS.md) | [简体中文](IMPLEMENTATION-STATUS.zh-CN.md) | [技术架构](ARCHITECTURE.zh-CN.md) | [路线图](ROADMAP.zh-CN.md)
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
-> **快照日期：** 2026-08-06
+> **快照日期：** 2026-08-16
 > **当前阶段：** M2 — Governed shadow campaign
 > **当前实现真相：** M0 与 M1 已验收。M2 已实现并完成工程验证，包括固定版本真实六成员 AgentTeams Mission、DeepSeek Provider 合同、一次由 Owner 本地控制且产生 7 个已接受脱敏模型回执的 DeepSeek Canary、不可变 Revision、独立审校/复审、精确不可执行 Owner Review、Trace、Ledger 与确定性故障拒绝。Owner UAT 仍待完成。不声明 EvoLink 真实验证、ActionGrant、Connector、外部平台动作、外部用户校准或业务结果。当前视觉壳仍是功能骨架，不是最终产品设计。
 
@@ -25,12 +25,12 @@
 
 | 指标 | 当前值 |
 |---|---|
-| 已验收模块 | `13 / 39`（`33.3%`） |
-| 证据已就绪 | `6 / 39` |
-| 被阻塞 | `0 / 39` |
-| 当前实现 SDD | `SDD-002 Governed SHADOW Campaign` — 工程证据完成，等待 Owner UAT |
+| 已验收模块 | `13 / 40`（`32.5%`） |
+| 证据已就绪 | `6 / 40` |
+| 被阻塞 | `0 / 40` |
+| 当前实现 SDD | `SDD-006 Production UX 1.4 and local onboarding` — `M5-00` 开发中；SDD-002 仍等待 Owner UAT |
 | 最早 Owner 阻塞项 | 在接受 M2 或启动受控外部动作前，记录 SDD-002 Owner UAT |
-| 下一个可执行模块 | 尚未授权 M3；先关闭 M2 Owner UAT，并冻结 Release-to-Presence-to-Feedback SDD |
+| 下一个可执行模块 | 已授权 `M5-00` 作为诚实的 UI/Onboarding 基础；M3 外部动作仍未授权 |
 
 ## 里程碑总进度
 
@@ -41,7 +41,7 @@
 | M2 — Governed shadow campaign | `EVIDENCE_READY` | `0 / 6` | 6 个证据已就绪 | 六成员 AgentTeams、DeepSeek Gateway/Canary、Revision/Audit、故障拒绝与 Trace；Owner UAT 待完成 |
 | M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 个未开始 | Interaction → Outcome → Scoped Learning → 下一 Mission，隔离 SignalProvider PoC |
-| M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 个未开始 | Fresh Install、恢复演练、Conformance、可访问性、Evidence Export 与 Demo |
+| M5 — Runnable candidate | `IN_PROGRESS` | `0 / 6` | 1 个开发中、5 个未开始 | 本地 Onboarding/生产 UX 基础，然后完成 Fresh Install、恢复演练、Conformance、可访问性、Evidence Export 与 Demo |
 | M6 — External calibration | `NOT_STARTED` | `0 / 4` | 4 个未开始 | 设计伙伴 Shadow、隔离、可靠性与外部验收报告 |
 
 ## 模块进度表
@@ -105,6 +105,7 @@
 
 | ID | 模块 | 状态 | 依赖 | 必须提交的证据 / 验收 |
 |---|---|---|---|---|
+| M5-00 | Production UX 1.4 与本地 Onboarding 基础 | `IN_PROGRESS` | M0-05、M1-03–M1-06、M2-02、M2-04；SDD-006 | 本地用户名进入、示例/真实资料 Onboarding、权威桌面工作区、诚实的 Runtime/账号/人工发布状态、可访问性与 Owner 视觉验收 |
 | M5-01 | Fresh Docker Install 与升级路径 | `NOT_STARTED` | M0–M4 | 新机器无需隐藏开发服务即可运行正常和失败关闭路径 |
 | M5-02 | Backup、Restore 与 Unknown Action 恢复演练 | `NOT_STARTED` | M5-01 | 空库恢复、Blob Digest 验证且不自动重发 |
 | M5-03 | 完整 UI 状态矩阵、i18n 与可访问性 | `NOT_STARTED` | M1–M4 | 中英文一致、视觉回归、键盘导航与 axe 检查 |
