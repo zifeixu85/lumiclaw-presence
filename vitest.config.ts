@@ -2,6 +2,9 @@ import {defineConfig} from 'vitest/config';
 import {fileURLToPath} from 'node:url';
 
 export default defineConfig({
+  oxc: {
+    jsx: {runtime: 'automatic'}
+  },
   resolve: {
     alias: {
       '@lumiclaw/i18n': fileURLToPath(new URL('./packages/i18n/src/index.ts', import.meta.url))

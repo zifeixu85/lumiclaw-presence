@@ -9,6 +9,8 @@
 > Acceptance report: `docs/reports/acceptance/SDD-004-ACCEPTANCE.md`  
 > Last updated: `2026-08-16`
 
+> **Owner Override:** `docs/specs/sdd-004/CHANGE-REQUEST-1-DESKTOP-MANUAL-PUBLISH-ASSISTANT.md`（`SPEC_READY`）governs conflicting current UI, builder and acceptance language. The current product path is desktop `MANUAL_DESKTOP_ASSISTANT`; the three capability layers remain internal/future contracts only.
+
 ## 1. User problem and outcome
 
 The Owner needs LumiClaw to prepare platform-native content for more than the original four-platform baseline and to guide safe user-driven publication without pretending that every platform is directly connected. Today the accepted M1 domain supports editable X, Bluesky, LinkedIn and Xiaohongshu artifacts, while M2 ends at a non-executable exact Owner Review.

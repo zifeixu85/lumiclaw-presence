@@ -234,6 +234,53 @@ select { font: inherit; }
 button { cursor: pointer; }
 button:disabled { cursor: not-allowed; opacity: 0.48; }
 
+/* SDD-004 CR1 evidence only: deliberately desktop-width and isolated from Owner UX pages. */
+.manual-publish-evidence {
+  min-width: 76rem;
+  min-height: 100vh;
+  padding: 3.5rem 4rem;
+  color: var(--ink-950);
+  background: var(--paper-50);
+}
+
+.manual-publish-header { max-width: 64rem; border-top: 5px solid var(--signal-500); padding-top: var(--space-3); }
+.manual-publish-eyebrow { margin: 0 0 var(--space-2); color: var(--signal-700); font: 700 0.7rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.manual-publish-header h1 { margin: 0; font: 700 4.8rem/0.95 var(--serif); letter-spacing: -0.045em; }
+.manual-publish-header > p:not(.manual-publish-eyebrow) { max-width: 52rem; color: var(--ink-600); line-height: 1.65; }
+.manual-publish-safety { padding: var(--space-3); border-left: 4px solid var(--sage-500); background: rgba(83, 110, 98, 0.09); }
+.manual-publish-evidence section > h2,
+.manual-safety-examples h2 { margin: var(--space-5) 0 var(--space-3); font: 700 0.72rem/1 var(--mono); letter-spacing: 0.08em; text-transform: uppercase; }
+.manual-publish-grid { display: grid; grid-template-columns: repeat(3, minmax(21rem, 1fr)); align-items: start; gap: var(--space-3); }
+.manual-publish-card { border: 1px solid var(--line); background: rgba(255, 255, 255, 0.45); box-shadow: 0 14px 34px rgba(58, 45, 29, 0.08); }
+.manual-publish-card summary { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); cursor: pointer; border-bottom: 1px solid transparent; }
+.manual-publish-card[open] summary { border-bottom-color: var(--line); }
+.manual-publish-card summary:focus-visible { outline: 3px solid var(--signal-500); outline-offset: 3px; }
+.manual-publish-card summary > span { font: 700 1.3rem/1 var(--serif); }
+.manual-publish-card summary > strong { padding: 0.5rem 0.7rem; color: var(--paper-50); background: var(--ink-950); font: 700 0.68rem/1 var(--mono); }
+.manual-publish-card dl { margin: 0; padding: var(--space-3); display: grid; gap: var(--space-2); }
+.manual-publish-card dl > div { display: grid; grid-template-columns: 6.8rem 1fr; gap: var(--space-2); }
+.manual-publish-card dt { color: var(--ink-600); font: 0.66rem/1.4 var(--mono); }
+.manual-publish-card dd { margin: 0; overflow-wrap: anywhere; font-size: 0.77rem; }
+.manual-action-list { margin: 0; padding: 0 var(--space-3); list-style: none; }
+.manual-action-list li { display: grid; grid-template-columns: 1.8rem 1fr; gap: var(--space-2); padding: var(--space-2) 0; border-top: 1px solid var(--line); }
+.manual-action-list li > span { color: var(--signal-700); font: 700 0.65rem/1.5 var(--mono); }
+.manual-action-list strong,
+.manual-action-list small { display: block; }
+.manual-action-list strong { font-size: 0.78rem; }
+.manual-action-list small { margin-top: 0.2rem; color: var(--ink-600); font-size: 0.68rem; line-height: 1.45; }
+.manual-publish-limit,
+.manual-publish-awaiting { margin: var(--space-3); font-size: 0.7rem; line-height: 1.55; }
+.manual-publish-limit { color: var(--ink-600); }
+.manual-publish-awaiting { padding: var(--space-2); color: var(--signal-700); background: rgba(222, 79, 50, 0.07); font-weight: 650; }
+.manual-safety-examples ul { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); margin: 0; padding: 0; list-style: none; }
+.manual-safety-examples li { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); padding: var(--space-3); border-left: 4px solid var(--signal-700); background: var(--paper-100); font-size: 0.74rem; line-height: 1.5; }
+.manual-safety-examples code { color: var(--signal-700); font-size: 0.62rem; }
+.manual-technical-details { margin-top: var(--space-4); padding: var(--space-3); border: 1px dashed var(--line); }
+.manual-technical-details summary { cursor: pointer; font: 700 0.68rem/1 var(--mono); }
+.manual-technical-details summary:focus-visible { outline: 3px solid var(--signal-500); outline-offset: 3px; }
+.manual-technical-details p { color: var(--ink-600); font-size: 0.7rem; line-height: 1.55; }
+.manual-publish-evidence > footer { margin-top: var(--space-4); padding-top: var(--space-3); border-top: 1px solid var(--line); color: var(--ink-600); font-size: 0.66rem; }
+
 .campaign-control { min-width: 0; }
 .control-state { display: flex; align-items: flex-start; gap: var(--space-3); min-height: 10rem; padding: var(--space-5); border: 1px solid var(--line); border-left: 5px solid var(--signal-500); background: rgba(255, 255, 255, 0.42); box-shadow: var(--shadow-ledger); }
 .control-state.compact { min-height: 0; margin-bottom: var(--space-3); padding: var(--space-3) var(--space-4); box-shadow: none; }
