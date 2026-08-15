@@ -98,6 +98,10 @@ Four concepts remain independent:
 
 Locale-aware date and number display must not change the persisted instant. Schedule entry always displays the selected IANA zone and the resolved UTC instant before approval.
 
+Market localization is a separate governed context. `SDD-005` introduces versioned public-safe `MarketKnowledgePack` fixtures, synthetic Organization overrides, a Campaign localization brief and a deterministic `MarketContextView`. Campaign decisions take precedence over approved Organization knowledge, which takes precedence over the selected public pack; provenance and conflicts are preserved. Model prior can only create a question or proposal. Producers receive the selected market's minimum context, while the independent Auditor receives source and conflict evidence. A changed pack or Organization source produces a new context digest and review requirement rather than silently rewriting an approved artifact.
+
+The first engineering fixture set is US/en-US, JP/ja-JP and DE/de-DE. It is not a compliance guarantee, customer dataset or global coverage claim.
+
 ## Persistent scheduling, not ephemeral cron
 
 Scheduling is planned as governed business state. The initial implementation does not depend on host crontab or an in-memory `node-cron` timer. PostgreSQL stores `publishing_schedules`, immutable or versioned `schedule_occurrences`, `next_run_at` as `timestamptz`, the IANA time zone, and either a one-time instant or a constrained RFC 5545 recurrence rule.
