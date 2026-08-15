@@ -7,10 +7,11 @@
 > Goal Objective：实现并工程验证 SDD-004 M3-00 非执行多平台激活与 Assisted Handoff 基础，形成 Draft PR 和结构化回传
 > 执行任务：本 Codex Executor；未使用 ChatGPT Pro
 > Worktree：`/Users/ameng/Documents/Projects/GOAI-hangzhou/worktrees/lumiclaw-presence/sdd-004-assisted-handoff-foundation`
-> Branch / Base：`codex/sdd-004-assisted-handoff-foundation` / `2a3b0091f3a5a8a6297871f7f720071db03c98e5`
-> Commit / Build Identity：本报告所在 Draft PR head；full SHA 由最终结构化 handoff 记录
-> 报告状态：`DRAFT`（Executor 建议工程复验后由 Coordinator 将规范状态更新为 `EVIDENCE_READY`；本报告不修改 canonical status）
-> 证据成熟度：`ENGINEERING_VERIFIED`（本地可重复工程证据；Owner UAT 与 Coordinator 独立复验 `PENDING`）
+> Branch / PR Base：`codex/sdd-004-assisted-handoff-foundation` / `9e241da98be00c56204894c67b7599d37ff10505`
+> Executor 起始提交：`2a3b0091f3a5a8a6297871f7f720071db03c98e5`
+> Implementation / Evidence Head reviewed by Coordinator：`6424438002b5b1ec13a2762694b2fb6a03d691ac`
+> 报告状态：`EVIDENCE_READY`（Coordinator 独立复验通过；Owner UAT `PENDING`）
+> 证据成熟度：`ENGINEERING_VERIFIED`（本地可重复工程证据；Owner UAT `PENDING`）
 > 生成日期：`2026-08-16`
 
 ## 一、交付结果
@@ -130,8 +131,9 @@ CR1-AC-01～CR1-AC-07 均由上述 AC-01～AC-10 组合覆盖。Owner UAT 未完
 
 ## 八、失败、限制与非声明
 
-- **已知失败：**无未处理代码/测试失败；Owner UAT 与 Coordinator 独立复验 `PENDING`。
+- **已知失败：**无未处理代码/测试失败；Owner UAT `PENDING`。
 - **Known limitations：**Story 是功能性隔离 evidence surface，不是 Owner 最终视觉；当前 component 故意 desktop-only；官方页面路径属于可过期 capability contract；dev-only Storybook 链有 3 个无可用修复的 high audit finding，production audit 为 0；完整 Compose/live provider 不适用于本纯函数零执行切片，未运行。
+- **后续必须闭合的授权合同：**UX 1.1 要求公开行动批准显式绑定正文、媒体、账号、时间与 Revision，任一变化都使批准失效。M3-00 package 已绑定 revision/media/account/capability/expiry，但没有单独的 `ownerDecisionId` 或计划发布时间；由于本切片零执行，此项不阻塞 `EVIDENCE_READY`，但后续审批/ActionGrant SDD 必须显式实现并测试，不能从现有 input digest 推断已满足。
 - **Owner Freeze 后续依赖：**AI 团队一级导航、六 Agent 中文名/头像/职责/Skills/Token/每日完成量/状态、Skills 与定时任务由后续 UX/SDD 实现，本切片不改 Owner 核心页面。
 - **仍为 `PLANNED` 的 Claim：**只读定时同步与 Revision 匹配、非唯一匹配 UX、任何 reconciled state、Instagram/Threads ArtifactProfiles、Direct/一键发布、移动端/Native Share、真实连接账号。
 - **明确 `NOT_CLAIMED` 的结果：**任何已发布、客户 UAT、真实平台对账、reach、follower、lead、revenue、合规保证。
@@ -145,26 +147,26 @@ Package 若校验失败不会返回成功 package；capability 过期/错账号/
 
 ## 十、执行任务状态交接
 
-Executor 不修改 `IMPLEMENTATION-STATUS.md`、中文镜像、`ROADMAP.md`、`ARCHITECTURE.md` 或 M3-01～M3-07。
+Executor 未修改 `IMPLEMENTATION-STATUS.md`、中文镜像、`ROADMAP.md`、`ARCHITECTURE.md` 或 M3-01～M3-07；Coordinator 在独立复验后只把 M3-00 与 SDD-004 更新为 `EVIDENCE_READY`。
 
 | Module ID | 当前规范状态 | 建议新状态 | 原因 / Evidence |
 |---|---|---|---|
-| M3-00 | `IN_PROGRESS` | `EVIDENCE_READY`（仅建议 Coordinator 在独立复验后更新） | CR1 domain/UI/tests/build/security evidence 完整；Owner UAT `PENDING`，不得 `ACCEPTED`。 |
+| M3-00 | `IN_PROGRESS` | `EVIDENCE_READY`（Coordinator 已更新） | CR1 domain/UI/tests/build/security evidence 经独立复验；Owner UAT `PENDING`，不得 `ACCEPTED`。 |
 
 同时报告：
 
 - Worktree / Branch：见报告头；
-- Base：`2a3b0091f3a5a8a6297871f7f720071db03c98e5`；
+- PR Base / Executor 起始提交：`9e241da98be00c56204894c67b7599d37ff10505` / `2a3b0091f3a5a8a6297871f7f720071db03c98e5`；
 - changed files：domain contract/tests/export；isolated Web fixture/component/story/DOM test/CSS/messages；Vitest JSX transform；父 SDD pointer、CR1、本报告；
 - Commit / Push / Draft PR：最终结构化 handoff 填写 full hash 与 URL；
-- Blocker：Owner UAT 和 Coordinator independent verification；真实 action 仍受 M2 Owner UAT + future ActionGrant SDD 阻断；
-- 下一候选步骤：Coordinator 复验 Draft PR → Owner 执行 UAT-01 → 规范状态最多 `EVIDENCE_READY`；真实执行不得从 M3-00 直接开始。
+- Blocker：Owner UAT；真实 action 仍受 M2 Owner UAT + future ActionGrant SDD 阻断；
+- 下一候选步骤：Owner 执行 UAT-01；UX 1.1 正式前端落地与 AI 团队一级导航需独立 SDD；真实执行不得从 M3-00 直接开始。
 
 ## 十一、Coordinator 验收决定
 
 - Executor 自动化验证：`PASS`（完整 `npm run verify` 与 SDD-004 report shape 均通过）
-- Coordinator 独立复验：`PENDING`
+- Coordinator 独立复验：`PASS`（2026-08-16；精确 checkout `6424438002b5b1ec13a2762694b2fb6a03d691ac`；targeted 70/70、full 338/338、`npm run verify`、report shape、diff/status/message parity、公开安全截图 digest 均通过）
 - 是否需要 Owner 验收：`YES`
 - Owner 决定：`PENDING`
-- 最终模块状态：`PENDING`（建议最多 `EVIDENCE_READY`，不得由 Executor 标 `ACCEPTED`）
-- 下一 Module / SDD：`PENDING`；Owner UAT 与精确 ActionGrant SDD 决定后续，M3-01～M3-07 保持 `NOT_STARTED`。
+- 最终模块状态：`EVIDENCE_READY`；Owner UAT 前不得标 `ACCEPTED`
+- 下一 Module / SDD：需由 Coordinator 另行建立；优先依据已冻结 UX 1.1 拆分正式前端收敛与 AI 团队一级导航，M3-01～M3-07 保持 `NOT_STARTED`。

@@ -4,7 +4,7 @@
 > Date: `2026-08-16`
 > Authority: LumiClaw product/design Owner override
 > Parent: `docs/specs/SDD-004-ASSISTED-HANDOFF-FOUNDATION.md`
-> Module: `M3-00`（保持 `IN_PROGRESS`，本 CR 不修改规范进度）
+> Module: `M3-00`（本 CR 不单独修改进度；Coordinator 独立复验后规范状态为 `EVIDENCE_READY`）
 
 ## 1. Override
 

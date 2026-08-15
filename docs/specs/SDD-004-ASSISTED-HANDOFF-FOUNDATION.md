@@ -1,6 +1,6 @@
 # SDD-004 — Multi-platform activation and assisted-handoff foundation
 
-> Status: `SPEC_READY`  
+> Status: `EVIDENCE_READY`
 > Milestone: `M3 — Controlled live activation`  
 > Progress module IDs: `M3-00`  
 > Owner: LumiClaw product/design Owner  

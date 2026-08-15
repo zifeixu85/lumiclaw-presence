@@ -4,7 +4,7 @@
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
 > **快照日期：** 2026-08-16
-> **当前阶段：** M2 Owner UAT 待完成；M3 非执行基础模块进行中
+> **当前阶段：** M2 Owner UAT 待完成；M3 非执行基础模块证据已就绪
 > **当前实现真相：** M0 与 M1 已验收。M2 已实现并完成工程验证，包括固定版本真实六成员 AgentTeams Mission、DeepSeek Provider 合同、一次由 Owner 本地控制且产生 7 个已接受脱敏模型回执的 DeepSeek Canary、不可变 Revision、独立审校/复审、精确不可执行 Owner Review、Trace、Ledger 与确定性故障拒绝。Owner UAT 仍待完成。`SDD-004` 只授权非执行的多平台能力与 Assisted Handoff 基础，不授权 ActionGrant、Connector、凭据、外部平台动作或 `PUBLISHED`。不声明 EvoLink 真实验证、外部用户校准或业务结果。当前视觉壳仍是功能骨架，不是最终产品设计。
 
 ## 进度状态合同
@@ -26,11 +26,11 @@
 | 指标 | 当前值 |
 |---|---|
 | 已验收模块 | `13 / 40`（`32.5%`） |
-| 证据已就绪 | `6 / 40` |
+| 证据已就绪 | `7 / 40` |
 | 被阻塞 | `0 / 40` |
-| 当前实现 SDD | `SDD-004 Assisted Handoff Foundation`——只含 `M3-00`；`SDD-002` Owner UAT 仍待完成 |
+| 当前实现 SDD | 无；`SDD-004` / `M3-00` 已证据就绪，SDD-002 与 SDD-004 Owner UAT 均待完成 |
 | 最早 Owner 阻塞项 | 在接受 M2 或启动任何受控外部动作前，记录 SDD-002 Owner UAT |
-| 下一个可执行模块 | `M3-00` 非执行的平台激活与 Assisted Handoff 基础；全部真实动作模块继续受 Gate 约束 |
+| 下一个可执行模块 | 需新建边界明确的 SDD；全部真实动作模块继续受 Gate 约束，UX 1.1 前端收敛属于独立规划切片 |
 
 ## 里程碑总进度
 
@@ -39,7 +39,7 @@
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 个已验收 | [SDD-000 验收报告](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)，以及 Compose、Migration、CI 映射、隔离 AgentTeams Smoke、设计与 i18n 证据 |
 | M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 个已验收 | [SDD-001 验收报告](docs/reports/acceptance/SDD-001-ACCEPTANCE.md)：持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State；最终视觉与交互收敛仍在规划中 |
 | M2 — Governed shadow campaign | `EVIDENCE_READY` | `0 / 6` | 6 个证据已就绪 | 六成员 AgentTeams、DeepSeek Gateway/Canary、Revision/Audit、故障拒绝与 Trace；Owner UAT 待完成 |
-| M3 — Controlled live activation | `IN_PROGRESS` | `0 / 8` | 1 个非执行基础模块进行中；7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
+| M3 — Controlled live activation | `IN_PROGRESS` | `0 / 8` | 1 个非执行基础模块证据已就绪；7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 个未开始 | Interaction → Outcome → Scoped Learning → 下一 Mission，隔离 SignalProvider PoC |
 | M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 个未开始 | Fresh Install、恢复演练、Conformance、可访问性、Evidence Export 与 Demo |
 | M6 — External calibration | `NOT_STARTED` | `0 / 4` | 4 个未开始 | 设计伙伴 Shadow、隔离、可靠性与外部验收报告 |
@@ -84,7 +84,7 @@
 
 | ID | 模块 | 状态 | 依赖 | 必须提交的证据 / 验收 |
 |---|---|---|---|---|
-| M3-00 | 多平台激活能力与 Assisted Handoff 基础 | `IN_PROGRESS` | M1-05、M2-04；SDD-004 | 六平台诚实 Registry、安全官方 Intent/手工 Builder、精确发布包 Digest、不虚假 `PUBLISHED`、零外部动作 |
+| M3-00 | 多平台激活能力与 Assisted Handoff 基础 | `EVIDENCE_READY` | M1-05、M2-04；SDD-004 | 六平台诚实 Registry、确定性桌面手工发布包、精确发布包 Digest、不虚假 `PUBLISHED`、零外部动作；Owner UAT 待完成 |
 | M3-01 | 签名 ActionGrant、Transactional Outbox 与无 LLM Operator | `NOT_STARTED` | M2-04 | Replay/Expiry/Revocation/Digest 失败关闭；唯一 Attempt 约束 |
 | M3-02 | 持久化 Scheduler 执行与 Occurrence 恢复 | `NOT_STARTED` | M1-06、M3-01 | 到期租约、重启恢复、DST/Misfire 测试且不存在永久 Grant |
 | M3-03 | Bluesky 官方 Direct Connector | `NOT_STARTED` | M3-01 | 原生 URI/CID 读回、重复预防与 Unknown Reconciliation |
