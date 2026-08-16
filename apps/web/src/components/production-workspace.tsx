@@ -1,6 +1,6 @@
 'use client';
 
-import type {LocalOnboardingContext} from '@lumiclaw/domain';
+import type {LocalCampaignIdentityInput, LocalOnboardingContext} from '@lumiclaw/domain';
 import type {AppLocale} from '@lumiclaw/i18n';
 import {AlertTriangle, LoaderCircle} from 'lucide-react';
 import {useTranslations} from 'next-intl';
@@ -42,7 +42,7 @@ export function ProductionWorkspace({locale, initialSection = 'today', initialSn
 
   if (snapshot === null || readiness === null || team === null || skills === null) return <><DesktopGate /><div className="lc-desktop-app grid min-h-screen place-items-center bg-[var(--lc-canvas)]"><div className="max-w-md text-center">{error === null ? <><LoaderCircle className="mx-auto animate-spin text-[var(--lc-accent)]" size={26} aria-hidden /><p className="mt-4 text-sm text-[var(--lc-ink-muted)]">{t('loading')}</p></> : <><AlertTriangle className="mx-auto text-[var(--lc-danger)]" size={28} aria-hidden /><h1 className="mt-4 font-[var(--lc-font-serif)] text-2xl font-semibold">{t('errorTitle')}</h1><code className="mt-3 block text-xs text-[var(--lc-danger)]">{error}</code><Button className="mt-5" variant="primary" onClick={() => run(async () => {})}>{t('retry')}</Button></>}</div></div></>;
 
-  if (snapshot.profile === null || snapshot.session?.state !== 'COMPLETED') return <><DesktopGate /><OnboardingFlow snapshot={snapshot} busy={busy} error={error} onCreateProfile={(name) => run(() => createLocalProfile(name))} onUseExample={() => run(useExampleWorkspace)} onSelectLocal={() => run(selectMaterialPath)} onUpload={(file) => run(() => uploadLocalMaterial(file))} onDelete={(id) => run(() => deleteLocalMaterial(id))} onFinishLocal={(context: LocalOnboardingContext) => run(async () => { await saveOnboardingContext(context); await completeLocalOnboarding(); })} /></>;
+  if (snapshot.profile === null || snapshot.session?.state !== 'COMPLETED') return <><DesktopGate /><OnboardingFlow snapshot={snapshot} busy={busy} error={error} onCreateProfile={(name) => run(() => createLocalProfile(name))} onUseExample={() => run(useExampleWorkspace)} onSelectLocal={() => run(selectMaterialPath)} onUpload={(file) => run(() => uploadLocalMaterial(file))} onDelete={(id) => run(() => deleteLocalMaterial(id))} onFinishLocal={(context: LocalOnboardingContext, identity: LocalCampaignIdentityInput) => run(async () => { await saveOnboardingContext(context); await completeLocalOnboarding(identity); })} /></>;
 
   return <><DesktopGate /><WorkspaceShell locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness}><WorkspaceFeature locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness} team={team} skills={skills} onReload={() => run(async () => {})} /></WorkspaceShell></>;
 }

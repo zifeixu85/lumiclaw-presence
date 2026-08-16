@@ -76,7 +76,7 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
     const manifest: LocalMaterialManifest = {...prepared, blobRef: {algorithm: 'sha256', digest: prepared.digest, size: prepared.byteSize}};
     this.#materials.set(manifest.id, manifest);
     this.#bytes.set(manifest.digest, new Uint8Array(input.bytes));
-    this.#session = {...session, state: 'MATERIALS_READY', materialIds: [...session.materialIds, manifest.id], updatedAt: now.toISOString()};
+    this.#session = {...session, state: session.state === 'COMPLETED' ? 'COMPLETED' : 'MATERIALS_READY', materialIds: [...session.materialIds, manifest.id], updatedAt: now.toISOString()};
     return clone(manifest)!;
   }
 

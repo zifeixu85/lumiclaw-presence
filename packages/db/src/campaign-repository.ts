@@ -39,7 +39,7 @@ export class PostgresCampaignRepository implements CampaignRepository {
     const rows = await this.#database.selectFrom('campaigns').selectAll().where('organization_id', '=', organizationId).orderBy('updated_at', 'desc').execute();
     return rows.map((row) => {
       const envelope = envelopeFromRow(row);
-      return {id: row.id, organizationId: row.organization_id, name: envelope.document.brief.name, version: row.version, digest: envelope.digest, readiness: envelope.readiness, gapCodes: envelope.gapCodes, updatedAt: envelope.updatedAt, mode: 'DEMO_SEED', live: false};
+      return {id: row.id, organizationId: row.organization_id, name: envelope.document.brief.name, version: row.version, digest: envelope.digest, readiness: envelope.readiness, gapCodes: envelope.gapCodes, updatedAt: envelope.updatedAt, mode: envelope.document.dataMode, live: false};
     });
   }
 
@@ -48,9 +48,9 @@ export class PostgresCampaignRepository implements CampaignRepository {
     return row === undefined ? undefined : envelopeFromRow(row);
   }
 
-  async getMissionContract(organizationId: string, campaignId: string): Promise<{contract: CampaignDocument['missionContract']; digest: string; version: number; readiness: CampaignEnvelope['readiness']; gapCodes: string[]} | undefined> {
+  async getMissionContract(organizationId: string, campaignId: string): Promise<{contract: CampaignDocument['missionContract']; digest: string; version: number; readiness: CampaignEnvelope['readiness']; gapCodes: string[]; mode: CampaignDocument['dataMode']} | undefined> {
     const envelope = await this.get(organizationId, campaignId);
-    return envelope === undefined ? undefined : {contract: envelope.document.missionContract, digest: envelope.digest, version: envelope.version, readiness: envelope.readiness, gapCodes: envelope.gapCodes};
+    return envelope === undefined ? undefined : {contract: envelope.document.missionContract, digest: envelope.digest, version: envelope.version, readiness: envelope.readiness, gapCodes: envelope.gapCodes, mode: envelope.mode};
   }
 
   async create(organizationId: string, document: CampaignDocument, idempotencyKey: string, requestDigest: string, now = new Date()): Promise<MutationResult> {
@@ -129,7 +129,7 @@ function headValues(envelope: CampaignEnvelope) {
 
 async function insertGraph(trx: Transaction<Database>, document: CampaignDocument): Promise<void> {
   const graph = document.graph;
-  await trx.insertInto('organizations').values({id: graph.organization.id, schema_version: 1, slug: graph.organization.slug, display_name: graph.organization.displayName, data_mode: 'DEMO_SEED', live: false}).onConflict((conflict) => conflict.column('id').doUpdateSet({slug: graph.organization.slug, display_name: graph.organization.displayName})).execute();
+  await trx.insertInto('organizations').values({id: graph.organization.id, schema_version: 1, slug: graph.organization.slug, display_name: graph.organization.displayName, data_mode: graph.organization.dataMode, live: false}).onConflict((conflict) => conflict.column('id').doUpdateSet({slug: graph.organization.slug, display_name: graph.organization.displayName, data_mode: graph.organization.dataMode})).execute();
   await trx.insertInto('identities').values(graph.identities.map((item) => ({organization_id: item.organizationId, id: item.id, schema_version: 1, kind: item.kind, display_name: item.displayName, public_bio: item.publicBio}))).onConflict((conflict) => conflict.columns(['organization_id', 'id']).doUpdateSet((eb) => ({kind: eb.ref('excluded.kind'), display_name: eb.ref('excluded.display_name'), public_bio: eb.ref('excluded.public_bio')}))).execute();
   await trx.insertInto('brands').values(graph.brands.map((item) => ({organization_id: item.organizationId, id: item.id, schema_version: 1, name: item.name, positioning: item.positioning}))).onConflict((conflict) => conflict.columns(['organization_id', 'id']).doUpdateSet((eb) => ({name: eb.ref('excluded.name'), positioning: eb.ref('excluded.positioning')}))).execute();
   await trx.insertInto('products').values(graph.products.map((item) => ({organization_id: item.organizationId, id: item.id, schema_version: 1, brand_id: item.brandId, name: item.name, description: item.description}))).onConflict((conflict) => conflict.columns(['organization_id', 'id']).doUpdateSet((eb) => ({brand_id: eb.ref('excluded.brand_id'), name: eb.ref('excluded.name'), description: eb.ref('excluded.description')}))).execute();
@@ -176,7 +176,7 @@ function envelopeFromRow(row: {organization_id: string; id: string; version: num
   const temporalCodes = new Set(['CLAIM_EXPIRED', 'CAPABILITY_EXPIRED', 'GRAPH_MANDATE_EXPIRED']);
   const temporalIssues = validation.ok ? [] : validation.issues.filter((item) => temporalCodes.has(item.code));
   if (!validation.ok && validation.issues.some((item) => !temporalCodes.has(item.code))) throw new Error('PERSISTED_CAMPAIGN_INTEGRITY_FAILED');
-  return {document, version: row.version, digest, etag: row.etag, readiness: temporalIssues.length > 0 ? 'BLOCKED' : row.readiness, gapCodes: temporalIssues.length > 0 ? [...new Set(temporalIssues.map((item) => item.code))] : row.gap_codes as string[], createdAt: iso(row.created_at), updatedAt: iso(row.updated_at), mode: 'DEMO_SEED', live: false};
+  return {document, version: row.version, digest, etag: row.etag, readiness: temporalIssues.length > 0 ? 'BLOCKED' : row.readiness, gapCodes: temporalIssues.length > 0 ? [...new Set(temporalIssues.map((item) => item.code))] : row.gap_codes as string[], createdAt: iso(row.created_at), updatedAt: iso(row.updated_at), mode: document.dataMode, live: false};
 }
 
 function iso(value: Date | string): string { return value instanceof Date ? value.toISOString() : new Date(value).toISOString(); }

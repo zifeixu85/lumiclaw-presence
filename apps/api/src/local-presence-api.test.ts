@@ -3,6 +3,7 @@ import {buildApi} from './server.js';
 
 const apps: ReturnType<typeof buildApi>[] = [];
 const now = () => new Date('2026-08-16T08:00:00.000Z');
+const localIdentity = {organizationName: '星河工作室', brandName: '星河', brandPositioning: '帮助独立团队清楚表达跨市场产品价值。', productName: '星河翻译助手', productDescription: '一个由本机资料确认的多语言产品说明助手。', campaignName: '星河产品首发', campaignObjective: '让目标市场理解产品定位并邀请结构化反馈。', callToAction: '阅读完整说明并分享反馈。'};
 afterEach(async () => Promise.all(apps.splice(0).map(async (app) => app.close())));
 
 function makeApp() { const app = buildApi({now}); apps.push(app); return app; }
@@ -29,14 +30,20 @@ describe('SDD-006 local onboarding API', () => {
     expect(pdf.statusCode).toBe(415); expect(pdf.json().code).toBe('LOCAL_MATERIAL_TYPE_PLANNED');
     const binary = await app.inject({method: 'POST', url: '/api/v1/local-materials', headers: {'content-type': 'text/plain', 'x-lumiclaw-file-name': 'brief.txt'}, payload: Buffer.from([0xff])});
     expect(binary.statusCode).toBe(422); expect(binary.json().code).toBe('LOCAL_MATERIAL_UTF8_REQUIRED');
-    const early = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/complete'});
+    const early = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/complete', payload: localIdentity});
     expect(early.statusCode).toBe(422); expect(early.json().code).toBe('LOCAL_ONBOARDING_NOT_READY');
     const context = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/context', payload: {marketCode: 'CN', contentLocale: 'zh-CN', platform: 'XIAOHONGSHU', timeZone: 'Asia/Shanghai'}});
     expect(context.statusCode).toBe(200); expect(context.json().session).toMatchObject({marketCode: 'CN', contentLocale: 'zh-CN', platform: 'XIAOHONGSHU', timeZone: 'Asia/Shanghai'});
-    const completed = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/complete'});
-    expect(completed.statusCode).toBe(200); expect(completed.json()).toMatchObject({source: 'LOCAL_PRIVATE_WITH_PUBLIC_SAFE_CAMPAIGN_SCAFFOLD', session: {state: 'COMPLETED', dataMode: 'LOCAL_PRIVATE'}});
+    const completed = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/complete', payload: localIdentity});
+    expect(completed.statusCode).toBe(200); expect(completed.json()).toMatchObject({source: 'LOCAL_PRIVATE_USER_CONFIRMED', dataMode: 'LOCAL_PRIVATE', session: {state: 'COMPLETED', dataMode: 'LOCAL_PRIVATE'}, campaign: {document: {dataMode: 'LOCAL_PRIVATE', graph: {organization: {displayName: '星河工作室', dataMode: 'LOCAL_PRIVATE'}, brands: [{name: '星河'}], products: [{name: '星河翻译助手'}]}, brief: {name: '星河产品首发'}}}});
     const reopen = (await app.inject({method: 'GET', url: '/api/v1/local-workspace'})).json();
-    expect(reopen).toMatchObject({profile: {state: 'ONBOARDING_COMPLETE'}, materials: [{digest: expect.stringMatching(/^[a-f0-9]{64}$/u)}], campaign: {document: {dataMode: 'DEMO_SEED'}}});
+    expect(reopen).toMatchObject({profile: {state: 'ONBOARDING_COMPLETE'}, session: {dataMode: 'LOCAL_PRIVATE'}, materials: [{digest: expect.stringMatching(/^[a-f0-9]{64}$/u)}], campaign: {mode: 'LOCAL_PRIVATE', document: {dataMode: 'LOCAL_PRIVATE', graph: {organization: {displayName: '星河工作室'}, products: [{name: '星河翻译助手'}]}, brief: {name: '星河产品首发'}}}});
+    expect(JSON.stringify(reopen.campaign)).not.toContain('LumiClaw Presence local launch');
+    const authorityHeaders = {'x-lumiclaw-organization-id': reopen.campaign.document.organizationId};
+    const listed = await app.inject({method: 'GET', url: '/api/v1/campaigns', headers: authorityHeaders});
+    expect(listed.json()).toMatchObject({mode: 'LOCAL_PRIVATE', campaigns: [{mode: 'LOCAL_PRIVATE', name: '星河产品首发'}]});
+    const runtime = await app.inject({method: 'POST', url: `/api/v1/campaigns/${reopen.campaign.document.id}/shadow-missions`, headers: {...authorityHeaders, 'idempotency-key': 'local-runtime-forbidden', 'if-match': reopen.campaign.etag}, payload: {sourceDigest: reopen.campaign.digest, fault: 'BETA_TO_GA'}});
+    expect(runtime.statusCode).toBe(403); expect(runtime.json()).toMatchObject({code: 'LOCAL_PRIVATE_RUNTIME_REQUIRES_SDD_007', mode: 'LOCAL_PRIVATE', live: false});
   });
 
   it('labels example/team metrics, exposes repository Skills, and keeps manual completion awaiting reconciliation', async () => {

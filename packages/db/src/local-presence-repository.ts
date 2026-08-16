@@ -95,12 +95,34 @@ export class PostgresLocalPresenceRepository implements LocalPresenceRepository 
 
   public async ingestMaterial(input: MaterialIngestInput, now: Date): Promise<LocalMaterialManifest> {
     const prepared = prepareLocalMaterial(input, now);
-    const blobRef = await this.blobs.put(input.bytes);
-    if (blobRef.digest !== prepared.digest || blobRef.size !== prepared.byteSize) throw new LocalPresenceContractError('LOCAL_MATERIAL_DIGEST_MISMATCH');
-    const row = await this.#database.insertInto('local_material_manifests').values({owner_profile_id: prepared.ownerProfileId, id: prepared.id, schema_version: 1, file_name: prepared.fileName, media_type: prepared.mediaType, byte_size: prepared.byteSize, digest: prepared.digest, state: prepared.state, extracted_text: prepared.extractedText, failure_code: prepared.failureCode, blob_ref: JSON.stringify(blobRef), created_at: now, updated_at: now}).onConflict((conflict) => conflict.columns(['owner_profile_id', 'digest']).doUpdateSet({file_name: prepared.fileName, media_type: prepared.mediaType, updated_at: now})).returningAll().executeTakeFirstOrThrow();
-    const ids = (await this.listMaterials(input.ownerProfileId)).map((item) => item.id);
-    await this.#database.updateTable('local_onboarding_sessions').set({material_ids: JSON.stringify(ids), state: 'MATERIALS_READY', updated_at: now}).where('owner_profile_id', '=', input.ownerProfileId).where('path', '=', 'LOCAL_MATERIALS').execute();
-    return materialFromRow(row);
+    let cleanupRef: BlobRef | null = null;
+    try {
+      const material = await this.#database.transaction().execute(async (trx) => {
+        const session = await trx.selectFrom('local_onboarding_sessions').select(['owner_profile_id', 'path', 'state']).where('owner_profile_id', '=', input.ownerProfileId).forUpdate().executeTakeFirst();
+        if (session === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
+        if (session.path !== 'LOCAL_MATERIALS') throw new LocalPresenceContractError('LOCAL_MATERIAL_PATH_REQUIRED');
+        const duplicate = await trx.selectFrom('local_material_manifests').selectAll().where('owner_profile_id', '=', input.ownerProfileId).where('digest', '=', prepared.digest).executeTakeFirst();
+        if (duplicate !== undefined) {
+          const ids = await trx.selectFrom('local_material_manifests').select('id').where('owner_profile_id', '=', input.ownerProfileId).orderBy('created_at', 'asc').execute();
+          await trx.updateTable('local_onboarding_sessions').set({material_ids: JSON.stringify(ids.map((item) => item.id)), state: session.state === 'COMPLETED' ? 'COMPLETED' : 'MATERIALS_READY', updated_at: now}).where('owner_profile_id', '=', input.ownerProfileId).where('path', '=', 'LOCAL_MATERIALS').executeTakeFirstOrThrow();
+          return materialFromRow(duplicate);
+        }
+        const candidateRef: BlobRef = {algorithm: 'sha256', digest: prepared.digest, size: prepared.byteSize};
+        const alreadyPresent = await this.blobs.has(candidateRef);
+        const blobRef = await this.blobs.put(input.bytes);
+        if (!alreadyPresent) cleanupRef = blobRef;
+        if (blobRef.digest !== prepared.digest || blobRef.size !== prepared.byteSize) throw new LocalPresenceContractError('LOCAL_MATERIAL_DIGEST_MISMATCH');
+        const row = await trx.insertInto('local_material_manifests').values({owner_profile_id: prepared.ownerProfileId, id: prepared.id, schema_version: 1, file_name: prepared.fileName, media_type: prepared.mediaType, byte_size: prepared.byteSize, digest: prepared.digest, state: prepared.state, extracted_text: prepared.extractedText, failure_code: prepared.failureCode, blob_ref: JSON.stringify(blobRef), created_at: now, updated_at: now}).returningAll().executeTakeFirstOrThrow();
+        const ids = await trx.selectFrom('local_material_manifests').select('id').where('owner_profile_id', '=', input.ownerProfileId).orderBy('created_at', 'asc').execute();
+        await trx.updateTable('local_onboarding_sessions').set({material_ids: JSON.stringify(ids.map((item) => item.id)), state: session.state === 'COMPLETED' ? 'COMPLETED' : 'MATERIALS_READY', updated_at: now}).where('owner_profile_id', '=', input.ownerProfileId).where('path', '=', 'LOCAL_MATERIALS').executeTakeFirstOrThrow();
+        return materialFromRow(row);
+      });
+      cleanupRef = null;
+      return material;
+    } catch (error) {
+      if (cleanupRef !== null) await this.blobs.delete(cleanupRef);
+      throw error;
+    }
   }
 
   public async listMaterials(ownerProfileId: string): Promise<LocalMaterialManifest[]> {

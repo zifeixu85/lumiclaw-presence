@@ -1,5 +1,6 @@
 import {
   CampaignPreparationError,
+  createLocalPrivateCampaignDocument,
   createPublishingSchedule,
   createDemoCampaignDocument,
   isUuidV7,
@@ -9,7 +10,7 @@ import {
   type CampaignRepository,
   type MutationResult
 } from '@lumiclaw/domain';
-import {isSecretBearingObject, LOCAL_MATERIAL_MAX_BYTES, LocalPresenceContractError, normalizeLocalDisplayName, validateOnboardingContext, type LocalPresenceRepository, type ManualPublishHandoff} from '@lumiclaw/domain';
+import {isSecretBearingObject, LOCAL_MATERIAL_MAX_BYTES, LocalPresenceContractError, normalizeLocalDisplayName, validateLocalCampaignIdentityInput, validateOnboardingContext, type LocalPresenceRepository, type ManualPublishHandoff} from '@lumiclaw/domain';
 import {LocalContentAddressedBlobStore} from '@lumiclaw/blob-store';
 import {
   acceptRuntimeSubmission,
@@ -132,11 +133,25 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     return {code: 'LOCAL_CONTEXT_READY', session};
   });
 
-  app.post('/api/v1/local-onboarding/complete', async (_request, reply) => {
+  app.post('/api/v1/local-onboarding/complete', async (request, reply) => {
+    if (isSecretBearingObject(request.body)) return reply.status(422).send(errorBody('BROWSER_SECRET_FIELD_FORBIDDEN'));
+    const identity = validateLocalCampaignIdentityInput(request.body);
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
-    const campaign = await ensurePublicSafeCampaign();
-    const session = await localPresenceRepository.completeLocalOnboarding(profile.id, campaign.document.organizationId, campaign.document.id, now());
-    return {code: 'LOCAL_ONBOARDING_COMPLETE', source: 'LOCAL_PRIVATE_WITH_PUBLIC_SAFE_CAMPAIGN_SCAFFOLD', externalActionAllowed: false, session, campaign};
+    const currentSession = await localPresenceRepository.getSession(profile.id);
+    if (currentSession?.path !== 'LOCAL_MATERIALS' || currentSession.state !== 'CONTEXT_READY' || currentSession.marketCode === null || currentSession.contentLocale === null || currentSession.platform === null || currentSession.timeZone === null) throw new LocalPresenceContractError('LOCAL_ONBOARDING_NOT_READY');
+    const materials = (await localPresenceRepository.listMaterials(profile.id)).filter((item) => item.state === 'READY');
+    const document = createLocalPrivateCampaignDocument({
+      ownerProfileId: profile.id,
+      ownerDisplayName: profile.displayName,
+      profileCreatedAt: profile.createdAt,
+      identity,
+      context: {marketCode: currentSession.marketCode, contentLocale: currentSession.contentLocale, platform: currentSession.platform, timeZone: currentSession.timeZone},
+      materials
+    });
+    const created = await repository.create(document.organizationId, document, `sdd006-local-private-${profile.id}`, sha256Digest(document), now());
+    if (!created.ok) throw new LocalPresenceContractError('LOCAL_CAMPAIGN_INITIALIZATION_CONFLICT');
+    const session = await localPresenceRepository.completeLocalOnboarding(profile.id, document.organizationId, document.id, now());
+    return {code: 'LOCAL_ONBOARDING_COMPLETE', source: 'LOCAL_PRIVATE_USER_CONFIRMED', dataMode: 'LOCAL_PRIVATE', externalActionAllowed: false, session, campaign: created.envelope};
   });
 
   app.get('/api/v1/local-materials', async (_request, reply) => {
@@ -206,7 +221,8 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   app.get('/api/v1/campaigns', async (request, reply) => {
     const organizationId = requireOrganization(request, reply);
     if (organizationId === undefined) return;
-    return {code: 'CAMPAIGN_LIST', mode: 'DEMO_SEED', live: false, campaigns: await repository.list(organizationId)};
+    const campaigns = await repository.list(organizationId);
+    return {code: 'CAMPAIGN_LIST', mode: campaigns[0]?.mode ?? 'DEMO_SEED', live: false, campaigns};
   });
 
   app.post('/api/v1/campaigns', async (request, reply) => {
@@ -215,6 +231,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (organizationId === undefined || idempotencyKey === undefined) return;
     const document = request.body as CampaignDocument;
     if (document?.organizationId !== organizationId) return reply.status(403).send(errorBody('ORGANIZATION_SCOPE_MISMATCH'));
+    if (document?.dataMode === 'LOCAL_PRIVATE') return reply.status(403).send(errorBody('LOCAL_PRIVATE_CAMPAIGN_REQUIRES_ONBOARDING'));
     try {
       const result = await repository.create(organizationId, document, idempotencyKey, sha256Digest(document), now());
       return sendMutation(reply, result, 201);
@@ -249,8 +266,8 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (organizationId === undefined) return;
     const value = await repository.getMissionContract(organizationId, request.params.campaignId);
     if (value === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
-    if (value.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: value.digest, version: value.version, gapCodes: value.gapCodes});
-    return {code: 'MISSION_CONTRACT_READY', mode: 'DEMO_SEED', live: false, ...value};
+    if (value.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), mode: value.mode, digest: value.digest, version: value.version, gapCodes: value.gapCodes});
+    return {code: 'MISSION_CONTRACT_READY', live: false, ...value};
   });
 
   app.post<{Params: CampaignParams; Body: SchedulePreviewBody}>('/api/v1/campaigns/:campaignId/schedule-preview', async (request, reply) => {
@@ -261,7 +278,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     try {
       const input = parseSchedulePreviewBody(request.body);
       const value = createPublishingSchedule({...input, organizationId, campaignId: request.params.campaignId, artifactRevisions: envelope.document.artifactRevisions}, now());
-      return {code: 'SCHEDULE_PREVIEW_READY', mode: 'DEMO_SEED', live: false, executionAllowed: false, ...value};
+      return {code: 'SCHEDULE_PREVIEW_READY', mode: envelope.mode, live: false, executionAllowed: false, ...value};
     } catch (error) { return sendDomainOrUnavailable(reply, error); }
   });
 
@@ -269,7 +286,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     const organizationId = requireOrganization(request, reply); if (organizationId === undefined) return;
     const campaign = await repository.get(organizationId, request.params.campaignId); if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
     const missions = await shadowRepository.getByCampaign(organizationId, request.params.campaignId);
-    return {code: 'SHADOW_MISSION_LIST', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, missions};
+    return {code: 'SHADOW_MISSION_LIST', mode: campaign.mode, live: false, externalActionAllowed: false, missions};
   });
 
   app.post<{Params: CampaignParams; Body: {sourceDigest: string; fault: 'BETA_TO_GA'; providerMode?: 'PUBLIC_SAFE_MOCK' | 'LIVE_DEEPSEEK_UAT'; providerModel?: 'deepseek-v4-flash' | 'deepseek-v4-pro'}}>('/api/v1/campaigns/:campaignId/shadow-missions', async (request, reply) => {
@@ -277,6 +294,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (organizationId === undefined || idempotencyKey === undefined) return;
     if (typeof ifMatch !== 'string' || ifMatch.length === 0) return reply.status(428).send(errorBody('ETAG_REQUIRED'));
     const campaign = await repository.get(organizationId, request.params.campaignId); if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+    if (campaign.mode === 'LOCAL_PRIVATE') return reply.status(403).send({...errorBody('LOCAL_PRIVATE_RUNTIME_REQUIRES_SDD_007'), mode: 'LOCAL_PRIVATE'});
     if (campaign.etag !== ifMatch) return reply.status(412).header('ETag', campaign.etag).send(errorBody('CAMPAIGN_VERSION_CONFLICT'));
     if (campaign.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: campaign.digest, version: campaign.version, gapCodes: campaign.gapCodes});
     if (!isStartMissionBody(request.body)) return reply.status(422).send(errorBody('SHADOW_START_SCHEMA_INVALID'));

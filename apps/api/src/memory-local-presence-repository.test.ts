@@ -13,6 +13,10 @@ describe('memory local presence repository', () => {
     await repository.setContext(profile.id, {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/Los_Angeles'}, now);
     const complete = await repository.completeLocalOnboarding(profile.id, 'org', 'campaign', now);
     expect(complete).toMatchObject({state: 'COMPLETED', dataMode: 'LOCAL_PRIVATE', materialIds: [material.id]});
+    const duplicate = await repository.ingestMaterial({ownerProfileId: profile.id, fileName: 'same-digest.md', declaredMediaType: 'text/markdown', bytes: new TextEncoder().encode('# Product\nLocal facts')}, now);
+    expect(duplicate.id).toBe(material.id);
+    const second = await repository.ingestMaterial({ownerProfileId: profile.id, fileName: 'second.txt', declaredMediaType: 'text/plain', bytes: new TextEncoder().encode('Additional local facts')}, now);
+    expect(await repository.getSession(profile.id)).toMatchObject({state: 'COMPLETED', materialIds: [material.id, second.id]});
     expect(await repository.getProfile()).toMatchObject({displayName: 'Owner', state: 'ONBOARDING_COMPLETE'});
   });
 

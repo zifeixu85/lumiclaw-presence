@@ -20,7 +20,7 @@ export type LocalOnboardingSessionsTable = {owner_profile_id: string; schema_ver
 export type LocalMaterialManifestsTable = {owner_profile_id: string; id: string; schema_version: 1; file_name: string; media_type: 'text/markdown' | 'text/plain'; byte_size: number; digest: string; state: 'READY' | 'UNSUPPORTED' | 'REJECTED' | 'FAILED'; extracted_text: string | null; failure_code: string | null; blob_ref: Json | null; created_at: Timestamp; updated_at: Timestamp};
 export type ManualPublishHandoffsTable = {owner_profile_id: string; id: string; schema_version: 1; campaign_id: string; artifact_revision_id: string; platform: string; action: 'COPY_BODY' | 'DOWNLOAD_MEDIA' | 'OPEN_OFFICIAL_PAGE' | 'OWNER_REPORTED_COMPLETE'; state: 'AWAITING_RECONCILIATION'; evidence_receipt_id: string | null; created_at: Timestamp};
 
-export type OrganizationsTable = {id: string; schema_version: number; slug: string; display_name: string; data_mode: 'DEMO_SEED'; live: false; created_at: Generated<Timestamp>};
+export type OrganizationsTable = {id: string; schema_version: number; slug: string; display_name: string; data_mode: 'DEMO_SEED' | 'LOCAL_PRIVATE'; live: false; created_at: Generated<Timestamp>};
 export type IdentitiesTable = {organization_id: string; id: string; schema_version: number; kind: string; display_name: string; public_bio: string; created_at: Generated<Timestamp>};
 export type BrandsTable = {organization_id: string; id: string; schema_version: number; name: string; positioning: string; created_at: Generated<Timestamp>};
 export type ProductsTable = {organization_id: string; id: string; schema_version: number; brand_id: string; name: string; description: string; created_at: Generated<Timestamp>};
