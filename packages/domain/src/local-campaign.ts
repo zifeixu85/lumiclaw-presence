@@ -54,16 +54,17 @@ export function createLocalPrivateCampaignDocument(input: LocalPrivateCampaignIn
   const productId = makeId('product', 3);
   const ownerIdentityId = makeId('owner-identity', 4);
   const productIdentityId = makeId('product-identity', 5);
-  const marketId = makeId('market', 6);
   const campaignId = makeId('campaign', 7);
   const claimId = makeId('claim', 8);
   const capturedAt = new Date(anchor).toISOString();
   const validFrom = new Date(anchor - 24 * 60 * 60 * 1000).toISOString();
   const validUntil = new Date(anchor + 2 * 365 * 24 * 60 * 60 * 1000).toISOString();
   const targetWindowEnd = new Date(anchor + 30 * 24 * 60 * 60 * 1000).toISOString();
-  const contentLanguage = input.context.contentLocale.startsWith('zh') ? 'zh-CN' as const : 'en' as const;
+  const primaryContentLocale = input.context.contentLocales[0]!;
+  const contentLanguage = primaryContentLocale.startsWith('zh') ? 'zh-CN' as const : 'en' as const;
   const localLanguage = contentLanguage === 'zh-CN';
-  const marketName = marketDisplayName(input.context.marketCode, localLanguage);
+  const markets = input.context.marketCodes.map((marketCode, index) => ({id: makeId(`market-${marketCode}`, 100 + index), organizationId, schemaVersion: 1 as const, code: marketCode, displayName: marketDisplayName(marketCode, localLanguage), primaryLanguage: primaryContentLocale}));
+  const primaryMarketId = markets[0]!.id;
   const accounts = platforms.map((platform, index) => ({
     id: makeId(`account-${platform}`, 20 + index), organizationId, schemaVersion: 1 as const,
     identityId: platform === 'X' || platform === 'XIAOHONGSHU' ? ownerIdentityId : productIdentityId,
@@ -71,13 +72,13 @@ export function createLocalPrivateCampaignDocument(input: LocalPrivateCampaignIn
   }));
   const mandates = accounts.map((account, index) => ({
     id: makeId(`mandate-${account.platform}`, 30 + index), organizationId, schemaVersion: 1 as const,
-    channelAccountId: account.id, identityId: account.identityId, productId, marketId,
+    channelAccountId: account.id, identityId: account.identityId, productId, marketId: primaryMarketId,
     role: account.identityId === ownerIdentityId ? 'FOUNDER_VOICE' as const : 'PRODUCT_VOICE' as const,
     allowedActions: ['PREPARE'] as ['PREPARE'], requiresOwnerReview: true as const, validFrom, validUntil
   }));
   const units = accounts.map((account, index) => ({
     id: makeId(`unit-${account.platform}`, 40 + index), organizationId, schemaVersion: 1 as const,
-    identityId: account.identityId, productId, marketId, channelAccountId: account.id,
+    identityId: account.identityId, productId, marketId: primaryMarketId, channelAccountId: account.id,
     accountMandateId: mandates[index]!.id, platform: account.platform, plannedAction: 'PREPARE' as const
   })) as CampaignDocument['activationPlan']['units'];
   const capabilities = accounts.map((account, index) => localCapability(account.platform, organizationId, account.id, makeId(`capability-${account.platform}`, 50 + index), capturedAt, validUntil, localLanguage));
@@ -103,14 +104,14 @@ export function createLocalPrivateCampaignDocument(input: LocalPrivateCampaignIn
       ],
       brands: [{id: brandId, organizationId, schemaVersion: 1, name: identity.brandName, positioning: identity.brandPositioning}],
       products: [{id: productId, organizationId, schemaVersion: 1, brandId, name: identity.productName, description: identity.productDescription}],
-      markets: [{id: marketId, organizationId, schemaVersion: 1, code: input.context.marketCode, displayName: marketName, primaryLanguage: input.context.contentLocale}],
+      markets,
       channelAccounts: accounts,
       accountMandates: mandates
     },
     brief: {schemaVersion: 1, name: identity.campaignName, objective: identity.campaignObjective, callToAction: identity.callToAction, contentLanguage, targetWindowStart: capturedAt, targetWindowEnd},
     goalProfile: {schemaVersion: 1, primaryGoal: 'LAUNCH_MOMENTUM', supportingSignal: 'MARKET_LEARNING', measurementNotes: localLanguage ? '本机 Owner 确认的初始化目标；没有 runtime、触达、线索或营收结果。' : 'Locally confirmed initialization goal; no runtime, reach, lead, or revenue result.'},
     evidenceRefs,
-    claims: [{id: claimId, organizationId, schemaVersion: 1, version: 1, subjectType: 'PRODUCT', subjectId: productId, marketIds: [marketId], statement: `${identity.productName}: ${identity.productDescription}`, effectiveFrom: validFrom, effectiveUntil: validUntil, status: 'APPROVED', evidenceRefIds: evidenceRefs.map((item) => item.id)}],
+    claims: [{id: claimId, organizationId, schemaVersion: 1, version: 1, subjectType: 'PRODUCT', subjectId: productId, marketIds: markets.map((market) => market.id), statement: `${identity.productName}: ${identity.productDescription}`, effectiveFrom: validFrom, effectiveUntil: validUntil, status: 'APPROVED', evidenceRefIds: evidenceRefs.map((item) => item.id)}],
     activationPlan: {schemaVersion: 1, summary: localLanguage ? '四个平台只准备可审阅草稿；账号未连接，禁止外部执行。' : 'Prepare reviewable drafts for four platforms; accounts are unconnected and external execution is forbidden.', units},
     capabilitySnapshots: capabilities,
     artifactRevisions: artifacts,

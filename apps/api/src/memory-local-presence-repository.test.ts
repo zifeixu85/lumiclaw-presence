@@ -10,13 +10,13 @@ describe('memory local presence repository', () => {
     const material = await repository.ingestMaterial({ownerProfileId: profile.id, fileName: 'product.md', declaredMediaType: 'text/markdown', bytes: new TextEncoder().encode('# Product\nLocal facts')}, now);
     expect((await repository.listMaterials(profile.id))[0]).toEqual(material);
     await expect(repository.completeLocalOnboarding(profile.id, 'org', 'campaign', now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_NOT_READY'});
-    await repository.setContext(profile.id, {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/Los_Angeles'}, now);
+    await repository.setContext(profile.id, {marketCodes: ['US', 'SG'], contentLocales: ['en-US'], platforms: ['LINKEDIN', 'X'], defaultTimeZone: 'America/Los_Angeles'}, now);
     const complete = await repository.completeLocalOnboarding(profile.id, 'org', 'campaign', now);
     expect(complete).toMatchObject({state: 'COMPLETED', dataMode: 'LOCAL_PRIVATE', materialIds: [material.id]});
     const completedSnapshot = await repository.getSession(profile.id);
     await expect(repository.selectLocalMaterials(profile.id, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
-    await expect(repository.chooseExample(profile.id, 'example-org', 'example-campaign', {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/Los_Angeles'}, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
-    await expect(repository.setContext(profile.id, {marketCode: 'CN', contentLocale: 'zh-CN', platform: 'XIAOHONGSHU', timeZone: 'Asia/Shanghai'}, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
+    await expect(repository.chooseExample(profile.id, 'example-org', 'example-campaign', {marketCodes: ['US'], contentLocales: ['en-US'], platforms: ['LINKEDIN'], defaultTimeZone: 'America/Los_Angeles'}, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
+    await expect(repository.setContext(profile.id, {marketCodes: ['CN'], contentLocales: ['zh-CN'], platforms: ['XIAOHONGSHU'], defaultTimeZone: 'Asia/Shanghai'}, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
     await expect(repository.completeLocalOnboarding(profile.id, 'replacement-org', 'replacement-campaign', now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
     await expect(repository.ingestMaterial({ownerProfileId: profile.id, fileName: 'same-digest.md', declaredMediaType: 'text/markdown', bytes: new TextEncoder().encode('# Product\nLocal facts')}, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
     await expect(repository.ingestMaterial({ownerProfileId: profile.id, fileName: 'second.txt', declaredMediaType: 'text/plain', bytes: new TextEncoder().encode('Additional local facts')}, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});

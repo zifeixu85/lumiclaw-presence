@@ -79,6 +79,10 @@
 .lc-onboarding-step[data-active="true"] > span { color: var(--lc-sidebar); background: var(--lc-mint); }
 .lc-choice-card { display: flex; min-height: 250px; flex-direction: column; border: 1px solid var(--lc-line); border-top: 3px solid transparent; padding: 22px; background: var(--lc-surface); transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; }
 .lc-choice-card:hover { border-top-color: var(--lc-coral); box-shadow: 0 8px 24px rgb(20 30 35 / .08); transform: translateY(-1px); }
+.lc-multi-option { min-height: 34px; border: 1px solid var(--lc-line); border-radius: 6px; padding: 6px 10px; color: var(--lc-ink-muted); background: var(--lc-surface); font-size: 11px; font-weight: 600; transition: border-color 160ms ease, background-color 160ms ease, color 160ms ease, transform 120ms ease; }
+.lc-multi-option:hover { border-color: var(--lc-line-strong); color: var(--lc-ink); }
+.lc-multi-option:active { transform: translateY(1px); }
+.lc-multi-option[data-selected="true"] { border-color: #81b99a; color: #173e2d; background: var(--lc-mint-soft); box-shadow: inset 0 0 0 1px rgb(129 185 154 / .25); }
 @keyframes lc-overlay-in { from { opacity: 0; } }
 @keyframes lc-drawer-in { from { opacity: .65; transform: translateX(22px); } }
 @media (max-width: 1180px) {

@@ -23,12 +23,17 @@ function Provider({children}: {children: ReactNode}) {
 
 describe('Production UX accessibility contracts', () => {
   it('asks only for a local display name and has no browser secret or remote identity field', async () => {
-    const flow = createElement(OnboardingFlow, {snapshot: firstOpen, busy: false, error: null, onCreateProfile: noop, onUseExample: noop, onSelectLocal: noop, onUpload: noop, onDelete: noop, onFinishLocal: noop});
+    const flow = createElement(OnboardingFlow, {locale: 'en', snapshot: firstOpen, busy: false, error: null, onStartExample: noop, onStartLocal: noop, onUseExample: noop, onSelectLocal: noop, onUpload: noop, onDelete: noop, onFinishLocal: noop});
     const {container} = render(createElement(Provider, null, flow));
     expect(screen.getByLabelText('Local display name')).toBeInstanceOf(HTMLInputElement);
     expect(screen.queryByLabelText(/email/iu)).toBeNull();
     expect(screen.queryByLabelText(/password/iu)).toBeNull();
     expect(screen.queryByLabelText(/api key/iu)).toBeNull();
+    expect((screen.getByRole('button', {name: 'Start with local material'}) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole('button', {name: 'Explore the public example'}) as HTMLButtonElement).disabled).toBe(true);
+    await userEvent.type(screen.getByLabelText('Local display name'), 'Local Owner');
+    expect((screen.getByRole('button', {name: 'Start with local material'}) as HTMLButtonElement).disabled).toBe(false);
+    expect((screen.getByRole('button', {name: 'Explore the public example'}) as HTMLButtonElement).disabled).toBe(false);
     const result = await axe.run(container);
     expect(result.violations).toEqual([]);
   });

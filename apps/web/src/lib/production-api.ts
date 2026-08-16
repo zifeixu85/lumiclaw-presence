@@ -10,7 +10,7 @@ export async function loadReadiness(): Promise<EnvironmentReadiness> { return re
 export async function loadTeam(): Promise<TeamResponse> { return requestJson('/api/v1/ai-team'); }
 export async function loadSkills(): Promise<SkillListResponse> { return requestJson('/api/v1/skills'); }
 export async function createLocalProfile(displayName: string): Promise<void> { await requestJson('/api/v1/local-owner-profile', {method: 'POST', body: JSON.stringify({displayName}), headers: {'content-type': 'application/json'}}); }
-export async function useExampleWorkspace(): Promise<void> { await requestJson('/api/v1/local-onboarding/example', {method: 'POST'}); }
+export async function selectExampleWorkspace(): Promise<void> { await requestJson('/api/v1/local-onboarding/example', {method: 'POST'}); }
 export async function selectMaterialPath(): Promise<void> { await requestJson('/api/v1/local-onboarding/materials-path', {method: 'POST'}); }
 export async function uploadLocalMaterial(file: File): Promise<void> {
   await requestJson('/api/v1/local-materials', {method: 'POST', body: await file.arrayBuffer(), headers: {'content-type': file.type || 'application/octet-stream', 'x-lumiclaw-file-name': encodeURIComponent(file.name)}});

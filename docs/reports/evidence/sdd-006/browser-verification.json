@@ -6,20 +6,26 @@
     "width": 1440,
     "height": 900
   },
-  "generatedAt": "2026-08-16T06:50:54.155Z",
+  "generatedAt": "2026-08-16T11:07:06.048Z",
   "locales": [
     "zh-CN",
     "en"
   ],
   "checks": {
+    "firstOpenDefaultsChinese": true,
     "firstOpenDisplayNameOnly": true,
     "onboardingStepRail": true,
+    "visibleLocaleRecovery": true,
+    "englishOnboardingLocalized": true,
     "twoHonestPaths": true,
+    "exampleChoiceAvailableImmediately": true,
     "mdUploadVisible": true,
     "extractedTextVisible": true,
     "pdfDocxHonest": true,
     "localAuthorityFieldsConfirmed": true,
     "contextFieldsRemainDistinct": true,
+    "contextMultiSelectWorks": true,
+    "defaultScheduleTimeZoneIsSingle": true,
     "workspaceEntered": true,
     "localPrivateWorkspaceBadge": true,
     "noPublicExampleCampaignLeak": true,
@@ -68,19 +74,19 @@
       "name": "01-first-open.png",
       "width": 1440,
       "height": 900,
-      "sha256": "7dd18289d7b5df1b83fbaa25d9a40f398c6efcb7de1a68d562e363161d0527da"
+      "sha256": "b4065a3fc09cd463ad5d0084985d68710409f236abeb16434aa053b62df6cc41"
     },
     {
       "name": "02-onboarding-path-choice.png",
       "width": 1440,
       "height": 900,
-      "sha256": "f968a55339f8e360bfa67fb4d6eee0c78e1ea79b6f139e30ce66b4604f23ba97"
+      "sha256": "31e54470bf98df5b6140b462f9b83f2adf8284cc68a6324380587f03589a21c7"
     },
     {
       "name": "03-local-private-context-confirmation.png",
       "width": 1440,
       "height": 900,
-      "sha256": "853787694f2833fc3ddb094a82026641c03292b49a95c05584d681ee0ac1d8ba"
+      "sha256": "7fadbecb29b3f532624a7ec4c850ba1f73197599445230d0952dc46bbc36f4d4"
     },
     {
       "name": "04-today.png",
@@ -134,13 +140,13 @@
       "name": "12-brand-knowledge.png",
       "width": 1440,
       "height": 900,
-      "sha256": "fbdfc3652d2829c863058ae2762e8dfcec81515aceea67f8b974b5bd6d98dca7"
+      "sha256": "4abe183813dd0410cf14d2ffecf70be971fd582553cce6ea32e2cceaacdc7bb6"
     },
     {
       "name": "13-settings-readiness.png",
       "width": 1440,
       "height": 900,
-      "sha256": "d1a8c2bfa42a0dcf3a56cc90897a36f48ed2b5c738930c9cd9a3ae8d0f849e9c"
+      "sha256": "75b24cfe0b6447fe491d7118d4f3e0dbf0fa6efa1203ef590335e37e100981e9"
     },
     {
       "name": "14-en-today.png",

@@ -23,20 +23,26 @@ page.on('pageerror', (error) => consoleErrors.push(error.message));
 try {
   await page.goto(baseUrl, {waitUntil: 'networkidle'});
   await page.getByRole('heading', {name: '先告诉我怎么称呼你。'}).waitFor();
+  checks.firstOpenDefaultsChinese = await page.locator('html').getAttribute('lang') === 'zh-CN';
   checks.firstOpenDisplayNameOnly = await page.locator('input').count() === 1 && await page.locator('input[type=email],input[type=password],input[name*=key i]').count() === 0;
   checks.onboardingStepRail = await page.getByText('初始化进度', {exact: true}).isVisible() && (await page.locator('.lc-onboarding-step').count()) === 4;
+  checks.visibleLocaleRecovery = await page.getByRole('link', {name: 'English'}).isVisible();
   await capture(page, '01-first-open.png');
   await assertAxe(page, 'zh-first-open');
   await assertZhDoesNotExposeLegacyEnglish(page, 'zh-first-open');
 
+  await page.goto(`${baseUrl}/en`, {waitUntil: 'networkidle'});
+  await page.getByRole('heading', {name: 'First, tell us what to call you.'}).waitFor();
+  checks.englishOnboardingLocalized = await page.getByRole('link', {name: '简体中文'}).isVisible() && await page.getByText('Setup progress', {exact: true}).isVisible();
+  await page.getByRole('link', {name: '简体中文'}).click();
+  await page.getByRole('heading', {name: '先告诉我怎么称呼你。'}).waitFor();
   await page.getByLabel('本地显示名称').fill('SDD-006 Owner');
-  await page.getByRole('button', {name: '继续'}).click();
-  await page.getByRole('heading', {name: '用示例快速体验，或带上真实本地资料。'}).waitFor();
-  checks.twoHonestPaths = await page.getByText('公开安全示例', {exact: true}).isVisible() && await page.getByText('仅保存在本机', {exact: true}).isVisible();
+  checks.twoHonestPaths = await page.getByRole('button', {name: '使用本机资料开始'}).isEnabled() && await page.getByRole('button', {name: '使用公开示例快速体验'}).isEnabled();
+  checks.exampleChoiceAvailableImmediately = checks.twoHonestPaths;
   await capture(page, '02-onboarding-path-choice.png');
   await assertAxe(page, 'zh-path-choice');
 
-  await page.getByRole('button', {name: '选择本地资料路径'}).click();
+  await page.getByRole('button', {name: '使用本机资料开始'}).click();
   await page.getByRole('heading', {name: '添加品牌或产品资料'}).waitFor();
   await page.locator('input[type=file]').setInputFiles({name: fixtureName, mimeType: 'text/markdown', buffer: fixtureBytes});
   await page.getByText(fixtureName).waitFor();
@@ -52,8 +58,16 @@ try {
   checks.extractedTextVisible = await page.getByText('查看提取文本').isVisible();
   checks.pdfDocxHonest = await page.getByText(/PDF、DOCX：PLANNED/u).isVisible();
   checks.localAuthorityFieldsConfirmed = (await page.locator('form input[required], form textarea[required]').count()) === 8;
-  checks.contextFieldsRemainDistinct = (await Promise.all(['目标市场 Market', '内容语言 Locale', '首选平台 Platform', '排程时区 Time Zone'].map((label) => page.getByLabel(label).isVisible()))).every(Boolean);
-  await page.getByLabel('Campaign 名称').scrollIntoViewIfNeeded();
+  const marketGroup = page.getByRole('group', {name: '目标市场 Market（可多选）'});
+  const localeGroup = page.getByRole('group', {name: '内容语言 Locale（可多选）'});
+  const platformGroup = page.getByRole('group', {name: '首选平台 Platform（可多选）'});
+  await marketGroup.getByRole('button', {name: 'US · 美国'}).click();
+  await localeGroup.getByRole('button', {name: 'en-US · 英语（美国）'}).click();
+  await platformGroup.getByRole('button', {name: 'LINKEDIN'}).click();
+  checks.contextFieldsRemainDistinct = await marketGroup.isVisible() && await localeGroup.isVisible() && await platformGroup.isVisible() && await page.getByLabel('默认排程时区 Default Time Zone').isVisible();
+  checks.contextMultiSelectWorks = (await marketGroup.locator('[aria-pressed=true]').count()) === 2 && (await localeGroup.locator('[aria-pressed=true]').count()) === 2 && (await platformGroup.locator('[aria-pressed=true]').count()) === 2;
+  checks.defaultScheduleTimeZoneIsSingle = (await page.getByLabel('默认排程时区 Default Time Zone').count()) === 1 && (await page.getByLabel('默认排程时区 Default Time Zone').evaluate((element) => element.tagName)) === 'SELECT';
+  await page.getByLabel('默认排程时区 Default Time Zone').scrollIntoViewIfNeeded();
   await capture(page, '03-local-private-context-confirmation.png');
   await assertAxe(page, 'zh-local-context');
   await page.getByRole('button', {name: '创建我的 Campaign 并进入工作区'}).click();
@@ -168,7 +182,7 @@ try {
   await page.getByRole('heading', {name: '品牌与产品资料'}).waitFor();
   const knowledge = await page.locator('body').innerText();
   checks.authoritativeOrganizationBrandProductVisible = ['星河工作室', '星河', '星河翻译助手', fixtureName].every((value) => knowledge.includes(value));
-  checks.brandContextSeparationVisible = ['Market', 'Locale', 'Platform', 'Time Zone'].every((value) => knowledge.includes(value));
+  checks.brandContextSeparationVisible = ['目标市场', '内容语言', '首选平台', '默认排程时区', 'CN · US', 'zh-CN · en-US', 'XIAOHONGSHU · LINKEDIN'].every((value) => knowledge.includes(value));
   await assertNoStableCodeHeadlines(page, 'zh-brand');
   await capture(page, '12-brand-knowledge.png');
 

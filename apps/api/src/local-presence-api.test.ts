@@ -32,8 +32,8 @@ describe('SDD-006 local onboarding API', () => {
     expect(binary.statusCode).toBe(422); expect(binary.json().code).toBe('LOCAL_MATERIAL_UTF8_REQUIRED');
     const early = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/complete', payload: localIdentity});
     expect(early.statusCode).toBe(422); expect(early.json().code).toBe('LOCAL_ONBOARDING_NOT_READY');
-    const context = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/context', payload: {marketCode: 'CN', contentLocale: 'zh-CN', platform: 'XIAOHONGSHU', timeZone: 'Asia/Shanghai'}});
-    expect(context.statusCode).toBe(200); expect(context.json().session).toMatchObject({marketCode: 'CN', contentLocale: 'zh-CN', platform: 'XIAOHONGSHU', timeZone: 'Asia/Shanghai'});
+    const context = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/context', payload: {marketCodes: ['CN', 'US'], contentLocales: ['zh-CN', 'en-US'], platforms: ['XIAOHONGSHU', 'LINKEDIN'], defaultTimeZone: 'Asia/Shanghai'}});
+    expect(context.statusCode).toBe(200); expect(context.json().session).toMatchObject({marketCodes: ['CN', 'US'], contentLocales: ['zh-CN', 'en-US'], platforms: ['XIAOHONGSHU', 'LINKEDIN'], defaultTimeZone: 'Asia/Shanghai'});
     const completed = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/complete', payload: localIdentity});
     expect(completed.statusCode).toBe(200); expect(completed.json()).toMatchObject({source: 'LOCAL_PRIVATE_USER_CONFIRMED', dataMode: 'LOCAL_PRIVATE', session: {state: 'COMPLETED', dataMode: 'LOCAL_PRIVATE'}, campaign: {document: {dataMode: 'LOCAL_PRIVATE', graph: {organization: {displayName: '星河工作室', dataMode: 'LOCAL_PRIVATE'}, brands: [{name: '星河'}], products: [{name: '星河翻译助手'}]}, brief: {name: '星河产品首发'}}}});
     const reopen = (await app.inject({method: 'GET', url: '/api/v1/local-workspace'})).json();
@@ -48,7 +48,7 @@ describe('SDD-006 local onboarding API', () => {
     const completedMutations = await Promise.all([
       app.inject({method: 'POST', url: '/api/v1/local-onboarding/materials-path'}),
       app.inject({method: 'POST', url: '/api/v1/local-onboarding/example'}),
-      app.inject({method: 'POST', url: '/api/v1/local-onboarding/context', payload: {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/New_York'}}),
+      app.inject({method: 'POST', url: '/api/v1/local-onboarding/context', payload: {marketCodes: ['US'], contentLocales: ['en-US'], platforms: ['LINKEDIN'], defaultTimeZone: 'America/New_York'}}),
       app.inject({method: 'POST', url: '/api/v1/local-onboarding/complete', payload: localIdentity}),
       app.inject({method: 'POST', url: '/api/v1/local-materials', headers: {'content-type': 'text/plain', 'x-lumiclaw-file-name': 'post-completion.txt'}, payload: Buffer.from('must not persist after completion')})
     ]);

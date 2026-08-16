@@ -74,8 +74,8 @@ function postgresRepositoryCompletedMutationCodes(ownerProfileId) {
     const ownerProfileId = ${JSON.stringify(ownerProfileId)};
     const mutations = [
       () => repository.selectLocalMaterials(ownerProfileId, now),
-      () => repository.chooseExample(ownerProfileId, 'example-org', 'example-campaign', {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/Los_Angeles'}, now),
-      () => repository.setContext(ownerProfileId, {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/New_York'}, now),
+      () => repository.chooseExample(ownerProfileId, 'example-org', 'example-campaign', {marketCodes: ['US'], contentLocales: ['en-US'], platforms: ['LINKEDIN'], defaultTimeZone: 'America/Los_Angeles'}, now),
+      () => repository.setContext(ownerProfileId, {marketCodes: ['US'], contentLocales: ['en-US'], platforms: ['LINKEDIN'], defaultTimeZone: 'America/New_York'}, now),
       () => repository.completeLocalOnboarding(ownerProfileId, 'replacement-org', 'replacement-campaign', now),
       () => repository.ingestMaterial({ownerProfileId, fileName: 'repository-post-completion.md', declaredMediaType: 'text/markdown', bytes: new TextEncoder().encode('# must fail')}, now)
     ];
@@ -137,6 +137,10 @@ try {
     before.profile?.displayName !== 'SDD-006 Owner'
     || before.session?.state !== 'COMPLETED'
     || before.session?.dataMode !== 'LOCAL_PRIVATE'
+    || JSON.stringify(before.session?.marketCodes) !== JSON.stringify(['CN', 'US'])
+    || JSON.stringify(before.session?.contentLocales) !== JSON.stringify(['zh-CN', 'en-US'])
+    || JSON.stringify(before.session?.platforms) !== JSON.stringify(['XIAOHONGSHU', 'LINKEDIN'])
+    || before.session?.defaultTimeZone !== 'Asia/Shanghai'
     || before.materials?.length !== 1
     || before.materials[0]?.fileName !== fixtureName
     || !/^[a-f0-9]{64}$/u.test(before.materials[0]?.digest ?? '')
@@ -148,10 +152,14 @@ try {
     || beforeDocument?.graph?.organization?.displayName !== '星河工作室'
     || beforeDocument?.graph?.brands?.[0]?.name !== '星河'
     || beforeDocument?.graph?.products?.[0]?.name !== '星河翻译助手'
+    || JSON.stringify(beforeDocument?.graph?.markets?.map((market) => market.code)) !== JSON.stringify(['CN', 'US'])
     || beforeDocument?.brief?.name !== '星河产品首发'
     || JSON.stringify(beforeDocument).includes('LumiClaw Presence local launch')
   ) throw new Error('SDD006_PRE_RESTART_LOCAL_PRIVATE_STATE_INVALID');
+  const persistedContext = postgresScalar("select market_codes::text || '|' || content_locales::text || '|' || platforms::text || '|' || default_time_zone from local_onboarding_sessions limit 1");
+  if (persistedContext !== '[\"CN\", \"US\"]|[\"zh-CN\", \"en-US\"]|[\"XIAOHONGSHU\", \"LINKEDIN\"]|Asia/Shanghai') throw new Error('SDD006_MULTI_CONTEXT_NOT_PERSISTED_IN_POSTGRES');
   checks.preRestartAuthoritativeLocalPrivateGraph = true;
+  checks.multiContextPersistedInPostgres = true;
 
   const materialBeforeDelete = before.materials[0];
   const sessionRowBeforeReentry = postgresScalar("select state || '|' || path || '|' || coalesce(organization_id::text, '') || '|' || coalesce(campaign_id::text, '') || '|' || material_ids::text from local_onboarding_sessions limit 1");
@@ -159,7 +167,7 @@ try {
   const [materialsPathReentry, exampleReentry, contextReentry, completionReentry, postCompletionUpload] = await Promise.all([
     postJson('/api/v1/local-onboarding/materials-path', {}),
     postJson('/api/v1/local-onboarding/example', {}),
-    postJson('/api/v1/local-onboarding/context', {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/New_York'}),
+    postJson('/api/v1/local-onboarding/context', {marketCodes: ['US', 'SG'], contentLocales: ['en-US', 'zh-CN'], platforms: ['LINKEDIN', 'X'], defaultTimeZone: 'America/New_York'}),
     postJson('/api/v1/local-onboarding/complete', localIdentity),
     upload('post-completion.md', postCompletionBytes)
   ]);
@@ -222,6 +230,10 @@ try {
     reopened.profile?.displayName !== before.profile.displayName
     || reopened.session?.campaignId !== before.session.campaignId
     || reopened.session?.dataMode !== 'LOCAL_PRIVATE'
+    || JSON.stringify(reopened.session?.marketCodes) !== JSON.stringify(before.session.marketCodes)
+    || JSON.stringify(reopened.session?.contentLocales) !== JSON.stringify(before.session.contentLocales)
+    || JSON.stringify(reopened.session?.platforms) !== JSON.stringify(before.session.platforms)
+    || reopened.session?.defaultTimeZone !== before.session.defaultTimeZone
     || reopened.materials?.length !== 1
     || reopened.materials[0]?.digest !== before.materials[0].digest
     || reopened.materials[0]?.extractedText !== before.materials[0].extractedText

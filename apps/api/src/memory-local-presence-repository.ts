@@ -30,7 +30,7 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
     }
     const timestamp = now.toISOString();
     this.#profile = {schemaVersion: 1, id: createUuidV7(now.getTime()), displayName: normalized, state: 'PROFILE_READY', createdAt: timestamp, updatedAt: timestamp};
-    this.#session = {schemaVersion: 1, ownerProfileId: this.#profile.id, path: 'UNSELECTED', state: 'MATERIAL_CHOICE', dataMode: 'LOCAL_PRIVATE', organizationId: null, campaignId: null, marketCode: null, contentLocale: null, platform: null, timeZone: null, materialIds: [], createdAt: timestamp, updatedAt: timestamp};
+    this.#session = {schemaVersion: 1, ownerProfileId: this.#profile.id, path: 'UNSELECTED', state: 'MATERIAL_CHOICE', dataMode: 'LOCAL_PRIVATE', organizationId: null, campaignId: null, marketCodes: [], contentLocales: [], platforms: [], defaultTimeZone: null, materialIds: [], createdAt: timestamp, updatedAt: timestamp};
     return clone(this.#profile)!;
   }
 

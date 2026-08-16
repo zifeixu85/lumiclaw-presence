@@ -118,7 +118,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
     await requireMutableOnboardingSession(localPresenceRepository, profile.id);
     const campaign = await ensurePublicSafeCampaign();
-    const session = await localPresenceRepository.chooseExample(profile.id, campaign.document.organizationId, campaign.document.id, {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/Los_Angeles'}, now());
+    const session = await localPresenceRepository.chooseExample(profile.id, campaign.document.organizationId, campaign.document.id, {marketCodes: ['US'], contentLocales: ['en-US'], platforms: ['LINKEDIN', 'X', 'BLUESKY', 'XIAOHONGSHU'], defaultTimeZone: 'America/Los_Angeles'}, now());
     return reply.status(201).send({code: 'PUBLIC_SAFE_EXAMPLE_READY', source: 'PUBLIC_SAFE_EXAMPLE', externalActionAllowed: false, session, campaign});
   });
 
@@ -142,14 +142,14 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     const identity = validateLocalCampaignIdentityInput(request.body);
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
     const currentSession = await requireMutableOnboardingSession(localPresenceRepository, profile.id);
-    if (currentSession.path !== 'LOCAL_MATERIALS' || currentSession.state !== 'CONTEXT_READY' || currentSession.marketCode === null || currentSession.contentLocale === null || currentSession.platform === null || currentSession.timeZone === null) throw new LocalPresenceContractError('LOCAL_ONBOARDING_NOT_READY');
+    if (currentSession.path !== 'LOCAL_MATERIALS' || currentSession.state !== 'CONTEXT_READY' || currentSession.marketCodes.length === 0 || currentSession.contentLocales.length === 0 || currentSession.platforms.length === 0 || currentSession.defaultTimeZone === null) throw new LocalPresenceContractError('LOCAL_ONBOARDING_NOT_READY');
     const materials = (await localPresenceRepository.listMaterials(profile.id)).filter((item) => item.state === 'READY');
     const document = createLocalPrivateCampaignDocument({
       ownerProfileId: profile.id,
       ownerDisplayName: profile.displayName,
       profileCreatedAt: profile.createdAt,
       identity,
-      context: {marketCode: currentSession.marketCode, contentLocale: currentSession.contentLocale, platform: currentSession.platform, timeZone: currentSession.timeZone},
+      context: {marketCodes: currentSession.marketCodes, contentLocales: currentSession.contentLocales, platforms: currentSession.platforms, defaultTimeZone: currentSession.defaultTimeZone},
       materials
     });
     const created = await repository.create(document.organizationId, document, `sdd006-local-private-${profile.id}`, sha256Digest(document), now());

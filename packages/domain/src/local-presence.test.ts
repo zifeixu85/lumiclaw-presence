@@ -9,8 +9,10 @@ describe('local presence contracts', () => {
   });
 
   it('keeps Market, Locale, Platform and IANA Time Zone as separate stable codes', () => {
-    expect(validateOnboardingContext({marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/Los_Angeles'})).toEqual({marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/Los_Angeles'});
-    expect(() => validateOnboardingContext({marketCode: 'en-US', contentLocale: 'US', platform: 'LINKEDIN', timeZone: 'UTC'})).toThrow();
+    expect(validateOnboardingContext({marketCodes: ['US', 'SG'], contentLocales: ['en-US', 'zh-CN'], platforms: ['LINKEDIN', 'X'], defaultTimeZone: 'America/Los_Angeles'})).toEqual({marketCodes: ['US', 'SG'], contentLocales: ['en-US', 'zh-CN'], platforms: ['LINKEDIN', 'X'], defaultTimeZone: 'America/Los_Angeles'});
+    expect(() => validateOnboardingContext({marketCodes: ['en-US'], contentLocales: ['US'], platforms: ['LINKEDIN'], defaultTimeZone: 'UTC'})).toThrow();
+    expect(() => validateOnboardingContext({marketCodes: ['US', 'US'], contentLocales: ['en-US'], platforms: ['LINKEDIN'], defaultTimeZone: 'America/Los_Angeles'})).toThrow();
+    expect(() => validateOnboardingContext({marketCodes: [], contentLocales: ['en-US'], platforms: ['LINKEDIN'], defaultTimeZone: 'America/Los_Angeles'})).toThrow();
   });
 
   it('extracts UTF-8 MD/TXT with a byte digest and rejects unsupported, binary and oversized inputs', () => {

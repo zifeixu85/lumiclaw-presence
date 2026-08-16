@@ -47,7 +47,7 @@ export class PostgresLocalPresenceRepository implements LocalPresenceRepository 
       }
       const id = createUuidV7(now.getTime());
       const profile = await trx.insertInto('local_owner_profiles').values({id, singleton_key: true, schema_version: 1, display_name: normalized, state: 'PROFILE_READY', created_at: now, updated_at: now}).returningAll().executeTakeFirstOrThrow();
-      await trx.insertInto('local_onboarding_sessions').values({owner_profile_id: id, schema_version: 1, path: 'UNSELECTED', state: 'MATERIAL_CHOICE', data_mode: 'LOCAL_PRIVATE', organization_id: null, campaign_id: null, market_code: null, content_locale: null, platform: null, time_zone: null, material_ids: JSON.stringify([]), created_at: now, updated_at: now}).execute();
+      await trx.insertInto('local_onboarding_sessions').values({owner_profile_id: id, schema_version: 1, path: 'UNSELECTED', state: 'MATERIAL_CHOICE', data_mode: 'LOCAL_PRIVATE', organization_id: null, campaign_id: null, market_code: null, content_locale: null, platform: null, time_zone: null, market_codes: JSON.stringify([]), content_locales: JSON.stringify([]), platforms: JSON.stringify([]), default_time_zone: null, material_ids: JSON.stringify([]), created_at: now, updated_at: now}).execute();
       return profileFromRow(profile);
     });
   }
@@ -62,7 +62,7 @@ export class PostgresLocalPresenceRepository implements LocalPresenceRepository 
       const session = await trx.selectFrom('local_onboarding_sessions').select(['state']).where('owner_profile_id', '=', ownerProfileId).forUpdate().executeTakeFirst();
       if (session === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
       if (session.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_ONBOARDING_ALREADY_COMPLETED');
-      const row = await trx.updateTable('local_onboarding_sessions').set({path: 'PUBLIC_SAFE_EXAMPLE', state: 'COMPLETED', data_mode: 'PUBLIC_SAFE_EXAMPLE', organization_id: organizationId, campaign_id: campaignId, market_code: context.marketCode, content_locale: context.contentLocale, platform: context.platform, time_zone: context.timeZone, material_ids: JSON.stringify([]), updated_at: now}).where('owner_profile_id', '=', ownerProfileId).returningAll().executeTakeFirst();
+      const row = await trx.updateTable('local_onboarding_sessions').set({path: 'PUBLIC_SAFE_EXAMPLE', state: 'COMPLETED', data_mode: 'PUBLIC_SAFE_EXAMPLE', organization_id: organizationId, campaign_id: campaignId, market_code: context.marketCodes[0]!, content_locale: context.contentLocales[0]!, platform: context.platforms[0]!, time_zone: context.defaultTimeZone, market_codes: JSON.stringify(context.marketCodes), content_locales: JSON.stringify(context.contentLocales), platforms: JSON.stringify(context.platforms), default_time_zone: context.defaultTimeZone, material_ids: JSON.stringify([]), updated_at: now}).where('owner_profile_id', '=', ownerProfileId).returningAll().executeTakeFirst();
       if (row === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
       await trx.updateTable('local_owner_profiles').set({state: 'ONBOARDING_COMPLETE', updated_at: now}).where('id', '=', ownerProfileId).execute();
       return sessionFromRow(row);
@@ -87,7 +87,7 @@ export class PostgresLocalPresenceRepository implements LocalPresenceRepository 
       if (session.path !== 'LOCAL_MATERIALS') throw new LocalPresenceContractError('LOCAL_MATERIAL_PATH_REQUIRED');
       const ready = await trx.selectFrom('local_material_manifests').select(({fn}) => fn.countAll<number>().as('count')).where('owner_profile_id', '=', ownerProfileId).where('state', '=', 'READY').executeTakeFirst();
       if (Number(ready?.count ?? 0) < 1) throw new LocalPresenceContractError('LOCAL_MATERIAL_REQUIRED');
-      const row = await trx.updateTable('local_onboarding_sessions').set({state: 'CONTEXT_READY', market_code: context.marketCode, content_locale: context.contentLocale, platform: context.platform, time_zone: context.timeZone, updated_at: now}).where('owner_profile_id', '=', ownerProfileId).returningAll().executeTakeFirstOrThrow();
+      const row = await trx.updateTable('local_onboarding_sessions').set({state: 'CONTEXT_READY', market_code: context.marketCodes[0]!, content_locale: context.contentLocales[0]!, platform: context.platforms[0]!, time_zone: context.defaultTimeZone, market_codes: JSON.stringify(context.marketCodes), content_locales: JSON.stringify(context.contentLocales), platforms: JSON.stringify(context.platforms), default_time_zone: context.defaultTimeZone, updated_at: now}).where('owner_profile_id', '=', ownerProfileId).returningAll().executeTakeFirstOrThrow();
       return sessionFromRow(row);
     });
   }
@@ -181,7 +181,10 @@ function profileFromRow(row: Selectable<LocalOwnerProfilesTable>): LocalOwnerPro
 }
 
 function sessionFromRow(row: Selectable<LocalOnboardingSessionsTable>): LocalOnboardingSession {
-  return {schemaVersion: 1, ownerProfileId: row.owner_profile_id, path: row.path, state: row.state, dataMode: row.data_mode, organizationId: row.organization_id, campaignId: row.campaign_id, marketCode: row.market_code, contentLocale: row.content_locale, platform: row.platform, timeZone: row.time_zone, materialIds: stringArray(row.material_ids), createdAt: iso(row.created_at), updatedAt: iso(row.updated_at)};
+  const marketCodes = stringArray(row.market_codes);
+  const contentLocales = stringArray(row.content_locales);
+  const platforms = stringArray(row.platforms);
+  return {schemaVersion: 1, ownerProfileId: row.owner_profile_id, path: row.path, state: row.state, dataMode: row.data_mode, organizationId: row.organization_id, campaignId: row.campaign_id, marketCodes: marketCodes.length > 0 ? marketCodes : row.market_code === null ? [] : [row.market_code], contentLocales: contentLocales.length > 0 ? contentLocales : row.content_locale === null ? [] : [row.content_locale], platforms: platforms.length > 0 ? platforms : row.platform === null ? [] : [row.platform], defaultTimeZone: row.default_time_zone ?? row.time_zone, materialIds: stringArray(row.material_ids), createdAt: iso(row.created_at), updatedAt: iso(row.updated_at)};
 }
 
 function materialFromRow(row: Selectable<LocalMaterialManifestsTable>): LocalMaterialManifest {

@@ -41,10 +41,10 @@ export type LocalOnboardingSession = {
   dataMode: LocalDataMode;
   organizationId: string | null;
   campaignId: string | null;
-  marketCode: string | null;
-  contentLocale: string | null;
-  platform: string | null;
-  timeZone: string | null;
+  marketCodes: string[];
+  contentLocales: string[];
+  platforms: string[];
+  defaultTimeZone: string | null;
   materialIds: string[];
   createdAt: string;
   updatedAt: string;
@@ -67,10 +67,10 @@ export type LocalMaterialManifest = {
 };
 
 export type LocalOnboardingContext = {
-  marketCode: string;
-  contentLocale: string;
-  platform: string;
-  timeZone: string;
+  marketCodes: string[];
+  contentLocales: string[];
+  platforms: string[];
+  defaultTimeZone: string;
 };
 
 export type EnvironmentReadinessItem = {
@@ -150,14 +150,23 @@ export function normalizeLocalDisplayName(value: unknown): string {
 }
 
 export function validateOnboardingContext(value: unknown): LocalOnboardingContext {
-  if (!isRecord(value) || Object.keys(value).sort().join(',') !== 'contentLocale,marketCode,platform,timeZone') {
+  if (!isRecord(value) || Object.keys(value).sort().join(',') !== 'contentLocales,defaultTimeZone,marketCodes,platforms') {
     throw new LocalPresenceContractError('ONBOARDING_CONTEXT_SCHEMA_INVALID');
   }
-  if (typeof value.marketCode !== 'string' || !/^[A-Z]{2}$/u.test(value.marketCode)) throw new LocalPresenceContractError('MARKET_CODE_INVALID');
-  if (typeof value.contentLocale !== 'string' || !/^[a-z]{2}(?:-[A-Z]{2})?$/u.test(value.contentLocale)) throw new LocalPresenceContractError('CONTENT_LOCALE_INVALID');
-  if (typeof value.platform !== 'string' || !['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU'].includes(value.platform)) throw new LocalPresenceContractError('PLATFORM_CODE_INVALID');
-  if (typeof value.timeZone !== 'string' || value.timeZone.length > 80 || !isIanaTimeZone(value.timeZone)) throw new LocalPresenceContractError('TIME_ZONE_INVALID');
-  return {marketCode: value.marketCode, contentLocale: value.contentLocale, platform: value.platform, timeZone: value.timeZone};
+  const marketCodes = validatedUniqueCodes(value.marketCodes, 12, /^[A-Z]{2}$/u, 'MARKET_CODE_INVALID');
+  const contentLocales = validatedUniqueCodes(value.contentLocales, 12, /^[a-z]{2}(?:-[A-Z]{2})?$/u, 'CONTENT_LOCALE_INVALID');
+  const platforms = validatedUniqueCodes(value.platforms, 4, /^(?:X|BLUESKY|LINKEDIN|XIAOHONGSHU)$/u, 'PLATFORM_CODE_INVALID');
+  if (typeof value.defaultTimeZone !== 'string' || value.defaultTimeZone.length > 80 || !isIanaTimeZone(value.defaultTimeZone)) throw new LocalPresenceContractError('TIME_ZONE_INVALID');
+  return {marketCodes, contentLocales, platforms, defaultTimeZone: value.defaultTimeZone};
+}
+
+function validatedUniqueCodes(value: unknown, maxItems: number, pattern: RegExp, code: string): string[] {
+  if (!Array.isArray(value) || value.length < 1 || value.length > maxItems || value.some((item) => typeof item !== 'string' || !pattern.test(item))) {
+    throw new LocalPresenceContractError(code);
+  }
+  const unique = [...new Set(value)];
+  if (unique.length !== value.length) throw new LocalPresenceContractError(code);
+  return unique;
 }
 
 export function prepareLocalMaterial(input: MaterialIngestInput, now = new Date()): Omit<LocalMaterialManifest, 'blobRef'> {
