@@ -10,7 +10,7 @@ import {
   type CampaignRepository,
   type MutationResult
 } from '@lumiclaw/domain';
-import {blockedManualPublishAuthorization, isSecretBearingObject, LOCAL_MATERIAL_MAX_BYTES, LocalPresenceContractError, normalizeLocalDisplayName, validateLocalCampaignIdentityInput, validateOnboardingContext, type LocalPresenceRepository, type ManualPublishHandoff} from '@lumiclaw/domain';
+import {blockedManualPublishAuthorization, isSecretBearingObject, LOCAL_MATERIAL_MAX_BYTES, LocalPresenceContractError, normalizeLocalDisplayName, validateLocalCampaignIdentityInput, validateOnboardingContext, type LocalOnboardingSession, type LocalPresenceRepository, type ManualPublishHandoff} from '@lumiclaw/domain';
 import {LocalContentAddressedBlobStore} from '@lumiclaw/blob-store';
 import {
   acceptRuntimeSubmission,
@@ -116,6 +116,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
 
   app.post('/api/v1/local-onboarding/example', async (_request, reply) => {
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    await requireMutableOnboardingSession(localPresenceRepository, profile.id);
     const campaign = await ensurePublicSafeCampaign();
     const session = await localPresenceRepository.chooseExample(profile.id, campaign.document.organizationId, campaign.document.id, {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/Los_Angeles'}, now());
     return reply.status(201).send({code: 'PUBLIC_SAFE_EXAMPLE_READY', source: 'PUBLIC_SAFE_EXAMPLE', externalActionAllowed: false, session, campaign});
@@ -123,6 +124,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
 
   app.post('/api/v1/local-onboarding/materials-path', async (_request, reply) => {
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    await requireMutableOnboardingSession(localPresenceRepository, profile.id);
     const session = await localPresenceRepository.selectLocalMaterials(profile.id, now());
     return {code: 'LOCAL_MATERIAL_PATH_READY', session, acceptedTypes: ['.md', '.txt'], maxBytes: LOCAL_MATERIAL_MAX_BYTES, plannedTypes: ['.pdf', '.docx']};
   });
@@ -130,6 +132,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   app.post('/api/v1/local-onboarding/context', async (request, reply) => {
     if (isSecretBearingObject(request.body)) return reply.status(422).send(errorBody('BROWSER_SECRET_FIELD_FORBIDDEN'));
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    await requireMutableOnboardingSession(localPresenceRepository, profile.id);
     const session = await localPresenceRepository.setContext(profile.id, validateOnboardingContext(request.body), now());
     return {code: 'LOCAL_CONTEXT_READY', session};
   });
@@ -138,8 +141,8 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (isSecretBearingObject(request.body)) return reply.status(422).send(errorBody('BROWSER_SECRET_FIELD_FORBIDDEN'));
     const identity = validateLocalCampaignIdentityInput(request.body);
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
-    const currentSession = await localPresenceRepository.getSession(profile.id);
-    if (currentSession?.path !== 'LOCAL_MATERIALS' || currentSession.state !== 'CONTEXT_READY' || currentSession.marketCode === null || currentSession.contentLocale === null || currentSession.platform === null || currentSession.timeZone === null) throw new LocalPresenceContractError('LOCAL_ONBOARDING_NOT_READY');
+    const currentSession = await requireMutableOnboardingSession(localPresenceRepository, profile.id);
+    if (currentSession.path !== 'LOCAL_MATERIALS' || currentSession.state !== 'CONTEXT_READY' || currentSession.marketCode === null || currentSession.contentLocale === null || currentSession.platform === null || currentSession.timeZone === null) throw new LocalPresenceContractError('LOCAL_ONBOARDING_NOT_READY');
     const materials = (await localPresenceRepository.listMaterials(profile.id)).filter((item) => item.state === 'READY');
     const document = createLocalPrivateCampaignDocument({
       ownerProfileId: profile.id,
@@ -162,6 +165,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
 
   app.post('/api/v1/local-materials', async (request, reply) => {
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    await requireMutableOnboardingSession(localPresenceRepository, profile.id);
     const encodedName = request.headers['x-lumiclaw-file-name'];
     if (typeof encodedName !== 'string') return reply.status(422).send(errorBody('LOCAL_MATERIAL_FILE_NAME_REQUIRED'));
     if (!(request.body instanceof Buffer)) return reply.status(422).send(errorBody('LOCAL_MATERIAL_BYTES_REQUIRED'));
@@ -533,7 +537,7 @@ function sendMutation(reply: FastifyReply, result: MutationResult, status: 200 |
 function sendDomainOrUnavailable(reply: FastifyReply, error: unknown) {
   if (error instanceof CampaignPreparationError) return reply.status(422).send({...errorBody(error.code), details: error.details});
   if (error instanceof LocalPresenceContractError) {
-    const status = ['LOCAL_PROFILE_ALREADY_EXISTS', 'LOCAL_MATERIAL_BOUND_TO_CAMPAIGN', 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'].includes(error.code) ? 409 : error.code.includes('NOT_FOUND') ? 404 : error.code.includes('TYPE_PLANNED') || error.code.includes('TYPE_UNSUPPORTED') ? 415 : 422;
+    const status = ['LOCAL_PROFILE_ALREADY_EXISTS', 'LOCAL_ONBOARDING_ALREADY_COMPLETED', 'LOCAL_MATERIAL_BOUND_TO_CAMPAIGN', 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'].includes(error.code) ? 409 : error.code.includes('NOT_FOUND') ? 404 : error.code.includes('TYPE_PLANNED') || error.code.includes('TYPE_UNSUPPORTED') ? 415 : 422;
     return reply.status(status).send(errorBody(error.code));
   }
   if (error instanceof ScheduleContractError) return reply.status(422).send({...errorBody(error.code), details: error.message});
@@ -666,6 +670,13 @@ async function requireLocalProfile(repository: LocalPresenceRepository, reply: F
   const profile = await repository.getProfile();
   if (profile === undefined) { void reply.status(409).send(errorBody('LOCAL_PROFILE_REQUIRED')); return undefined; }
   return profile;
+}
+
+async function requireMutableOnboardingSession(repository: LocalPresenceRepository, ownerProfileId: string): Promise<LocalOnboardingSession> {
+  const session = await repository.getSession(ownerProfileId);
+  if (session === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
+  if (session.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_ONBOARDING_ALREADY_COMPLETED');
+  return session;
 }
 
 function isExactRecord(value: unknown, keys: string[]): value is Record<string, unknown> {

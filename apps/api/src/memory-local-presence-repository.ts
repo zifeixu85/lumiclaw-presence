@@ -39,20 +39,20 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
   }
 
   public async chooseExample(ownerProfileId: string, organizationId: string, campaignId: string, context: LocalOnboardingContext, now: Date): Promise<LocalOnboardingSession> {
-    const session = this.requireSession(ownerProfileId);
+    const session = this.requireMutableSession(ownerProfileId);
     this.#session = {...session, path: 'PUBLIC_SAFE_EXAMPLE', state: 'COMPLETED', dataMode: 'PUBLIC_SAFE_EXAMPLE', organizationId, campaignId, ...context, materialIds: [], updatedAt: now.toISOString()};
     this.completeProfile(now);
     return clone(this.#session)!;
   }
 
   public async selectLocalMaterials(ownerProfileId: string, now: Date): Promise<LocalOnboardingSession> {
-    const session = this.requireSession(ownerProfileId);
+    const session = this.requireMutableSession(ownerProfileId);
     this.#session = {...session, path: 'LOCAL_MATERIALS', state: 'MATERIAL_CHOICE', dataMode: 'LOCAL_PRIVATE', updatedAt: now.toISOString()};
     return clone(this.#session)!;
   }
 
   public async setContext(ownerProfileId: string, context: LocalOnboardingContext, now: Date): Promise<LocalOnboardingSession> {
-    const session = this.requireSession(ownerProfileId);
+    const session = this.requireMutableSession(ownerProfileId);
     if (session.path !== 'LOCAL_MATERIALS') throw new LocalPresenceContractError('LOCAL_MATERIAL_PATH_REQUIRED');
     if (this.readyMaterials(ownerProfileId).length < 1) throw new LocalPresenceContractError('LOCAL_MATERIAL_REQUIRED');
     this.#session = {...session, ...context, state: 'CONTEXT_READY', updatedAt: now.toISOString()};
@@ -60,7 +60,7 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
   }
 
   public async completeLocalOnboarding(ownerProfileId: string, organizationId: string, campaignId: string, now: Date): Promise<LocalOnboardingSession> {
-    const session = this.requireSession(ownerProfileId);
+    const session = this.requireMutableSession(ownerProfileId);
     if (session.path !== 'LOCAL_MATERIALS' || session.state !== 'CONTEXT_READY' || this.readyMaterials(ownerProfileId).length < 1) throw new LocalPresenceContractError('LOCAL_ONBOARDING_NOT_READY');
     this.#session = {...session, organizationId, campaignId, state: 'COMPLETED', updatedAt: now.toISOString()};
     this.completeProfile(now);
@@ -68,7 +68,7 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
   }
 
   public async ingestMaterial(input: MaterialIngestInput, now: Date): Promise<LocalMaterialManifest> {
-    const session = this.requireSession(input.ownerProfileId);
+    const session = this.requireMutableSession(input.ownerProfileId);
     if (session.path !== 'LOCAL_MATERIALS') throw new LocalPresenceContractError('LOCAL_MATERIAL_PATH_REQUIRED');
     const prepared = prepareLocalMaterial(input, now);
     const duplicate = [...this.#materials.values()].find((item) => item.ownerProfileId === input.ownerProfileId && item.digest === prepared.digest);
@@ -76,7 +76,7 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
     const manifest: LocalMaterialManifest = {...prepared, blobRef: {algorithm: 'sha256', digest: prepared.digest, size: prepared.byteSize}};
     this.#materials.set(manifest.id, manifest);
     this.#bytes.set(manifest.digest, new Uint8Array(input.bytes));
-    this.#session = {...session, state: session.state === 'COMPLETED' ? 'COMPLETED' : 'MATERIALS_READY', materialIds: [...session.materialIds, manifest.id], updatedAt: now.toISOString()};
+    this.#session = {...session, state: 'MATERIALS_READY', materialIds: [...session.materialIds, manifest.id], updatedAt: now.toISOString()};
     return clone(manifest)!;
   }
 
@@ -106,6 +106,12 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
   private requireSession(ownerProfileId: string): LocalOnboardingSession {
     if (this.#session?.ownerProfileId !== ownerProfileId) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
     return this.#session;
+  }
+
+  private requireMutableSession(ownerProfileId: string): LocalOnboardingSession {
+    const session = this.requireSession(ownerProfileId);
+    if (session.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_ONBOARDING_ALREADY_COMPLETED');
+    return session;
   }
 
   private readyMaterials(ownerProfileId: string): LocalMaterialManifest[] { return [...this.#materials.values()].filter((item) => item.ownerProfileId === ownerProfileId && item.state === 'READY'); }

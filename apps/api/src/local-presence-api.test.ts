@@ -45,10 +45,21 @@ describe('SDD-006 local onboarding API', () => {
     const runtime = await app.inject({method: 'POST', url: `/api/v1/campaigns/${reopen.campaign.document.id}/shadow-missions`, headers: {...authorityHeaders, 'idempotency-key': 'local-runtime-forbidden', 'if-match': reopen.campaign.etag}, payload: {sourceDigest: reopen.campaign.digest, fault: 'BETA_TO_GA'}});
     expect(runtime.statusCode).toBe(403); expect(runtime.json()).toMatchObject({code: 'LOCAL_PRIVATE_RUNTIME_REQUIRES_SDD_007', mode: 'LOCAL_PRIVATE', live: false});
     const material = reopen.materials[0];
+    const completedMutations = await Promise.all([
+      app.inject({method: 'POST', url: '/api/v1/local-onboarding/materials-path'}),
+      app.inject({method: 'POST', url: '/api/v1/local-onboarding/example'}),
+      app.inject({method: 'POST', url: '/api/v1/local-onboarding/context', payload: {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/New_York'}}),
+      app.inject({method: 'POST', url: '/api/v1/local-onboarding/complete', payload: localIdentity}),
+      app.inject({method: 'POST', url: '/api/v1/local-materials', headers: {'content-type': 'text/plain', 'x-lumiclaw-file-name': 'post-completion.txt'}, payload: Buffer.from('must not persist after completion')})
+    ]);
+    expect(completedMutations.map((response) => [response.statusCode, response.json().code])).toEqual(Array.from({length: 5}, () => [409, 'LOCAL_ONBOARDING_ALREADY_COMPLETED']));
     const deleteBound = await app.inject({method: 'DELETE', url: `/api/v1/local-materials/${material.id}`});
     expect(deleteBound.statusCode).toBe(409); expect(deleteBound.json().code).toBe('LOCAL_MATERIAL_BOUND_TO_CAMPAIGN');
     const afterDeleteAttempt = (await app.inject({method: 'GET', url: '/api/v1/local-workspace'})).json();
     expect(afterDeleteAttempt).toMatchObject({session: {state: 'COMPLETED', campaignId: reopen.campaign.document.id, materialIds: [material.id]}, materials: [{id: material.id, digest: material.digest}], campaign: {document: {evidenceRefs: [{sourceUrl: `local-material://sha256/${material.digest}`}]}}});
+    expect(afterDeleteAttempt.session).toEqual(reopen.session);
+    expect(afterDeleteAttempt.materials).toEqual(reopen.materials);
+    expect(afterDeleteAttempt.campaign.digest).toBe(reopen.campaign.digest);
   });
 
   it('labels example/team metrics, exposes repository Skills, and blocks unapproved manual publishing', async () => {
@@ -56,6 +67,8 @@ describe('SDD-006 local onboarding API', () => {
     await app.inject({method: 'POST', url: '/api/v1/local-owner-profile', payload: {displayName: 'Owner'}});
     const example = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/example'});
     expect(example.statusCode).toBe(201); expect(example.json()).toMatchObject({source: 'PUBLIC_SAFE_EXAMPLE', externalActionAllowed: false, session: {state: 'COMPLETED'}});
+    const exampleReentry = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/materials-path'});
+    expect(exampleReentry.statusCode).toBe(409); expect(exampleReentry.json().code).toBe('LOCAL_ONBOARDING_ALREADY_COMPLETED');
     const document = example.json().campaign.document;
     const revision = document.artifactRevisions[0];
     const handoff = await app.inject({method: 'POST', url: '/api/v1/manual-publish-handoffs', payload: {organizationId: document.organizationId, campaignId: document.id, artifactRevisionId: revision.id, platform: revision.platform, action: 'OWNER_REPORTED_COMPLETE'}});

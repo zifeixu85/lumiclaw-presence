@@ -10,6 +10,7 @@ const apiUrl = `http://127.0.0.1:${apiPort}`;
 const evidencePath = path.resolve('.evidence/sdd-006/compose-verification.json');
 const fixtureName = 'sdd-006-local-private-fixture.md';
 const fixtureBytes = Buffer.from('# 星河公开安全测试资料\n用于验证本机私有初始化，不含客户或私密资料。');
+const localIdentity = {organizationName: '星河工作室', brandName: '星河', brandPositioning: '帮助独立团队清楚表达跨市场产品价值。', productName: '星河翻译助手', productDescription: '一个由本机资料确认的多语言产品说明助手。', campaignName: '星河产品首发', campaignObjective: '让目标市场理解产品定位并邀请结构化反馈。', callToAction: '阅读完整说明并分享反馈。'};
 const events = [];
 const checks = {};
 
@@ -64,6 +65,31 @@ function blobExists(bytes) {
   return output === 'true';
 }
 
+function postgresRepositoryCompletedMutationCodes(ownerProfileId) {
+  const source = `
+    import {LocalContentAddressedBlobStore} from '@lumiclaw/blob-store';
+    import {PostgresLocalPresenceRepository} from '@lumiclaw/db';
+    const repository = new PostgresLocalPresenceRepository(process.env.DATABASE_URL, new LocalContentAddressedBlobStore(process.env.BLOB_ROOT));
+    const now = new Date('2026-08-16T09:00:00.000Z');
+    const ownerProfileId = ${JSON.stringify(ownerProfileId)};
+    const mutations = [
+      () => repository.selectLocalMaterials(ownerProfileId, now),
+      () => repository.chooseExample(ownerProfileId, 'example-org', 'example-campaign', {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/Los_Angeles'}, now),
+      () => repository.setContext(ownerProfileId, {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/New_York'}, now),
+      () => repository.completeLocalOnboarding(ownerProfileId, 'replacement-org', 'replacement-campaign', now),
+      () => repository.ingestMaterial({ownerProfileId, fileName: 'repository-post-completion.md', declaredMediaType: 'text/markdown', bytes: new TextEncoder().encode('# must fail')}, now)
+    ];
+    const codes = [];
+    for (const mutate of mutations) {
+      try { await mutate(); codes.push('MUTATION_SUCCEEDED'); }
+      catch (error) { codes.push(error?.code ?? 'UNKNOWN_ERROR'); }
+    }
+    await repository.close();
+    process.stdout.write(JSON.stringify(codes));
+  `;
+  return JSON.parse(docker(['exec', '-T', 'api', 'node', '--input-type=module', '-e', source]));
+}
+
 await mkdir(path.dirname(evidencePath), {recursive: true});
 let result = 'FAIL';
 let failure = null;
@@ -92,18 +118,18 @@ try {
   if (Number(postgresScalar('select count(*) from local_material_manifests')) !== 0 || blobExists(failureBytes)) throw new Error('SDD006_DB_FAILURE_LEFT_ORPHAN_BLOB');
   checks.databaseWriteFailureCleansNewBlob = true;
 
-  docker(['down', '--volumes', '--remove-orphans']);
-  docker(['up', '--no-build', '--detach'], true);
-  await waitHealthy();
-  execFileSync(process.execPath, ['scripts/verify-sdd006-browser.mjs'], {cwd: process.cwd(), stdio: 'inherit', env: {...process.env, SDD006_WEB_URL: `http://127.0.0.1:${webPort}`}});
-  checks.realBilingualBrowserFlow = true;
-
   const duplicateResults = await Promise.all([upload(fixtureName, fixtureBytes), upload(fixtureName, fixtureBytes)]);
   if (!duplicateResults.every((entry) => entry.status === 201) || duplicateResults[0].body.material?.id !== duplicateResults[1].body.material?.id) throw new Error('SDD006_CONCURRENT_DUPLICATE_RESULT_INCONSISTENT');
   const materialCount = Number(postgresScalar('select count(*) from local_material_manifests'));
   const persistedMaterialIds = JSON.parse(postgresScalar('select material_ids::text from local_onboarding_sessions limit 1'));
   if (materialCount !== 1 || persistedMaterialIds.length !== 1 || persistedMaterialIds[0] !== duplicateResults[0].body.material.id) throw new Error('SDD006_CONCURRENT_DUPLICATE_PERSISTENCE_INCONSISTENT');
   checks.concurrentDuplicateUploadIsIdempotentAndConsistent = true;
+
+  docker(['down', '--volumes', '--remove-orphans']);
+  docker(['up', '--no-build', '--detach'], true);
+  await waitHealthy();
+  execFileSync(process.execPath, ['scripts/verify-sdd006-browser.mjs'], {cwd: process.cwd(), stdio: 'inherit', env: {...process.env, SDD006_WEB_URL: `http://127.0.0.1:${webPort}`}});
+  checks.realBilingualBrowserFlow = true;
 
   const before = await fetch(`${apiUrl}/api/v1/local-workspace`).then((response) => response.json());
   const beforeDocument = before.campaign?.document;
@@ -128,6 +154,34 @@ try {
   checks.preRestartAuthoritativeLocalPrivateGraph = true;
 
   const materialBeforeDelete = before.materials[0];
+  const sessionRowBeforeReentry = postgresScalar("select state || '|' || path || '|' || coalesce(organization_id::text, '') || '|' || coalesce(campaign_id::text, '') || '|' || material_ids::text from local_onboarding_sessions limit 1");
+  const postCompletionBytes = Buffer.from('# must not persist after completed onboarding');
+  const [materialsPathReentry, exampleReentry, contextReentry, completionReentry, postCompletionUpload] = await Promise.all([
+    postJson('/api/v1/local-onboarding/materials-path', {}),
+    postJson('/api/v1/local-onboarding/example', {}),
+    postJson('/api/v1/local-onboarding/context', {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/New_York'}),
+    postJson('/api/v1/local-onboarding/complete', localIdentity),
+    upload('post-completion.md', postCompletionBytes)
+  ]);
+  const repositoryMutationCodes = postgresRepositoryCompletedMutationCodes(before.profile.id);
+  const afterReentryAttempts = await fetch(`${apiUrl}/api/v1/local-workspace`).then((response) => response.json());
+  if (
+    ![materialsPathReentry, exampleReentry, contextReentry, completionReentry, postCompletionUpload].every((response) => response.status === 409 && response.body.code === 'LOCAL_ONBOARDING_ALREADY_COMPLETED')
+    || repositoryMutationCodes.length !== 5
+    || !repositoryMutationCodes.every((code) => code === 'LOCAL_ONBOARDING_ALREADY_COMPLETED')
+    || Number(postgresScalar('select count(*) from local_material_manifests')) !== 1
+    || postgresScalar("select state || '|' || path || '|' || coalesce(organization_id::text, '') || '|' || coalesce(campaign_id::text, '') || '|' || material_ids::text from local_onboarding_sessions limit 1") !== sessionRowBeforeReentry
+    || !blobExists(fixtureBytes)
+    || blobExists(postCompletionBytes)
+    || JSON.stringify(afterReentryAttempts.session) !== JSON.stringify(before.session)
+    || afterReentryAttempts.materials?.length !== 1
+    || afterReentryAttempts.materials[0]?.id !== materialBeforeDelete.id
+    || afterReentryAttempts.materials[0]?.digest !== materialBeforeDelete.digest
+    || afterReentryAttempts.campaign?.digest !== before.campaign.digest
+    || afterReentryAttempts.campaign?.document?.evidenceRefs?.[0]?.sourceUrl !== beforeDocument.evidenceRefs[0].sourceUrl
+  ) throw new Error('SDD006_COMPLETED_ONBOARDING_MUTATION_REENTRY_DID_NOT_FAIL_CLOSED');
+  checks.completedOnboardingCannotReenterOrIngest = true;
+
   const deleteBoundResponse = await fetch(`${apiUrl}/api/v1/local-materials/${materialBeforeDelete.id}`, {method: 'DELETE'});
   const deleteBoundBody = await deleteBoundResponse.json();
   const afterDeleteAttempt = await fetch(`${apiUrl}/api/v1/local-workspace`).then((response) => response.json());

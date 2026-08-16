@@ -13,13 +13,16 @@ describe('memory local presence repository', () => {
     await repository.setContext(profile.id, {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/Los_Angeles'}, now);
     const complete = await repository.completeLocalOnboarding(profile.id, 'org', 'campaign', now);
     expect(complete).toMatchObject({state: 'COMPLETED', dataMode: 'LOCAL_PRIVATE', materialIds: [material.id]});
+    const completedSnapshot = await repository.getSession(profile.id);
+    await expect(repository.selectLocalMaterials(profile.id, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
+    await expect(repository.chooseExample(profile.id, 'example-org', 'example-campaign', {marketCode: 'US', contentLocale: 'en-US', platform: 'LINKEDIN', timeZone: 'America/Los_Angeles'}, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
+    await expect(repository.setContext(profile.id, {marketCode: 'CN', contentLocale: 'zh-CN', platform: 'XIAOHONGSHU', timeZone: 'Asia/Shanghai'}, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
+    await expect(repository.completeLocalOnboarding(profile.id, 'replacement-org', 'replacement-campaign', now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
+    await expect(repository.ingestMaterial({ownerProfileId: profile.id, fileName: 'same-digest.md', declaredMediaType: 'text/markdown', bytes: new TextEncoder().encode('# Product\nLocal facts')}, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
+    await expect(repository.ingestMaterial({ownerProfileId: profile.id, fileName: 'second.txt', declaredMediaType: 'text/plain', bytes: new TextEncoder().encode('Additional local facts')}, now)).rejects.toMatchObject({code: 'LOCAL_ONBOARDING_ALREADY_COMPLETED'});
     await expect(repository.deleteMaterial(profile.id, material.id)).rejects.toMatchObject({code: 'LOCAL_MATERIAL_BOUND_TO_CAMPAIGN'});
     expect(await repository.listMaterials(profile.id)).toEqual([material]);
-    expect(await repository.getSession(profile.id)).toMatchObject({state: 'COMPLETED', campaignId: 'campaign', materialIds: [material.id]});
-    const duplicate = await repository.ingestMaterial({ownerProfileId: profile.id, fileName: 'same-digest.md', declaredMediaType: 'text/markdown', bytes: new TextEncoder().encode('# Product\nLocal facts')}, now);
-    expect(duplicate.id).toBe(material.id);
-    const second = await repository.ingestMaterial({ownerProfileId: profile.id, fileName: 'second.txt', declaredMediaType: 'text/plain', bytes: new TextEncoder().encode('Additional local facts')}, now);
-    expect(await repository.getSession(profile.id)).toMatchObject({state: 'COMPLETED', materialIds: [material.id, second.id]});
+    expect(await repository.getSession(profile.id)).toEqual(completedSnapshot);
     expect(await repository.getProfile()).toMatchObject({displayName: 'Owner', state: 'ONBOARDING_COMPLETE'});
   });
 
