@@ -8,95 +8,28 @@ import {Button} from '@/components/ui/button';
 import {StatusBadge} from '@/components/ui/status-badge';
 import {contentSummary, formatArtifact} from './campaign-feature';
 
-const officialPages: Record<ArtifactRevision['platform'], string> = {
-  X: 'https://x.com/compose/post',
-  BLUESKY: 'https://bsky.app/',
-  LINKEDIN: 'https://www.linkedin.com/feed/',
-  XIAOHONGSHU: 'https://www.xiaohongshu.com/'
-};
-
-type Props = {
-  campaign: CampaignEnvelope;
-  handoffs: ManualPublishHandoff[];
-  authorization: ManualPublishAuthorization;
-};
+type Props = {campaign: CampaignEnvelope; handoffs: ManualPublishHandoff[]; authorization: ManualPublishAuthorization};
 
 export function PublishFeature({campaign, handoffs, authorization}: Props) {
   const t = useTranslations('Production');
   const [selectedId, setSelectedId] = useState(campaign.document.artifactRevisions[0]?.id ?? '');
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [lastExport, setLastExport] = useState<'COPY' | 'DOWNLOAD' | null>(null);
+  const [message, setMessage] = useState<{tone: 'ok' | 'error'; text: string} | null>(null);
   const revision = campaign.document.artifactRevisions.find((item) => item.id === selectedId) ?? campaign.document.artifactRevisions[0];
-
-  const reviewExport = async (kind: 'COPY' | 'DOWNLOAD', operation: () => Promise<void> | void) => {
-    setBusy(true);
-    setError(null);
-    try {
-      await operation();
-      setLastExport(kind);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'REVIEW_EXPORT_FAILED');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const download = () => {
-    if (revision === undefined) return;
-    const svg = reviewSvg(revision, campaign.mode, t('reviewExportLabel'));
-    const url = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'}));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `lumiclaw-review-${revision.platform.toLowerCase()}-${campaign.mode.toLowerCase()}.svg`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
   if (revision === undefined) return null;
+  const reviewExport = async (operation: () => Promise<void> | void, success: string) => { setBusy(true); setMessage(null); try { await operation(); setMessage({tone: 'ok', text: success}); } catch (caught) { setMessage({tone: 'error', text: caught instanceof Error ? caught.message : t('reviewExportFailed')}); } finally { setBusy(false); } };
+  const download = () => { const svg = reviewSvg(revision, campaign.mode, t('reviewExportLabel')); const url = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'})); const link = document.createElement('a'); link.href = url; link.download = `lumiclaw-review-${revision.platform.toLowerCase()}-${campaign.mode.toLowerCase()}.svg`; link.click(); URL.revokeObjectURL(url); };
   const related = handoffs.filter((item) => item.artifactRevisionId === revision.id);
-
-  return <div className="grid grid-cols-[300px_minmax(0,1fr)_340px] overflow-hidden border border-[var(--lc-line)] bg-[var(--lc-surface)]">
-    <aside className="border-r border-[var(--lc-line)]">
-      <div className="border-b border-[var(--lc-line)] px-4 py-3 font-[var(--lc-font-mono)] text-[9px] font-bold tracking-[0.07em] text-[var(--lc-ink-muted)]">{t('reviewExports')} · {campaign.mode}</div>
-      {campaign.document.artifactRevisions.map((item) => <button key={item.id} className={`w-full border-b border-[var(--lc-line)] px-4 py-4 text-left ${item.id === revision.id ? 'bg-[var(--lc-accent-soft)]' : 'hover:bg-[var(--lc-surface-muted)]'}`} onClick={() => setSelectedId(item.id)}>
-        <div className="flex items-center justify-between"><strong className="font-[var(--lc-font-mono)] text-[11px]">{item.platform}</strong><StatusBadge tone="warning">{t('reviewDraft')}</StatusBadge></div>
-        <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--lc-ink-muted)]">{contentSummary(item.content)}</p>
-      </button>)}
-    </aside>
-
-    <section className="min-w-0 p-6">
-      <div className="flex items-center justify-between"><div><p className="font-[var(--lc-font-mono)] text-[9px] font-bold tracking-[0.08em] text-[var(--lc-accent)]">{t('exactArtifactRevision')}</p><h2 className="mt-2 font-[var(--lc-font-serif)] text-2xl font-semibold">{revision.platform} · {t('revision', {number: revision.revision})}</h2></div><StatusBadge tone="info">{campaign.mode}</StatusBadge></div>
-      <div className="mt-5 rounded-md border border-[var(--lc-line)] bg-white p-5"><p className="whitespace-pre-wrap text-[14px] leading-7">{formatArtifact(revision.content, t('alternativeText'))}</p></div>
-      <div className="mt-5 flex flex-wrap gap-2">
-        <Button disabled={busy} onClick={() => reviewExport('COPY', async () => navigator.clipboard.writeText(formatArtifact(revision.content, t('alternativeText'))))}><Clipboard size={14} aria-hidden />{t('copyReviewDraft')}</Button>
-        <Button disabled={busy} onClick={() => reviewExport('DOWNLOAD', download)}><Download size={14} aria-hidden />{t('downloadReviewMedia')}</Button>
-        <Button disabled aria-describedby="publish-authorization-reason"><ExternalLink size={14} aria-hidden />{t('openOfficial')}</Button>
-      </div>
-      <p className="mt-3 text-[11px] text-[var(--lc-ink-muted)]">{t('reviewExportOnly')}</p>
-      <p className="mt-1 text-[11px] text-[var(--lc-ink-muted)]">{t('officialDestination', {url: officialPages[revision.platform]})}</p>
-      {error === null ? null : <p role="alert" className="mt-3 text-xs text-[var(--lc-danger)]">{error}</p>}
-      {lastExport === null ? null : <p role="status" className="mt-3 flex items-center gap-2 text-xs text-[var(--lc-positive)]"><Check size={14} aria-hidden />{lastExport === 'COPY' ? t('reviewCopyComplete') : t('reviewDownloadComplete')}</p>}
-    </section>
-
-    <aside className="border-l border-[var(--lc-line)] bg-[var(--lc-surface-muted)] p-5">
-      <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 shrink-0 text-[var(--lc-danger)]" size={18} aria-hidden /><div><StatusBadge tone="danger">{authorization.state}</StatusBadge><p className="mt-3 text-xs font-semibold">{t('publishAuthorizationBlocked')}</p><p id="publish-authorization-reason" className="mt-2 text-xs leading-5 text-[var(--lc-ink-muted)]">{t('publishAuthorizationBody')}</p></div></div>
-      <div className="mt-6 border-y border-[var(--lc-line)] py-4">
-        <p className="text-xs font-semibold">{t('requiredAuthorities')}</p>
-        <dl className="mt-3 space-y-3 text-xs text-[var(--lc-ink-muted)]">
-          <div className="flex items-center justify-between gap-3"><dt>INDEPENDENT_AUDIT_PASS</dt><dd><StatusBadge tone="danger">{authorization.auditState}</StatusBadge></dd></div>
-          <div className="flex items-center justify-between gap-3"><dt>EXACT_EXTERNAL_ACTION_OWNER_DECISION</dt><dd><StatusBadge tone="danger">{authorization.ownerDecisionState}</StatusBadge></dd></div>
-        </dl>
-        <p className="mt-4 font-[var(--lc-font-mono)] text-[9px] leading-4 text-[var(--lc-ink-muted)]">{authorization.reasonCode}<br />{authorization.remediationCodes.join(' · ')}</p>
-      </div>
-      <Button className="mt-5 w-full" variant="primary" disabled aria-describedby="publish-authorization-reason"><LockKeyhole size={14} aria-hidden />{t('ownerCompleteBlocked')}</Button>
-      <div className="mt-6"><p className="font-[var(--lc-font-mono)] text-[9px] font-bold text-[var(--lc-ink-muted)]">{t('historicalHandoffReceipts')}</p><div className="mt-2 space-y-2">{related.length === 0 ? <p className="text-xs text-[var(--lc-ink-muted)]">{t('noAuthorizedHandoffReceipt')}</p> : related.slice(0, 5).map((item) => <div key={item.id} className="rounded-md bg-white p-2.5"><p className="text-[10px] font-semibold">{item.action}</p><p className="mt-1 font-[var(--lc-font-mono)] text-[9px] text-[var(--lc-ink-muted)]">{item.state}</p></div>)}</div></div>
-    </aside>
+  const activationUnit = campaign.document.activationPlan.units.find((item) => item.platform === revision.platform);
+  const targetAccount = campaign.document.graph.channelAccounts.find((item) => item.id === activationUnit?.channelAccountId);
+  const targetAccountLabel = targetAccount?.displayHandle !== undefined && !/^(?:PLANNED|NOT|SDD)_/u.test(targetAccount.displayHandle) ? targetAccount.displayHandle : t('notConnectedFriendly');
+  const mode = campaign.mode === 'LOCAL_PRIVATE' ? 'local' : 'demo';
+  return <div className="lc-publish-grid">
+    <aside className="border-r border-[var(--lc-line)]"><div className="border-b border-[var(--lc-line)] px-4 py-3"><p className="text-xs font-semibold">{t('contentPackages')}</p><span className="mt-1 block text-[9px] text-[var(--lc-ink-muted)]">{t('choosePackage')}</span></div>{campaign.document.artifactRevisions.map((item) => <button key={item.id} className={`w-full border-0 border-b border-[var(--lc-line)] px-4 py-4 text-left ${item.id === revision.id ? 'bg-[var(--lc-accent-soft)] shadow-[3px_0_0_var(--lc-accent)_inset]' : 'bg-transparent hover:bg-[#fafaf6]'}`} onClick={() => setSelectedId(item.id)}><div className="flex items-center justify-between"><strong className="font-[var(--lc-font-mono)] text-[11px]">{item.platform}</strong><StatusBadge tone="warning">{t('reviewOnly')}</StatusBadge></div><p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--lc-ink-muted)]">{contentSummary(item.content)}</p><small className="mt-2 block font-[var(--lc-font-mono)] text-[9px] text-[var(--lc-ink-muted)]">R{item.revision}</small></button>)}</aside>
+    <section className="min-w-0 p-6"><div className="flex items-start justify-between gap-5"><div><p className="lc-eyebrow">{t('exactContentPackage')}</p><h2 className="mt-2 text-xl font-semibold">{revision.platform} · {t('revision', {number: revision.revision})}</h2><p className="mt-1 text-[11px] text-[var(--lc-ink-muted)]">{t('reviewBeforePublish')}</p><p className="mt-2 text-[10px] font-semibold">{t('targetAccount')}: {targetAccountLabel}</p></div><span className="lc-mode-pill" data-mode={mode}>{mode === 'local' ? t('localPrivateShort') : t('demoData')}</span></div><article className="mt-5 max-h-[280px] overflow-auto border border-[var(--lc-line)] bg-white p-5"><p className="whitespace-pre-wrap text-[14px] leading-7">{formatArtifact(revision.content, t('alternativeText'))}</p></article><div className="mt-4 grid grid-cols-[150px_minmax(0,1fr)] gap-3 border-t border-[var(--lc-line)] pt-4"><div className="lc-media-preview min-h-[86px] rounded-md" role="img" aria-label={t('mediaPreviewAlt')} /><div><strong className="text-xs">{t('reviewMedia')}</strong><p className="mt-1 text-[10px] leading-4 text-[var(--lc-ink-muted)]">{t('reviewMediaBody')}</p></div></div><div className="mt-5 flex flex-wrap gap-2"><Button disabled={busy} onClick={() => reviewExport(() => navigator.clipboard.writeText(formatArtifact(revision.content, t('alternativeText'))), t('reviewCopyComplete'))}><Clipboard size={14} aria-hidden />{t('copyReviewDraft')}</Button><Button disabled={busy} onClick={() => reviewExport(download, t('reviewDownloadComplete'))}><Download size={14} aria-hidden />{t('downloadReviewMedia')}</Button><Button disabled aria-describedby="publish-authorization-reason"><ExternalLink size={14} aria-hidden />{t('openOfficial')}</Button></div><div aria-live="polite">{message === null ? null : <p role="status" className={`mt-3 flex items-center gap-2 text-xs ${message.tone === 'ok' ? 'text-[var(--lc-positive)]' : 'text-[var(--lc-danger)]'}`}>{message.tone === 'ok' ? <Check size={14} aria-hidden /> : null}{message.text}</p>}</div><p className="mt-3 text-[11px] leading-5 text-[var(--lc-ink-muted)]">{t('reviewExportOnlyFriendly')}</p><p className="mt-1 text-[10px] text-[var(--lc-ink-muted)]">{t('officialDestinationFriendly', {platform: revision.platform})}</p></section>
+    <aside className="border-l border-[var(--lc-line)] bg-[#fbfaf5] p-5"><div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 shrink-0 text-[var(--lc-warning)]" size={18} aria-hidden /><div><StatusBadge tone="warning">{t('waitingForApproval')}</StatusBadge><h2 className="mt-3 text-sm font-semibold">{t('publishNotReadyFriendly')}</h2><p id="publish-authorization-reason" className="mt-2 text-xs leading-5 text-[var(--lc-ink-muted)]">{t('publishAuthorizationFriendly')}</p></div></div><ol className="mt-6"><PublishStep index="1" title={t('packagePrepared')} body={t('packagePreparedBody')} done /><PublishStep index="2" title={t('independentAuditRequired')} body={t('independentAuditRequiredBody')} /><PublishStep index="3" title={t('ownerDecisionRequired')} body={t('ownerDecisionRequiredBody')} /><PublishStep index="4" title={t('manualPublishAfterApproval')} body={t('manualPublishAfterApprovalBody')} /></ol><Button className="mt-4 w-full" variant="primary" disabled aria-describedby="publish-authorization-reason"><LockKeyhole size={14} aria-hidden />{t('manualPublishLocked')}</Button><p className="mt-3 text-[10px] leading-4 text-[var(--lc-ink-muted)]">{t('manualPublishBoundaryFriendly')}</p><details className="lc-technical-details"><summary>{t('technicalDetails')}</summary><code>{authorization.state} · {authorization.auditState} · {authorization.ownerDecisionState}<br />{authorization.reasonCode}<br />{authorization.requiredAuthorities.join(' · ')}<br />{authorization.remediationCodes.join(' · ')}</code></details><div className="mt-5 border-t border-[var(--lc-line)] pt-4"><p className="text-[10px] font-semibold">{t('historicalHandoffReceiptsFriendly')}</p>{related.length === 0 ? <p className="mt-2 text-[10px] text-[var(--lc-ink-muted)]">{t('noAuthorizedHandoffReceipt')}</p> : related.slice(0, 5).map((item) => <div key={item.id} className="mt-2 bg-white p-2.5"><p className="text-[10px] font-semibold">{item.action}</p><p className="mt-1 font-[var(--lc-font-mono)] text-[9px] text-[var(--lc-ink-muted)]">{item.state}</p></div>)}</div></aside>
   </div>;
 }
 
-function reviewSvg(revision: ArtifactRevision, mode: CampaignEnvelope['mode'], reviewLabel: string): string {
-  const text = contentSummary(revision.content).slice(0, 110).replace(/[<>&]/gu, ' ');
-  const safeLabel = reviewLabel.replace(/[<>&]/gu, ' ');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#20201e"/><rect x="68" y="68" width="12" height="494" fill="#d45d45"/><text x="120" y="150" font-family="Georgia,serif" font-size="38" fill="#ef9b87">LumiClaw Presence</text><text x="120" y="230" font-family="sans-serif" font-size="25" fill="#f4f2ed">${revision.platform} · ${mode}</text><foreignObject x="120" y="285" width="960" height="210"><div xmlns="http://www.w3.org/1999/xhtml" style="font:28px/1.45 sans-serif;color:#c8c5bd">${text}</div></foreignObject><text x="120" y="550" font-family="monospace" font-size="18" fill="#77766f">${safeLabel}</text></svg>`;
-}
+function PublishStep({index, title, body, done = false}: {index: string; title: string; body: string; done?: boolean}) { return <li className="relative grid min-h-[60px] grid-cols-[28px_minmax(0,1fr)] gap-2.5 pb-3 before:absolute before:bottom-0 before:left-[13px] before:top-7 before:w-px before:bg-[var(--lc-line)] last:before:hidden"><span className={`relative z-1 grid size-7 place-items-center rounded-full border font-[var(--lc-font-mono)] text-[9px] ${done ? 'border-[var(--lc-positive)] bg-[var(--lc-positive)] text-white' : 'border-[var(--lc-line-strong)] bg-[var(--lc-surface)] text-[var(--lc-ink-muted)]'}`}>{done ? '✓' : index}</span><div><strong className="block text-[10px]">{title}</strong><small className="text-[8px] leading-4 text-[var(--lc-ink-muted)]">{body}</small></div></li>; }
+function reviewSvg(revision: ArtifactRevision, mode: CampaignEnvelope['mode'], reviewLabel: string): string { const text = contentSummary(revision.content).slice(0, 110).replace(/[<>&]/gu, ' '); const safeLabel = reviewLabel.replace(/[<>&]/gu, ' '); return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#172126"/><rect x="68" y="68" width="12" height="494" fill="#ef5a38"/><text x="120" y="150" font-family="sans-serif" font-size="38" fill="#a8dbbc">LumiClaw Presence</text><text x="120" y="230" font-family="sans-serif" font-size="25" fill="#f4f2ed">${revision.platform} · ${mode}</text><foreignObject x="120" y="285" width="960" height="210"><div xmlns="http://www.w3.org/1999/xhtml" style="font:28px/1.45 sans-serif;color:#c8d2cd">${text}</div></foreignObject><text x="120" y="550" font-family="monospace" font-size="18" fill="#a8b4ae">${safeLabel}</text></svg>`; }

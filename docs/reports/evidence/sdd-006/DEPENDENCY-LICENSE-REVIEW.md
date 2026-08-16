@@ -39,6 +39,20 @@
 - 精确版本、resolved URL、integrity、直接/传递分类以 `package-lock.json`、`docs/dependencies/VERSION-MANIFEST.json` 与完整 license inventory 为准。
 - Storybook/browser safety gate 已证明 repository Skill source、服务端文件读取和 Secret 处理代码没有进入浏览器 bundle。
 
+## 本轮视觉资产
+
+本轮没有下载第三方图片或复制竞品资产。`apps/web/public/ux/` 只包含 Owner 冻结原型随附的 first-party、public-safe 视觉资产；它们随 Apache-2.0 公共仓库交付，不含客户资料、Secret 或真实运行证据。
+
+| 资产 | SHA-256 |
+|---|---|
+| `agent-a0-task-coordinator-square.png` | `cc031ff295fecbadfee0838d437ff410e01f7176534ef345373d84c9109e8e15` |
+| `agent-a1-fact-verifier-square.png` | `2ae4dab5b3ddeb3f418aa127a06529a4437e7f3ee084722c86482e7b2499efd6` |
+| `agent-a2-market-planner-square.png` | `0ea47f625868e879ea0ff332279ff6eb106bc6b659f2f3748cae19e25d4a6a36` |
+| `agent-a3-founder-content-square.png` | `96e80aff0d4ccbb7d4b136b4f702bfbde325972654f26755c9e14b93cb5b310d` |
+| `agent-a4-product-content-square.png` | `1c4d0fd86e94969a32ceddd1d8b61944aef10228d60ba5cccb045b3469cce1cf` |
+| `agent-a5-independent-auditor-square.png` | `cd7ffd6673ae98f1a70fd52ab562b7059f3378b31e73f29212d005ae18466310` |
+| `design-partner-campaign.svg` | `725be57648d70893b201c22fa573dc713857d9dfd2354a17f8b2a7e938321579` |
+
 ## 已知限制
 
 - 全量 development audit 仍会继承既有 Storybook 工具链的 3 个 high 警告；生产依赖 audit 为 0。本 SDD 不以 `--force` 降级或破坏 Next/Storybook 版本来伪造全绿。

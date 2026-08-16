@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title desc">
+  <title id="title">LumiClaw 设计伙伴推广任务配图</title>
+  <desc id="desc">深蓝背景上的发布任务路径与绿色光标装饰</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop stop-color="#07162f"/>
+      <stop offset="1" stop-color="#163c65"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop stop-color="#c9ff55" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#c9ff55" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1600" height="900" rx="48" fill="url(#bg)"/>
+  <circle cx="1320" cy="120" r="420" fill="url(#glow)"/>
+  <path d="M100 150h1400M100 748h1400" stroke="#fff" stroke-opacity=".14"/>
+  <text x="112" y="112" fill="#c9ff55" font-family="Arial, sans-serif" font-size="32" letter-spacing="6">LUMICLAW PRESENCE</text>
+  <text x="112" y="320" fill="#fff" font-family="Arial, sans-serif" font-size="104" font-weight="700">From one goal</text>
+  <text x="112" y="438" fill="#fff" font-family="Arial, sans-serif" font-size="104" font-weight="700">to trusted action.</text>
+  <text x="112" y="545" fill="#d8e4f0" font-family="Arial, sans-serif" font-size="36">AI team prepares. People decide. Results stay traceable.</text>
+  <g transform="translate(112 640)">
+    <rect width="398" height="70" rx="35" fill="#c9ff55"/>
+    <text x="34" y="46" fill="#07162f" font-family="Arial, sans-serif" font-size="28" font-weight="700">DESIGN PARTNER CAMPAIGN</text>
+  </g>
+  <g transform="translate(1180 590)" fill="none" stroke="#c9ff55" stroke-width="8">
+    <circle cx="90" cy="90" r="82" opacity=".28"/>
+    <circle cx="90" cy="90" r="52" opacity=".55"/>
+    <path d="M90 10v42M90 128v42M10 90h42M128 90h42"/>
+    <circle cx="90" cy="90" r="12" fill="#c9ff55"/>
+  </g>
+</svg>

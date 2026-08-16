@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "source": "Owner-frozen UX 1.4 visual prototype",
+  "prototypeUrl": "http://127.0.0.1:4175",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "screenshots": [
+    {
+      "name": "prototype-today.png",
+      "sha256": "244f42203bb9305ea8451b76cdf4e7433a4f3b64f1ee25c575d5ef3f20c00c94"
+    },
+    {
+      "name": "prototype-ai-team.png",
+      "sha256": "cac3ce680a2f4f7db464df1bfe4fcb48e454b0763876f6e71a5f6b92a080dcdf"
+    },
+    {
+      "name": "prototype-campaign.png",
+      "sha256": "4777a691d5e097e0a10894557398b35dc4fd205f759f008866b14ee78d830c0a"
+    },
+    {
+      "name": "prototype-review.png",
+      "sha256": "2d715a7c967c6965baad359873626bc174561d5b7d7dd5bc691b4eae3ae70f66"
+    },
+    {
+      "name": "prototype-publish.png",
+      "sha256": "234c44687fc7b170933282ccbd8bca8a506907e70bfb023c951a45d5fd36c7f8"
+    }
+  ]
+}
