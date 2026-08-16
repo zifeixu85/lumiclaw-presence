@@ -1,0 +1,28 @@
+:root {
+  --lc-canvas: #f4f2ed;
+  --lc-surface: #fcfbf8;
+  --lc-surface-muted: #ece9e1;
+  --lc-sidebar: #20201e;
+  --lc-sidebar-soft: #2c2c29;
+  --lc-ink: #222320;
+  --lc-ink-muted: #5d5e59;
+  --lc-line: #d5d1c7;
+  --lc-accent: #b84935;
+  --lc-accent-soft: #f6e6e0;
+  --lc-positive: #285b47;
+  --lc-positive-soft: #e4efe9;
+  --lc-warning: #70470f;
+  --lc-warning-soft: #f3ead7;
+  --lc-danger: #842f29;
+  --lc-danger-soft: #f5e2df;
+  --lc-info: #2b5269;
+  --lc-info-soft: #e1ebf0;
+  --lc-font-sans: "Avenir Next", Avenir, "PingFang SC", "Microsoft YaHei", sans-serif;
+  --lc-font-serif: "Iowan Old Style", "Songti SC", Georgia, serif;
+  --lc-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --lc-sidebar-width: 248px;
+  --lc-header-height: 58px;
+  --lc-radius-sm: 6px;
+  --lc-radius-md: 10px;
+  --lc-shadow-float: 0 22px 70px rgb(25 25 22 / 0.18);
+}

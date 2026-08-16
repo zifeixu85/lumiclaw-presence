@@ -1,9 +1,7 @@
 import type {AppLocale} from '@lumiclaw/i18n';
-import {ProductShell} from '@/components/product-shell';
-import {getPageData} from '@/lib/page-data';
+import {ProductionWorkspace} from '@/components/production-workspace';
 
-export default async function CampaignsPage({params}: {params: Promise<{locale: AppLocale}>}) {
+export default async function TodayPage({params}: {params: Promise<{locale: AppLocale}>}) {
   const {locale} = await params;
-  const data = await getPageData(locale, 'campaigns');
-  return <ProductShell locale={locale} routeId="campaigns" {...data} />;
+  return <ProductionWorkspace locale={locale} initialSection="today" />;
 }

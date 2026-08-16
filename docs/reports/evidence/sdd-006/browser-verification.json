@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "result": "PASS",
+  "baseUrl": "http://127.0.0.1:3166",
+  "generatedAt": "2026-08-16T00:11:17.854Z",
+  "checks": {
+    "firstOpenDisplayNameOnly": true,
+    "mdUploadVisible": true,
+    "pdfDocxHonest": true,
+    "workspaceEntered": true,
+    "fullContentBeforeApproval": true,
+    "approvalBlockedWithoutAudit": true,
+    "drawerFocusRestored": true,
+    "sixAgents": true,
+    "metricProvenance": true,
+    "manualHandoffNeverPublished": true,
+    "handoffReopened": true,
+    "connectorControlsDisabled": true,
+    "runtimeNotConfigured": true,
+    "noBrowserSecretInput": true,
+    "desktopGate": true
+  },
+  "consoleErrors": [],
+  "screenshots": [
+    "01-first-open.png",
+    "02-local-material-onboarding.png",
+    "03-today-workspace.png",
+    "04-full-content-review-drawer.png",
+    "05-ai-team.png",
+    "06-publish-center-awaiting.png"
+  ]
+}

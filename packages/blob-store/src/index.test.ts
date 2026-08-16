@@ -69,4 +69,11 @@ describe('LocalContentAddressedBlobStore', () => {
     await expect(store.has(missing)).resolves.toBe(false);
     await expect(store.get(missing)).rejects.toMatchObject({code: 'ENOENT'});
   });
+
+  it('deletes one exact verified content address without broad cleanup', async () => {
+    const store = await makeStore();
+    const ref = await store.put(new TextEncoder().encode('local material'));
+    await store.delete(ref);
+    await expect(store.has(ref)).resolves.toBe(false);
+  });
 });

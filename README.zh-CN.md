@@ -192,6 +192,10 @@ docker compose up --build
 
 打开 <http://127.0.0.1:3100>。默认界面为简体中文，英文路径为 `/en`。普通 Compose 路径只使用合成数据，不会执行任何外部社媒动作。真实 Provider UAT 使用独立的 Owner-only 协议，Key 不得进入 Git、`.env`、Shell History、Issue 或日志。
 
+首次打开只需填写一个本地显示名称，不需要邮箱、密码或远端注册。随后可选择 public-safe 示例，或上传 UTF-8 的 `.md` / `.txt` 本地资料（单文件最大 2 MiB）；资料清单、提取文本和内容寻址 Blob 会随项目 PostgreSQL/Blob volume 持久化。PDF/DOCX 当前明确标记为 `PLANNED`，不会伪装成已解析。Market、内容 Locale、Platform 与 IANA Time Zone 分开保存。
+
+当前发布中心是桌面人工助手：可以复制正文、下载示例素材并打开官方发布页，但这些动作和“我已人工完成”都只留下 `AWAITING_RECONCILIATION` 回执，不创建 `PUBLISHED`。账号 OAuth/连接测试与 AgentTeams 常驻 Runtime 仍禁用并指向后续 SDD；浏览器不会收集模型 API Key。
+
 ### 初赛 SHADOW Demo
 
 初赛 Demo 只使用确定性合成数据和现有 `PUBLIC_SAFE_MOCK / MOCK_CONFORMANCE` 路径，不运行真实 AgentTeams 或真实模型，也不具备发布能力。
