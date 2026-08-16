@@ -12,7 +12,7 @@ import {OnboardingFlow} from './onboarding/onboarding-flow';
 
 Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {configurable: true, value: () => null});
 
-const firstOpen: WorkspaceSnapshot = {code: 'LOCAL_FIRST_OPEN', profile: null, session: null, materials: [], handoffs: [], campaign: null};
+const firstOpen: WorkspaceSnapshot = {code: 'LOCAL_FIRST_OPEN', profile: null, session: null, materials: [], handoffs: [], campaign: null, publishAuthorization: {state: 'BLOCKED', reasonCode: 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED', auditState: 'MISSING', ownerDecisionState: 'MISSING', requiredAuthorities: ['INDEPENDENT_AUDIT_PASS', 'EXACT_EXTERNAL_ACTION_OWNER_DECISION'], remediationCodes: ['SDD_007_REQUIRED', 'CONNECTOR_SDD_REQUIRED'], reviewExportAllowed: true, externalActionAllowed: false, handoffCreationAllowed: false}};
 const noop = async () => {};
 afterEach(cleanup);
 

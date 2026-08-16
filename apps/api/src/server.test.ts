@@ -339,7 +339,7 @@ describe('M1 Campaign API contract', () => {
     expect(openapi.json().paths['/api/v1/shadow-missions/{missionId}/runtime-events']).toBeDefined();
     expect(openapi.json().paths['/api/v1/local-workspace']).toBeDefined();
     expect(openapi.json().paths['/api/v1/local-materials'].post.requestBody.content['application/pdf']).toBeUndefined();
-    expect(openapi.json().paths['/api/v1/manual-publish-handoffs'].post.responses['201'].description).toContain('AWAITING_RECONCILIATION');
+    expect(openapi.json().paths['/api/v1/manual-publish-handoffs'].post.responses['409'].description).toContain('Audit PASS');
     expect(openapi.json().components.schemas.LocalOwnerProfileInput.additionalProperties).toBe(false);
     expect(openapi.json().components.schemas.CampaignDocument.properties.graph.additionalProperties).toBe(false);
   });

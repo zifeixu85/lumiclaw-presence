@@ -44,7 +44,7 @@ export function ProductionWorkspace({locale, initialSection = 'today', initialSn
 
   if (snapshot.profile === null || snapshot.session?.state !== 'COMPLETED') return <><DesktopGate /><OnboardingFlow snapshot={snapshot} busy={busy} error={error} onCreateProfile={(name) => run(() => createLocalProfile(name))} onUseExample={() => run(useExampleWorkspace)} onSelectLocal={() => run(selectMaterialPath)} onUpload={(file) => run(() => uploadLocalMaterial(file))} onDelete={(id) => run(() => deleteLocalMaterial(id))} onFinishLocal={(context: LocalOnboardingContext, identity: LocalCampaignIdentityInput) => run(async () => { await saveOnboardingContext(context); await completeLocalOnboarding(identity); })} /></>;
 
-  return <><DesktopGate /><WorkspaceShell locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness}><WorkspaceFeature locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness} team={team} skills={skills} onReload={() => run(async () => {})} /></WorkspaceShell></>;
+  return <><DesktopGate /><WorkspaceShell locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness}><WorkspaceFeature locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness} team={team} skills={skills} /></WorkspaceShell></>;
 }
 
 function errorCode(error: unknown): string { return error instanceof ProductApiError ? error.code : error instanceof Error ? error.message : 'CONTROL_PLANE_UNAVAILABLE'; }

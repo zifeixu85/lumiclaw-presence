@@ -1,34 +1,102 @@
 'use client';
 
-import type {ArtifactRevision, CampaignEnvelope, ManualPublishHandoff} from '@lumiclaw/domain';
-import {Check, Clipboard, Download, ExternalLink, MousePointerClick, ShieldAlert} from 'lucide-react';
+import type {ArtifactRevision, CampaignEnvelope, ManualPublishAuthorization, ManualPublishHandoff} from '@lumiclaw/domain';
+import {Check, Clipboard, Download, ExternalLink, LockKeyhole, ShieldAlert} from 'lucide-react';
 import {useTranslations} from 'next-intl';
 import {useState} from 'react';
-import {recordManualHandoff} from '@/lib/production-api';
 import {Button} from '@/components/ui/button';
 import {StatusBadge} from '@/components/ui/status-badge';
 import {contentSummary, formatArtifact} from './campaign-feature';
 
-const officialPages: Record<ArtifactRevision['platform'], string> = {X: 'https://x.com/compose/post', BLUESKY: 'https://bsky.app/', LINKEDIN: 'https://www.linkedin.com/feed/', XIAOHONGSHU: 'https://www.xiaohongshu.com/'};
+const officialPages: Record<ArtifactRevision['platform'], string> = {
+  X: 'https://x.com/compose/post',
+  BLUESKY: 'https://bsky.app/',
+  LINKEDIN: 'https://www.linkedin.com/feed/',
+  XIAOHONGSHU: 'https://www.xiaohongshu.com/'
+};
 
-export function PublishFeature({campaign, handoffs, onReload}: {campaign: CampaignEnvelope; handoffs: ManualPublishHandoff[]; onReload: () => Promise<void>}) {
+type Props = {
+  campaign: CampaignEnvelope;
+  handoffs: ManualPublishHandoff[];
+  authorization: ManualPublishAuthorization;
+};
+
+export function PublishFeature({campaign, handoffs, authorization}: Props) {
   const t = useTranslations('Production');
   const [selectedId, setSelectedId] = useState(campaign.document.artifactRevisions[0]?.id ?? '');
-  const [busy, setBusy] = useState(false); const [error, setError] = useState<string | null>(null); const [lastAction, setLastAction] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastExport, setLastExport] = useState<'COPY' | 'DOWNLOAD' | null>(null);
   const revision = campaign.document.artifactRevisions.find((item) => item.id === selectedId) ?? campaign.document.artifactRevisions[0];
-  const record = async (action: ManualPublishHandoff['action'], external: () => Promise<void> | void) => { if (revision === undefined) return; setBusy(true); setError(null); try { await external(); await recordManualHandoff({organizationId: campaign.document.organizationId, campaignId: campaign.document.id, artifactRevisionId: revision.id, platform: revision.platform, action}); setLastAction(action); await onReload(); } catch (caught) { setError(caught instanceof Error ? caught.message : 'MANUAL_HANDOFF_FAILED'); } finally { setBusy(false); } };
-  const download = async () => { if (revision === undefined) return; const svg = handoffSvg(revision, campaign.mode, t('manualOnlyLabel')); const url = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'})); const link = document.createElement('a'); link.href = url; link.download = `lumiclaw-${revision.platform.toLowerCase()}-${campaign.mode.toLowerCase()}.svg`; link.click(); URL.revokeObjectURL(url); };
+
+  const reviewExport = async (kind: 'COPY' | 'DOWNLOAD', operation: () => Promise<void> | void) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await operation();
+      setLastExport(kind);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'REVIEW_EXPORT_FAILED');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const download = () => {
+    if (revision === undefined) return;
+    const svg = reviewSvg(revision, campaign.mode, t('reviewExportLabel'));
+    const url = URL.createObjectURL(new Blob([svg], {type: 'image/svg+xml'}));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `lumiclaw-review-${revision.platform.toLowerCase()}-${campaign.mode.toLowerCase()}.svg`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (revision === undefined) return null;
   const related = handoffs.filter((item) => item.artifactRevisionId === revision.id);
+
   return <div className="grid grid-cols-[300px_minmax(0,1fr)_340px] overflow-hidden border border-[var(--lc-line)] bg-[var(--lc-surface)]">
-    <aside className="border-r border-[var(--lc-line)]"><div className="border-b border-[var(--lc-line)] px-4 py-3 font-[var(--lc-font-mono)] text-[9px] font-bold tracking-[0.07em] text-[var(--lc-ink-muted)]">{t('readyPackages')} · {campaign.mode}</div>{campaign.document.artifactRevisions.map((item) => <button key={item.id} className={`w-full border-b border-[var(--lc-line)] px-4 py-4 text-left ${item.id === revision.id ? 'bg-[var(--lc-accent-soft)]' : 'hover:bg-[var(--lc-surface-muted)]'}`} onClick={() => setSelectedId(item.id)}><div className="flex items-center justify-between"><strong className="font-[var(--lc-font-mono)] text-[11px]">{item.platform}</strong><StatusBadge tone="warning">MANUAL · {t('manual')}</StatusBadge></div><p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--lc-ink-muted)]">{contentSummary(item.content)}</p></button>)}</aside>
-    <section className="min-w-0 p-6"><div className="flex items-center justify-between"><div><p className="font-[var(--lc-font-mono)] text-[9px] font-bold tracking-[0.08em] text-[var(--lc-accent)]">{t('exactArtifactRevision')}</p><h2 className="mt-2 font-[var(--lc-font-serif)] text-2xl font-semibold">{revision.platform} · {t('revision', {number: revision.revision})}</h2></div><StatusBadge tone="info">{campaign.mode}</StatusBadge></div><div className="mt-5 rounded-md border border-[var(--lc-line)] bg-white p-5"><p className="whitespace-pre-wrap text-[14px] leading-7">{formatArtifact(revision.content, t('alternativeText'))}</p></div><div className="mt-5 flex flex-wrap gap-2"><Button disabled={busy} onClick={() => record('COPY_BODY', async () => navigator.clipboard.writeText(formatArtifact(revision.content, t('alternativeText'))))}><Clipboard size={14} aria-hidden />{t('copyBody')}</Button><Button disabled={busy} onClick={() => record('DOWNLOAD_MEDIA', download)}><Download size={14} aria-hidden />{t('downloadMedia')}</Button><Button disabled={busy} onClick={() => record('OPEN_OFFICIAL_PAGE', () => { window.open(officialPages[revision.platform], '_blank', 'noopener,noreferrer'); })}><ExternalLink size={14} aria-hidden />{t('openOfficial')}</Button></div><p className="mt-3 text-[11px] text-[var(--lc-ink-muted)]">{t('officialDestination', {url: officialPages[revision.platform]})}</p>{error === null ? null : <p role="alert" className="mt-3 text-xs text-[var(--lc-danger)]">{error}</p>}</section>
-    <aside className="border-l border-[var(--lc-line)] bg-[var(--lc-surface-muted)] p-5"><div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 shrink-0 text-[var(--lc-warning)]" size={18} aria-hidden /><div><StatusBadge tone="warning">{t('awaiting')}</StatusBadge><p className="mt-3 text-xs leading-5 text-[var(--lc-ink-muted)]">{t('awaitingBody')}</p></div></div><div className="mt-6 border-y border-[var(--lc-line)] py-4"><p className="text-xs font-semibold">{t('manualChecklist')}</p><ol className="mt-3 space-y-3 text-xs text-[var(--lc-ink-muted)]"><li className="flex gap-2"><span>1.</span>{t('manualStep1')}</li><li className="flex gap-2"><span>2.</span>{t('manualStep2')}</li><li className="flex gap-2"><span>3.</span>{t('manualStep3')}</li><li className="flex gap-2"><span>4.</span>{t('manualStep4')}</li></ol></div><Button className="mt-5 w-full" variant="primary" disabled={busy} onClick={() => record('OWNER_REPORTED_COMPLETE', async () => {})}><MousePointerClick size={14} aria-hidden />{t('ownerComplete')}</Button>{lastAction === null ? null : <p role="status" className="mt-3 flex items-center gap-2 text-xs text-[var(--lc-positive)]"><Check size={14} aria-hidden />{lastAction} · {t('awaiting')}</p>}<div className="mt-6"><p className="font-[var(--lc-font-mono)] text-[9px] font-bold text-[var(--lc-ink-muted)]">{t('handoffReceipts')}</p><div className="mt-2 space-y-2">{related.length === 0 ? <p className="text-xs text-[var(--lc-ink-muted)]">{t('noHandoffReceipt')}</p> : related.slice(0, 5).map((item) => <div key={item.id} className="rounded-md bg-white p-2.5"><p className="text-[10px] font-semibold">{item.action}</p><p className="mt-1 font-[var(--lc-font-mono)] text-[9px] text-[var(--lc-ink-muted)]">{item.state}</p></div>)}</div></div></aside>
+    <aside className="border-r border-[var(--lc-line)]">
+      <div className="border-b border-[var(--lc-line)] px-4 py-3 font-[var(--lc-font-mono)] text-[9px] font-bold tracking-[0.07em] text-[var(--lc-ink-muted)]">{t('reviewExports')} · {campaign.mode}</div>
+      {campaign.document.artifactRevisions.map((item) => <button key={item.id} className={`w-full border-b border-[var(--lc-line)] px-4 py-4 text-left ${item.id === revision.id ? 'bg-[var(--lc-accent-soft)]' : 'hover:bg-[var(--lc-surface-muted)]'}`} onClick={() => setSelectedId(item.id)}>
+        <div className="flex items-center justify-between"><strong className="font-[var(--lc-font-mono)] text-[11px]">{item.platform}</strong><StatusBadge tone="warning">{t('reviewDraft')}</StatusBadge></div>
+        <p className="mt-2 line-clamp-2 text-xs leading-5 text-[var(--lc-ink-muted)]">{contentSummary(item.content)}</p>
+      </button>)}
+    </aside>
+
+    <section className="min-w-0 p-6">
+      <div className="flex items-center justify-between"><div><p className="font-[var(--lc-font-mono)] text-[9px] font-bold tracking-[0.08em] text-[var(--lc-accent)]">{t('exactArtifactRevision')}</p><h2 className="mt-2 font-[var(--lc-font-serif)] text-2xl font-semibold">{revision.platform} · {t('revision', {number: revision.revision})}</h2></div><StatusBadge tone="info">{campaign.mode}</StatusBadge></div>
+      <div className="mt-5 rounded-md border border-[var(--lc-line)] bg-white p-5"><p className="whitespace-pre-wrap text-[14px] leading-7">{formatArtifact(revision.content, t('alternativeText'))}</p></div>
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Button disabled={busy} onClick={() => reviewExport('COPY', async () => navigator.clipboard.writeText(formatArtifact(revision.content, t('alternativeText'))))}><Clipboard size={14} aria-hidden />{t('copyReviewDraft')}</Button>
+        <Button disabled={busy} onClick={() => reviewExport('DOWNLOAD', download)}><Download size={14} aria-hidden />{t('downloadReviewMedia')}</Button>
+        <Button disabled aria-describedby="publish-authorization-reason"><ExternalLink size={14} aria-hidden />{t('openOfficial')}</Button>
+      </div>
+      <p className="mt-3 text-[11px] text-[var(--lc-ink-muted)]">{t('reviewExportOnly')}</p>
+      <p className="mt-1 text-[11px] text-[var(--lc-ink-muted)]">{t('officialDestination', {url: officialPages[revision.platform]})}</p>
+      {error === null ? null : <p role="alert" className="mt-3 text-xs text-[var(--lc-danger)]">{error}</p>}
+      {lastExport === null ? null : <p role="status" className="mt-3 flex items-center gap-2 text-xs text-[var(--lc-positive)]"><Check size={14} aria-hidden />{lastExport === 'COPY' ? t('reviewCopyComplete') : t('reviewDownloadComplete')}</p>}
+    </section>
+
+    <aside className="border-l border-[var(--lc-line)] bg-[var(--lc-surface-muted)] p-5">
+      <div className="flex items-start gap-3"><ShieldAlert className="mt-0.5 shrink-0 text-[var(--lc-danger)]" size={18} aria-hidden /><div><StatusBadge tone="danger">{authorization.state}</StatusBadge><p className="mt-3 text-xs font-semibold">{t('publishAuthorizationBlocked')}</p><p id="publish-authorization-reason" className="mt-2 text-xs leading-5 text-[var(--lc-ink-muted)]">{t('publishAuthorizationBody')}</p></div></div>
+      <div className="mt-6 border-y border-[var(--lc-line)] py-4">
+        <p className="text-xs font-semibold">{t('requiredAuthorities')}</p>
+        <dl className="mt-3 space-y-3 text-xs text-[var(--lc-ink-muted)]">
+          <div className="flex items-center justify-between gap-3"><dt>INDEPENDENT_AUDIT_PASS</dt><dd><StatusBadge tone="danger">{authorization.auditState}</StatusBadge></dd></div>
+          <div className="flex items-center justify-between gap-3"><dt>EXACT_EXTERNAL_ACTION_OWNER_DECISION</dt><dd><StatusBadge tone="danger">{authorization.ownerDecisionState}</StatusBadge></dd></div>
+        </dl>
+        <p className="mt-4 font-[var(--lc-font-mono)] text-[9px] leading-4 text-[var(--lc-ink-muted)]">{authorization.reasonCode}<br />{authorization.remediationCodes.join(' · ')}</p>
+      </div>
+      <Button className="mt-5 w-full" variant="primary" disabled aria-describedby="publish-authorization-reason"><LockKeyhole size={14} aria-hidden />{t('ownerCompleteBlocked')}</Button>
+      <div className="mt-6"><p className="font-[var(--lc-font-mono)] text-[9px] font-bold text-[var(--lc-ink-muted)]">{t('historicalHandoffReceipts')}</p><div className="mt-2 space-y-2">{related.length === 0 ? <p className="text-xs text-[var(--lc-ink-muted)]">{t('noAuthorizedHandoffReceipt')}</p> : related.slice(0, 5).map((item) => <div key={item.id} className="rounded-md bg-white p-2.5"><p className="text-[10px] font-semibold">{item.action}</p><p className="mt-1 font-[var(--lc-font-mono)] text-[9px] text-[var(--lc-ink-muted)]">{item.state}</p></div>)}</div></div>
+    </aside>
   </div>;
 }
 
-function handoffSvg(revision: ArtifactRevision, mode: CampaignEnvelope['mode'], manualOnlyLabel: string): string {
+function reviewSvg(revision: ArtifactRevision, mode: CampaignEnvelope['mode'], reviewLabel: string): string {
   const text = contentSummary(revision.content).slice(0, 110).replace(/[<>&]/gu, ' ');
-  const safeLabel = manualOnlyLabel.replace(/[<>&]/gu, ' ');
+  const safeLabel = reviewLabel.replace(/[<>&]/gu, ' ');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630"><rect width="1200" height="630" fill="#20201e"/><rect x="68" y="68" width="12" height="494" fill="#d45d45"/><text x="120" y="150" font-family="Georgia,serif" font-size="38" fill="#ef9b87">LumiClaw Presence</text><text x="120" y="230" font-family="sans-serif" font-size="25" fill="#f4f2ed">${revision.platform} · ${mode}</text><foreignObject x="120" y="285" width="960" height="210"><div xmlns="http://www.w3.org/1999/xhtml" style="font:28px/1.45 sans-serif;color:#c8c5bd">${text}</div></foreignObject><text x="120" y="550" font-family="monospace" font-size="18" fill="#77766f">${safeLabel}</text></svg>`;
 }

@@ -1,12 +1,12 @@
 # SDD-006 — Production UX 1.4 and local onboarding
 
-> Status: `SPEC_READY`  
-> Milestone: `M5`  
-> Progress module IDs: `M5-00`  
-> Owner: Product/design Owner  
-> Goal objective / task reference: implement the Owner-frozen desktop UX as a real local-first product journey without claiming unfinished runtime or platform actions  
-> Target evidence maturity: `ENGINEERING_VERIFIED`  
-> Acceptance report: `docs/reports/acceptance/SDD-006-ACCEPTANCE.md`  
+> Status: `SPEC_READY`
+> Milestone: `M5`
+> Progress module IDs: `M5-00`
+> Owner: Product/design Owner
+> Goal objective / task reference: implement the Owner-frozen desktop UX as a real local-first product journey without claiming unfinished runtime or platform actions
+> Target evidence maturity: `ENGINEERING_VERIFIED`
+> Acceptance report: `docs/reports/acceptance/SDD-006-ACCEPTANCE.md`
 > Last updated: `2026-08-16`
 
 ## 1. User problem and outcome
@@ -65,7 +65,7 @@ This SDD is an executable foundation slice of the runnable-candidate milestone. 
 5. Workspace: enter the Owner-frozen SaaS shell with meaningful empty/loading/blocked/recovery states.
 6. Campaign: create or reopen a Campaign, inspect sources and market context, generate/review content through current verified control-plane capabilities.
 7. Review: show the actual content before approval, only the active Agent in compact progress, and a drill-down trace of historical Agent steps.
-8. Publish: copy text, copy/download media and open the official platform. Manual completion moves only to an awaiting-reconciliation state.
+8. Publish: copy/download remain review exports until an independent Audit PASS and exact external-action OwnerDecision authorize the exact Revision. Without both authorities, opening the official platform and reporting manual completion fail closed; an authorized manual completion could move only to an awaiting-reconciliation state.
 9. Account setup/test: show configured identity/capability and deterministic connection-test result; do not ask for secrets in browser.
 10. Recovery: refresh/restart reopens authoritative profile, onboarding progress, uploads and Campaign state without a hidden client-only success path.
 

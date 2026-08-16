@@ -132,12 +132,15 @@ export class PostgresLocalPresenceRepository implements LocalPresenceRepository 
 
   public async deleteMaterial(ownerProfileId: string, materialId: string): Promise<boolean> {
     const ref = await this.#database.transaction().execute(async (trx) => {
+      const session = await trx.selectFrom('local_onboarding_sessions').select(['state']).where('owner_profile_id', '=', ownerProfileId).forUpdate().executeTakeFirst();
+      if (session === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
+      if (session.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_MATERIAL_BOUND_TO_CAMPAIGN');
       const row = await trx.selectFrom('local_material_manifests').select(['blob_ref', 'digest']).where('owner_profile_id', '=', ownerProfileId).where('id', '=', materialId).forUpdate().executeTakeFirst();
       if (row === undefined) return undefined;
       await trx.deleteFrom('local_material_manifests').where('owner_profile_id', '=', ownerProfileId).where('id', '=', materialId).execute();
       const remaining = await trx.selectFrom('local_material_manifests').select(({fn}) => fn.countAll<number>().as('count')).where('digest', '=', row.digest).executeTakeFirst();
       const ids = await trx.selectFrom('local_material_manifests').select('id').where('owner_profile_id', '=', ownerProfileId).orderBy('created_at', 'asc').execute();
-      await trx.updateTable('local_onboarding_sessions').set({material_ids: JSON.stringify(ids.map((item) => item.id)), state: ids.length > 0 ? 'MATERIALS_READY' : 'MATERIAL_CHOICE', updated_at: new Date()}).where('owner_profile_id', '=', ownerProfileId).where('state', '!=', 'COMPLETED').execute();
+      await trx.updateTable('local_onboarding_sessions').set({material_ids: JSON.stringify(ids.map((item) => item.id)), state: ids.length > 0 ? 'MATERIALS_READY' : 'MATERIAL_CHOICE', updated_at: new Date()}).where('owner_profile_id', '=', ownerProfileId).executeTakeFirstOrThrow();
       return Number(remaining?.count ?? 0) === 0 ? row.blob_ref as BlobRef : null;
     });
     if (ref === undefined) return false;
@@ -146,8 +149,9 @@ export class PostgresLocalPresenceRepository implements LocalPresenceRepository 
   }
 
   public async recordManualHandoff(input: Omit<ManualPublishHandoff, 'schemaVersion' | 'id' | 'state' | 'evidenceReceiptId' | 'createdAt'>, now: Date): Promise<ManualPublishHandoff> {
-    const row = await this.#database.insertInto('manual_publish_handoffs').values({owner_profile_id: input.ownerProfileId, id: createUuidV7(now.getTime()), schema_version: 1, campaign_id: input.campaignId, artifact_revision_id: input.artifactRevisionId, platform: input.platform, action: input.action, state: 'AWAITING_RECONCILIATION', evidence_receipt_id: null, created_at: now}).returningAll().executeTakeFirstOrThrow();
-    return handoffFromRow(row);
+    void input;
+    void now;
+    throw new LocalPresenceContractError('MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED');
   }
 
   public async listManualHandoffs(ownerProfileId: string): Promise<ManualPublishHandoff[]> {

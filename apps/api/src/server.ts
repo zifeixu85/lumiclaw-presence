@@ -10,7 +10,7 @@ import {
   type CampaignRepository,
   type MutationResult
 } from '@lumiclaw/domain';
-import {isSecretBearingObject, LOCAL_MATERIAL_MAX_BYTES, LocalPresenceContractError, normalizeLocalDisplayName, validateLocalCampaignIdentityInput, validateOnboardingContext, type LocalPresenceRepository, type ManualPublishHandoff} from '@lumiclaw/domain';
+import {blockedManualPublishAuthorization, isSecretBearingObject, LOCAL_MATERIAL_MAX_BYTES, LocalPresenceContractError, normalizeLocalDisplayName, validateLocalCampaignIdentityInput, validateOnboardingContext, type LocalPresenceRepository, type ManualPublishHandoff} from '@lumiclaw/domain';
 import {LocalContentAddressedBlobStore} from '@lumiclaw/blob-store';
 import {
   acceptRuntimeSubmission,
@@ -100,10 +100,11 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   app.get('/api/v1/local-workspace', async (_request, reply) => {
     void reply.header('cache-control', 'no-store');
     const profile = await localPresenceRepository.getProfile();
-    if (profile === undefined) return {code: 'LOCAL_FIRST_OPEN', profile: null, session: null, materials: [], handoffs: [], campaign: null};
+    const publishAuthorization = blockedManualPublishAuthorization();
+    if (profile === undefined) return {code: 'LOCAL_FIRST_OPEN', profile: null, session: null, materials: [], handoffs: [], campaign: null, publishAuthorization};
     const [session, materials, handoffs] = await Promise.all([localPresenceRepository.getSession(profile.id), localPresenceRepository.listMaterials(profile.id), localPresenceRepository.listManualHandoffs(profile.id)]);
     const campaign = session?.organizationId !== null && session?.organizationId !== undefined && session.campaignId !== null ? await repository.get(session.organizationId, session.campaignId) : undefined;
-    return {code: 'LOCAL_WORKSPACE_REOPENED', profile, session: session ?? null, materials, handoffs, campaign: campaign ?? null};
+    return {code: 'LOCAL_WORKSPACE_REOPENED', profile, session: session ?? null, materials, handoffs, campaign: campaign ?? null, publishAuthorization};
   });
 
   app.post('/api/v1/local-owner-profile', async (request, reply) => {
@@ -200,7 +201,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
 
   app.get('/api/v1/manual-publish-handoffs', async (_request, reply) => {
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
-    return {code: 'MANUAL_HANDOFF_LIST', handoffs: await localPresenceRepository.listManualHandoffs(profile.id)};
+    return {code: 'MANUAL_HANDOFF_LIST', authorization: blockedManualPublishAuthorization(), handoffs: await localPresenceRepository.listManualHandoffs(profile.id)};
   });
 
   app.post('/api/v1/manual-publish-handoffs', async (request, reply) => {
@@ -211,8 +212,15 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     const campaign = await repository.get(body.organizationId, body.campaignId);
     const revision = campaign?.document.artifactRevisions.find((item) => item.id === body.artifactRevisionId && item.platform === body.platform);
     if (campaign === undefined || revision === undefined) return reply.status(404).send(errorBody('MANUAL_HANDOFF_ARTIFACT_NOT_FOUND'));
-    const handoff = await localPresenceRepository.recordManualHandoff({ownerProfileId: profile.id, campaignId: body.campaignId, artifactRevisionId: body.artifactRevisionId, platform: body.platform, action: body.action}, now());
-    return reply.status(201).send({code: 'MANUAL_HANDOFF_AWAITING_RECONCILIATION', createsPublishedState: false, readBackEvidencePresent: false, handoff});
+    return reply.status(409).send({
+      code: 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED',
+      mode: campaign.mode,
+      live: false,
+      createsHandoff: false,
+      createsPublishedState: false,
+      readBackEvidencePresent: false,
+      authorization: blockedManualPublishAuthorization()
+    });
   });
 
   app.get('/api/v1/openapi.json', async () => openApiDocument);
@@ -525,7 +533,7 @@ function sendMutation(reply: FastifyReply, result: MutationResult, status: 200 |
 function sendDomainOrUnavailable(reply: FastifyReply, error: unknown) {
   if (error instanceof CampaignPreparationError) return reply.status(422).send({...errorBody(error.code), details: error.details});
   if (error instanceof LocalPresenceContractError) {
-    const status = error.code === 'LOCAL_PROFILE_ALREADY_EXISTS' ? 409 : error.code.includes('NOT_FOUND') ? 404 : error.code.includes('TYPE_PLANNED') || error.code.includes('TYPE_UNSUPPORTED') ? 415 : 422;
+    const status = ['LOCAL_PROFILE_ALREADY_EXISTS', 'LOCAL_MATERIAL_BOUND_TO_CAMPAIGN', 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'].includes(error.code) ? 409 : error.code.includes('NOT_FOUND') ? 404 : error.code.includes('TYPE_PLANNED') || error.code.includes('TYPE_UNSUPPORTED') ? 415 : 422;
     return reply.status(status).send(errorBody(error.code));
   }
   if (error instanceof ScheduleContractError) return reply.status(422).send({...errorBody(error.code), details: error.message});
@@ -671,7 +679,7 @@ function decodeFileName(value: string): string {
 
 type ManualHandoffBody = {organizationId: string; campaignId: string; artifactRevisionId: string; platform: string; action: ManualPublishHandoff['action']};
 function isManualHandoffBody(value: unknown): value is ManualHandoffBody {
-  return isExactRecord(value, ['organizationId', 'campaignId', 'artifactRevisionId', 'platform', 'action']) && typeof value.organizationId === 'string' && isUuidV7(value.organizationId) && typeof value.campaignId === 'string' && isUuidV7(value.campaignId) && typeof value.artifactRevisionId === 'string' && isUuidV7(value.artifactRevisionId) && typeof value.platform === 'string' && ['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU'].includes(value.platform) && typeof value.action === 'string' && ['COPY_BODY', 'DOWNLOAD_MEDIA', 'OPEN_OFFICIAL_PAGE', 'OWNER_REPORTED_COMPLETE'].includes(value.action);
+  return isExactRecord(value, ['organizationId', 'campaignId', 'artifactRevisionId', 'platform', 'action']) && typeof value.organizationId === 'string' && isUuidV7(value.organizationId) && typeof value.campaignId === 'string' && isUuidV7(value.campaignId) && typeof value.artifactRevisionId === 'string' && isUuidV7(value.artifactRevisionId) && typeof value.platform === 'string' && ['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU'].includes(value.platform) && typeof value.action === 'string' && ['OPEN_OFFICIAL_PAGE', 'OWNER_REPORTED_COMPLETE'].includes(value.action);
 }
 
 function errorBody(code: string) { return {code, mode: 'DEMO_SEED', live: false}; }

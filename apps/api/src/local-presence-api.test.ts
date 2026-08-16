@@ -37,16 +37,21 @@ describe('SDD-006 local onboarding API', () => {
     const completed = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/complete', payload: localIdentity});
     expect(completed.statusCode).toBe(200); expect(completed.json()).toMatchObject({source: 'LOCAL_PRIVATE_USER_CONFIRMED', dataMode: 'LOCAL_PRIVATE', session: {state: 'COMPLETED', dataMode: 'LOCAL_PRIVATE'}, campaign: {document: {dataMode: 'LOCAL_PRIVATE', graph: {organization: {displayName: '星河工作室', dataMode: 'LOCAL_PRIVATE'}, brands: [{name: '星河'}], products: [{name: '星河翻译助手'}]}, brief: {name: '星河产品首发'}}}});
     const reopen = (await app.inject({method: 'GET', url: '/api/v1/local-workspace'})).json();
-    expect(reopen).toMatchObject({profile: {state: 'ONBOARDING_COMPLETE'}, session: {dataMode: 'LOCAL_PRIVATE'}, materials: [{digest: expect.stringMatching(/^[a-f0-9]{64}$/u)}], campaign: {mode: 'LOCAL_PRIVATE', document: {dataMode: 'LOCAL_PRIVATE', graph: {organization: {displayName: '星河工作室'}, products: [{name: '星河翻译助手'}]}, brief: {name: '星河产品首发'}}}});
+    expect(reopen).toMatchObject({profile: {state: 'ONBOARDING_COMPLETE'}, session: {dataMode: 'LOCAL_PRIVATE'}, materials: [{digest: expect.stringMatching(/^[a-f0-9]{64}$/u)}], campaign: {mode: 'LOCAL_PRIVATE', document: {dataMode: 'LOCAL_PRIVATE', graph: {organization: {displayName: '星河工作室'}, products: [{name: '星河翻译助手'}]}, brief: {name: '星河产品首发'}}}, publishAuthorization: {state: 'BLOCKED', auditState: 'MISSING', ownerDecisionState: 'MISSING', externalActionAllowed: false, handoffCreationAllowed: false}});
     expect(JSON.stringify(reopen.campaign)).not.toContain('LumiClaw Presence local launch');
     const authorityHeaders = {'x-lumiclaw-organization-id': reopen.campaign.document.organizationId};
     const listed = await app.inject({method: 'GET', url: '/api/v1/campaigns', headers: authorityHeaders});
     expect(listed.json()).toMatchObject({mode: 'LOCAL_PRIVATE', campaigns: [{mode: 'LOCAL_PRIVATE', name: '星河产品首发'}]});
     const runtime = await app.inject({method: 'POST', url: `/api/v1/campaigns/${reopen.campaign.document.id}/shadow-missions`, headers: {...authorityHeaders, 'idempotency-key': 'local-runtime-forbidden', 'if-match': reopen.campaign.etag}, payload: {sourceDigest: reopen.campaign.digest, fault: 'BETA_TO_GA'}});
     expect(runtime.statusCode).toBe(403); expect(runtime.json()).toMatchObject({code: 'LOCAL_PRIVATE_RUNTIME_REQUIRES_SDD_007', mode: 'LOCAL_PRIVATE', live: false});
+    const material = reopen.materials[0];
+    const deleteBound = await app.inject({method: 'DELETE', url: `/api/v1/local-materials/${material.id}`});
+    expect(deleteBound.statusCode).toBe(409); expect(deleteBound.json().code).toBe('LOCAL_MATERIAL_BOUND_TO_CAMPAIGN');
+    const afterDeleteAttempt = (await app.inject({method: 'GET', url: '/api/v1/local-workspace'})).json();
+    expect(afterDeleteAttempt).toMatchObject({session: {state: 'COMPLETED', campaignId: reopen.campaign.document.id, materialIds: [material.id]}, materials: [{id: material.id, digest: material.digest}], campaign: {document: {evidenceRefs: [{sourceUrl: `local-material://sha256/${material.digest}`}]}}});
   });
 
-  it('labels example/team metrics, exposes repository Skills, and keeps manual completion awaiting reconciliation', async () => {
+  it('labels example/team metrics, exposes repository Skills, and blocks unapproved manual publishing', async () => {
     const app = makeApp();
     await app.inject({method: 'POST', url: '/api/v1/local-owner-profile', payload: {displayName: 'Owner'}});
     const example = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/example'});
@@ -54,8 +59,9 @@ describe('SDD-006 local onboarding API', () => {
     const document = example.json().campaign.document;
     const revision = document.artifactRevisions[0];
     const handoff = await app.inject({method: 'POST', url: '/api/v1/manual-publish-handoffs', payload: {organizationId: document.organizationId, campaignId: document.id, artifactRevisionId: revision.id, platform: revision.platform, action: 'OWNER_REPORTED_COMPLETE'}});
-    expect(handoff.statusCode).toBe(201); expect(handoff.json()).toMatchObject({code: 'MANUAL_HANDOFF_AWAITING_RECONCILIATION', createsPublishedState: false, readBackEvidencePresent: false, handoff: {state: 'AWAITING_RECONCILIATION', evidenceReceiptId: null}});
-    expect(JSON.stringify(handoff.json())).not.toContain('PUBLISHED');
+    expect(handoff.statusCode).toBe(409); expect(handoff.json()).toMatchObject({code: 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED', createsHandoff: false, createsPublishedState: false, readBackEvidencePresent: false, authorization: {state: 'BLOCKED', requiredAuthorities: ['INDEPENDENT_AUDIT_PASS', 'EXACT_EXTERNAL_ACTION_OWNER_DECISION'], externalActionAllowed: false}});
+    const list = await app.inject({method: 'GET', url: '/api/v1/manual-publish-handoffs'});
+    expect(list.json()).toMatchObject({authorization: {reasonCode: 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'}, handoffs: []});
     const team = (await app.inject({method: 'GET', url: '/api/v1/ai-team'})).json();
     expect(team).toMatchObject({metricSource: 'NO_RUNTIME_OBSERVATION'}); expect(team.agents).toHaveLength(6); expect(team.agents.every((agent: {metrics: {tokens: number; dailyCompleted: number; source: string}}) => agent.metrics.tokens === 0 && agent.metrics.dailyCompleted === 0 && agent.metrics.source === 'NO_RUNTIME_OBSERVATION')).toBe(true);
     const skill = await app.inject({method: 'GET', url: '/api/v1/skills/independent-action-audit'});

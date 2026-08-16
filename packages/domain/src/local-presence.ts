@@ -12,6 +12,18 @@ export type MaterialState = 'READY' | 'UNSUPPORTED' | 'REJECTED' | 'FAILED';
 export type ReadinessState = 'AVAILABLE' | 'UNAVAILABLE' | 'NOT_CONFIGURED' | 'UNKNOWN';
 export type ManualPublishState = 'AWAITING_RECONCILIATION';
 
+export type ManualPublishAuthorization = {
+  state: 'BLOCKED';
+  reasonCode: 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED';
+  auditState: 'MISSING';
+  ownerDecisionState: 'MISSING';
+  requiredAuthorities: readonly ['INDEPENDENT_AUDIT_PASS', 'EXACT_EXTERNAL_ACTION_OWNER_DECISION'];
+  remediationCodes: readonly ['SDD_007_REQUIRED', 'CONNECTOR_SDD_REQUIRED'];
+  reviewExportAllowed: true;
+  externalActionAllowed: false;
+  handoffCreationAllowed: false;
+};
+
 export type LocalOwnerProfile = {
   schemaVersion: 1;
   id: string;
@@ -112,6 +124,20 @@ export class LocalPresenceContractError extends Error {
     super(message);
     this.name = 'LocalPresenceContractError';
   }
+}
+
+export function blockedManualPublishAuthorization(): ManualPublishAuthorization {
+  return {
+    state: 'BLOCKED',
+    reasonCode: 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED',
+    auditState: 'MISSING',
+    ownerDecisionState: 'MISSING',
+    requiredAuthorities: ['INDEPENDENT_AUDIT_PASS', 'EXACT_EXTERNAL_ACTION_OWNER_DECISION'],
+    remediationCodes: ['SDD_007_REQUIRED', 'CONNECTOR_SDD_REQUIRED'],
+    reviewExportAllowed: true,
+    externalActionAllowed: false,
+    handoffCreationAllowed: false
+  };
 }
 
 export function normalizeLocalDisplayName(value: unknown): string {

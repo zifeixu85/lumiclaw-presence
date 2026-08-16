@@ -1,4 +1,4 @@
-import type {LocalCampaignIdentityInput, LocalOnboardingContext, ManualPublishHandoff} from '@lumiclaw/domain';
+import type {LocalCampaignIdentityInput, LocalOnboardingContext} from '@lumiclaw/domain';
 import type {EnvironmentReadiness, SkillListResponse, TeamResponse, WorkspaceSnapshot} from './production-types';
 
 export class ProductApiError extends Error {
@@ -19,8 +19,6 @@ export async function saveOnboardingContext(context: LocalOnboardingContext): Pr
 export async function completeLocalOnboarding(identity: LocalCampaignIdentityInput): Promise<void> { await requestJson('/api/v1/local-onboarding/complete', {method: 'POST', body: JSON.stringify(identity), headers: {'content-type': 'application/json'}}); }
 export async function deleteLocalMaterial(materialId: string): Promise<void> { await requestJson(`/api/v1/local-materials/${materialId}`, {method: 'DELETE'}); }
 export async function loadSkill(skillId: string): Promise<{skill: {content: string; files: string[]; license: string}}> { return requestJson(`/api/v1/skills/${skillId}`); }
-export async function recordManualHandoff(input: {organizationId: string; campaignId: string; artifactRevisionId: string; platform: string; action: ManualPublishHandoff['action']}): Promise<{handoff: ManualPublishHandoff; createsPublishedState: false}> { return requestJson('/api/v1/manual-publish-handoffs', {method: 'POST', body: JSON.stringify(input), headers: {'content-type': 'application/json'}}); }
-
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {...init, cache: 'no-store'});
   const payload = await response.json() as {code?: string};

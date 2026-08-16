@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "result": "PASS",
   "baseUrl": "http://127.0.0.1:3166",
-  "generatedAt": "2026-08-16T02:05:31.534Z",
+  "generatedAt": "2026-08-16T02:59:12.380Z",
   "locales": [
     "zh-CN",
     "en"
@@ -28,13 +28,18 @@
     "sixAgents": true,
     "teamSkillsRoute": true,
     "scheduledTasksHonest": true,
-    "manualHandoffNeverPublished": true,
-    "handoffReopened": true,
+    "reviewExportsDoNotClaimHandoff": true,
+    "openOfficialBlockedWithoutAuthorization": true,
+    "ownerCompleteBlockedWithoutAuthorization": true,
+    "publishAuthorizationTruth": true,
+    "apiBypassCannotCreateManualHandoff": true,
+    "publishBlockReopened": true,
     "connectorControlsDisabled": true,
     "runtimeNotConfigured": true,
     "noBrowserSecretInput": true,
     "englishTodayLocalized": true,
     "englishTeamLocalized": true,
+    "englishPublishGateLocalized": true,
     "desktopGate": true
   },
   "consoleErrors": [],
@@ -48,9 +53,10 @@
     "07-ai-team-employees.png",
     "08-ai-team-skills.png",
     "09-ai-team-scheduled-tasks.png",
-    "10-publish-center-awaiting.png",
+    "10-publish-center-blocked.png",
     "11-en-today-workspace.png",
     "12-en-ai-team-overview.png",
-    "13-desktop-gate.png"
+    "13-en-publish-center-blocked.png",
+    "14-desktop-gate.png"
   ]
 }

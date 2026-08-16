@@ -110,16 +110,30 @@ try {
   await assertAxe(page, 'zh-team-schedules');
 
   await page.getByRole('link', {name: '发布中心'}).click();
-  await page.getByRole('heading', {name: '桌面人工发布助手'}).waitFor();
-  await page.getByRole('button', {name: '复制正文'}).click();
-  await page.getByRole('button', {name: '我已人工完成'}).click();
-  await page.getByText('OWNER_REPORTED_COMPLETE', {exact: true}).waitFor();
+  await page.getByRole('heading', {name: '发布授权与审阅导出'}).waitFor();
+  await page.getByRole('button', {name: '复制审阅稿'}).click();
+  await page.getByText('审阅稿已复制；没有创建发布交接。').waitFor();
+  const downloadStarted = page.waitForEvent('download');
+  await page.getByRole('button', {name: '下载审阅素材'}).click();
+  await downloadStarted;
+  await page.getByText('审阅素材已下载；没有创建发布交接。').waitFor();
+  checks.reviewExportsDoNotClaimHandoff = true;
+  checks.openOfficialBlockedWithoutAuthorization = await page.getByRole('button', {name: '打开官方发布页'}).isDisabled();
+  checks.ownerCompleteBlockedWithoutAuthorization = await page.getByRole('button', {name: '人工完成已阻断'}).isDisabled();
   const publishBody = await page.locator('body').innerText();
-  checks.manualHandoffNeverPublished = publishBody.includes('AWAITING_RECONCILIATION') && !publishBody.includes('PUBLISHED');
+  checks.publishAuthorizationTruth = ['BLOCKED', 'INDEPENDENT_AUDIT_PASS', 'EXACT_EXTERNAL_ACTION_OWNER_DECISION', 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED', 'SDD_007_REQUIRED', 'CONNECTOR_SDD_REQUIRED'].every((value) => publishBody.includes(value)) && !publishBody.includes('PUBLISHED');
+  const workspaceForBypass = await page.request.get(`${baseUrl}/api/v1/local-workspace`).then((response) => response.json());
+  const revisionForBypass = workspaceForBypass.campaign.document.artifactRevisions[0];
+  const bypassResponse = await page.request.post(`${baseUrl}/api/v1/manual-publish-handoffs`, {data: {organizationId: workspaceForBypass.campaign.document.organizationId, campaignId: workspaceForBypass.campaign.document.id, artifactRevisionId: revisionForBypass.id, platform: revisionForBypass.platform, action: 'OWNER_REPORTED_COMPLETE'}});
+  const bypassBody = await bypassResponse.json();
+  const reopenedForBypass = await page.request.get(`${baseUrl}/api/v1/local-workspace`).then((response) => response.json());
+  const apiBypass = {status: bypassResponse.status(), body: bypassBody, handoffCount: reopenedForBypass.handoffs.length};
+  checks.apiBypassCannotCreateManualHandoff = apiBypass.status === 409 && apiBypass.body.code === 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED' && apiBypass.body.createsHandoff === false && apiBypass.handoffCount === 0;
   await page.reload({waitUntil: 'networkidle'});
-  await page.getByText('OWNER_REPORTED_COMPLETE').waitFor();
-  checks.handoffReopened = true;
-  await capture(page, '10-publish-center-awaiting.png', screenshots);
+  const reopenedPublishBody = await page.locator('body').innerText();
+  checks.publishBlockReopened = reopenedPublishBody.includes('MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED') && await page.getByRole('button', {name: '人工完成已阻断'}).isDisabled();
+  await capture(page, '10-publish-center-blocked.png', screenshots);
+  await assertAxe(page, 'zh-publish-blocked');
   await assertZhDoesNotExposeLegacyEnglish(page, 'zh-publish');
 
   await page.getByRole('link', {name: '账号'}).click();
@@ -139,12 +153,17 @@ try {
   checks.englishTeamLocalized = (await Promise.all(['Work overview', 'AI employees', 'Team skills', 'Scheduled tasks'].map(async (label) => page.getByRole('tab', {name: label}).isVisible()))).every(Boolean);
   await capture(page, '12-en-ai-team-overview.png', screenshots);
   await assertAxe(page, 'en-team-overview');
+  await page.getByRole('link', {name: 'Publish Center'}).click();
+  await page.getByRole('heading', {name: 'Publishing authorization and review exports'}).waitFor();
+  checks.englishPublishGateLocalized = await page.getByRole('button', {name: 'Open official publishing page'}).isDisabled() && await page.getByRole('button', {name: 'Manual completion blocked'}).isDisabled() && await page.getByText('External publishing is not authorized').isVisible();
+  await capture(page, '13-en-publish-center-blocked.png', screenshots);
+  await assertAxe(page, 'en-publish-blocked');
 
   await page.goto(baseUrl, {waitUntil: 'networkidle'});
   await page.setViewportSize({width: 800, height: 900});
   await page.reload({waitUntil: 'networkidle'});
   checks.desktopGate = await page.getByRole('heading', {name: '请使用桌面浏览器继续'}).isVisible();
-  await capture(page, '13-desktop-gate.png', screenshots);
+  await capture(page, '14-desktop-gate.png', screenshots);
 
   const failed = Object.entries(checks).filter(([, value]) => value !== true).map(([key]) => key);
   if (failed.length > 0) throw new Error(`SDD006_BROWSER_CHECKS_FAILED:${failed.join(',')}`);

@@ -114,7 +114,9 @@ try {
     || before.materials?.length !== 1
     || before.materials[0]?.fileName !== fixtureName
     || !/^[a-f0-9]{64}$/u.test(before.materials[0]?.digest ?? '')
-    || before.handoffs?.[0]?.state !== 'AWAITING_RECONCILIATION'
+    || before.handoffs?.length !== 0
+    || before.publishAuthorization?.reasonCode !== 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'
+    || before.publishAuthorization?.externalActionAllowed !== false
     || before.campaign?.mode !== 'LOCAL_PRIVATE'
     || beforeDocument?.dataMode !== 'LOCAL_PRIVATE'
     || beforeDocument?.graph?.organization?.displayName !== '星河工作室'
@@ -124,6 +126,37 @@ try {
     || JSON.stringify(beforeDocument).includes('LumiClaw Presence local launch')
   ) throw new Error('SDD006_PRE_RESTART_LOCAL_PRIVATE_STATE_INVALID');
   checks.preRestartAuthoritativeLocalPrivateGraph = true;
+
+  const materialBeforeDelete = before.materials[0];
+  const deleteBoundResponse = await fetch(`${apiUrl}/api/v1/local-materials/${materialBeforeDelete.id}`, {method: 'DELETE'});
+  const deleteBoundBody = await deleteBoundResponse.json();
+  const afterDeleteAttempt = await fetch(`${apiUrl}/api/v1/local-workspace`).then((response) => response.json());
+  if (
+    deleteBoundResponse.status !== 409
+    || deleteBoundBody.code !== 'LOCAL_MATERIAL_BOUND_TO_CAMPAIGN'
+    || Number(postgresScalar('select count(*) from local_material_manifests')) !== 1
+    || !blobExists(fixtureBytes)
+    || afterDeleteAttempt.session?.state !== 'COMPLETED'
+    || afterDeleteAttempt.session?.campaignId !== before.session.campaignId
+    || afterDeleteAttempt.session?.materialIds?.[0] !== materialBeforeDelete.id
+    || afterDeleteAttempt.materials?.[0]?.digest !== materialBeforeDelete.digest
+    || afterDeleteAttempt.campaign?.document?.evidenceRefs?.[0]?.sourceUrl !== beforeDocument.evidenceRefs[0].sourceUrl
+  ) throw new Error('SDD006_BOUND_MATERIAL_DELETE_DID_NOT_FAIL_CLOSED');
+  checks.completedCampaignMaterialCannotBeDeleted = true;
+
+  const revision = beforeDocument.artifactRevisions[0];
+  const deniedHandoff = await postJson('/api/v1/manual-publish-handoffs', {organizationId: beforeDocument.organizationId, campaignId: beforeDocument.id, artifactRevisionId: revision.id, platform: revision.platform, action: 'OWNER_REPORTED_COMPLETE'});
+  const handoffList = await fetch(`${apiUrl}/api/v1/manual-publish-handoffs`).then((response) => response.json());
+  if (
+    deniedHandoff.status !== 409
+    || deniedHandoff.body.code !== 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'
+    || deniedHandoff.body.createsHandoff !== false
+    || deniedHandoff.body.authorization?.auditState !== 'MISSING'
+    || deniedHandoff.body.authorization?.ownerDecisionState !== 'MISSING'
+    || Number(postgresScalar('select count(*) from manual_publish_handoffs')) !== 0
+    || handoffList.handoffs?.length !== 0
+  ) throw new Error('SDD006_UNAPPROVED_MANUAL_HANDOFF_DID_NOT_FAIL_CLOSED');
+  checks.unapprovedRevisionCannotCreateManualPublishHandoff = true;
 
   docker(['restart', 'postgres', 'api']);
   await waitHealthy();
@@ -140,7 +173,9 @@ try {
     || reopened.materials[0]?.extractedText !== before.materials[0].extractedText
     || reopened.campaign?.document?.graph?.organization?.displayName !== '星河工作室'
     || reopened.campaign?.document?.brief?.name !== '星河产品首发'
-    || reopened.handoffs?.[0]?.state !== 'AWAITING_RECONCILIATION'
+    || reopened.handoffs?.length !== 0
+    || reopened.publishAuthorization?.state !== 'BLOCKED'
+    || reopened.publishAuthorization?.handoffCreationAllowed !== false
   ) throw new Error('SDD006_RESTART_REOPEN_INVALID');
   checks.postgresAndBlobRestartReopen = true;
 

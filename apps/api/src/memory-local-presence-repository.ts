@@ -85,19 +85,19 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
   public async deleteMaterial(ownerProfileId: string, materialId: string): Promise<boolean> {
     const material = this.#materials.get(materialId);
     if (material === undefined || material.ownerProfileId !== ownerProfileId) return false;
+    const session = this.requireSession(ownerProfileId);
+    if (session.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_MATERIAL_BOUND_TO_CAMPAIGN');
     this.#materials.delete(materialId);
     if (![...this.#materials.values()].some((item) => item.digest === material.digest)) this.#bytes.delete(material.digest);
-    const session = this.requireSession(ownerProfileId);
     const materialIds = session.materialIds.filter((id) => id !== materialId);
-    this.#session = {...session, materialIds, state: session.state === 'COMPLETED' ? 'COMPLETED' : materialIds.length > 0 ? 'MATERIALS_READY' : 'MATERIAL_CHOICE'};
+    this.#session = {...session, materialIds, state: materialIds.length > 0 ? 'MATERIALS_READY' : 'MATERIAL_CHOICE'};
     return true;
   }
 
   public async recordManualHandoff(input: Omit<ManualPublishHandoff, 'schemaVersion' | 'id' | 'state' | 'evidenceReceiptId' | 'createdAt'>, now: Date): Promise<ManualPublishHandoff> {
+    void now;
     this.requireSession(input.ownerProfileId);
-    const handoff: ManualPublishHandoff = {...input, schemaVersion: 1, id: createUuidV7(now.getTime()), state: 'AWAITING_RECONCILIATION', evidenceReceiptId: null, createdAt: now.toISOString()};
-    this.#handoffs.unshift(handoff);
-    return clone(handoff)!;
+    throw new LocalPresenceContractError('MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED');
   }
 
   public async listManualHandoffs(ownerProfileId: string): Promise<ManualPublishHandoff[]> { return clone(this.#handoffs.filter((item) => item.ownerProfileId === ownerProfileId))!; }

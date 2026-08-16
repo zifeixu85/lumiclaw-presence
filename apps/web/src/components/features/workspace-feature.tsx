@@ -11,14 +11,14 @@ import {CampaignFeature} from './campaign-feature';
 import {PublishFeature} from './publish-feature';
 import {TeamFeature} from './team-feature';
 
-type Props = {locale: AppLocale; section: WorkspaceSection; snapshot: WorkspaceSnapshot; readiness: EnvironmentReadiness; team: TeamResponse; skills: SkillListResponse; onReload: () => Promise<void>};
+type Props = {locale: AppLocale; section: WorkspaceSection; snapshot: WorkspaceSnapshot; readiness: EnvironmentReadiness; team: TeamResponse; skills: SkillListResponse};
 
-export function WorkspaceFeature({section, snapshot, readiness, team, skills, onReload}: Props) {
+export function WorkspaceFeature({section, snapshot, readiness, team, skills}: Props) {
   const campaign = snapshot.campaign;
   if (campaign === null) return <EmptyControlPlane />;
   if (section === 'campaigns') return <CampaignFeature campaign={campaign} />;
   if (section === 'ai-team') return <><PageHeader titleKey="teamTitle" bodyKey="teamBody" eyebrowKey="team" /><Suspense fallback={null}><TeamFeature agents={team.agents} skills={skills.skills} /></Suspense></>;
-  if (section === 'publish') return <><PageHeader titleKey="publishTitle" bodyKey="publishBody" eyebrowKey="publish" /><PublishFeature campaign={campaign} handoffs={snapshot.handoffs} onReload={onReload} /></>;
+  if (section === 'publish') return <><PageHeader titleKey="publishTitle" bodyKey="publishBody" eyebrowKey="publish" /><PublishFeature campaign={campaign} handoffs={snapshot.handoffs} authorization={snapshot.publishAuthorization} /></>;
   if (section === 'calendar') return <><PageHeader titleKey="calendarTitle" bodyKey="calendarBody" eyebrowKey="calendar" /><CalendarView snapshot={snapshot} /></>;
   if (section === 'feedback') return <><PageHeader titleKey="feedbackTitle" bodyKey="feedbackBody" eyebrowKey="feedback" /><FeedbackView /></>;
   if (section === 'knowledge') return <><PageHeader titleKey="knowledgeTitle" bodyKey="knowledgeBody" eyebrowKey="knowledge" /><KnowledgeView snapshot={snapshot} /></>;
