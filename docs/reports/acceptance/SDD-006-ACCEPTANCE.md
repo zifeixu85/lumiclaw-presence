@@ -44,14 +44,14 @@ SDD-006 已把 Owner 冻结的 UX 1.4 静态原型转化为组件化 Next.js/Rea
 
 | 文件 | SHA-256 |
 |---|---|
-| `01-first-open.png` | `54d0aeccd23af19f3a436d73d671bf7fb4d8cd5f5ec8a8b5c53c4d8df66c4574` |
-| `02-local-material-onboarding.png` | `c256ecb3372944a141ae33298f867901679774be030ef11adaa9e50cbfc9255b` |
+| `01-first-open.png` | `1f2110e1a51f74a3b2816421a687cdabeb55ff153e098e166d561d7f0606b045` |
+| `02-local-material-onboarding.png` | `a62665b2ddf4f0d37b93997f23d7ee2d60e6ab64a264231ecd672e6173936fa9` |
 | `03-today-workspace.png` | `07d28c03794e8cddc60c32350579ef5b4d9057d6a233886c04a7a972dcc0f15a` |
 | `04-full-content-review-drawer.png` | `7c051ac79446fa5c29c0524cce5fad019e26f8fd47ac5030c25fc7dc0b4d295c` |
 | `05-ai-team.png` | `86d1c0970c8c410fff47ed0edcf3f285707b7c9b244b44a38d9a588b8b1217f0` |
 | `06-publish-center-awaiting.png` | `ac67e4a73145e32278fa1a175fd8d02266e02aab9817f4de675bf19b5ee0cd71` |
-| `browser-verification.json` | `2d0421191337b334875af467ddbc49a9eda132aead49c6a00be19cedff6d9417` |
-| `compose-verification.json` | `fca1291fd5f675653f7eb6ac8cab93941c3fb47b4a4e24d17255ee57672a25bf` |
+| `browser-verification.json` | `901c8238661d1802b8f3fd81d1d7bc94610d92ff296ae53498934e7d43288b75` |
+| `compose-verification.json` | `4f8523d415a5b17f92a08ed8a46eeddfbd11c2a6c07a11ee84dbf77c7ef29543` |
 
 ## 四、自动化验证
 
@@ -60,10 +60,11 @@ SDD-006 已把 Owner 冻结的 UX 1.4 静态原型转化为组件化 Next.js/Rea
 | `npm run lint` | `PASS`，0 error / 0 warning |
 | `npm run typecheck` | `PASS`，12 workspace typecheck |
 | `npm test` | `PASS`，35 test files / 320 tests |
-| `npm run check:messages` | `PASS`，zh-CN/en 209 keys |
+| `npm run check:messages` | `PASS`，zh-CN/en 212 keys |
 | `npm run check:status` | `PASS`，40 module；未改 canonical 状态 |
 | `npm run check:secrets` | `PASS`，308 tracked/source files；最终报告与依赖证据写入后再执行收口扫描 |
 | `npm run verify:sdd006:compose` | `PASS`；fresh health、真实浏览器、PG/Blob restart、full stack restart、readiness、forbidden action tables=0、cleanup PASS |
+| `npm run verify:compose` | `PASS`；既有 broken migration、fresh volume、PG/Blob persistence、locale/non-live、dormant operator 与 cleanup 回归；共享镜像只构建一次 |
 | `npm run verify:sdd006:dependencies` | `PASS`；1020 packages、disallowed 0、CycloneDX 1.6 / 710 components |
 | `npm audit --omit=dev --audit-level=high` | `PASS`，0 vulnerability |
 | `npm run build` | `PASS`；Next 16.3.0 production build，29 个静态页面路径，standalone assets 完成 |

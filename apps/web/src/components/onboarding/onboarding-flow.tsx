@@ -23,12 +23,13 @@ type OnboardingFlowProps = {
 const fieldClass = 'mt-1.5 min-h-10 w-full rounded-md border border-[var(--lc-line)] bg-white px-3 text-[13px] text-[var(--lc-ink)] placeholder:text-[#aaa69f]';
 
 export function OnboardingFlow(props: OnboardingFlowProps) {
+  const t = useTranslations('Production');
   return (
     <div className="lc-desktop-app grid min-h-screen grid-cols-[360px_minmax(0,1fr)] bg-[var(--lc-canvas)]">
       <aside className="flex flex-col bg-[var(--lc-sidebar)] px-10 py-9 text-white">
         <div className="flex items-center gap-3"><div className="grid size-9 place-items-center rounded-md bg-[var(--lc-accent)] font-[var(--lc-font-serif)] text-xl font-semibold">L</div><div><strong className="block font-[var(--lc-font-serif)] text-lg">LumiClaw Presence</strong><span className="text-[11px] tracking-[0.08em] text-white/75">GLOBAL BRAND OPERATIONS</span></div></div>
         <div className="mt-24 border-t border-white/15 pt-6"><p className="font-[var(--lc-font-mono)] text-[10px] font-bold tracking-[0.12em] text-[#ee9b88]">PRODUCTION UX 1.4</p><h2 className="mt-3 max-w-[12ch] font-[var(--lc-font-serif)] text-[34px] leading-[1.04] tracking-[-0.035em]">A governed public presence starts locally.</h2><p className="mt-5 text-[13px] leading-6 text-white/75">Identity, source material, context, review, and every handoff remain visible and recoverable.</p></div>
-        <div className="mt-auto space-y-3 border-t border-white/15 pt-5 text-xs text-white/75"><p className="flex items-center gap-2"><LockKeyhole size={14} aria-hidden /> No remote registration</p><p className="flex items-center gap-2"><ShieldCheck size={14} aria-hidden /> No browser API keys</p></div>
+        <div className="mt-auto space-y-3 border-t border-white/15 pt-5 text-xs text-white/75"><p className="flex items-center gap-2"><LockKeyhole size={14} aria-hidden />{t('noRemoteRegistration')}</p><p className="flex items-center gap-2"><ShieldCheck size={14} aria-hidden />{t('noBrowserSecrets')}</p><p className="flex items-center gap-2"><ShieldCheck size={14} aria-hidden />{t('noExternalActions')}</p></div>
       </aside>
       <main id="main-content" className="lc-scrollbar overflow-y-auto px-[clamp(52px,8vw,128px)] py-16">
         <div className="mx-auto max-w-[820px]">{props.snapshot.profile === null ? <ProfileStep {...props} /> : props.snapshot.session?.path === 'UNSELECTED' ? <ChoiceStep {...props} /> : <MaterialStep {...props} />}</div>
