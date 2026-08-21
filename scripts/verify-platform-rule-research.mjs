@@ -193,7 +193,7 @@ if (failures.length > 0) {
   for (const failure of failures) console.error(`- ${failure}`);
   process.exitCode = 1;
 } else {
-  console.log(`Platform-rule research verification passed (${checks} checks).`);
-  console.log("Validated: 3 schemas, 2 rule packs, 3 artifact profiles, 1 Skill manifest, 3 content fixtures, source and candidate registers.");
-  console.log("Note: production weighted-text conformance still requires pinned twitter-text and Ajv strict validation in the implementation SDD.");
+  console.info(`Platform-rule research verification passed (${checks} checks).`);
+  console.info("Validated: 3 schemas, 2 rule packs, 3 artifact profiles, 1 Skill manifest, 3 content fixtures, source and candidate registers.");
+  console.info("Note: production weighted-text conformance still requires pinned twitter-text and Ajv strict validation in the implementation SDD.");
 }
