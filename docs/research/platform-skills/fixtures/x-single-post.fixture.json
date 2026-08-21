@@ -1,0 +1,39 @@
+{
+  "fixtureId": "FIXTURE_X_SINGLE_POST_001",
+  "researchOnly": true,
+  "profileRef": { "profileCode": "X_SINGLE_POST", "profileVersion": "0.1.0-research" },
+  "rulePackRef": { "packId": "org.lumiclaw.platform.x", "packVersion": "0.1.0-research" },
+  "target": { "marketCode": "GLOBAL", "contentLocaleCode": "en", "uiLocaleCode": "zh-CN" },
+  "approvedRevisionDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "content": {
+    "text": "LumiClaw turns one approved release into a reviewable global presence mission. See the bounded demo: https://example.com/lumiclaw",
+    "expectedWeightedLength": 124,
+    "weightedLengthValidator": "twitter-text-v3",
+    "hashtags": [],
+    "media": [
+      {
+        "mediaId": "x-launch-hero",
+        "kind": "IMAGE",
+        "sourceMaster": "media/x-launch-hero.master.png",
+        "exportPath": "media/x-launch-hero.1600x900.png",
+        "width": 1600,
+        "height": 900,
+        "format": "PNG",
+        "colorSpace": "sRGB",
+        "fileSizeBytes": 450000,
+        "altText": "A six-member mission diagram routes one approved product release through evidence review, market planning, two account-native producers, and an independent auditor."
+      }
+    ]
+  },
+  "delivery": {
+    "modeCode": "MANUAL_DESKTOP_ASSISTANT",
+    "officialEntryUrl": "https://x.com/compose/post",
+    "requiresAccountConfirmation": true,
+    "reconciliationRequired": true
+  },
+  "expectedResult": {
+    "hardConstraintStatus": "PASS",
+    "recommendationWarnings": [],
+    "capabilityProbeCodes": ["X_ACCOUNT_IDENTITY", "X_COMPOSER_MEDIA_UPLOAD"]
+  }
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "../schemas/artifact-profile.schema.json",
+  "schemaVersion": "artifact-profile.v1alpha1",
+  "profileCode": "X_THREAD",
+  "platformCode": "X",
+  "profileVersion": "0.1.0-research",
+  "status": "RESEARCH_PROTOTYPE",
+  "target": {
+    "marketCode": "GLOBAL",
+    "contentLocaleCode": "en",
+    "uiLocaleIndependent": true
+  },
+  "contentShape": {
+    "requiredFields": ["items", "replyChain"],
+    "optionalFields": ["hashtags", "media"],
+    "mediaSlots": [
+      {
+        "slotCode": "THREAD_IMAGES",
+        "mediaKind": "IMAGE",
+        "required": false,
+        "minimumItems": 0,
+        "maximumItems": null,
+        "recommendedExports": [
+          {
+            "classification": "EMPIRICAL_RECOMMENDATION",
+            "width": 1600,
+            "height": 900,
+            "format": "PNG_OR_JPEG_SRGB",
+            "purpose": "Optional visual attached to one approved thread item"
+          }
+        ]
+      }
+    ]
+  },
+  "rulePackRefs": [
+    { "packId": "org.lumiclaw.platform.x", "packVersion": "0.1.0-research" }
+  ],
+  "delivery": {
+    "allowedModeCodes": ["MANUAL_DESKTOP_ASSISTANT", "X_OFFICIAL_API_POC"],
+    "exactRevisionDigestRequired": true,
+    "accountCapabilityProbeRequired": true,
+    "fallbackModeCode": "MANUAL_DESKTOP_ASSISTANT"
+  },
+  "validation": {
+    "validatorCodes": ["x.thread_each_weighted_text.v3", "x.thread_each_image_count", "x.thread.reply_chain", "x.thread_practical_count"],
+    "expiredRulePackBehavior": "BLOCK"
+  },
+  "reviewChecklist": [
+    { "checkCode": "EACH_ITEM_LENGTH", "classification": "HARD_CONSTRAINT", "ownerVisibleLabel": "线程中每一条分别通过 X 加权字符校验。" },
+    { "checkCode": "EACH_ITEM_MEDIA", "classification": "HARD_CONSTRAINT", "ownerVisibleLabel": "图片数量按线程中的每一条分别校验，不把整条线程混成一个媒体总数。" },
+    { "checkCode": "REPLY_CHAIN", "classification": "HARD_CONSTRAINT", "ownerVisibleLabel": "回复关系有序、无环且绑定同一批准修订。" },
+    { "checkCode": "THREAD_COUNT", "classification": "EMPIRICAL_RECOMMENDATION", "ownerVisibleLabel": "3–7 条只是首版可审校建议，不是平台硬上限。" },
+    { "checkCode": "LINK_PLACEMENT", "classification": "EMPIRICAL_RECOMMENDATION", "ownerVisibleLabel": "链接位置符合 Campaign 目标且不会造成前后文断裂。" },
+    { "checkCode": "EXACT_REVISION", "classification": "PROJECT_POLICY", "ownerVisibleLabel": "任何一条变化都会生成新修订并使既有批准失效。" }
+  ]
+}

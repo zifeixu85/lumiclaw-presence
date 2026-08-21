@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lumiclaw.org/schemas/artifact-profile.v1alpha1.json",
+  "title": "LumiClaw ArtifactProfile research prototype",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "profileCode",
+    "platformCode",
+    "profileVersion",
+    "status",
+    "target",
+    "contentShape",
+    "rulePackRefs",
+    "delivery",
+    "validation",
+    "reviewChecklist"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": "artifact-profile.v1alpha1" },
+    "profileCode": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]+$" },
+    "platformCode": { "enum": ["X", "XIAOHONGSHU"] },
+    "profileVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-z0-9.-]+)?$" },
+    "status": { "enum": ["RESEARCH_PROTOTYPE", "ACTIVE", "EXPIRED", "SUPERSEDED"] },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["marketCode", "contentLocaleCode", "uiLocaleIndependent"],
+      "properties": {
+        "marketCode": { "type": "string", "minLength": 2 },
+        "contentLocaleCode": { "type": "string", "minLength": 2 },
+        "uiLocaleIndependent": { "const": true }
+      }
+    },
+    "contentShape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requiredFields", "optionalFields", "mediaSlots"],
+      "properties": {
+        "requiredFields": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "optionalFields": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+        "mediaSlots": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["slotCode", "mediaKind", "required", "recommendedExports"],
+            "properties": {
+              "slotCode": { "type": "string" },
+              "mediaKind": { "enum": ["IMAGE", "VIDEO", "CAPTION_FILE"] },
+              "required": { "type": "boolean" },
+              "minimumItems": { "type": "integer", "minimum": 0 },
+              "maximumItems": { "type": ["integer", "null"], "minimum": 1 },
+              "recommendedExports": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["classification", "width", "height", "format", "purpose"],
+                  "properties": {
+                    "classification": { "enum": ["OFFICIAL_RECOMMENDATION", "EMPIRICAL_RECOMMENDATION"] },
+                    "width": { "type": "integer", "minimum": 1 },
+                    "height": { "type": "integer", "minimum": 1 },
+                    "format": { "type": "string" },
+                    "purpose": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "rulePackRefs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["packId", "packVersion"],
+        "properties": {
+          "packId": { "type": "string" },
+          "packVersion": { "type": "string" },
+          "contentDigest": { "type": "string", "pattern": "^sha256:[a-f0-9]{64}$" }
+        }
+      },
+      "minItems": 1
+    },
+    "delivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["allowedModeCodes", "exactRevisionDigestRequired", "accountCapabilityProbeRequired", "fallbackModeCode"],
+      "properties": {
+        "allowedModeCodes": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+        "exactRevisionDigestRequired": { "const": true },
+        "accountCapabilityProbeRequired": { "type": "boolean" },
+        "fallbackModeCode": { "type": "string" }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["validatorCodes", "expiredRulePackBehavior"],
+      "properties": {
+        "validatorCodes": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+        "expiredRulePackBehavior": { "enum": ["BLOCK", "REQUIRE_OWNER_OVERRIDE"] }
+      }
+    },
+    "reviewChecklist": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["checkCode", "classification", "ownerVisibleLabel"],
+        "properties": {
+          "checkCode": { "type": "string" },
+          "classification": { "enum": ["HARD_CONSTRAINT", "OFFICIAL_RECOMMENDATION", "EMPIRICAL_RECOMMENDATION", "NEEDS_ACCOUNT_PROBE", "PROJECT_POLICY"] },
+          "ownerVisibleLabel": { "type": "string" }
+        }
+      }
+    }
+  }
+}

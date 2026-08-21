@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://lumiclaw.org/schemas/platform-skill-manifest.v1alpha1.json",
+  "title": "LumiClaw platform Skill manifest research prototype",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "skillId",
+    "skillVersion",
+    "status",
+    "license",
+    "origin",
+    "runtimeCompatibility",
+    "contractBindings",
+    "permissions",
+    "externalActions",
+    "fallbacks",
+    "validation"
+  ],
+  "properties": {
+    "$schema": { "type": "string" },
+    "schemaVersion": { "const": "platform-skill-manifest.v1alpha1" },
+    "skillId": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]+$" },
+    "skillVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[a-z0-9.-]+)?$" },
+    "status": { "enum": ["RESEARCH_PROTOTYPE", "AVAILABLE", "DISABLED", "SUPERSEDED"] },
+    "license": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["spdx", "decision"],
+      "properties": {
+        "spdx": { "type": "string" },
+        "decision": { "enum": ["ADOPT", "REIMPLEMENT_CONCEPT_ONLY", "REJECT"] },
+        "noticeRequired": { "type": "boolean" },
+        "notes": { "type": "string" }
+      }
+    },
+    "origin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["originType", "sourceUrl", "commitOrDigest"],
+      "properties": {
+        "originType": { "enum": ["PROJECT_NATIVE", "THIRD_PARTY_REPOSITORY"] },
+        "sourceUrl": { "type": "string", "format": "uri" },
+        "commitOrDigest": { "type": "string", "minLength": 1 },
+        "tag": { "type": "string" },
+        "retrievedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "runtimeCompatibility": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["runtimeCode", "minimumVersion", "roleCodes"],
+      "properties": {
+        "runtimeCode": { "const": "AGENTTEAMS" },
+        "minimumVersion": { "type": "string" },
+        "roleCodes": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+      }
+    },
+    "contractBindings": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rulePackIds", "artifactProfileCodes", "inputSchemaCode", "outputSchemaCode"],
+      "properties": {
+        "rulePackIds": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+        "artifactProfileCodes": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+        "inputSchemaCode": { "type": "string" },
+        "outputSchemaCode": { "type": "string" }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["networkAccess", "browserControl", "cookieAccess", "secretAccess", "publicWrite"],
+      "properties": {
+        "networkAccess": { "type": "boolean" },
+        "browserControl": { "type": "boolean" },
+        "cookieAccess": { "type": "boolean" },
+        "secretAccess": { "type": "boolean" },
+        "publicWrite": { "type": "boolean" }
+      }
+    },
+    "externalActions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "requiresOwnerConfirmation", "exactApprovedDigestRequired"],
+      "properties": {
+        "classification": { "enum": ["NONE", "MANUAL_USER_ACTION", "DIRECT_PUBLIC_WRITE"] },
+        "requiresOwnerConfirmation": { "type": "boolean" },
+        "exactApprovedDigestRequired": { "type": "boolean" }
+      }
+    },
+    "fallbacks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["conditionCode", "actionCode"],
+        "properties": {
+          "conditionCode": { "type": "string" },
+          "actionCode": { "type": "string" },
+          "ownerMessage": { "type": "string" }
+        }
+      }
+    },
+    "validation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["validatorCodes", "testFixtureIds"],
+      "properties": {
+        "validatorCodes": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true },
+        "testFixtureIds": { "type": "array", "items": { "type": "string" }, "minItems": 1, "uniqueItems": true }
+      }
+    }
+  }
+}

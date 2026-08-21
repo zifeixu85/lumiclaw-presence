@@ -1,0 +1,327 @@
+{
+  "$schema": "../schemas/platform-rule-pack.schema.json",
+  "schemaVersion": "platform-rule-pack.v1alpha1",
+  "packId": "org.lumiclaw.platform.xiaohongshu",
+  "platformCode": "XIAOHONGSHU",
+  "packVersion": "0.1.0-research",
+  "status": "RESEARCH_PROTOTYPE",
+  "provenance": {
+    "retrievedAt": "2026-08-22T16:30:00+08:00",
+    "reviewedAt": "2026-08-22T18:00:00+08:00",
+    "reviewCadenceDays": 30,
+    "expiresAt": "2026-09-21T16:30:00+08:00",
+    "maintainer": "LumiClaw Presence"
+  },
+  "applicability": {
+    "artifactProfileCodes": ["XHS_IMAGE_NOTE", "XHS_VIDEO_NOTE"],
+    "marketCodes": ["CN", "GLOBAL"],
+    "localeCodes": ["zh-CN", "en"],
+    "deliveryModeCodes": ["MANUAL_DESKTOP_ASSISTANT", "XHS_OFFICIAL_SHARE_SDK_RESEARCH"],
+    "clientSurfaceCodes": ["WEB", "XHS_CREATOR_WEB", "XHS_IOS", "XHS_ANDROID", "XHS_HARMONYOS"]
+  },
+  "sources": [
+    {
+      "sourceId": "XHS.OPEN.SHARE_OVERVIEW",
+      "title": "小红书分享开放平台能力概览",
+      "url": "https://agora.xiaohongshu.com/doc",
+      "publisher": "小红书",
+      "authority": "PLATFORM_OFFICIAL",
+      "sourceType": "API_DOC",
+      "retrievedAt": "2026-08-22T16:30:00+08:00",
+      "sourceVersion": "page-updated-2023-07-04-retrieved-2026-08-22",
+      "reviewCadenceDays": 30,
+      "expiresAt": "2026-09-21T16:30:00+08:00"
+    },
+    {
+      "sourceId": "XHS.OPEN.ANDROID",
+      "title": "小红书分享 SDK Android 接入指南",
+      "url": "https://agora.xiaohongshu.com/doc/android",
+      "publisher": "小红书",
+      "authority": "PLATFORM_OFFICIAL",
+      "sourceType": "API_DOC",
+      "retrievedAt": "2026-08-22T16:35:00+08:00",
+      "sourceVersion": "page-updated-2023-10-11-retrieved-2026-08-22",
+      "reviewCadenceDays": 30,
+      "expiresAt": "2026-09-21T16:35:00+08:00"
+    },
+    {
+      "sourceId": "XHS.OPEN.IOS",
+      "title": "小红书分享 SDK iOS 接入指南",
+      "url": "https://agora.xiaohongshu.com/doc/ios",
+      "publisher": "小红书",
+      "authority": "PLATFORM_OFFICIAL",
+      "sourceType": "API_DOC",
+      "retrievedAt": "2026-08-22T16:40:00+08:00",
+      "sourceVersion": "page-updated-2023-11-16-retrieved-2026-08-22",
+      "reviewCadenceDays": 30,
+      "expiresAt": "2026-09-21T16:40:00+08:00",
+      "notes": "The page explicitly distinguishes old and new crop paths."
+    },
+    {
+      "sourceId": "XHS.OPEN.HARMONY",
+      "title": "小红书分享 SDK HarmonyOS 接入指南",
+      "url": "https://agora.xiaohongshu.com/doc/harmony",
+      "publisher": "小红书",
+      "authority": "PLATFORM_OFFICIAL",
+      "sourceType": "API_DOC",
+      "retrievedAt": "2026-08-22T16:45:00+08:00",
+      "sourceVersion": "sdk-1.0.4-page-updated-2024-12-11-retrieved-2026-08-22",
+      "reviewCadenceDays": 30,
+      "expiresAt": "2026-09-21T16:45:00+08:00"
+    },
+    {
+      "sourceId": "XHS.OPEN.QA",
+      "title": "小红书分享开放平台常见问题",
+      "url": "https://agora.xiaohongshu.com/doc/qa",
+      "publisher": "小红书",
+      "authority": "PLATFORM_OFFICIAL",
+      "sourceType": "API_DOC",
+      "retrievedAt": "2026-08-22T16:50:00+08:00",
+      "sourceVersion": "page-updated-2023-12-10-retrieved-2026-08-22",
+      "reviewCadenceDays": 30,
+      "expiresAt": "2026-09-21T16:50:00+08:00",
+      "notes": "States that title and copy auto-fill through Share SDK is currently restricted and that crop behavior is not yet unified."
+    },
+    {
+      "sourceId": "XHS.CREATOR.ENTRY",
+      "title": "小红书创作服务平台",
+      "url": "https://creator.xiaohongshu.com/publish",
+      "publisher": "小红书",
+      "authority": "PLATFORM_OFFICIAL",
+      "sourceType": "ENTRY_POINT",
+      "retrievedAt": "2026-08-22T16:55:00+08:00",
+      "sourceVersion": "live-entry-retrieved-2026-08-22",
+      "reviewCadenceDays": 14,
+      "expiresAt": "2026-09-05T16:55:00+08:00",
+      "notes": "Unauthenticated retrieval redirects to login; account and region behavior require a probe."
+    },
+    {
+      "sourceId": "XHS.PGY.POLICY_HUB",
+      "title": "小红书蒲公英帮助中心规则公告",
+      "url": "https://pgy.xiaohongshu.com/help/home",
+      "publisher": "小红书",
+      "authority": "PLATFORM_OFFICIAL",
+      "sourceType": "POLICY",
+      "retrievedAt": "2026-08-22T17:00:00+08:00",
+      "sourceVersion": "live-policy-hub-retrieved-2026-08-22",
+      "reviewCadenceDays": 14,
+      "expiresAt": "2026-09-05T17:00:00+08:00"
+    },
+    {
+      "sourceId": "XHS.PGY.CONTENT_REVIEW",
+      "title": "蒲公英内容审核规范",
+      "url": "https://pgy.xiaohongshu.com/help/detail?id=6495c527d1eedeeb48fb18b1f875650e&userType=4",
+      "publisher": "小红书",
+      "authority": "PLATFORM_OFFICIAL",
+      "sourceType": "POLICY",
+      "retrievedAt": "2026-08-22T17:05:00+08:00",
+      "sourceVersion": "page-dated-2026-07-15-retrieved-2026-08-22",
+      "reviewCadenceDays": 14,
+      "expiresAt": "2026-09-05T17:05:00+08:00"
+    },
+    {
+      "sourceId": "XHS.AD.REVIEW",
+      "title": "小红书聚光广告物料审核规范",
+      "url": "https://ad.xiaohongshu.com/next_help/docs/8dc5bd9c45c9a90cb9912f3400d43f92",
+      "publisher": "小红书",
+      "authority": "PLATFORM_OFFICIAL",
+      "sourceType": "POLICY",
+      "retrievedAt": "2026-08-22T17:10:00+08:00",
+      "sourceVersion": "live-policy-retrieved-2026-08-22",
+      "reviewCadenceDays": 14,
+      "expiresAt": "2026-09-05T17:10:00+08:00"
+    },
+    {
+      "sourceId": "LUMICLAW.PROJECT.POLICY",
+      "title": "LumiClaw Presence agent and connector policy",
+      "url": "https://github.com/zifeixu85/lumiclaw-presence/blob/9e241da98be00c56204894c67b7599d37ff10505/AGENTS.md",
+      "publisher": "LumiClaw Presence",
+      "authority": "PROJECT_POLICY",
+      "sourceType": "PROJECT_DOCUMENT",
+      "retrievedAt": "2026-08-22T14:00:00+08:00",
+      "sourceVersion": "9e241da98be00c56204894c67b7599d37ff10505",
+      "reviewCadenceDays": 30,
+      "expiresAt": "2026-09-21T14:00:00+08:00"
+    },
+    {
+      "sourceId": "LUMICLAW.RESEARCH.MEDIA_DEFAULTS",
+      "title": "LumiClaw X/XHS platform rules research",
+      "url": "https://github.com/zifeixu85/lumiclaw-presence",
+      "publisher": "LumiClaw Presence",
+      "authority": "EMPIRICAL",
+      "sourceType": "PROJECT_DOCUMENT",
+      "retrievedAt": "2026-08-22T18:00:00+08:00",
+      "sourceVersion": "research-prototype-2026-08-22",
+      "reviewCadenceDays": 30,
+      "expiresAt": "2026-09-21T18:00:00+08:00"
+    }
+  ],
+  "rules": [
+    {
+      "ruleCode": "XHS_SHARE_SDK_IMAGE_COUNT_1_TO_18",
+      "classification": "HARD_CONSTRAINT",
+      "severity": "BLOCK",
+      "summary": "The documented Android and HarmonyOS Share SDK image-note path requires one to 18 images.",
+      "sourceIds": ["XHS.OPEN.ANDROID", "XHS.OPEN.HARMONY"],
+      "appliesWhen": { "deliveryModeCode": "XHS_OFFICIAL_SHARE_SDK_RESEARCH", "artifactProfileCode": "XHS_IMAGE_NOTE" },
+      "constraint": { "operator": "BETWEEN_INCLUSIVE", "minimum": 1, "maximum": 18, "unit": "IMAGE" },
+      "validation": { "validatorCode": "xhs.share_sdk.image_count", "mode": "DETERMINISTIC" },
+      "fallback": { "action": "MANUAL_NATIVE_HANDOFF", "reason": "Do not treat the SDK limit as a universal web or app composer limit." }
+    },
+    {
+      "ruleCode": "XHS_SHARE_SDK_SINGLE_VIDEO",
+      "classification": "HARD_CONSTRAINT",
+      "severity": "BLOCK",
+      "summary": "The documented Share SDK video-note path accepts one video and zero or one cover image.",
+      "sourceIds": ["XHS.OPEN.ANDROID", "XHS.OPEN.HARMONY", "XHS.OPEN.IOS"],
+      "appliesWhen": { "deliveryModeCode": "XHS_OFFICIAL_SHARE_SDK_RESEARCH", "artifactProfileCode": "XHS_VIDEO_NOTE" },
+      "constraint": { "operator": "EXACT_MEDIA_SHAPE", "videoCount": 1, "minimumCoverCount": 0, "maximumCoverCount": 1 },
+      "validation": { "validatorCode": "xhs.share_sdk.video_shape", "mode": "DETERMINISTIC" },
+      "fallback": { "action": "MANUAL_NATIVE_HANDOFF", "reason": "Use native editor and re-probe if the SDK path is unavailable." }
+    },
+    {
+      "ruleCode": "XHS_MEDIA_TYPES_MUTUALLY_EXCLUSIVE",
+      "classification": "HARD_CONSTRAINT",
+      "severity": "BLOCK",
+      "summary": "LumiClaw blocks mixed image-and-video packages even though some SDK implementations silently prefer images, because silent precedence breaks exact-artifact approval.",
+      "sourceIds": ["XHS.OPEN.ANDROID", "XHS.OPEN.HARMONY", "LUMICLAW.PROJECT.POLICY"],
+      "appliesWhen": { "platformCode": "XIAOHONGSHU" },
+      "constraint": { "operator": "MUTUALLY_EXCLUSIVE", "fields": ["images", "video"] },
+      "validation": { "validatorCode": "xhs.media.mutual_exclusion", "mode": "DETERMINISTIC" },
+      "fallback": { "action": "BLOCK", "reason": "Choose an image note or video note and create a new approved revision." }
+    },
+    {
+      "ruleCode": "XHS_SHARE_SDK_TEXT_AUTOFILL_NOT_ASSUMED",
+      "classification": "HARD_CONSTRAINT",
+      "severity": "BLOCK",
+      "summary": "The Share SDK must not be modeled as reliably auto-filling title and body; the official Q&A says this is restricted for existing and new integrations.",
+      "sourceIds": ["XHS.OPEN.QA"],
+      "appliesWhen": { "deliveryModeCode": "XHS_OFFICIAL_SHARE_SDK_RESEARCH" },
+      "constraint": { "operator": "FORBID_CAPABILITY_ASSUMPTION", "capabilityCode": "XHS_SHARE_SDK_TEXT_AUTOFILL" },
+      "validation": { "validatorCode": "capability.xhs.share_sdk_text_autofill", "mode": "CAPABILITY_PROBE" },
+      "fallback": { "action": "MANUAL_NATIVE_HANDOFF", "reason": "Provide exact approved text for user copy/paste and reconcile publication manually." }
+    },
+    {
+      "ruleCode": "XHS_SHARE_SDK_APPKEY_AND_APPROVAL_REQUIRED",
+      "classification": "HARD_CONSTRAINT",
+      "severity": "BLOCK",
+      "summary": "Official Share SDK use requires application registration, review and an AppKey bound to the application identity.",
+      "sourceIds": ["XHS.OPEN.ANDROID", "XHS.OPEN.IOS", "XHS.OPEN.HARMONY"],
+      "appliesWhen": { "deliveryModeCode": "XHS_OFFICIAL_SHARE_SDK_RESEARCH" },
+      "constraint": { "operator": "REQUIRE_APPROVED_APPLICATION_AND_APPKEY" },
+      "validation": { "validatorCode": "capability.xhs.share_sdk_registration", "mode": "CAPABILITY_PROBE" },
+      "fallback": { "action": "MANUAL_NATIVE_HANDOFF", "reason": "Never substitute browser cookies or reverse-engineered private APIs." }
+    },
+    {
+      "ruleCode": "XHS_TITLE_LENGTH_CURRENT_ACCOUNT",
+      "classification": "NEEDS_ACCOUNT_PROBE",
+      "severity": "PROBE",
+      "summary": "No stable, public, official creator-composer title maximum was found in the reviewed sources; third-party values must not become a platform hard rule.",
+      "sourceIds": ["XHS.CREATOR.ENTRY", "XHS.OPEN.QA"],
+      "appliesWhen": { "field": "title" },
+      "constraint": { "operator": "CAPTURE_FROM_ACTIVE_COMPOSER", "capabilityCode": "XHS_TITLE_COUNTER" },
+      "validation": { "validatorCode": "capability.xhs.title_counter", "mode": "CAPABILITY_PROBE" },
+      "fallback": { "action": "MANUAL_NATIVE_HANDOFF", "reason": "Keep the fixture title concise, then verify the active composer counter before approval." }
+    },
+    {
+      "ruleCode": "XHS_BODY_LENGTH_CURRENT_ACCOUNT",
+      "classification": "NEEDS_ACCOUNT_PROBE",
+      "severity": "PROBE",
+      "summary": "No stable, public, official creator-composer body maximum was found in the reviewed sources.",
+      "sourceIds": ["XHS.CREATOR.ENTRY", "XHS.OPEN.QA"],
+      "appliesWhen": { "field": "body" },
+      "constraint": { "operator": "CAPTURE_FROM_ACTIVE_COMPOSER", "capabilityCode": "XHS_BODY_COUNTER" },
+      "validation": { "validatorCode": "capability.xhs.body_counter", "mode": "CAPABILITY_PROBE" },
+      "fallback": { "action": "MANUAL_NATIVE_HANDOFF", "reason": "Verify in the active account/client; never enforce 1,000 as an official universal limit." }
+    },
+    {
+      "ruleCode": "XHS_TOPIC_COUNT_AND_ENTITY_CURRENT_ACCOUNT",
+      "classification": "NEEDS_ACCOUNT_PROBE",
+      "severity": "PROBE",
+      "summary": "The official Share overview documents topic attachment/recommendation but does not publish a stable universal topic-count limit or guarantee plain-text hashtag entity creation.",
+      "sourceIds": ["XHS.OPEN.SHARE_OVERVIEW", "XHS.CREATOR.ENTRY"],
+      "appliesWhen": { "field": "topics" },
+      "constraint": { "operator": "VERIFY_TOPIC_ENTITIES_IN_ACTIVE_COMPOSER", "capabilityCode": "XHS_TOPIC_SELECTOR" },
+      "validation": { "validatorCode": "capability.xhs.topic_selector", "mode": "CAPABILITY_PROBE" },
+      "fallback": { "action": "MANUAL_NATIVE_HANDOFF", "reason": "Provide suggested topic labels; the owner selects native topic entities and returns evidence." }
+    },
+    {
+      "ruleCode": "XHS_IMAGE_EXPORT_1080_BY_1440",
+      "classification": "EMPIRICAL_RECOMMENDATION",
+      "severity": "WARN",
+      "summary": "Use 1080×1440 (3:4) sRGB exports as the first image-note baseline; this is a project recommendation, not a universal official hard limit.",
+      "sourceIds": ["XHS.OPEN.IOS", "XHS.OPEN.QA", "LUMICLAW.RESEARCH.MEDIA_DEFAULTS"],
+      "appliesWhen": { "artifactProfileCode": "XHS_IMAGE_NOTE" },
+      "constraint": { "operator": "RECOMMENDED_EXPORT", "width": 1080, "height": 1440, "colorSpace": "sRGB", "formats": ["JPEG", "PNG"] },
+      "validation": { "validatorCode": "media.xhs.recommended_image_export", "mode": "DETERMINISTIC" },
+      "fallback": { "action": "WARN_AND_CONTINUE", "reason": "Require native crop preview and owner acceptance for deviations." }
+    },
+    {
+      "ruleCode": "XHS_IOS_OLD_CROP_PATH_ENVELOPE",
+      "classification": "OFFICIAL_RECOMMENDATION",
+      "severity": "WARN",
+      "summary": "For the documented old iOS resource path, images outside 3:4–2:1, under 600 px wide, over 1280 px wide, or over 1920 px on the longest edge may be cropped; new paths differ.",
+      "sourceIds": ["XHS.OPEN.IOS", "XHS.OPEN.QA"],
+      "appliesWhen": { "clientSurfaceCode": "XHS_IOS", "resourcePath": "LEGACY_IMAGE_DATA_OR_URL" },
+      "constraint": { "operator": "LEGACY_CROP_ENVELOPE", "minimumWidth": 600, "maximumWidth": 1280, "maximumLongestEdge": 1920, "minimumAspectRatio": "3:4", "maximumAspectRatio": "2:1" },
+      "validation": { "validatorCode": "media.xhs.ios_legacy_crop", "mode": "DETERMINISTIC" },
+      "fallback": { "action": "WARN_AND_CONTINUE", "reason": "Preview the actual current crop; do not generalize this old-path behavior to all clients." }
+    },
+    {
+      "ruleCode": "XHS_FIRST_IMAGE_AS_DESIGNED_COVER",
+      "classification": "EMPIRICAL_RECOMMENDATION",
+      "severity": "WARN",
+      "summary": "Treat the first image as the intended cover and repeat essential claims in the body; public official sources reviewed here do not define a universal cover rule.",
+      "sourceIds": ["LUMICLAW.RESEARCH.MEDIA_DEFAULTS"],
+      "appliesWhen": { "artifactProfileCode": "XHS_IMAGE_NOTE" },
+      "constraint": { "operator": "REQUIRE_DESIGNATED_FIRST_IMAGE_AND_BODY_REDUNDANCY" },
+      "validation": { "validatorCode": "xhs.cover.owner_review", "mode": "OWNER_REVIEW" },
+      "fallback": { "action": "WARN_AND_CONTINUE", "reason": "Owner reviews the native preview and can re-order images only through a new revision." }
+    },
+    {
+      "ruleCode": "XHS_VIDEO_LIMITS_CURRENT_ACCOUNT",
+      "classification": "NEEDS_ACCOUNT_PROBE",
+      "severity": "PROBE",
+      "summary": "The reviewed public Share SDK docs expose a video-duration error but no stable universal duration, size, codec or ratio limit.",
+      "sourceIds": ["XHS.OPEN.IOS", "XHS.OPEN.ANDROID", "XHS.CREATOR.ENTRY"],
+      "appliesWhen": { "artifactProfileCode": "XHS_VIDEO_NOTE" },
+      "constraint": { "operator": "CAPTURE_FROM_ACTIVE_COMPOSER", "capabilityCode": "XHS_VIDEO_UPLOAD" },
+      "validation": { "validatorCode": "capability.xhs.video_upload", "mode": "CAPABILITY_PROBE" },
+      "fallback": { "action": "MANUAL_NATIVE_HANDOFF", "reason": "Use a 1080×1920 H.264/AAC project export only as an empirical starting point, then verify the active account/client." }
+    },
+    {
+      "ruleCode": "XHS_COMMERCIAL_CONTENT_POLICY_REVIEW",
+      "classification": "HARD_CONSTRAINT",
+      "severity": "BLOCK",
+      "summary": "Commercial content requires applicable authorization/disclosure, rights evidence and policy review; guarantee claims and unlicensed third-party assets must block approval.",
+      "sourceIds": ["XHS.PGY.POLICY_HUB", "XHS.PGY.CONTENT_REVIEW", "XHS.AD.REVIEW"],
+      "appliesWhen": { "contentClassification": ["COMMERCIAL_COOPERATION", "ADVERTISING"] },
+      "constraint": { "operator": "REQUIRE_COMMERCIAL_POLICY_AND_EVIDENCE_AUDIT" },
+      "validation": { "validatorCode": "policy.xhs.commercial_content", "mode": "AUDITOR_REVIEW" },
+      "fallback": { "action": "BLOCK", "reason": "Escalate to the owner/operations lead; LumiClaw does not claim legal compliance." }
+    },
+    {
+      "ruleCode": "XHS_MANUAL_OR_OFFICIAL_SHARE_ONLY",
+      "classification": "HARD_CONSTRAINT",
+      "severity": "BLOCK",
+      "summary": "The current product may use manual native handoff and may research the official Share SDK; it may not use browser cookies, reverse-engineered private APIs or hidden browser automation for publication.",
+      "sourceIds": ["XHS.OPEN.SHARE_OVERVIEW", "LUMICLAW.PROJECT.POLICY"],
+      "appliesWhen": { "platformCode": "XIAOHONGSHU" },
+      "constraint": { "operator": "ALLOWLIST_DELIVERY_MODES", "values": ["MANUAL_DESKTOP_ASSISTANT", "XHS_OFFICIAL_SHARE_SDK_RESEARCH"] },
+      "validation": { "validatorCode": "policy.xhs.connector_allowlist", "mode": "DETERMINISTIC" },
+      "fallback": { "action": "MANUAL_NATIVE_HANDOFF", "reason": "Fail closed to exact approved text/media package and user-driven publication." }
+    }
+  ],
+  "sourceConflicts": [
+    {
+      "conflictCode": "XHS_SHARE_SDK_TEXT_FIELDS_VS_RUNTIME_AUTOFILL_RESTRICTION",
+      "sourceIds": ["XHS.OPEN.ANDROID", "XHS.OPEN.HARMONY", "XHS.OPEN.QA"],
+      "resolution": "Model title/body as content artifacts, not as guaranteed prefilled SDK fields. The operator must use copy/paste manual handoff unless an account/app probe proves a supported official flow."
+    },
+    {
+      "conflictCode": "XHS_IOS_CROP_PATHS_NOT_UNIFIED",
+      "sourceIds": ["XHS.OPEN.IOS", "XHS.OPEN.QA"],
+      "resolution": "Keep 1080×1440 as an empirical export default and require native preview. Do not publish a universal official ratio/size hard rule."
+    }
+  ]
+}

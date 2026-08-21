@@ -1,0 +1,317 @@
+{
+  "schemaVersion": "platform-source-register.v1alpha1",
+  "retrievedAt": "2026-08-22T18:00:00+08:00",
+  "defaultReviewCadenceDays": 30,
+  "sources": [
+    {
+      "sourceId": "X.HELP.POST",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "How to post",
+      "url": "https://help.x.com/en/using-x/how-to-post",
+      "sourceVersion": "live-help-retrieved-2026-08-22",
+      "supports": ["280 regular weighted characters", "up to four media", "web scheduling entry"],
+      "limitations": ["Longer-post wording differs across current X help surfaces"]
+    },
+    {
+      "sourceId": "X.SPEC.TWITTER_TEXT_V3",
+      "platformCode": "X",
+      "authority": "OFFICIAL_OPEN_SOURCE",
+      "title": "twitter-text v3.1.0",
+      "url": "https://github.com/twitter/twitter-text/tree/30e2430d90cff3b46393ea54caf511441983c260",
+      "sourceVersion": "v3.1.0@30e2430d90cff3b46393ea54caf511441983c260",
+      "supports": ["weighted character algorithm", "emoji handling", "23-character transformed URLs"],
+      "limitations": ["Pin exact version and compare with current product behavior"]
+    },
+    {
+      "sourceId": "X.HELP.LINKS",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "How to post a link",
+      "url": "https://help.x.com/en/using-x/how-to-post-a-link",
+      "sourceVersion": "live-help-retrieved-2026-08-22",
+      "supports": ["all posted URLs use t.co", "each URL counts as 23 characters"],
+      "limitations": []
+    },
+    {
+      "sourceId": "X.API.CREATE_POST",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "Create or edit Post",
+      "url": "https://docs.x.com/x-api/posts/create-or-edit-post",
+      "sourceVersion": "live-api-doc-retrieved-2026-08-22",
+      "supports": ["POST /2/tweets", "media_ids 1-4", "poll 2-4 options", "poll option 1-25 characters", "poll duration 5-10080 minutes", "reply chain input", "poll/media/quote/card mutual exclusion"],
+      "limitations": ["Endpoint access, cost and limits depend on the current developer account"]
+    },
+    {
+      "sourceId": "X.API.MEDIA_UPLOAD",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "Upload media",
+      "url": "https://docs.x.com/x-api/media/upload-media",
+      "sourceVersion": "live-api-doc-retrieved-2026-08-22",
+      "supports": ["official v2 media upload", "user-token requirement", "media category semantics"],
+      "limitations": ["Do not infer web/Premium limits from one API media category"]
+    },
+    {
+      "sourceId": "X.API.MEDIA_BEST_PRACTICES",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "Media API best practices",
+      "url": "https://docs.x.com/x-api/media/quickstart/best-practices",
+      "sourceVersion": "live-api-doc-retrieved-2026-08-22",
+      "supports": ["API-path video encoding and dimension recommendations"],
+      "limitations": ["Scoped to API upload; not a universal web/Premium hard limit"]
+    },
+    {
+      "sourceId": "X.HELP.IMAGES",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "How to post pictures or GIFs",
+      "url": "https://help.x.com/en/using-x/posting-gifs-and-pictures",
+      "sourceVersion": "live-help-retrieved-2026-08-22",
+      "supports": ["one to four photos", "5 MB image limit", "15 MB web GIF limit", "single-image 2:1 to 3:4 full-display envelope"],
+      "limitations": ["Display envelope is not an upload rejection rule"]
+    },
+    {
+      "sourceId": "X.HELP.VIDEO",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "How to share and watch videos on X",
+      "url": "https://help.x.com/en/using-x/x-videos",
+      "sourceVersion": "live-help-retrieved-2026-08-22",
+      "supports": ["non-Premium 140 seconds and 512 MB", "client-specific Premium video description"],
+      "limitations": ["Conflicts with current Premium page on Premium video duration/size"]
+    },
+    {
+      "sourceId": "X.HELP.PREMIUM",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "About X Premium",
+      "url": "https://help.x.com/en/using-x/x-premium",
+      "sourceVersion": "live-help-retrieved-2026-08-22",
+      "supports": ["longer Posts up to 25,000 characters", "tier/account/client/location variation", "Articles subscription gating"],
+      "limitations": ["Page contains tier wording that should be verified against the active account", "Premium video limits conflict with X video help"]
+    },
+    {
+      "sourceId": "X.HELP.THREAD",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "How to create a thread on X",
+      "url": "https://help.x.com/en/using-x/create-a-thread",
+      "sourceVersion": "live-help-retrieved-2026-08-22",
+      "supports": ["connected reply-chain composition", "adding later Posts"],
+      "limitations": ["No stable public maximum thread-item count found"]
+    },
+    {
+      "sourceId": "X.HELP.ARTICLES",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "About Articles",
+      "url": "https://help.x.com/en/using-x/articles",
+      "sourceVersion": "live-help-retrieved-2026-08-22",
+      "supports": ["Article composer and rich-media shape", "subscription/account eligibility"],
+      "limitations": ["Do not assume every Premium tier/account exposes the composer"]
+    },
+    {
+      "sourceId": "X.HELP.HASHTAGS",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "How to use hashtags",
+      "url": "https://help.x.com/en/using-x/how-to-use-hashtags",
+      "sourceVersion": "live-help-retrieved-2026-08-22",
+      "supports": ["no spaces or punctuation", "no-more-than-two best-practice recommendation"],
+      "limitations": ["Two is a recommendation, not a hard maximum"]
+    },
+    {
+      "sourceId": "X.HELP.ALT",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "How to add image descriptions",
+      "url": "https://help.x.com/en/using-x/add-image-descriptions",
+      "sourceVersion": "live-help-retrieved-2026-08-22",
+      "supports": ["1,000-character image description", "per-image descriptions"],
+      "limitations": ["Video accessibility uses captions rather than image ALT"]
+    },
+    {
+      "sourceId": "X.HELP.ACCESSIBILITY",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "Accessibility features of X",
+      "url": "https://help.x.com/en/using-x/accessibility-features",
+      "sourceVersion": "live-help-retrieved-2026-08-22",
+      "supports": ["ALT for still media/GIFs", "video caption upload", "camel-case hashtag and readable-text recommendations"],
+      "limitations": ["Most author guidance is best practice, not hard platform acceptance logic"]
+    },
+    {
+      "sourceId": "X.HELP.SRT",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "Upload a caption file with videos",
+      "url": "https://help.x.com/en/using-x/upload-caption-srt-file",
+      "sourceVersion": "live-help-retrieved-2026-08-22",
+      "supports": ["SRT caption workflow"],
+      "limitations": ["Client/account availability must be verified"]
+    },
+    {
+      "sourceId": "X.API.OAUTH2_PKCE",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "OAuth 2.0 Authorization Code Flow with PKCE",
+      "url": "https://docs.x.com/fundamentals/authentication/oauth-2-0/authorization-code",
+      "sourceVersion": "live-api-doc-retrieved-2026-08-22",
+      "supports": ["tweet.write and related user-context scopes", "refresh-token scope"],
+      "limitations": ["Actual access still depends on app/account capability"]
+    },
+    {
+      "sourceId": "X.POLICY.AUTOMATION",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "X's automation development rules",
+      "url": "https://help.x.com/en/rules-and-policies/x-automation",
+      "sourceVersion": "updated-2026-04-retrieved-2026-08-22",
+      "supports": ["consent and anti-spam boundaries", "duplicate/substantially similar content restrictions", "automated-interaction restrictions"],
+      "limitations": ["Policy review remains contextual"]
+    },
+    {
+      "sourceId": "X.DEVELOPER.GUIDELINES",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "X Developer Guidelines",
+      "url": "https://docs.x.com/developer-guidelines",
+      "sourceVersion": "live-guidelines-retrieved-2026-08-22",
+      "supports": ["official API requirement", "prohibition of browser scripting/non-API automation"],
+      "limitations": []
+    },
+    {
+      "sourceId": "X.API.PRICING",
+      "platformCode": "X",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "X API pricing",
+      "url": "https://docs.x.com/x-api/getting-started/pricing",
+      "sourceVersion": "live-pricing-doc-retrieved-2026-08-22",
+      "supports": ["current pay-per-use model and Developer Console as pricing authority"],
+      "limitations": ["Never persist scraped prices as timeless platform rules"]
+    },
+    {
+      "sourceId": "XHS.OPEN.SHARE_OVERVIEW",
+      "platformCode": "XIAOHONGSHU",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "小红书分享开放平台能力概览",
+      "url": "https://agora.xiaohongshu.com/doc",
+      "sourceVersion": "page-updated-2023-07-04-retrieved-2026-08-22",
+      "supports": ["official share SDK", "image/video share", "topic/title recommendation capability descriptions"],
+      "limitations": ["Not a server-side direct-publication API"]
+    },
+    {
+      "sourceId": "XHS.OPEN.ANDROID",
+      "platformCode": "XIAOHONGSHU",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "小红书分享 SDK Android 接入指南",
+      "url": "https://agora.xiaohongshu.com/doc/android",
+      "sourceVersion": "page-updated-2023-10-11-retrieved-2026-08-22",
+      "supports": ["image note 1-18 images", "one video with optional cover", "AppKey binding", "share-result error taxonomy"],
+      "limitations": ["SDK-path constraints do not automatically apply to web/native composer"]
+    },
+    {
+      "sourceId": "XHS.OPEN.IOS",
+      "platformCode": "XIAOHONGSHU",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "小红书分享 SDK iOS 接入指南",
+      "url": "https://agora.xiaohongshu.com/doc/ios",
+      "sourceVersion": "page-updated-2023-11-16-retrieved-2026-08-22",
+      "supports": ["single media type", "one video", "legacy image crop conditions", "permission/error states"],
+      "limitations": ["Legacy and new crop paths differ"]
+    },
+    {
+      "sourceId": "XHS.OPEN.HARMONY",
+      "platformCode": "XIAOHONGSHU",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "小红书分享 SDK HarmonyOS 接入指南",
+      "url": "https://agora.xiaohongshu.com/doc/harmony",
+      "sourceVersion": "sdk-1.0.4-page-updated-2024-12-11-retrieved-2026-08-22",
+      "supports": ["image note 1-18 images", "one video with optional cover", "minimum app version and AppKey"],
+      "limitations": ["Harmony feature set differs from Android/iOS"]
+    },
+    {
+      "sourceId": "XHS.OPEN.QA",
+      "platformCode": "XIAOHONGSHU",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "小红书分享开放平台常见问题",
+      "url": "https://agora.xiaohongshu.com/doc/qa",
+      "sourceVersion": "page-updated-2023-12-10-retrieved-2026-08-22",
+      "supports": ["title/body auto-fill restricted", "crop rules not unified", "cross-client differences", "success/cancel callback limitations"],
+      "limitations": ["Page update date is old; current account/app probe is required"]
+    },
+    {
+      "sourceId": "XHS.CREATOR.ENTRY",
+      "platformCode": "XIAOHONGSHU",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "小红书创作服务平台发布入口",
+      "url": "https://creator.xiaohongshu.com/publish",
+      "sourceVersion": "live-entry-retrieved-2026-08-22",
+      "supports": ["official web creator entry"],
+      "limitations": ["Login-gated; fields, counters and region/account availability were not publicly inspectable"]
+    },
+    {
+      "sourceId": "XHS.PGY.POLICY_HUB",
+      "platformCode": "XIAOHONGSHU",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "小红书蒲公英帮助中心规则公告",
+      "url": "https://pgy.xiaohongshu.com/help/home",
+      "sourceVersion": "live-policy-hub-retrieved-2026-08-22",
+      "supports": ["community covenant and commercial-policy index", "current 2026 help content"],
+      "limitations": ["Rules vary by content/business classification"]
+    },
+    {
+      "sourceId": "XHS.PGY.CONTENT_REVIEW",
+      "platformCode": "XIAOHONGSHU",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "蒲公英内容审核规范",
+      "url": "https://pgy.xiaohongshu.com/help/detail?id=6495c527d1eedeeb48fb18b1f875650e&userType=4",
+      "sourceVersion": "page-dated-2026-07-15-retrieved-2026-08-22",
+      "supports": ["commercial-note review flow", "guarantee/overclaim examples", "external-platform cooperation restrictions"],
+      "limitations": ["Commercial cooperation policy is not identical to ordinary community content policy"]
+    },
+    {
+      "sourceId": "XHS.AD.REVIEW",
+      "platformCode": "XIAOHONGSHU",
+      "authority": "PRIMARY_PLATFORM",
+      "title": "小红书聚光广告物料审核规范",
+      "url": "https://ad.xiaohongshu.com/next_help/docs/8dc5bd9c45c9a90cb9912f3400d43f92",
+      "sourceVersion": "live-policy-retrieved-2026-08-22",
+      "supports": ["rights/authorization evidence", "advertising material review", "clear and accurate claims"],
+      "limitations": ["Advertising rules only apply when content classification is advertising"]
+    },
+    {
+      "sourceId": "OWNER.BUFFER_REFERENCE",
+      "platformCode": "CROSS_PLATFORM",
+      "authority": "SECONDARY_OWNER_INPUT",
+      "title": "Owner-provided Buffer comparative notes",
+      "url": null,
+      "sourceVersion": "received-2026-08-22",
+      "supports": ["workflow and calendar comparison"],
+      "limitations": ["Not an official platform source", "Not copied into the public repository"]
+    },
+    {
+      "sourceId": "OWNER.POSTIZ_REFERENCE",
+      "platformCode": "CROSS_PLATFORM",
+      "authority": "SECONDARY_OWNER_INPUT",
+      "title": "Owner-provided Postiz comparative notes",
+      "url": null,
+      "sourceVersion": "received-2026-08-22",
+      "supports": ["provider, scheduling and failure-state comparison"],
+      "limitations": ["Not an official platform source", "Postiz source is AGPL-3.0 and remains POC-GATED", "Not copied into the public repository"]
+    },
+    {
+      "sourceId": "OWNER.OPPONENT_REFERENCE",
+      "platformCode": "CROSS_PLATFORM",
+      "authority": "SECONDARY_OWNER_INPUT",
+      "title": "Owner-provided LumiClaw opponent analysis",
+      "url": null,
+      "sourceVersion": "received-2026-08-22",
+      "supports": ["product differentiation and workflow comparison"],
+      "limitations": ["Not an official platform source", "Not copied into the public repository"]
+    }
+  ]
+}

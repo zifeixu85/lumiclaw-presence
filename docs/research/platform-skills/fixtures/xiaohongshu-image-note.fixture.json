@@ -1,0 +1,71 @@
+{
+  "fixtureId": "FIXTURE_XHS_IMAGE_NOTE_001",
+  "researchOnly": true,
+  "profileRef": { "profileCode": "XHS_IMAGE_NOTE", "profileVersion": "0.1.0-research" },
+  "rulePackRef": { "packId": "org.lumiclaw.platform.xiaohongshu", "packVersion": "0.1.0-research" },
+  "target": { "marketCode": "CN", "contentLocaleCode": "zh-CN", "uiLocaleCode": "zh-CN" },
+  "approvedRevisionDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+  "content": {
+    "title": "一条发布，如何变成可审校的全球行动",
+    "body": "一次产品发布，最容易失控的不是写不出文案，而是每个平台各做一份、证据和批准逐渐走散。\n\nLumiClaw Presence 把发布编译成一个可审校的 Presence Mission：先绑定可用证据，再为不同市场和账号生成原生表达，Producer 与 Auditor 分离，最后仍由人确认公开动作。\n\n这次比赛切片只证明一条受治理的发布—反馈闭环，不承诺流量、线索或收入。三张图分别展示任务结构、审校闸口和手动发布回执。",
+    "topicSuggestions": ["AI产品", "全球化", "产品发布"],
+    "images": [
+      {
+        "mediaId": "xhs-cover",
+        "order": 1,
+        "role": "DESIGNED_COVER",
+        "sourceMaster": "media/xhs-presence-01.master.svg",
+        "exportPath": "media/xhs-presence-01.1080x1440.png",
+        "width": 1080,
+        "height": 1440,
+        "format": "PNG",
+        "colorSpace": "sRGB",
+        "fileSizeBytes": 700000,
+        "essentialTextRepeatedInBody": true
+      },
+      {
+        "mediaId": "xhs-governance",
+        "order": 2,
+        "role": "EXPLANATION",
+        "sourceMaster": "media/xhs-presence-02.master.svg",
+        "exportPath": "media/xhs-presence-02.1080x1440.png",
+        "width": 1080,
+        "height": 1440,
+        "format": "PNG",
+        "colorSpace": "sRGB",
+        "fileSizeBytes": 720000,
+        "essentialTextRepeatedInBody": true
+      },
+      {
+        "mediaId": "xhs-receipt",
+        "order": 3,
+        "role": "EXPLANATION",
+        "sourceMaster": "media/xhs-presence-03.master.svg",
+        "exportPath": "media/xhs-presence-03.1080x1440.png",
+        "width": 1080,
+        "height": 1440,
+        "format": "PNG",
+        "colorSpace": "sRGB",
+        "fileSizeBytes": 680000,
+        "essentialTextRepeatedInBody": true
+      }
+    ]
+  },
+  "accountProbe": {
+    "status": "REQUIRED_BEFORE_APPROVAL",
+    "requiredCodes": ["XHS_ACCOUNT_IDENTITY", "XHS_CREATOR_WEB_ACCESS", "XHS_TITLE_COUNTER", "XHS_BODY_COUNTER", "XHS_IMAGE_COUNT", "XHS_NATIVE_CROP", "XHS_TOPIC_SELECTOR"],
+    "observations": []
+  },
+  "delivery": {
+    "modeCode": "MANUAL_DESKTOP_ASSISTANT",
+    "officialEntryUrl": "https://creator.xiaohongshu.com/publish",
+    "fallbackInstruction": "If web publishing is unavailable for this account or region, open the native app and copy the exact approved text, select the exact approved images in order, and return the published URL or screenshots for reconciliation.",
+    "requiresAccountConfirmation": true,
+    "reconciliationRequired": true
+  },
+  "expectedResult": {
+    "hardConstraintStatus": "PENDING_CAPABILITY_PROBE",
+    "recommendationWarnings": [],
+    "capabilityProbeCodes": ["XHS_TITLE_COUNTER", "XHS_BODY_COUNTER", "XHS_IMAGE_COUNT", "XHS_NATIVE_CROP", "XHS_TOPIC_SELECTOR"]
+  }
+}
