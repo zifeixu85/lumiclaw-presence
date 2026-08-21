@@ -1,5 +1,6 @@
 import {
   CampaignPreparationError,
+  createLocalPrivateCampaignDocument,
   createPublishingSchedule,
   createDemoCampaignDocument,
   isUuidV7,
@@ -9,6 +10,8 @@ import {
   type CampaignRepository,
   type MutationResult
 } from '@lumiclaw/domain';
+import {blockedManualPublishAuthorization, isSecretBearingObject, LOCAL_MATERIAL_MAX_BYTES, LocalPresenceContractError, normalizeLocalDisplayName, validateLocalCampaignIdentityInput, validateOnboardingContext, type LocalOnboardingSession, type LocalPresenceRepository, type ManualPublishHandoff} from '@lumiclaw/domain';
+import {LocalContentAddressedBlobStore} from '@lumiclaw/blob-store';
 import {
   acceptRuntimeSubmission,
   acknowledgeRuntimeTask,
@@ -39,15 +42,18 @@ import {
   type TaskContract,
   type ShadowMissionRepository
 } from '@lumiclaw/governed-shadow';
-import {PostgresCampaignRepository} from '@lumiclaw/db';
+import {PostgresCampaignRepository, PostgresLocalPresenceRepository} from '@lumiclaw/db';
 import {timingSafeEqual} from 'node:crypto';
+import {readFile} from 'node:fs/promises';
+import path from 'node:path';
 import Fastify, {type FastifyInstance, type FastifyReply, type FastifyRequest} from 'fastify';
 import {MemoryCampaignRepository} from './memory-campaign-repository.js';
+import {MemoryLocalPresenceRepository} from './memory-local-presence-repository.js';
 import {liveTaskActionPhaseAllowed} from './live-ticket-policy.js';
 import {openApiDocument} from './openapi.js';
 import {LiveRuntimeTicketStore, LiveTicketError, readComposeSecret, type LiveTicketAction, type LiveTicketBinding} from './live-runtime-security.js';
 
-type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
+type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; localPresenceRepository?: LocalPresenceRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
 type CampaignParams = {campaignId: string};
 type MissionParams = {missionId: string};
 type RuntimeEventBody =
@@ -60,15 +66,17 @@ type LiveTicketBody = LiveTicketBinding & {agentTeamsSourceTarSha256: string; ag
 type LiveModelBody = {taskId: string; roleId: string; attempt: number; inputProjectionDigest: string};
 
 export function buildApi(options: BuildOptions = {}): FastifyInstance {
-  const app = Fastify({logger: false});
+  const app = Fastify({logger: false, bodyLimit: LOCAL_MATERIAL_MAX_BYTES + 1});
   const now = options.now ?? (() => new Date());
   const repository = options.repository ?? new MemoryCampaignRepository(now);
   const shadowRepository = options.shadowRepository ?? new MemoryShadowMissionRepository();
+  const localPresenceRepository = options.localPresenceRepository ?? new MemoryLocalPresenceRepository();
   const runtimeImportToken = options.runtimeImportToken;
   const ticketStore = new LiveRuntimeTicketStore(options.runtimeBootstrapSecret, () => now().getTime());
   const deepseekApiKey = options.deepseekApiKey;
   const liveModelProviderFactory = options.liveModelProviderFactory ?? ((apiKey: string) => new DeepSeekModelProvider({apiKey, executionClass: 'CANARY'}));
-  app.addHook('onClose', async () => { await repository.close(); await shadowRepository.close(); });
+  app.addContentTypeParser(['text/plain', 'text/markdown', 'application/octet-stream', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'], {parseAs: 'buffer'}, (_request, body, done) => done(null, body));
+  app.addHook('onClose', async () => { await repository.close(); await shadowRepository.close(); await localPresenceRepository.close(); });
 
   app.get('/health', async (_request, reply) => {
     try {
@@ -80,13 +88,157 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     }
   });
 
+  const ensurePublicSafeCampaign = async () => {
+    const document = createDemoCampaignDocument();
+    const current = await repository.get(document.organizationId, document.id);
+    if (current !== undefined) return current;
+    const result = await repository.create(document.organizationId, document, 'sdd006-public-safe-example-v1', sha256Digest(document), now());
+    if (!result.ok) throw new LocalPresenceContractError(result.code);
+    return result.envelope;
+  };
+
+  app.get('/api/v1/local-workspace', async (_request, reply) => {
+    void reply.header('cache-control', 'no-store');
+    const profile = await localPresenceRepository.getProfile();
+    const publishAuthorization = blockedManualPublishAuthorization();
+    if (profile === undefined) return {code: 'LOCAL_FIRST_OPEN', profile: null, session: null, materials: [], handoffs: [], campaign: null, publishAuthorization};
+    const [session, materials, handoffs] = await Promise.all([localPresenceRepository.getSession(profile.id), localPresenceRepository.listMaterials(profile.id), localPresenceRepository.listManualHandoffs(profile.id)]);
+    const campaign = session?.organizationId !== null && session?.organizationId !== undefined && session.campaignId !== null ? await repository.get(session.organizationId, session.campaignId) : undefined;
+    return {code: 'LOCAL_WORKSPACE_REOPENED', profile, session: session ?? null, materials, handoffs, campaign: campaign ?? null, publishAuthorization};
+  });
+
+  app.post('/api/v1/local-owner-profile', async (request, reply) => {
+    if (isSecretBearingObject(request.body)) return reply.status(422).send(errorBody('BROWSER_SECRET_FIELD_FORBIDDEN'));
+    if (!isExactRecord(request.body, ['displayName'])) return reply.status(422).send(errorBody('LOCAL_PROFILE_SCHEMA_INVALID'));
+    const profile = await localPresenceRepository.createProfile(normalizeLocalDisplayName(request.body.displayName), now());
+    return reply.status(201).header('cache-control', 'no-store').send({code: 'LOCAL_PROFILE_READY', profile, requiresEmail: false, requiresPassword: false, remoteRegistration: false});
+  });
+
+  app.post('/api/v1/local-onboarding/example', async (_request, reply) => {
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    await requireMutableOnboardingSession(localPresenceRepository, profile.id);
+    const campaign = await ensurePublicSafeCampaign();
+    const session = await localPresenceRepository.chooseExample(profile.id, campaign.document.organizationId, campaign.document.id, {marketCodes: ['US'], contentLocales: ['en-US'], platforms: ['LINKEDIN', 'X', 'BLUESKY', 'XIAOHONGSHU'], defaultTimeZone: 'America/Los_Angeles'}, now());
+    return reply.status(201).send({code: 'PUBLIC_SAFE_EXAMPLE_READY', source: 'PUBLIC_SAFE_EXAMPLE', externalActionAllowed: false, session, campaign});
+  });
+
+  app.post('/api/v1/local-onboarding/materials-path', async (_request, reply) => {
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    await requireMutableOnboardingSession(localPresenceRepository, profile.id);
+    const session = await localPresenceRepository.selectLocalMaterials(profile.id, now());
+    return {code: 'LOCAL_MATERIAL_PATH_READY', session, acceptedTypes: ['.md', '.txt'], maxBytes: LOCAL_MATERIAL_MAX_BYTES, plannedTypes: ['.pdf', '.docx']};
+  });
+
+  app.post('/api/v1/local-onboarding/context', async (request, reply) => {
+    if (isSecretBearingObject(request.body)) return reply.status(422).send(errorBody('BROWSER_SECRET_FIELD_FORBIDDEN'));
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    await requireMutableOnboardingSession(localPresenceRepository, profile.id);
+    const session = await localPresenceRepository.setContext(profile.id, validateOnboardingContext(request.body), now());
+    return {code: 'LOCAL_CONTEXT_READY', session};
+  });
+
+  app.post('/api/v1/local-onboarding/complete', async (request, reply) => {
+    if (isSecretBearingObject(request.body)) return reply.status(422).send(errorBody('BROWSER_SECRET_FIELD_FORBIDDEN'));
+    const identity = validateLocalCampaignIdentityInput(request.body);
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    const currentSession = await localPresenceRepository.getSession(profile.id);
+    if (currentSession === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
+    if (currentSession.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_ONBOARDING_ALREADY_COMPLETED');
+    if (currentSession.path !== 'LOCAL_MATERIALS' || !['CONTEXT_READY', 'COMPLETION_PENDING'].includes(currentSession.state) || currentSession.marketCodes.length === 0 || currentSession.contentLocales.length === 0 || currentSession.platforms.length === 0 || currentSession.defaultTimeZone === null) throw new LocalPresenceContractError('LOCAL_ONBOARDING_NOT_READY');
+    const materials = (await localPresenceRepository.listMaterials(profile.id)).filter((item) => item.state === 'READY');
+    const document = createLocalPrivateCampaignDocument({
+      ownerProfileId: profile.id,
+      ownerDisplayName: profile.displayName,
+      profileCreatedAt: profile.createdAt,
+      identity,
+      context: {marketCodes: currentSession.marketCodes, contentLocales: currentSession.contentLocales, platforms: currentSession.platforms, defaultTimeZone: currentSession.defaultTimeZone},
+      materials
+    });
+    const documentDigest = sha256Digest(document);
+    await localPresenceRepository.reserveLocalOnboardingCompletion(profile.id, materials.map((material) => material.id), documentDigest, now());
+    const created = await repository.create(document.organizationId, document, `sdd006-local-private-${profile.id}`, documentDigest, now());
+    if (!created.ok) throw new LocalPresenceContractError('LOCAL_CAMPAIGN_INITIALIZATION_CONFLICT');
+    const session = await localPresenceRepository.completeLocalOnboarding(profile.id, document.organizationId, document.id, documentDigest, now());
+    return {code: 'LOCAL_ONBOARDING_COMPLETE', source: 'LOCAL_PRIVATE_USER_CONFIRMED', dataMode: 'LOCAL_PRIVATE', externalActionAllowed: false, session, campaign: created.envelope};
+  });
+
+  app.get('/api/v1/local-materials', async (_request, reply) => {
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    return reply.header('cache-control', 'no-store').send({code: 'LOCAL_MATERIAL_LIST', materials: await localPresenceRepository.listMaterials(profile.id)});
+  });
+
+  app.post('/api/v1/local-materials', async (request, reply) => {
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    await requireMutableOnboardingSession(localPresenceRepository, profile.id);
+    const encodedName = request.headers['x-lumiclaw-file-name'];
+    if (typeof encodedName !== 'string') return reply.status(422).send(errorBody('LOCAL_MATERIAL_FILE_NAME_REQUIRED'));
+    if (!(request.body instanceof Buffer)) return reply.status(422).send(errorBody('LOCAL_MATERIAL_BYTES_REQUIRED'));
+    const material = await localPresenceRepository.ingestMaterial({ownerProfileId: profile.id, fileName: decodeFileName(encodedName), declaredMediaType: request.headers['content-type']?.split(';')[0] ?? 'application/octet-stream', bytes: request.body}, now());
+    return reply.status(201).header('cache-control', 'no-store').send({code: 'LOCAL_MATERIAL_READY', material});
+  });
+
+  app.delete<{Params: {materialId: string}}>('/api/v1/local-materials/:materialId', async (request, reply) => {
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    const removed = await localPresenceRepository.deleteMaterial(profile.id, request.params.materialId);
+    if (!removed) return reply.status(404).send(errorBody('LOCAL_MATERIAL_NOT_FOUND'));
+    return {code: 'LOCAL_MATERIAL_DELETED'};
+  });
+
+  app.get('/api/v1/environment-readiness', async (_request, reply) => {
+    const checkedAt = now().toISOString();
+    let postgresAvailable = false;
+    try { postgresAvailable = await localPresenceRepository.health(); } catch {}
+    return reply.header('cache-control', 'no-store').send({code: 'ENVIRONMENT_READINESS', secretCollectionAllowed: false, items: [
+      {service: 'WEB', state: 'UNKNOWN', source: 'CLIENT_OBSERVATION', checkedAt, reasonCode: 'WEB_CONFIRMS_AFTER_RESPONSE', remediation: null},
+      {service: 'API', state: 'AVAILABLE', source: 'API_SELF_CHECK', checkedAt, reasonCode: 'READINESS_HANDLER_REACHED', remediation: null},
+      {service: 'POSTGRESQL', state: postgresAvailable ? 'AVAILABLE' : 'UNAVAILABLE', source: 'POSTGRESQL_PROBE', checkedAt, reasonCode: postgresAvailable ? 'LOCAL_SCHEMA_REACHABLE' : 'LOCAL_SCHEMA_UNAVAILABLE', remediation: postgresAvailable ? null : 'Start the project-scoped PostgreSQL and migration services.'},
+      {service: 'AGENTTEAMS_ADAPTER', state: 'AVAILABLE', source: 'BUILD_CONTRACT', checkedAt, reasonCode: 'ADAPTER_CONTRACT_BUILT', remediation: null},
+      {service: 'AGENTTEAMS_RUNTIME', state: 'NOT_CONFIGURED', source: 'RUNTIME_CONFIGURATION', checkedAt, reasonCode: 'SDD_007_REQUIRED', remediation: 'Complete the later SDD-007 terminal broker and pinned runtime setup.'}
+    ]});
+  });
+
+  app.get('/api/v1/ai-team', async () => ({code: 'AI_TEAM_ROSTER', metricSource: 'NO_RUNTIME_OBSERVATION', agents: aiTeamRoster()}));
+
+  app.get('/api/v1/skills', async () => ({code: 'REPOSITORY_SKILL_LIST', source: 'REPOSITORY_OWNED', skills: repositorySkills.map(({id, name, roleIds}) => ({id, name, roleIds, state: 'AVAILABLE', license: 'Apache-2.0'}))}));
+  app.get<{Params: {skillId: string}}>('/api/v1/skills/:skillId', async (request, reply) => {
+    const skill = repositorySkills.find((item) => item.id === request.params.skillId);
+    if (skill === undefined) return reply.status(404).send(errorBody('SKILL_NOT_FOUND'));
+    const content = await readFile(path.join(process.cwd(), 'skills', skill.id, 'SKILL.md'), 'utf8');
+    return {code: 'REPOSITORY_SKILL_REOPENED', source: 'REPOSITORY_OWNED', skill: {...skill, license: 'Apache-2.0', files: ['SKILL.md'], content}};
+  });
+
+  app.get('/api/v1/manual-publish-handoffs', async (_request, reply) => {
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    return {code: 'MANUAL_HANDOFF_LIST', authorization: blockedManualPublishAuthorization(), handoffs: await localPresenceRepository.listManualHandoffs(profile.id)};
+  });
+
+  app.post('/api/v1/manual-publish-handoffs', async (request, reply) => {
+    if (isSecretBearingObject(request.body)) return reply.status(422).send(errorBody('BROWSER_SECRET_FIELD_FORBIDDEN'));
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    if (!isManualHandoffBody(request.body)) return reply.status(422).send(errorBody('MANUAL_HANDOFF_SCHEMA_INVALID'));
+    const body = request.body;
+    const campaign = await repository.get(body.organizationId, body.campaignId);
+    const revision = campaign?.document.artifactRevisions.find((item) => item.id === body.artifactRevisionId && item.platform === body.platform);
+    if (campaign === undefined || revision === undefined) return reply.status(404).send(errorBody('MANUAL_HANDOFF_ARTIFACT_NOT_FOUND'));
+    return reply.status(409).send({
+      code: 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED',
+      mode: campaign.mode,
+      live: false,
+      createsHandoff: false,
+      createsPublishedState: false,
+      readBackEvidencePresent: false,
+      authorization: blockedManualPublishAuthorization()
+    });
+  });
+
   app.get('/api/v1/openapi.json', async () => openApiDocument);
   app.get('/api/v1/campaigns/demo-template', async () => ({code: 'DEMO_TEMPLATE_READY', mode: 'DEMO_SEED', live: false, document: createDemoCampaignDocument()}));
 
   app.get('/api/v1/campaigns', async (request, reply) => {
     const organizationId = requireOrganization(request, reply);
     if (organizationId === undefined) return;
-    return {code: 'CAMPAIGN_LIST', mode: 'DEMO_SEED', live: false, campaigns: await repository.list(organizationId)};
+    const campaigns = await repository.list(organizationId);
+    return {code: 'CAMPAIGN_LIST', mode: campaigns[0]?.mode ?? 'DEMO_SEED', live: false, campaigns};
   });
 
   app.post('/api/v1/campaigns', async (request, reply) => {
@@ -95,6 +247,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (organizationId === undefined || idempotencyKey === undefined) return;
     const document = request.body as CampaignDocument;
     if (document?.organizationId !== organizationId) return reply.status(403).send(errorBody('ORGANIZATION_SCOPE_MISMATCH'));
+    if (document?.dataMode === 'LOCAL_PRIVATE') return reply.status(403).send(errorBody('LOCAL_PRIVATE_CAMPAIGN_REQUIRES_ONBOARDING'));
     try {
       const result = await repository.create(organizationId, document, idempotencyKey, sha256Digest(document), now());
       return sendMutation(reply, result, 201);
@@ -129,8 +282,8 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (organizationId === undefined) return;
     const value = await repository.getMissionContract(organizationId, request.params.campaignId);
     if (value === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
-    if (value.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: value.digest, version: value.version, gapCodes: value.gapCodes});
-    return {code: 'MISSION_CONTRACT_READY', mode: 'DEMO_SEED', live: false, ...value};
+    if (value.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), mode: value.mode, digest: value.digest, version: value.version, gapCodes: value.gapCodes});
+    return {code: 'MISSION_CONTRACT_READY', live: false, ...value};
   });
 
   app.post<{Params: CampaignParams; Body: SchedulePreviewBody}>('/api/v1/campaigns/:campaignId/schedule-preview', async (request, reply) => {
@@ -141,7 +294,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     try {
       const input = parseSchedulePreviewBody(request.body);
       const value = createPublishingSchedule({...input, organizationId, campaignId: request.params.campaignId, artifactRevisions: envelope.document.artifactRevisions}, now());
-      return {code: 'SCHEDULE_PREVIEW_READY', mode: 'DEMO_SEED', live: false, executionAllowed: false, ...value};
+      return {code: 'SCHEDULE_PREVIEW_READY', mode: envelope.mode, live: false, executionAllowed: false, ...value};
     } catch (error) { return sendDomainOrUnavailable(reply, error); }
   });
 
@@ -149,7 +302,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     const organizationId = requireOrganization(request, reply); if (organizationId === undefined) return;
     const campaign = await repository.get(organizationId, request.params.campaignId); if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
     const missions = await shadowRepository.getByCampaign(organizationId, request.params.campaignId);
-    return {code: 'SHADOW_MISSION_LIST', mode: 'DEMO_SEED', live: false, externalActionAllowed: false, missions};
+    return {code: 'SHADOW_MISSION_LIST', mode: campaign.mode, live: false, externalActionAllowed: false, missions};
   });
 
   app.post<{Params: CampaignParams; Body: {sourceDigest: string; fault: 'BETA_TO_GA'; providerMode?: 'PUBLIC_SAFE_MOCK' | 'LIVE_DEEPSEEK_UAT'; providerModel?: 'deepseek-v4-flash' | 'deepseek-v4-pro'}}>('/api/v1/campaigns/:campaignId/shadow-missions', async (request, reply) => {
@@ -157,6 +310,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (organizationId === undefined || idempotencyKey === undefined) return;
     if (typeof ifMatch !== 'string' || ifMatch.length === 0) return reply.status(428).send(errorBody('ETAG_REQUIRED'));
     const campaign = await repository.get(organizationId, request.params.campaignId); if (campaign === undefined) return reply.status(404).send(errorBody('CAMPAIGN_NOT_FOUND'));
+    if (campaign.mode === 'LOCAL_PRIVATE') return reply.status(403).send({...errorBody('LOCAL_PRIVATE_RUNTIME_REQUIRES_SDD_007'), mode: 'LOCAL_PRIVATE'});
     if (campaign.etag !== ifMatch) return reply.status(412).header('ETag', campaign.etag).send(errorBody('CAMPAIGN_VERSION_CONFLICT'));
     if (campaign.readiness === 'BLOCKED') return reply.status(409).send({...errorBody('CAMPAIGN_BLOCKED'), digest: campaign.digest, version: campaign.version, gapCodes: campaign.gapCodes});
     if (!isStartMissionBody(request.body)) return reply.status(422).send(errorBody('SHADOW_START_SCHEMA_INVALID'));
@@ -386,6 +540,10 @@ function sendMutation(reply: FastifyReply, result: MutationResult, status: 200 |
 
 function sendDomainOrUnavailable(reply: FastifyReply, error: unknown) {
   if (error instanceof CampaignPreparationError) return reply.status(422).send({...errorBody(error.code), details: error.details});
+  if (error instanceof LocalPresenceContractError) {
+    const status = ['LOCAL_PROFILE_ALREADY_EXISTS', 'LOCAL_ONBOARDING_ALREADY_COMPLETED', 'LOCAL_ONBOARDING_COMPLETION_IN_PROGRESS', 'LOCAL_ONBOARDING_COMPLETION_CONFLICT', 'LOCAL_ONBOARDING_MATERIAL_SET_CHANGED', 'LOCAL_MATERIAL_BOUND_TO_CAMPAIGN', 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'].includes(error.code) ? 409 : error.code.includes('NOT_FOUND') ? 404 : error.code.includes('TYPE_PLANNED') || error.code.includes('TYPE_UNSUPPORTED') ? 415 : 422;
+    return reply.status(status).send(errorBody(error.code));
+  }
   if (error instanceof ScheduleContractError) return reply.status(422).send({...errorBody(error.code), details: error.message});
   if (error instanceof ShadowContractError) return reply.status(['IDEMPOTENCY_KEY_REUSED', 'IDEMPOTENT_RESPONSE_VERSION_ADVANCED', 'MISSION_VERSION_CONFLICT', 'MISSION_STATE_CONFLICT', 'OWNER_REVIEW_DUPLICATE', 'RUNTIME_PROJECT_ALREADY_DISPATCHED'].includes(error.code) ? 409 : 422).send({...errorBody(error.code), details: error.details ?? error.message});
   if (error !== null && typeof error === 'object' && 'statusCode' in error && typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 500) {
@@ -493,6 +651,53 @@ function sendLiveSecurityError(reply: FastifyReply, error: unknown) {
   return reply.status(code.includes('UNAVAILABLE') ? 503 : 403).send({code, mockFallback: false, secretPresent: false});
 }
 
+const repositorySkills = [
+  {id: 'trace-safe-escalation', name: 'Trace-safe escalation', roleIds: ['presence-mission-leader']},
+  {id: 'evidence-and-claim-grounding', name: 'Evidence and Claim grounding', roleIds: ['evidence-claim-steward', 'independent-auditor']},
+  {id: 'campaign-strategy', name: 'Campaign strategy', roleIds: ['campaign-planner']},
+  {id: 'account-native-expression', name: 'Account-native expression', roleIds: ['founder-identity-producer', 'product-account-producer']},
+  {id: 'independent-action-audit', name: 'Independent action audit', roleIds: ['independent-auditor']}
+] as const;
+
+function aiTeamRoster() {
+  return [
+    {code: 'A0', roleId: 'presence-mission-leader', name: '任务协调', responsibility: '只编排任务与依赖，不生成领域内容。', skillIds: ['trace-safe-escalation']},
+    {code: 'A1', roleId: 'evidence-claim-steward', name: '事实核验', responsibility: '冻结获批 Claim 与 Evidence 绑定。', skillIds: ['evidence-and-claim-grounding']},
+    {code: 'A2', roleId: 'campaign-planner', name: '市场策划', responsibility: '分配市场、账号与平台行动单元。', skillIds: ['campaign-strategy']},
+    {code: 'A3', roleId: 'founder-identity-producer', name: '创始人内容', responsibility: '仅生产创始人身份的平台内容。', skillIds: ['account-native-expression']},
+    {code: 'A4', roleId: 'product-account-producer', name: '产品内容', responsibility: '仅生产产品账号的平台内容。', skillIds: ['account-native-expression']},
+    {code: 'A5', roleId: 'independent-auditor', name: '独立审校', responsibility: '独立检查证据、权限与平台约束。', skillIds: ['evidence-and-claim-grounding', 'independent-action-audit']}
+  ].map((agent) => ({...agent, status: 'NOT_CONFIGURED', metrics: {tokens: 0, dailyCompleted: 0, source: 'NO_RUNTIME_OBSERVATION'}}));
+}
+
+async function requireLocalProfile(repository: LocalPresenceRepository, reply: FastifyReply) {
+  const profile = await repository.getProfile();
+  if (profile === undefined) { void reply.status(409).send(errorBody('LOCAL_PROFILE_REQUIRED')); return undefined; }
+  return profile;
+}
+
+async function requireMutableOnboardingSession(repository: LocalPresenceRepository, ownerProfileId: string): Promise<LocalOnboardingSession> {
+  const session = await repository.getSession(ownerProfileId);
+  if (session === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
+  if (session.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_ONBOARDING_ALREADY_COMPLETED');
+  if (session.state === 'COMPLETION_PENDING') throw new LocalPresenceContractError('LOCAL_ONBOARDING_COMPLETION_IN_PROGRESS');
+  return session;
+}
+
+function isExactRecord(value: unknown, keys: string[]): value is Record<string, unknown> {
+  return isRecord(value) && Object.keys(value).sort().join(',') === [...keys].sort().join(',');
+}
+
+function decodeFileName(value: string): string {
+  try { return decodeURIComponent(value); }
+  catch { throw new LocalPresenceContractError('LOCAL_MATERIAL_FILE_NAME_INVALID'); }
+}
+
+type ManualHandoffBody = {organizationId: string; campaignId: string; artifactRevisionId: string; platform: string; action: ManualPublishHandoff['action']};
+function isManualHandoffBody(value: unknown): value is ManualHandoffBody {
+  return isExactRecord(value, ['organizationId', 'campaignId', 'artifactRevisionId', 'platform', 'action']) && typeof value.organizationId === 'string' && isUuidV7(value.organizationId) && typeof value.campaignId === 'string' && isUuidV7(value.campaignId) && typeof value.artifactRevisionId === 'string' && isUuidV7(value.artifactRevisionId) && typeof value.platform === 'string' && ['X', 'BLUESKY', 'LINKEDIN', 'XIAOHONGSHU'].includes(value.platform) && typeof value.action === 'string' && ['OPEN_OFFICIAL_PAGE', 'OWNER_REPORTED_COMPLETE'].includes(value.action);
+}
+
 function errorBody(code: string) { return {code, mode: 'DEMO_SEED', live: false}; }
 
 function parseSchedulePreviewBody(value: unknown): SchedulePreviewBody {
@@ -510,7 +715,9 @@ function parseSchedulePreviewBody(value: unknown): SchedulePreviewBody {
 async function start(): Promise<void> {
   const connectionString = process.env.DATABASE_URL;
   if (connectionString === undefined) throw new Error('DATABASE_URL is required.');
-  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
+  const blobRoot = process.env.BLOB_ROOT;
+  if (blobRoot === undefined) throw new Error('BLOB_ROOT is required.');
+  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), localPresenceRepository: new PostgresLocalPresenceRepository(connectionString, new LocalContentAddressedBlobStore(blobRoot)), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
   const port = Number.parseInt(process.env.PORT ?? '4000', 10);
   await app.listen({host: '0.0.0.0', port});
 }

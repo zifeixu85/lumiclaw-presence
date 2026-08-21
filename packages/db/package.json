@@ -19,6 +19,7 @@
     "probe": "node dist/probe.js"
   },
   "dependencies": {
+    "@lumiclaw/blob-store": "*",
     "@lumiclaw/domain": "*",
     "kysely": "0.29.4",
     "node-pg-migrate": "9.0.0",

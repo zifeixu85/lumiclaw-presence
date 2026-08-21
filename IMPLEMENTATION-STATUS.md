@@ -3,9 +3,9 @@
 [English](IMPLEMENTATION-STATUS.md) | [简体中文](IMPLEMENTATION-STATUS.zh-CN.md) | [Architecture](ARCHITECTURE.md) | [Roadmap](ROADMAP.md)
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
-> **Snapshot:** 2026-08-06
-> **Current phase:** M2 — Governed shadow campaign
-> **Current implementation truth:** M0 and M1 are accepted. M2 is implemented and engineering-verified, including a pinned real six-member AgentTeams mission, DeepSeek provider contracts, an Owner-controlled local DeepSeek Canary with seven accepted redacted model receipts, immutable revisions, independent audit/re-audit, exact non-executable Owner Review, trace, ledger, and deterministic fault denial. Owner UAT is pending. EvoLink live verification, ActionGrants, connectors, external platform actions, external-user calibration, and business outcomes are not claimed. The current visual shell remains a functional skeleton, not the final product design.
+> **Snapshot:** 2026-08-22
+> **Current phase:** PR #5/#6/#7 convergence; M2 localization and M5 production UX foundations remain in progress
+> **Current implementation truth:** M0 and M1 are accepted. M2-01 through M2-06 are implemented and engineering-verified, including the pinned six-member AgentTeams shadow path; their Owner UAT is pending. `SDD-004` provides a non-executing desktop manual-package foundation and is evidence ready. `SDD-005` adds only public-safe US/JP/DE market-context contracts, while `SDD-006` adds a production-UX/local-onboarding candidate with PostgreSQL/Blob persistence and fail-closed publishing. The Integration Executor completed combined machine verification for SDD-004/005/006; Coordinator independent verification and Owner UAT remain pending. None of these slices authorizes customer-data claims, persistent AgentTeams installation, ActionGrants, connectors, credentials, compliance guarantees, external platform actions or `PUBLISHED`. EvoLink live verification, external-user calibration, and business outcomes are not claimed.
 
 ## Progress contract
 
@@ -25,12 +25,12 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | Metric | Current value |
 |---|---|
-| Accepted modules | `13 / 39` (`33.3%`) |
-| Evidence ready | `6 / 39` |
-| Blocked | `0 / 39` |
-| Active implementation SDD | `SDD-002 Governed SHADOW Campaign` — engineering evidence complete; Owner UAT pending |
-| Earliest owner blocker | Record SDD-002 Owner UAT before accepting M2 or starting controlled external action work |
-| Next executable module | No M3 module is authorized yet; first close M2 Owner UAT and freeze the Release-to-Presence-to-Feedback SDD |
+| Accepted modules | `13 / 42` (`31.0%`) |
+| Evidence ready | `7 / 42` |
+| Blocked | `0 / 42` |
+| Active implementation SDD | `SDD-005` / `M2-07` and `SDD-006` / `M5-00` are convergence candidates; `SDD-004` / `M3-00` is evidence ready |
+| Earliest owner blocker | Record SDD-002 Owner UAT before accepting M2 or starting any controlled external action |
+| Next executable module | Coordinator independently verifies the convergence baseline, then records Owner UAT; all real action modules remain gated |
 
 ## Milestone progress
 
@@ -38,10 +38,10 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 |---|---|---:|---|---|
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 accepted | [SDD-000 acceptance](docs/reports/acceptance/SDD-000-ACCEPTANCE.md) plus fresh Compose, migrations, CI mapping, isolated AgentTeams smoke and design/i18n evidence |
 | M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 accepted | [SDD-001 acceptance](docs/reports/acceptance/SDD-001-ACCEPTANCE.md): persisted campaign, four editable previews, schedule editor, shared control-plane state; final visual/interaction refinement remains planned |
-| M2 — Governed shadow campaign | `EVIDENCE_READY` | `0 / 6` | 6 evidence ready | Six-member AgentTeams run, DeepSeek gateway/Canary, revision/audit, fault denial, trace; Owner UAT pending |
-| M3 — Controlled live activation | `NOT_STARTED` | `0 / 7` | 7 not started | Exact grants, persistent scheduler, Bluesky Direct, honest Handoffs, receipts/reconciliation |
+| M2 — Governed shadow campaign | `IN_PROGRESS` | `0 / 7` | 6 evidence ready; 1 market-localization foundation in progress | Six-member AgentTeams run, DeepSeek gateway/Canary, revision/audit, fault denial, trace, sourced market context; Owner UAT pending |
+| M3 — Controlled live activation | `IN_PROGRESS` | `0 / 8` | 1 non-executing foundation evidence ready; 7 not started | Exact grants, persistent scheduler, Bluesky Direct, honest Handoffs, receipts/reconciliation |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 not started | Interaction → outcome → scoped learning → next mission, isolated SignalProvider PoC |
-| M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 not started | Fresh install, restore drill, conformance, accessibility, evidence export and demo |
+| M5 — Runnable candidate | `IN_PROGRESS` | `0 / 6` | 1 in progress, 5 not started | Local onboarding/production UX foundation, then fresh install, restore drill, conformance, accessibility, evidence export and demo |
 | M6 — External calibration | `NOT_STARTED` | `0 / 4` | 4 not started | Design-partner shadow run, isolation, reliability and external acceptance report |
 
 ## Module register
@@ -79,11 +79,13 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | M2-04 | Artifact revision, independent audit and owner review | `EVIDENCE_READY` | M1-05, M2-02 | Immutable revision, initial FAIL, correction, independent re-audit, and exact non-executable review verified |
 | M2-05 | Media assets and EvoLink adapter boundary | `EVIDENCE_READY` | M0-04, M2-03 | Content-addressed ingest, rights/cost receipt, and no-auto-approval contract verified; EvoLink live Canary pending |
 | M2-06 | Trace, ledger and Flight fault denial | `EVIDENCE_READY` | M2-02, M2-04 | Frozen claim fault denial, replay, immutable trace/ledger, and zero external action verified |
+| M2-07 | Market localization knowledge packs and scoped Agent context | `IN_PROGRESS` | M1-02, M2-02; SDD-005 | Sourced US/JP/DE public-safe packs, Organization override fixture, deterministic context/digest, Producer/Auditor projections and isolated evidence |
 
 ### M3 — Controlled live activation
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
+| M3-00 | Multi-platform activation capability and assisted-handoff foundation | `EVIDENCE_READY` | M1-05, M2-04; SDD-004 | Six-platform truthful registry, deterministic desktop manual packages, exact package digest, no false `PUBLISHED`, zero external action; Owner UAT pending |
 | M3-01 | Signed ActionGrant, transactional outbox and no-LLM operator | `NOT_STARTED` | M2-04 | Replay/expiry/revocation/digest failures close; unique attempt enforced |
 | M3-02 | Persistent scheduler execution and occurrence recovery | `NOT_STARTED` | M1-06, M3-01 | Due occurrence leasing, restart recovery, DST/misfire tests and no perpetual grant |
 | M3-03 | Bluesky official Direct connector | `NOT_STARTED` | M3-01 | Native URI/CID read-back, duplicate prevention and unknown reconciliation |
@@ -105,6 +107,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
+| M5-00 | Production UX 1.4 and local onboarding foundation | `IN_PROGRESS` | M0-05, M1-03–M1-06, M2-02, M2-04; SDD-006 | Local display-name entry, example/real-material onboarding, authoritative desktop shell, truthful runtime/account/manual-publish states, accessibility and Owner visual UAT |
 | M5-01 | Fresh Docker install and upgrade path | `NOT_STARTED` | M0–M4 | New machine runs normal and fail-closed paths without hidden developer services |
 | M5-02 | Backup, restore and unknown-action recovery drill | `NOT_STARTED` | M5-01 | Empty-database restore, Blob digest verification and no automatic resend |
 | M5-03 | Complete UI state matrix, i18n and accessibility | `NOT_STARTED` | M1–M4 | English/Chinese parity, visual regression, keyboard navigation and axe checks |

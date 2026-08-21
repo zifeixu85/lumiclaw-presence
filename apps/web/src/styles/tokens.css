@@ -1,0 +1,38 @@
+:root {
+  --lc-canvas: #f3f4f1;
+  --lc-surface: #fffefa;
+  --lc-surface-muted: #e9ece8;
+  --lc-sidebar: #172126;
+  --lc-sidebar-soft: #243138;
+  --lc-ink-panel: #10232f;
+  --lc-ink: #172126;
+  --lc-ink-2: #34434a;
+  --lc-ink-muted: #526169;
+  --lc-line: #d9dedb;
+  --lc-line-strong: #c5ccc8;
+  --lc-accent: #ef5a38;
+  --lc-accent-deep: #a93620;
+  --lc-accent-soft: #fff0e9;
+  --lc-coral: #ef5a38;
+  --lc-coral-deep: #a93620;
+  --lc-mint: #a8dbbc;
+  --lc-mint-soft: #e8f6ed;
+  --lc-positive: #246c4a;
+  --lc-positive-soft: #e8f6ed;
+  --lc-warning: #855008;
+  --lc-warning-soft: #fff4d8;
+  --lc-danger: #b83b36;
+  --lc-danger-soft: #fdebea;
+  --lc-info: #2757c7;
+  --lc-info-soft: #eaf0ff;
+  --lc-purple: #7357a4;
+  --lc-purple-soft: #f1edfa;
+  --lc-font-sans: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --lc-font-serif: "IBM Plex Sans", "Noto Sans SC", "PingFang SC", sans-serif;
+  --lc-font-mono: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+  --lc-sidebar-width: 224px;
+  --lc-header-height: 56px;
+  --lc-radius-sm: 7px;
+  --lc-radius-md: 10px;
+  --lc-shadow-float: 0 18px 60px rgb(18 28 33 / 0.16);
+}

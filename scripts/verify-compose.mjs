@@ -71,7 +71,8 @@ try {
   }
   checks.brokenMigrationBlockedApplicationReadiness = true;
   docker(['down', '--volumes', '--remove-orphans']);
-  docker(['up', '--build', '--detach'], {capture: false});
+  docker(['build', 'api'], {capture: false});
+  docker(['up', '--no-build', '--detach'], {capture: false});
   await waitForHealthy(['postgres', 'api', 'mission-worker', 'action-operator', 'web']);
   checks.freshVolumeServicesHealthy = true;
 
@@ -107,19 +108,22 @@ try {
 
   const webChinese = await fetch('http://127.0.0.1:3122/mission').then((response) => response.text());
   const webEnglish = await fetch('http://127.0.0.1:3122/en/mission').then((response) => response.text());
-  if (
-    !webChinese.includes('DEMO_SEED / NOT_LIVE') ||
-    !webChinese.includes('正在读取推广任务') ||
-    !webEnglish.includes('DEMO_SEED / NOT_LIVE') ||
-    !webEnglish.includes('Loading campaign')
-  ) {
+  const legacyMissionShell = webChinese.includes('DEMO_SEED / NOT_LIVE')
+    && webChinese.includes('正在读取推广任务')
+    && webEnglish.includes('DEMO_SEED / NOT_LIVE')
+    && webEnglish.includes('Loading campaign');
+  const localFirstOpenShell = webChinese.includes('先告诉我怎么称呼你。')
+    && webChinese.includes('首次设置不会执行外部发布')
+    && webEnglish.includes('First, tell us what to call you.')
+    && webEnglish.includes('First-time setup performs no external publishing');
+  if (!legacyMissionShell && !localFirstOpenShell) {
     throw new Error('Locale server shell or non-live truth marker smoke failed.');
   }
   checks.webLocaleServerShellAndTruthMarkers = true;
   const prefixlessWithEnglishPreference = await fetch('http://127.0.0.1:3122/mission', {
     headers: {cookie: 'NEXT_LOCALE=en'}
   }).then((response) => response.text());
-  if (!prefixlessWithEnglishPreference.includes('你现在可以做')) {
+  if (!prefixlessWithEnglishPreference.includes('你现在可以做') && !prefixlessWithEnglishPreference.includes('先告诉我怎么称呼你。')) {
     throw new Error('Prefixless routes must remain on the default zh-CN locale.');
   }
   checks.defaultLocaleIgnoresPreferenceCookie = true;

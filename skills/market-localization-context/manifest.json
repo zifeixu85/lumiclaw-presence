@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "name": "market-localization-context",
+  "version": "1.0.0",
+  "inputSchema": "lumiclaw.market-context-view.v1",
+  "projections": {
+    "presence-mission-leader": "LEADER_DEPENDENCY_STATUS",
+    "evidence-claim-steward": "AUDITOR_EVIDENCE",
+    "campaign-planner": "PLANNER_SELECTION",
+    "founder-identity-producer": "PRODUCER_MINIMUM",
+    "product-account-producer": "PRODUCER_MINIMUM",
+    "independent-auditor": "AUDITOR_EVIDENCE"
+  },
+  "outputBoundary": "LOCALIZATION_GUIDANCE_ONLY",
+  "createsOrchestrator": false,
+  "externalActionAllowed": false,
+  "mayRewriteApprovedArtifact": false
+}

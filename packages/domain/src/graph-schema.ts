@@ -26,7 +26,7 @@ export const organizationGraphSchema = {
         schemaVersion: version,
         slug: {type: 'string', pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$', minLength: 2, maxLength: 64},
         displayName: {type: 'string', minLength: 1, maxLength: 120},
-        dataMode: {const: 'DEMO_SEED'},
+        dataMode: {enum: ['DEMO_SEED', 'LOCAL_PRIVATE']},
         live: {const: false}
       }
     },

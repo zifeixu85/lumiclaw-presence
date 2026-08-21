@@ -4,7 +4,9 @@ import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import path from 'node:path';
 
 const root = process.cwd();
-const evidenceRoot = path.join(root, '.evidence/sdd-002');
+const evidenceRelative = process.env.DEPENDENCY_EVIDENCE_ROOT ?? '.evidence/sdd-002';
+if (!/^\.evidence\/[a-z0-9-]+$/u.test(evidenceRelative)) throw new Error('DEPENDENCY_EVIDENCE_ROOT_INVALID');
+const evidenceRoot = path.join(root, evidenceRelative);
 const output = path.join(evidenceRoot, 'sbom.cdx.json');
 await mkdir(evidenceRoot, {recursive: true});
 execFileSync(path.join(root, 'node_modules/.bin/cyclonedx-npm'), ['--output-file', output, '--output-format', 'JSON'], {cwd: root, stdio: 'pipe'});
@@ -23,7 +25,7 @@ sbom.metadata.component.properties = [
   ...existing.filter((property) => !String(property?.name).startsWith('lumiclaw:')),
   {name: 'lumiclaw:source-lock-sha256', value: sourceLockSha256},
   {name: 'lumiclaw:license-inventory-package-count', value: String(inventory.packageCount)},
-  {name: 'lumiclaw:license-inventory-path', value: '.evidence/sdd-002/license-inventory.json'}
+  {name: 'lumiclaw:license-inventory-path', value: `${evidenceRelative}/license-inventory.json`}
 ];
 await writeFile(output, `${JSON.stringify(sbom, null, 2)}\n`);
 console.info(JSON.stringify({status: 'PASS', bomFormat: sbom.bomFormat, specVersion: sbom.specVersion, components: sbom.components?.length ?? 0, sourceLockSha256}));

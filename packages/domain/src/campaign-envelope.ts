@@ -22,7 +22,7 @@ export function createCampaignEnvelope(document: CampaignDocument, now = new Dat
   return {
     document: prepared, version: 1, digest, etag: campaignEtag(prepared.id, 1, digest),
     readiness: gaps.length === 0 ? 'SAVED' : 'NEEDS_OWNER', gapCodes: gaps,
-    createdAt: timestamp, updatedAt: timestamp, mode: 'DEMO_SEED', live: false
+    createdAt: timestamp, updatedAt: timestamp, mode: prepared.dataMode, live: false
   };
 }
 
@@ -50,7 +50,7 @@ export function advanceCampaignEnvelope(current: CampaignEnvelope, incoming: Cam
   return {
     document: prepared, version, digest, etag: campaignEtag(prepared.id, version, digest),
     readiness: gaps.length === 0 ? 'SAVED' : 'NEEDS_OWNER', gapCodes: gaps,
-    createdAt: current.createdAt, updatedAt: now.toISOString(), mode: 'DEMO_SEED', live: false
+    createdAt: current.createdAt, updatedAt: now.toISOString(), mode: prepared.dataMode, live: false
   };
 }
 
@@ -162,6 +162,18 @@ function artifactGovernedContent(revision: ArtifactRevision, document: CampaignD
 }
 
 function assertInitialAuthorityFields(incoming: CampaignDocument): void {
+  if (incoming.dataMode === 'LOCAL_PRIVATE') {
+    const localAuthorityValid = incoming.graph.organization.dataMode === 'LOCAL_PRIVATE'
+      && incoming.evidenceRefs.every((item) => item.publicSafe === false && item.sourceUrl.startsWith('local-material://sha256/'))
+      && incoming.capabilitySnapshots.every((item) => item.source === 'LOCAL_UNVERIFIED_DECLARATION')
+      && incoming.graph.channelAccounts.every((item) => item.connectionState === 'NOT_CONNECTED')
+      && incoming.graph.accountMandates.every((item) => item.allowedActions.length === 1 && item.allowedActions[0] === 'PREPARE' && item.requiresOwnerReview)
+      && incoming.publishingSchedules.length === 0
+      && incoming.scheduleOccurrences.length === 0
+      && incoming.missionContract.externalActionAllowed === false;
+    if (!localAuthorityValid) throw new CampaignPreparationError('CAMPAIGN_AUTHORITY_FIELD_CHANGED', 'Initial LOCAL_PRIVATE Campaign authority must remain material-bound, unconnected, prepare-only, unscheduled, and externally inert.');
+    return;
+  }
   const fixture = createDemoCampaignDocument();
   const authorityView = (document: CampaignDocument) => ({
     evidenceRefs: document.evidenceRefs,

@@ -1,3 +1,4 @@
+export * from './activation.js';
 export * from './campaign-envelope.js';
 export * from './campaign-fixture.js';
 export * from './campaign-repository.js';
@@ -9,6 +10,9 @@ export * from './graph-fixture.js';
 export * from './graph-schema.js';
 export * from './graph.js';
 export * from './id.js';
+export * from './market-localization.js';
+export * from './local-presence.js';
+export * from './local-campaign.js';
 export * from './rfc3339.js';
 export * from './schedule.js';
 export * from './types.js';

@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "browser": "Google Chrome headless (real Blink runtime)",
+  "publicSafeFixtures": true,
+  "customerEvidence": false,
+  "consoleErrorCount": 0,
+  "checks": {
+    "manualPublishSixPlatformReadOnlyEvidence": true,
+    "marketLocalizationExactThreeConflictEvidence": true,
+    "productionBilingualDesktopEvidenceReferenced": true
+  },
+  "screenshots": [
+    {
+      "name": "01-manual-publish-assistant.png",
+      "width": 1440,
+      "height": 1100,
+      "bytes": 142140,
+      "sha256": "b373ed51b4d8afb5e62958af5a9aeb6b35f6a0d5f72184d743fda33265c4c312"
+    },
+    {
+      "name": "02-market-localization-jp-conflict.png",
+      "width": 1440,
+      "height": 2304,
+      "bytes": 365131,
+      "sha256": "1f9b5e2d592b9d7bb4e4ea98d90f0d4a005a8d8356a21ac4d72a88ce77071f2d"
+    }
+  ],
+  "productionEvidence": "docs/reports/evidence/sdd-006/browser-verification.json"
+}

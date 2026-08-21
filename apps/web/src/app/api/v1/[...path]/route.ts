@@ -2,7 +2,7 @@ import {NextResponse} from 'next/server';
 import type {NextRequest} from 'next/server';
 
 const controlApi = process.env.CONTROL_API_URL ?? 'http://127.0.0.1:4100';
-const forwardedRequestHeaders = ['content-type', 'x-lumiclaw-organization-id', 'idempotency-key', 'if-match'];
+const forwardedRequestHeaders = ['content-type', 'x-lumiclaw-file-name', 'x-lumiclaw-organization-id', 'idempotency-key', 'if-match'];
 const forwardedResponseHeaders = ['content-type', 'etag', 'location', 'idempotency-replayed'];
 
 async function proxy(request: NextRequest, context: {params: Promise<{path: string[]}>}): Promise<NextResponse> {
@@ -31,3 +31,4 @@ async function proxy(request: NextRequest, context: {params: Promise<{path: stri
 export const GET = proxy;
 export const POST = proxy;
 export const PUT = proxy;
+export const DELETE = proxy;

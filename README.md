@@ -192,6 +192,10 @@ docker compose up --build
 
 Open <http://127.0.0.1:3100>. The default locale is Simplified Chinese; English is available under `/en`. The normal Compose path uses synthetic data and performs no external social action. Live-provider UAT has a separate Owner-only protocol and must never place a key in Git, `.env`, shell history, issues, or logs.
 
+The first open asks only for a local display name—no email, password, or remote registration. You can then choose the public-safe example or upload UTF-8 `.md` / `.txt` material (2 MiB per file). Manifests, extracted text, and content-addressed Blobs persist with the project PostgreSQL/Blob volumes. PDF/DOCX remain explicitly `PLANNED`; Market, content Locale, Platform, and IANA Time Zone are stored as separate values.
+
+Publishing is currently a desktop manual assistant. Copying text, downloading example media, opening an official publish page, or reporting manual completion creates only an `AWAITING_RECONCILIATION` receipt—never `PUBLISHED`. Account OAuth/connection tests and the resident AgentTeams Runtime remain disabled for later SDDs, and the browser never collects a model API key.
+
 ### Preliminary-round SHADOW demo
 
 The bounded preliminary-round demo uses only deterministic synthetic data and the existing `PUBLIC_SAFE_MOCK / MOCK_CONFORMANCE` path. It does not run real AgentTeams or a live model, and it cannot publish.
