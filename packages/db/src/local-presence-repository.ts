@@ -47,9 +47,16 @@ export class PostgresLocalPresenceRepository implements LocalPresenceRepository 
       }
       const id = createUuidV7(now.getTime());
       const profile = await trx.insertInto('local_owner_profiles').values({id, singleton_key: true, schema_version: 1, display_name: normalized, state: 'PROFILE_READY', created_at: now, updated_at: now}).returningAll().executeTakeFirstOrThrow();
-      await trx.insertInto('local_onboarding_sessions').values({owner_profile_id: id, schema_version: 1, path: 'UNSELECTED', state: 'MATERIAL_CHOICE', data_mode: 'LOCAL_PRIVATE', organization_id: null, campaign_id: null, completion_digest: null, market_code: null, content_locale: null, platform: null, time_zone: null, market_codes: JSON.stringify([]), content_locales: JSON.stringify([]), platforms: JSON.stringify([]), default_time_zone: null, material_ids: JSON.stringify([]), created_at: now, updated_at: now}).execute();
+      await trx.insertInto('local_onboarding_sessions').values({owner_profile_id: id, schema_version: 1, path: 'UNSELECTED', state: 'MATERIAL_CHOICE', data_mode: 'LOCAL_PRIVATE', organization_id: null, campaign_id: null, completion_digest: null, market_code: null, content_locale: null, platform: null, time_zone: null, market_codes: JSON.stringify([]), content_locales: JSON.stringify([]), platforms: JSON.stringify([]), default_time_zone: null, material_ids: JSON.stringify([]), knowledge_state: 'DRAFT', current_step: 'PERSONA', row_version: 1, target_market: null, knowledge_content_locale: null, knowledge_time_zone: null, current_knowledge_snapshot_id: null, current_knowledge_snapshot_digest: null, created_at: now, updated_at: now}).execute();
       return profileFromRow(profile);
     });
+  }
+
+  public async updateProfile(displayName: string, now: Date): Promise<LocalOwnerProfile> {
+    const normalized = normalizeLocalDisplayName(displayName);
+    const row = await this.#database.updateTable('local_owner_profiles').set({display_name: normalized, updated_at: now}).where('singleton_key', '=', true).returningAll().executeTakeFirst();
+    if (row === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
+    return profileFromRow(row);
   }
 
   public async getSession(ownerProfileId: string): Promise<LocalOnboardingSession | undefined> {

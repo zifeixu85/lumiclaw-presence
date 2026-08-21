@@ -106,6 +106,7 @@ export interface LocalPresenceRepository {
   health(): Promise<boolean>;
   getProfile(): Promise<LocalOwnerProfile | undefined>;
   createProfile(displayName: string, now: Date): Promise<LocalOwnerProfile>;
+  updateProfile(displayName: string, now: Date): Promise<LocalOwnerProfile>;
   getSession(ownerProfileId: string): Promise<LocalOnboardingSession | undefined>;
   chooseExample(ownerProfileId: string, organizationId: string, campaignId: string, context: LocalOnboardingContext, now: Date): Promise<LocalOnboardingSession>;
   selectLocalMaterials(ownerProfileId: string, now: Date): Promise<LocalOnboardingSession>;

@@ -35,6 +35,12 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
     return clone(this.#profile)!;
   }
 
+  public async updateProfile(displayName: string, now: Date): Promise<LocalOwnerProfile> {
+    if (this.#profile === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
+    this.#profile = {...this.#profile, displayName: normalizeLocalDisplayName(displayName), updatedAt: now.toISOString()};
+    return clone(this.#profile)!;
+  }
+
   public async getSession(ownerProfileId: string): Promise<LocalOnboardingSession | undefined> {
     return this.#session?.ownerProfileId === ownerProfileId ? clone(this.#session) : undefined;
   }

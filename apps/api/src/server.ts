@@ -11,6 +11,7 @@ import {
   type MutationResult
 } from '@lumiclaw/domain';
 import {blockedManualPublishAuthorization, isSecretBearingObject, LOCAL_MATERIAL_MAX_BYTES, LocalPresenceContractError, normalizeLocalDisplayName, validateLocalCampaignIdentityInput, validateOnboardingContext, type LocalOnboardingSession, type LocalPresenceRepository, type ManualPublishHandoff} from '@lumiclaw/domain';
+import {isSecretBearingKnowledgeObject, knowledgeEtag, KnowledgeContractError, parseKnowledgeEtag, validateKnowledgeSessionInput, validateSourceCandidates, validateTextSource, type KnowledgePlatform, type KnowledgeRepository, type ProfileKind} from '@lumiclaw/domain';
 import {LocalContentAddressedBlobStore} from '@lumiclaw/blob-store';
 import {
   acceptRuntimeSubmission,
@@ -42,18 +43,19 @@ import {
   type TaskContract,
   type ShadowMissionRepository
 } from '@lumiclaw/governed-shadow';
-import {PostgresCampaignRepository, PostgresLocalPresenceRepository} from '@lumiclaw/db';
+import {PostgresCampaignRepository, PostgresKnowledgeRepository, PostgresLocalPresenceRepository} from '@lumiclaw/db';
 import {timingSafeEqual} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
 import Fastify, {type FastifyInstance, type FastifyReply, type FastifyRequest} from 'fastify';
 import {MemoryCampaignRepository} from './memory-campaign-repository.js';
 import {MemoryLocalPresenceRepository} from './memory-local-presence-repository.js';
+import {MemoryKnowledgeRepository} from './memory-knowledge-repository.js';
 import {liveTaskActionPhaseAllowed} from './live-ticket-policy.js';
 import {openApiDocument} from './openapi.js';
 import {LiveRuntimeTicketStore, LiveTicketError, readComposeSecret, type LiveTicketAction, type LiveTicketBinding} from './live-runtime-security.js';
 
-type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; localPresenceRepository?: LocalPresenceRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
+type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; localPresenceRepository?: LocalPresenceRepository; knowledgeRepository?: KnowledgeRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
 type CampaignParams = {campaignId: string};
 type MissionParams = {missionId: string};
 type RuntimeEventBody =
@@ -71,17 +73,19 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   const repository = options.repository ?? new MemoryCampaignRepository(now);
   const shadowRepository = options.shadowRepository ?? new MemoryShadowMissionRepository();
   const localPresenceRepository = options.localPresenceRepository ?? new MemoryLocalPresenceRepository();
+  const knowledgeRepository = options.knowledgeRepository ?? new MemoryKnowledgeRepository();
   const runtimeImportToken = options.runtimeImportToken;
   const ticketStore = new LiveRuntimeTicketStore(options.runtimeBootstrapSecret, () => now().getTime());
   const deepseekApiKey = options.deepseekApiKey;
   const liveModelProviderFactory = options.liveModelProviderFactory ?? ((apiKey: string) => new DeepSeekModelProvider({apiKey, executionClass: 'CANARY'}));
-  app.addContentTypeParser(['text/plain', 'text/markdown', 'application/octet-stream', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'], {parseAs: 'buffer'}, (_request, body, done) => done(null, body));
-  app.addHook('onClose', async () => { await repository.close(); await shadowRepository.close(); await localPresenceRepository.close(); });
+  app.addContentTypeParser(['text/plain', 'text/markdown', 'application/octet-stream', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'audio/mpeg', 'audio/mp4', 'audio/wav'], {parseAs: 'buffer'}, (_request, body, done) => done(null, body));
+  app.addHook('onClose', async () => { await repository.close(); await shadowRepository.close(); await localPresenceRepository.close(); await knowledgeRepository.close(); });
 
   app.get('/health', async (_request, reply) => {
     try {
       if (!await repository.health()) throw new Error('database marker missing');
       if (!await shadowRepository.health()) throw new Error('shadow database marker missing');
+      if (!await knowledgeRepository.health()) throw new Error('knowledge database marker missing');
       return {service: 'api', status: 'ok', mode: 'DEMO_SEED', live: false, controlPlane: 'POSTGRESQL'};
     } catch {
       return reply.status(503).send({service: 'api', status: 'unavailable', code: 'CONTROL_PLANE_UNAVAILABLE', mode: 'DEMO_SEED', live: false});
@@ -96,23 +100,94 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (!result.ok) throw new LocalPresenceContractError(result.code);
     return result.envelope;
   };
+  const rejectKnowledgeRequest = async (reply: FastifyReply, code: string) => {
+    const profile = await localPresenceRepository.getProfile();
+    if (profile !== undefined) await knowledgeRepository.recordSecurityRejection(profile.id, code, now()).catch(() => undefined);
+    return reply.status(422).send(errorBody(code));
+  };
 
   app.get('/api/v1/local-workspace', async (_request, reply) => {
     void reply.header('cache-control', 'no-store');
     const profile = await localPresenceRepository.getProfile();
     const publishAuthorization = blockedManualPublishAuthorization();
-    if (profile === undefined) return {code: 'LOCAL_FIRST_OPEN', profile: null, session: null, materials: [], handoffs: [], campaign: null, publishAuthorization};
-    const [session, materials, handoffs] = await Promise.all([localPresenceRepository.getSession(profile.id), localPresenceRepository.listMaterials(profile.id), localPresenceRepository.listManualHandoffs(profile.id)]);
+    if (profile === undefined) return {code: 'LOCAL_FIRST_OPEN', profile: null, session: null, materials: [], handoffs: [], campaign: null, knowledge: null, publishAuthorization};
+    const [session, materials, handoffs, knowledge] = await Promise.all([localPresenceRepository.getSession(profile.id), localPresenceRepository.listMaterials(profile.id), localPresenceRepository.listManualHandoffs(profile.id), knowledgeRepository.ensureOwner(profile.id, now())]);
     const campaign = session?.organizationId !== null && session?.organizationId !== undefined && session.campaignId !== null ? await repository.get(session.organizationId, session.campaignId) : undefined;
-    return {code: 'LOCAL_WORKSPACE_REOPENED', profile, session: session ?? null, materials, handoffs, campaign: campaign ?? null, publishAuthorization};
+    void reply.header('ETag', knowledgeEtag(knowledge.session.rowVersion));
+    return {code: 'LOCAL_WORKSPACE_REOPENED', profile, session: session ?? null, materials, handoffs, campaign: campaign ?? null, knowledge, publishAuthorization};
   });
 
   app.post('/api/v1/local-owner-profile', async (request, reply) => {
     if (isSecretBearingObject(request.body)) return reply.status(422).send(errorBody('BROWSER_SECRET_FIELD_FORBIDDEN'));
     if (!isExactRecord(request.body, ['displayName'])) return reply.status(422).send(errorBody('LOCAL_PROFILE_SCHEMA_INVALID'));
     const profile = await localPresenceRepository.createProfile(normalizeLocalDisplayName(request.body.displayName), now());
+    await knowledgeRepository.ensureOwner(profile.id, now());
     return reply.status(201).header('cache-control', 'no-store').send({code: 'LOCAL_PROFILE_READY', profile, requiresEmail: false, requiresPassword: false, remoteRegistration: false});
   });
+
+  app.get('/api/v1/local-owner', async (_request, reply) => {
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    const knowledge = await knowledgeRepository.ensureOwner(profile.id, now());
+    return reply.header('cache-control','no-store').header('ETag', knowledgeEtag(knowledge.session.rowVersion)).send({code:'LOCAL_OWNER_REOPENED',profile});
+  });
+
+  app.patch('/api/v1/local-owner', async (request, reply) => {
+    if (isSecretBearingKnowledgeObject(request.body) || !isExactRecord(request.body,['displayName'])) return rejectKnowledgeRequest(reply,'BROWSER_SECRET_FIELD_FORBIDDEN');
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    const updated = await localPresenceRepository.updateProfile(normalizeLocalDisplayName(request.body.displayName), now());
+    return reply.header('cache-control','no-store').send({code:'LOCAL_OWNER_UPDATED',profile:updated});
+  });
+
+  app.get('/api/v1/onboarding/session', async (_request, reply) => {
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    const overview = await knowledgeRepository.ensureOwner(profile.id, now());
+    return reply.header('cache-control','no-store').header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'KNOWLEDGE_ONBOARDING_REOPENED',overview});
+  });
+
+  app.put('/api/v1/onboarding/session', async (request, reply) => {
+    if (isSecretBearingKnowledgeObject(request.body)) return rejectKnowledgeRequest(reply,'BROWSER_SECRET_FIELD_FORBIDDEN');
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    const headers = knowledgeMutationHeaders(request); const overview = await knowledgeRepository.updateSession(profile.id,validateKnowledgeSessionInput(request.body),headers.version,headers.idempotencyKey,now());
+    return reply.header('cache-control','no-store').header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'KNOWLEDGE_ONBOARDING_SAVED',overview});
+  });
+
+  app.put<{Params:{profileKind:string}}>('/api/v1/profiles/:profileKind', async (request, reply) => {
+    if (isSecretBearingKnowledgeObject(request.body)) return rejectKnowledgeRequest(reply,'BROWSER_SECRET_FIELD_FORBIDDEN');
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    const kindMap:Record<string,ProfileKind>={persona:'PERSONA',organization:'ORGANIZATION',product:'PRODUCT'}; const kind=kindMap[request.params.profileKind]; if(kind===undefined)return reply.status(404).send(errorBody('PROFILE_KIND_NOT_FOUND'));
+    const headers=knowledgeMutationHeaders(request); const overview=await knowledgeRepository.saveProfile(profile.id,kind,null,request.body,headers.version,headers.idempotencyKey,now());
+    return reply.header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'KNOWLEDGE_PROFILE_REVISION_CREATED',overview});
+  });
+
+  app.put<{Params:{platform:string}}>('/api/v1/profiles/accounts/:platform', async (request, reply) => {
+    if (isSecretBearingKnowledgeObject(request.body)) return rejectKnowledgeRequest(reply,'BROWSER_SECRET_FIELD_FORBIDDEN');
+    const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
+    const platform=request.params.platform.toUpperCase() as KnowledgePlatform; if(!['X','XIAOHONGSHU'].includes(platform))return reply.status(404).send(errorBody('ACCOUNT_PLATFORM_NOT_FOUND'));
+    const headers=knowledgeMutationHeaders(request); const overview=await knowledgeRepository.saveProfile(profile.id,'ACCOUNT',platform,request.body,headers.version,headers.idempotencyKey,now());
+    return reply.header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'ACCOUNT_OPERATING_PROFILE_REVISION_CREATED',overview});
+  });
+
+  app.post('/api/v1/knowledge/sources', async (request, reply) => {
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return; const headers=knowledgeMutationHeaders(request);
+    const encoded=request.headers['x-lumiclaw-file-name'];if(typeof encoded!=='string'||!(request.body instanceof Buffer))return reply.status(422).send(errorBody('SOURCE_FILE_REQUIRED'));
+    const fileName=decodeFileName(encoded);const overview=await knowledgeRepository.ingestSource({ownerId:profile.id,label:fileName,fileName,declaredMediaType:request.headers['content-type']?.split(';')[0]??'application/octet-stream',bytes:request.body,candidates:validateSourceCandidates(undefined)},headers.version,headers.idempotencyKey,now());
+    return reply.status(201).header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'SOURCE_DOCUMENT_REVISION_CREATED',overview});
+  });
+
+  app.post('/api/v1/knowledge/sources/text', async (request, reply) => {
+    if(isSecretBearingKnowledgeObject(request.body))return rejectKnowledgeRequest(reply,'BROWSER_SECRET_FIELD_FORBIDDEN'); const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return; const headers=knowledgeMutationHeaders(request);
+    if(!isRecord(request.body)||Object.keys(request.body).sort().join(',')!=='label,text')return reply.status(422).send(errorBody('SOURCE_TEXT_SCHEMA_INVALID')); const input=validateTextSource({...request.body,candidates:[]});
+    const overview=await knowledgeRepository.ingestTextSource({ownerId:profile.id,...input},headers.version,headers.idempotencyKey,now()); return reply.status(201).header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'SOURCE_TEXT_REVISION_CREATED',overview});
+  });
+
+  app.get<{Params:{sourceId:string}}>('/api/v1/knowledge/sources/:sourceId', async (request, reply) => { const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return; const source=await knowledgeRepository.getSource(profile.id,request.params.sourceId);if(source===undefined)return reply.status(404).send(errorBody('SOURCE_NOT_FOUND'));return reply.header('cache-control','no-store').send({code:'SOURCE_DOCUMENT_REOPENED',source}); });
+  app.delete<{Params:{sourceId:string}}>('/api/v1/knowledge/sources/:sourceId', async (request, reply) => { const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const headers=knowledgeMutationHeaders(request);const overview=await knowledgeRepository.deleteSource(profile.id,request.params.sourceId,headers.version,headers.idempotencyKey,now());return reply.header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'SOURCE_DOCUMENT_DELETED_NEW_DRAFT_REQUIRED',overview}); });
+  app.post<{Params:{sourceId:string}}>('/api/v1/knowledge/sources/:sourceId/confirm', async (request, reply) => { const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const headers=knowledgeMutationHeaders(request);const overview=await knowledgeRepository.confirmLegacySource(profile.id,request.params.sourceId,headers.version,headers.idempotencyKey,now());return reply.header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'LEGACY_SOURCE_CONFIRMED_NEW_REVISION',overview}); });
+
+  app.get('/api/v1/knowledge/snapshots/draft',async(_request,reply)=>{const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const overview=await knowledgeRepository.ensureOwner(profile.id,now());return reply.header('cache-control','no-store').header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'KNOWLEDGE_SNAPSHOT_DRAFT',draft:overview.draft,overview});});
+  app.post('/api/v1/knowledge/snapshots/resolve-conflict',async(request,reply)=>{if(isSecretBearingKnowledgeObject(request.body)||!isExactRecord(request.body,['conflictId','selectedItemId','note'])||typeof request.body.conflictId!=='string'||typeof request.body.selectedItemId!=='string'||typeof request.body.note!=='string')return rejectKnowledgeRequest(reply,'CONFLICT_RESOLUTION_SCHEMA_INVALID');const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const headers=knowledgeMutationHeaders(request);const overview=await knowledgeRepository.resolveConflict(profile.id,request.body.conflictId,request.body.selectedItemId,request.body.note,headers.version,headers.idempotencyKey,now());return reply.header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'KNOWLEDGE_CONFLICT_RESOLVED',overview});});
+  app.post('/api/v1/knowledge/snapshots/approve',async(request,reply)=>{if(isSecretBearingKnowledgeObject(request.body)||!isExactRecord(request.body,['snapshotId','canonicalDigest'])||typeof request.body.snapshotId!=='string'||typeof request.body.canonicalDigest!=='string')return rejectKnowledgeRequest(reply,'SNAPSHOT_APPROVAL_SCHEMA_INVALID');const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const headers=knowledgeMutationHeaders(request);const overview=await knowledgeRepository.approveSnapshot(profile.id,request.body.snapshotId,request.body.canonicalDigest,headers.version,headers.idempotencyKey,now());return reply.header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'AUTHORITATIVE_KNOWLEDGE_SNAPSHOT_APPROVED',overview});});
+  app.get<{Params:{snapshotId:string}}>('/api/v1/knowledge/snapshots/:snapshotId/role-context',async(request,reply)=>{const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const digest=request.headers['x-lumiclaw-snapshot-digest'];if(typeof digest!=='string')return reply.status(428).send(errorBody('SNAPSHOT_DIGEST_REQUIRED'));const roleContext=await knowledgeRepository.getRoleContext(profile.id,request.params.snapshotId,digest);return reply.header('cache-control','no-store').send({code:'APPROVED_KNOWLEDGE_ROLE_CONTEXT',roleContext});});
 
   app.post('/api/v1/local-onboarding/example', async (_request, reply) => {
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
@@ -476,7 +551,13 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   });
 
   app.setNotFoundHandler(async (_request, reply) => reply.status(404).send({code: 'CONTROL_ROUTE_NOT_FOUND', mode: 'DEMO_SEED', live: false}));
-  app.setErrorHandler(async (error, _request, reply) => sendDomainOrUnavailable(reply, error));
+  app.setErrorHandler(async (error, _request, reply) => {
+    if (error instanceof KnowledgeContractError) {
+      const profile = await localPresenceRepository.getProfile().catch(() => undefined);
+      if (profile !== undefined) await knowledgeRepository.recordSecurityRejection(profile.id,error.code,now()).catch(() => undefined);
+    }
+    return sendDomainOrUnavailable(reply, error);
+  });
   return app;
 }
 
@@ -542,6 +623,10 @@ function sendDomainOrUnavailable(reply: FastifyReply, error: unknown) {
   if (error instanceof CampaignPreparationError) return reply.status(422).send({...errorBody(error.code), details: error.details});
   if (error instanceof LocalPresenceContractError) {
     const status = ['LOCAL_PROFILE_ALREADY_EXISTS', 'LOCAL_ONBOARDING_ALREADY_COMPLETED', 'LOCAL_ONBOARDING_COMPLETION_IN_PROGRESS', 'LOCAL_ONBOARDING_COMPLETION_CONFLICT', 'LOCAL_ONBOARDING_MATERIAL_SET_CHANGED', 'LOCAL_MATERIAL_BOUND_TO_CAMPAIGN', 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'].includes(error.code) ? 409 : error.code.includes('NOT_FOUND') ? 404 : error.code.includes('TYPE_PLANNED') || error.code.includes('TYPE_UNSUPPORTED') ? 415 : 422;
+    return reply.status(status).send(errorBody(error.code));
+  }
+  if (error instanceof KnowledgeContractError) {
+    const status = error.code === 'OWNER_BOUNDARY_VIOLATION' ? 403 : error.code === 'SNAPSHOT_STALE' ? 412 : ['IDEMPOTENCY_KEY_REUSED','KNOWLEDGE_CONFLICT_UNRESOLVED','SNAPSHOT_GAPS_UNRESOLVED'].includes(error.code) ? 409 : error.code.includes('NOT_FOUND') ? 404 : error.code === 'SOURCE_TYPE_PLANNED' ? 415 : error.code === 'ETAG_REQUIRED' || error.code === 'IDEMPOTENCY_KEY_REQUIRED' || error.code === 'SNAPSHOT_DIGEST_REQUIRED' ? 428 : 422;
     return reply.status(status).send(errorBody(error.code));
   }
   if (error instanceof ScheduleContractError) return reply.status(422).send({...errorBody(error.code), details: error.message});
@@ -676,6 +761,11 @@ async function requireLocalProfile(repository: LocalPresenceRepository, reply: F
   return profile;
 }
 
+function knowledgeMutationHeaders(request: FastifyRequest): {version:number;idempotencyKey:string} {
+  const idempotencyKey=request.headers['idempotency-key']; if(typeof idempotencyKey!=='string'||idempotencyKey.length<8||idempotencyKey.length>128)throw new KnowledgeContractError('IDEMPOTENCY_KEY_REQUIRED');
+  return {version:parseKnowledgeEtag(typeof request.headers['if-match']==='string'?request.headers['if-match']:undefined),idempotencyKey};
+}
+
 async function requireMutableOnboardingSession(repository: LocalPresenceRepository, ownerProfileId: string): Promise<LocalOnboardingSession> {
   const session = await repository.getSession(ownerProfileId);
   if (session === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
@@ -717,7 +807,7 @@ async function start(): Promise<void> {
   if (connectionString === undefined) throw new Error('DATABASE_URL is required.');
   const blobRoot = process.env.BLOB_ROOT;
   if (blobRoot === undefined) throw new Error('BLOB_ROOT is required.');
-  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), localPresenceRepository: new PostgresLocalPresenceRepository(connectionString, new LocalContentAddressedBlobStore(blobRoot)), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
+  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), localPresenceRepository: new PostgresLocalPresenceRepository(connectionString, new LocalContentAddressedBlobStore(blobRoot)), knowledgeRepository: new PostgresKnowledgeRepository(connectionString,new LocalContentAddressedBlobStore(blobRoot)), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
   const port = Number.parseInt(process.env.PORT ?? '4000', 10);
   await app.listen({host: '0.0.0.0', port});
 }
