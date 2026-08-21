@@ -1,0 +1,63 @@
+{
+  "$schema": "../schemas/platform-skill-manifest.schema.json",
+  "schemaVersion": "platform-skill-manifest.v1alpha1",
+  "skillId": "org.lumiclaw.platform-content-contract",
+  "skillVersion": "0.1.0-research",
+  "status": "RESEARCH_PROTOTYPE",
+  "license": {
+    "spdx": "Apache-2.0",
+    "decision": "ADOPT",
+    "noticeRequired": false,
+    "notes": "Proposed first-party Skill; no third-party implementation copied."
+  },
+  "origin": {
+    "originType": "PROJECT_NATIVE",
+    "sourceUrl": "https://github.com/zifeixu85/lumiclaw-presence",
+    "commitOrDigest": "base-commit:9e241da98be00c56204894c67b7599d37ff10505",
+    "retrievedAt": "2026-08-22T18:00:00+08:00"
+  },
+  "runtimeCompatibility": {
+    "runtimeCode": "AGENTTEAMS",
+    "minimumVersion": "repository-pinned",
+    "roleCodes": ["PRESENCE_MISSION_LEADER", "ACCOUNT_NATIVE_EXPRESSION_PRODUCER", "INDEPENDENT_ACTION_AUDITOR"]
+  },
+  "contractBindings": {
+    "rulePackIds": ["org.lumiclaw.platform.x", "org.lumiclaw.platform.xiaohongshu"],
+    "artifactProfileCodes": ["X_SINGLE_POST", "X_THREAD", "XHS_IMAGE_NOTE"],
+    "inputSchemaCode": "PLATFORM_ARTIFACT_DRAFT_INPUT_V1",
+    "outputSchemaCode": "PLATFORM_ARTIFACT_VALIDATION_RESULT_V1"
+  },
+  "permissions": {
+    "networkAccess": false,
+    "browserControl": false,
+    "cookieAccess": false,
+    "secretAccess": false,
+    "publicWrite": false
+  },
+  "externalActions": {
+    "classification": "NONE",
+    "requiresOwnerConfirmation": false,
+    "exactApprovedDigestRequired": true
+  },
+  "fallbacks": [
+    {
+      "conditionCode": "RULE_PACK_EXPIRED",
+      "actionCode": "BLOCK_AND_RESEARCH_REFRESH",
+      "ownerMessage": "平台规则包已过期，刷新来源并重新审校后才能继续。"
+    },
+    {
+      "conditionCode": "CAPABILITY_UNKNOWN",
+      "actionCode": "MANUAL_NATIVE_HANDOFF",
+      "ownerMessage": "当前账号能力未知，降级为手动原生发布并返回实测证据。"
+    },
+    {
+      "conditionCode": "HARD_CONSTRAINT_FAILED",
+      "actionCode": "BLOCK_NEW_REVISION_REQUIRED",
+      "ownerMessage": "硬约束未通过；修改会生成新修订并重新审批。"
+    }
+  ],
+  "validation": {
+    "validatorCodes": ["platform.rule_pack_schema", "platform.artifact_profile_schema", "x.weighted_text.v3", "xhs.account_capability_probe", "platform.license_and_connector_policy"],
+    "testFixtureIds": ["FIXTURE_X_SINGLE_POST_001", "FIXTURE_X_THREAD_001", "FIXTURE_XHS_IMAGE_NOTE_001"]
+  }
+}

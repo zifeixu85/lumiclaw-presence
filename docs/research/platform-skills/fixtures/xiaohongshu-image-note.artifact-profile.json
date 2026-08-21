@@ -1,0 +1,57 @@
+{
+  "$schema": "../schemas/artifact-profile.schema.json",
+  "schemaVersion": "artifact-profile.v1alpha1",
+  "profileCode": "XHS_IMAGE_NOTE",
+  "platformCode": "XIAOHONGSHU",
+  "profileVersion": "0.1.0-research",
+  "status": "RESEARCH_PROTOTYPE",
+  "target": {
+    "marketCode": "CN",
+    "contentLocaleCode": "zh-CN",
+    "uiLocaleIndependent": true
+  },
+  "contentShape": {
+    "requiredFields": ["title", "body", "images"],
+    "optionalFields": ["topicSuggestions", "locationSuggestion", "commercialDisclosure"],
+    "mediaSlots": [
+      {
+        "slotCode": "NOTE_IMAGES",
+        "mediaKind": "IMAGE",
+        "required": true,
+        "minimumItems": 1,
+        "maximumItems": null,
+        "recommendedExports": [
+          {
+            "classification": "EMPIRICAL_RECOMMENDATION",
+            "width": 1080,
+            "height": 1440,
+            "format": "PNG_OR_JPEG_SRGB",
+            "purpose": "3:4 image-note baseline; native crop preview remains mandatory"
+          }
+        ]
+      }
+    ]
+  },
+  "rulePackRefs": [
+    { "packId": "org.lumiclaw.platform.xiaohongshu", "packVersion": "0.1.0-research" }
+  ],
+  "delivery": {
+    "allowedModeCodes": ["MANUAL_DESKTOP_ASSISTANT"],
+    "exactRevisionDigestRequired": true,
+    "accountCapabilityProbeRequired": true,
+    "fallbackModeCode": "MANUAL_DESKTOP_ASSISTANT"
+  },
+  "validation": {
+    "validatorCodes": ["xhs.media.mutual_exclusion", "media.xhs.recommended_image_export", "capability.xhs.title_counter", "capability.xhs.body_counter", "capability.xhs.topic_selector"],
+    "expiredRulePackBehavior": "BLOCK"
+  },
+  "reviewChecklist": [
+    { "checkCode": "COMPOSER_COUNTERS", "classification": "NEEDS_ACCOUNT_PROBE", "ownerVisibleLabel": "在当前账号与客户端确认标题、正文、图片和话题计数；报告实际显示值。" },
+    { "checkCode": "COVER_AND_ORDER", "classification": "EMPIRICAL_RECOMMENDATION", "ownerVisibleLabel": "首图作为设计封面，图片顺序与批准修订一致。" },
+    { "checkCode": "NATIVE_CROP", "classification": "NEEDS_ACCOUNT_PROBE", "ownerVisibleLabel": "逐张查看原生裁剪预览，没有文字、Logo 或主体被切掉。" },
+    { "checkCode": "ACCESSIBILITY_REDUNDANCY", "classification": "EMPIRICAL_RECOMMENDATION", "ownerVisibleLabel": "图片中的关键文字与结论在正文中重复表达，不只依赖视觉。" },
+    { "checkCode": "TOPIC_ENTITIES", "classification": "NEEDS_ACCOUNT_PROBE", "ownerVisibleLabel": "通过原生话题选择器确认实体，而不是把纯文本 # 当作已挂载话题。" },
+    { "checkCode": "COMMERCIAL_DISCLOSURE", "classification": "HARD_CONSTRAINT", "ownerVisibleLabel": "若存在品牌合作、广告或利益关系，完成适用授权、披露与证据审校。" },
+    { "checkCode": "MANUAL_RECONCILIATION", "classification": "PROJECT_POLICY", "ownerVisibleLabel": "用户手动发布后返回链接/截图；分享 SDK 回调或打开页面都不等于已发布。" }
+  ]
+}

@@ -1,0 +1,56 @@
+{
+  "$schema": "../schemas/artifact-profile.schema.json",
+  "schemaVersion": "artifact-profile.v1alpha1",
+  "profileCode": "X_SINGLE_POST",
+  "platformCode": "X",
+  "profileVersion": "0.1.0-research",
+  "status": "RESEARCH_PROTOTYPE",
+  "target": {
+    "marketCode": "GLOBAL",
+    "contentLocaleCode": "en",
+    "uiLocaleIndependent": true
+  },
+  "contentShape": {
+    "requiredFields": ["text"],
+    "optionalFields": ["hashtags", "media", "replySettings"],
+    "mediaSlots": [
+      {
+        "slotCode": "ATTACHED_IMAGES",
+        "mediaKind": "IMAGE",
+        "required": false,
+        "minimumItems": 0,
+        "maximumItems": 4,
+        "recommendedExports": [
+          {
+            "classification": "EMPIRICAL_RECOMMENDATION",
+            "width": 1600,
+            "height": 900,
+            "format": "PNG_OR_JPEG_SRGB",
+            "purpose": "16:9 single-image baseline inside the official 2:1 to 3:4 full-display envelope"
+          }
+        ]
+      }
+    ]
+  },
+  "rulePackRefs": [
+    { "packId": "org.lumiclaw.platform.x", "packVersion": "0.1.0-research" }
+  ],
+  "delivery": {
+    "allowedModeCodes": ["MANUAL_DESKTOP_ASSISTANT", "X_OFFICIAL_API_POC"],
+    "exactRevisionDigestRequired": true,
+    "accountCapabilityProbeRequired": true,
+    "fallbackModeCode": "MANUAL_DESKTOP_ASSISTANT"
+  },
+  "validation": {
+    "validatorCodes": ["x.weighted_text.v3", "x.media.image_count", "x.image_alt_length", "media.file_size"],
+    "expiredRulePackBehavior": "BLOCK"
+  },
+  "reviewChecklist": [
+    { "checkCode": "TEXT_WEIGHTED_LENGTH", "classification": "HARD_CONSTRAINT", "ownerVisibleLabel": "正文按 X 加权字符算法计算后不超过当前账号能力。" },
+    { "checkCode": "CLAIM_EVIDENCE", "classification": "PROJECT_POLICY", "ownerVisibleLabel": "所有可验证事实与批准证据一致，没有把计划写成已实现。" },
+    { "checkCode": "IMAGE_ALT", "classification": "OFFICIAL_RECOMMENDATION", "ownerVisibleLabel": "每张图片都有准确且不重复正文的替代文本。" },
+    { "checkCode": "CROP_PREVIEW", "classification": "EMPIRICAL_RECOMMENDATION", "ownerVisibleLabel": "在 X 原生预览中检查裁剪、清晰度和安全区。" },
+    { "checkCode": "ACCOUNT_CAPABILITY", "classification": "NEEDS_ACCOUNT_PROBE", "ownerVisibleLabel": "账号、客户端、媒体与 API 权限快照仍在有效期内。" },
+    { "checkCode": "EXACT_REVISION", "classification": "PROJECT_POLICY", "ownerVisibleLabel": "发布包、批准摘要与当前修订摘要完全一致。" }
+  ]
+}

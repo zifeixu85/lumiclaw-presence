@@ -1,0 +1,45 @@
+{
+  "fixtureId": "FIXTURE_X_THREAD_001",
+  "researchOnly": true,
+  "profileRef": { "profileCode": "X_THREAD", "profileVersion": "0.1.0-research" },
+  "rulePackRef": { "packId": "org.lumiclaw.platform.x", "packVersion": "0.1.0-research" },
+  "target": { "marketCode": "GLOBAL", "contentLocaleCode": "en", "uiLocaleCode": "zh-CN" },
+  "approvedRevisionDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "content": {
+    "items": [
+      {
+        "itemCode": "THREAD_01",
+        "replyToItemCode": null,
+        "text": "1/3 A release should not become a dozen disconnected copy-paste tasks. It should compile into one reviewable mission.",
+        "expectedWeightedLength": 117,
+        "media": []
+      },
+      {
+        "itemCode": "THREAD_02",
+        "replyToItemCode": "THREAD_01",
+        "text": "2/3 The mission binds claims to evidence, adapts expression per account, and keeps Producer and Auditor separate.",
+        "expectedWeightedLength": 113,
+        "media": []
+      },
+      {
+        "itemCode": "THREAD_03",
+        "replyToItemCode": "THREAD_02",
+        "text": "3/3 Publication remains human-gated. The current slice proves a governed activation loop, not guaranteed growth. https://example.com/lumiclaw",
+        "expectedWeightedLength": 136,
+        "media": []
+      }
+    ],
+    "weightedLengthValidator": "twitter-text-v3"
+  },
+  "delivery": {
+    "modeCode": "MANUAL_DESKTOP_ASSISTANT",
+    "officialEntryUrl": "https://x.com/compose/post",
+    "requiresAccountConfirmation": true,
+    "reconciliationRequired": true
+  },
+  "expectedResult": {
+    "hardConstraintStatus": "PASS",
+    "recommendationWarnings": [],
+    "capabilityProbeCodes": ["X_ACCOUNT_IDENTITY", "X_THREAD_COMPOSER"]
+  }
+}
