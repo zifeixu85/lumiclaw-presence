@@ -50,7 +50,7 @@ Exit: the repository installs through the documented Compose path, migrations an
 
 Exit: a real LumiClaw campaign can reach readiness and reopen its four editable platform revisions without hidden demo-only state.
 
-### M2 — Governed shadow campaign · EVIDENCE READY
+### M2 — Governed shadow campaign · IN PROGRESS
 
 - Run one mission leader and five domain specialists in AgentTeams; the leader orchestrates but does not produce domain artifacts.
 - Route model work through the `ModelProvider` port and the planned DeepSeek V4 gateway.
@@ -59,10 +59,11 @@ Exit: a real LumiClaw campaign can reach readiness and reopen its four editable 
 - Bring uploaded or `MediaGenerationProvider`-derived media into immutable revisions without auto-approval.
 - Show revision diffs, audit evidence, owner review, shared state, and trace in the LumiClaw control plane.
 - Inject one claim or platform-constraint fault and prove that no external action can occur.
+- Add the non-executing `SDD-005` localization foundation: sourced US/JP/DE public-safe market packs, synthetic Organization overrides, deterministic context/digest and separate Producer/Auditor views.
 
 Exit: the six-member team returns digest-validated artifacts; one valid revision reaches owner review and one invalid revision is blocked and revised.
 
-Current branch evidence reaches this engineering exit with a real pinned AgentTeams runtime and an Owner-controlled local DeepSeek Canary. M2 remains `EVIDENCE_READY` until Owner UAT is recorded. EvoLink live maturity, platform actions, and external-user outcomes are not claimed.
+M2-01 through M2-06 reach their engineering exit with a real pinned AgentTeams runtime and an Owner-controlled local DeepSeek Canary. M2-07 is the active, non-executing market-localization foundation. M2 acceptance still requires Owner UAT; EvoLink live maturity, localization quality, platform actions, and external-user outcomes are not claimed.
 
 ### M3 — Controlled live activation
 

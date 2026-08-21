@@ -98,6 +98,10 @@ Web 不保存平台 Token，也不直接调用发布 API。API 是所有客户�
 
 日期与数字可以按 Locale 展示，但不能改变持久化 Instant。用户批准排程前，界面必须同时显示所选 IANA 时区与解析后的 UTC 时间。
 
+市场本地化是独立的受治理上下文。`SDD-005` 引入版本化 public-safe `MarketKnowledgePack` Fixture、合成 Organization 覆盖、Campaign Localization Brief 与确定性的 `MarketContextView`。Campaign 决定优先于已批准 Organization 知识，Organization 知识优先于所选公共包，但来源与冲突必须保留；模型先验只能形成问题或 Proposal。Producer 只获得所选 Market 的最小上下文，Independent Auditor 获得来源与冲突证据。Pack 或 Organization 来源改变会产生新 Context Digest 和重新审阅要求，不能静默改写已批准 Artifact。
+
+首个工程 Fixture 集合为 US/en-US、JP/ja-JP 与 DE/de-DE；它不代表合规保证、客户数据或全球覆盖。
+
 ## 持久化排程，而不是临时 Cron
 
 排程是受治理的业务状态。首期实现不依赖 Host crontab，也不把进程内 `node-cron` 作为真源。PostgreSQL 保存 `publishing_schedules`、不可变或版本化的 `schedule_occurrences`、使用 `timestamptz` 的 `next_run_at`、IANA 时区，以及一次性时间或受约束的 RFC 5545 重复规则。

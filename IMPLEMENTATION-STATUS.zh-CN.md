@@ -4,8 +4,8 @@
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
 > **快照日期：** 2026-08-16
-> **当前阶段：** M2 Owner UAT 待完成；M3 非执行基础模块证据已就绪
-> **当前实现真相：** M0 与 M1 已验收。M2 已实现并完成工程验证，包括固定版本真实六成员 AgentTeams Mission、DeepSeek Provider 合同、一次由 Owner 本地控制且产生 7 个已接受脱敏模型回执的 DeepSeek Canary、不可变 Revision、独立审校/复审、精确不可执行 Owner Review、Trace、Ledger 与确定性故障拒绝。Owner UAT 仍待完成。`SDD-004` 只授权非执行的多平台能力与 Assisted Handoff 基础，不授权 ActionGrant、Connector、凭据、外部平台动作或 `PUBLISHED`。不声明 EvoLink 真实验证、外部用户校准或业务结果。当前视觉壳仍是功能骨架，不是最终产品设计。
+> **当前阶段：** M2 市场本地化基础进行中；M3 非执行基础模块证据已就绪
+> **当前实现真相：** M0 与 M1 已验收。M2-01～M2-06 已实现并完成工程验证，包括固定版本真实六成员 AgentTeams Mission、DeepSeek Provider 合同、一次由 Owner 本地控制且产生 7 个已接受脱敏模型回执的 DeepSeek Canary、不可变 Revision、独立审校/复审、精确不可执行 Owner Review、Trace、Ledger 与确定性故障拒绝。Owner UAT 仍待完成。`SDD-005` 只授权 public-safe 的 US/JP/DE 市场包、确定性上下文与角色投影基础；`SDD-004` 只授权非执行的多平台能力与桌面手工发布包基础。两者都不授权客户数据能力声明、ActionGrant、Connector、凭据、合规保证、外部平台动作或 `PUBLISHED`。不声明 EvoLink 真实验证、外部用户校准或业务结果。当前视觉壳仍是功能骨架，不是最终产品设计。
 
 ## 进度状态合同
 
@@ -25,12 +25,12 @@
 
 | 指标 | 当前值 |
 |---|---|
-| 已验收模块 | `13 / 40`（`32.5%`） |
-| 证据已就绪 | `7 / 40` |
-| 被阻塞 | `0 / 40` |
-| 当前实现 SDD | 无；`SDD-004` / `M3-00` 已证据就绪，SDD-002 与 SDD-004 Owner UAT 均待完成 |
+| 已验收模块 | `13 / 41`（`31.7%`） |
+| 证据已就绪 | `7 / 41` |
+| 被阻塞 | `0 / 41` |
+| 当前实现 SDD | 仅 `SDD-005` / `M2-07`；`SDD-004` / `M3-00` 已证据就绪，SDD-002/004/005 Owner UAT 均待完成 |
 | 最早 Owner 阻塞项 | 在接受 M2 或启动任何受控外部动作前，记录 SDD-002 Owner UAT |
-| 下一个可执行模块 | 需新建边界明确的 SDD；全部真实动作模块继续受 Gate 约束，UX 1.1 前端收敛属于独立规划切片 |
+| 下一个可执行模块 | 完成并独立复验 public-safe 的 M2-07 基础；全部真实动作模块继续受 Gate 约束 |
 
 ## 里程碑总进度
 
@@ -38,7 +38,7 @@
 |---|---|---:|---|---|
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 个已验收 | [SDD-000 验收报告](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)，以及 Compose、Migration、CI 映射、隔离 AgentTeams Smoke、设计与 i18n 证据 |
 | M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 个已验收 | [SDD-001 验收报告](docs/reports/acceptance/SDD-001-ACCEPTANCE.md)：持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State；最终视觉与交互收敛仍在规划中 |
-| M2 — Governed shadow campaign | `EVIDENCE_READY` | `0 / 6` | 6 个证据已就绪 | 六成员 AgentTeams、DeepSeek Gateway/Canary、Revision/Audit、故障拒绝与 Trace；Owner UAT 待完成 |
+| M2 — Governed shadow campaign | `IN_PROGRESS` | `0 / 7` | 6 个证据已就绪；1 个市场本地化基础进行中 | 六成员 AgentTeams、DeepSeek Gateway/Canary、Revision/Audit、故障拒绝、Trace 与带来源市场上下文；Owner UAT 待完成 |
 | M3 — Controlled live activation | `IN_PROGRESS` | `0 / 8` | 1 个非执行基础模块证据已就绪；7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 个未开始 | Interaction → Outcome → Scoped Learning → 下一 Mission，隔离 SignalProvider PoC |
 | M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 个未开始 | Fresh Install、恢复演练、Conformance、可访问性、Evidence Export 与 Demo |
@@ -79,6 +79,7 @@
 | M2-04 | Artifact Revision、Independent Audit 与 Owner Review | `EVIDENCE_READY` | M1-05、M2-02 | 不可变 Revision、初审 FAIL、修订、独立复审与精确不可执行 Review 已验证 |
 | M2-05 | Media Asset 与 EvoLink Adapter 边界 | `EVIDENCE_READY` | M0-04、M2-03 | Content-addressed Ingest、权利/费用 Receipt 与不自动批准合同已验证；EvoLink 真实 Canary 待完成 |
 | M2-06 | Trace、Ledger 与 Flight 故障拒绝 | `EVIDENCE_READY` | M2-02、M2-04 | 冻结 Claim 故障拒绝、Replay、不可变 Trace/Ledger 与零外部动作已验证 |
+| M2-07 | 市场本地化知识包与作用域 Agent 上下文 | `IN_PROGRESS` | M1-02、M2-02；SDD-005 | 带来源 US/JP/DE public-safe 市场包、Organization 覆盖 Fixture、确定性 Context/Digest、Producer/Auditor 投影与隔离证据 |
 
 ### M3 — Controlled live activation
 

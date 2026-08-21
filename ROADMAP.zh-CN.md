@@ -50,7 +50,7 @@ Release 或业务信号
 
 完成：一个真实 LumiClaw Campaign 可在没有隐藏 Demo 状态的前提下进入 Readiness，并重新打开四个平台 Revision。
 
-### M2｜受治理的 SHADOW Campaign · EVIDENCE READY
+### M2｜受治理的 SHADOW Campaign · IN PROGRESS
 
 - 在 AgentTeams 中运行一个 Mission Leader 与五个领域成员；Leader 只编排，不生成领域 Artifact；
 - 通过 `ModelProvider` Port 与计划中的 DeepSeek V4 Gateway 路由模型任务；
@@ -59,10 +59,11 @@ Release 或业务信号
 - 把上传媒体或经 `MediaGenerationProvider` 生成的媒体纳入 immutable Revision，且不自动批准；
 - 在 LumiClaw Control Plane 展示 Revision Diff、Audit Evidence、Owner Review、Shared State 与 Trace；
 - 注入一个 Claim 或平台 Constraint 故障并证明无外部动作。
+- 新增不执行外部动作的 `SDD-005` 本地化基础：带来源的 US/JP/DE public-safe 市场包、合成 Organization 覆盖、确定性 Context/Digest 与分离的 Producer/Auditor 视图。
 
 完成：六成员团队返回通过 digest 校验的 Artifact；一个有效 Revision 进入 Owner Review，一个错误 Revision 被阻断并修订。
 
-当前分支以真实固定版本 AgentTeams Runtime 与 Owner 控制的本地 DeepSeek Canary 达到工程 Exit。M2 在 Owner UAT 被记录前保持 `EVIDENCE_READY`；不声明 EvoLink 真实成熟度、平台外部动作或外部用户结果。
+M2-01～M2-06 已以真实固定版本 AgentTeams Runtime 与 Owner 控制的本地 DeepSeek Canary 达到工程 Exit；M2-07 是当前进行中的非执行市场本地化基础。M2 最终验收仍需要 Owner UAT；不声明 EvoLink 真实成熟度、本地化效果、平台外部动作或外部用户结果。
 
 ### M3｜受控真实激活
 
