@@ -14,6 +14,7 @@ export interface BlobStore {
   put(input: Uint8Array): Promise<BlobRef>;
   get(ref: BlobRef): Promise<Uint8Array>;
   has(ref: BlobRef): Promise<boolean>;
+  delete(ref: BlobRef): Promise<void>;
 }
 
 export class BlobIntegrityError extends Error {
@@ -81,6 +82,10 @@ export class LocalContentAddressedBlobStore implements BlobStore {
       }
       throw error;
     }
+  }
+
+  public async delete(ref: BlobRef): Promise<void> {
+    await rm(this.pathFor(ref), {force: true});
   }
 
   public pathFor(ref: BlobRef): string {

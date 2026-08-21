@@ -1,5 +1,5 @@
 export type DomainId = string;
-export type DataMode = 'DEMO_SEED';
+export type DataMode = 'DEMO_SEED' | 'LOCAL_PRIVATE';
 export type Platform = 'X' | 'BLUESKY' | 'LINKEDIN' | 'XIAOHONGSHU';
 export type IdentityKind = 'PERSON' | 'PRODUCT';
 

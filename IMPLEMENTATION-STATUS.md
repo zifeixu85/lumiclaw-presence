@@ -4,8 +4,8 @@
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
 > **Snapshot:** 2026-08-16
-> **Current phase:** M2 market-localization foundation in progress; M3 non-executing foundation evidence ready
-> **Current implementation truth:** M0 and M1 are accepted. M2-01 through M2-06 are implemented and engineering-verified, including a pinned real six-member AgentTeams mission, DeepSeek provider contracts, an Owner-controlled local DeepSeek Canary with seven accepted redacted model receipts, immutable revisions, independent audit/re-audit, exact non-executable Owner Review, trace, ledger, and deterministic fault denial. Owner UAT is pending. `SDD-005` authorizes only a public-safe US/JP/DE market-pack, deterministic context and role-projection foundation. `SDD-004` authorizes only a non-executing multi-platform capability and desktop manual-package foundation. Neither authorizes customer-data claims, ActionGrants, connectors, credentials, compliance guarantees, external platform actions or `PUBLISHED`. EvoLink live verification, external-user calibration, and business outcomes are not claimed. The current visual shell remains a functional skeleton, not the final product design.
+> **Current phase:** PR #5/#6/#7 convergence; M2 localization and M5 production UX foundations remain in progress
+> **Current implementation truth:** M0 and M1 are accepted. M2-01 through M2-06 are implemented and engineering-verified, including the pinned six-member AgentTeams shadow path; their Owner UAT is pending. `SDD-004` provides a non-executing desktop manual-package foundation and is evidence ready. `SDD-005` adds only public-safe US/JP/DE market-context contracts, while `SDD-006` adds a production-UX/local-onboarding candidate with PostgreSQL/Blob persistence and fail-closed publishing. SDD-005/006 combined verification and Owner UAT remain pending. None of these slices authorizes customer-data claims, persistent AgentTeams installation, ActionGrants, connectors, credentials, compliance guarantees, external platform actions or `PUBLISHED`. EvoLink live verification, external-user calibration, and business outcomes are not claimed.
 
 ## Progress contract
 
@@ -25,12 +25,12 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | Metric | Current value |
 |---|---|
-| Accepted modules | `13 / 41` (`31.7%`) |
-| Evidence ready | `7 / 41` |
-| Blocked | `0 / 41` |
-| Active implementation SDD | `SDD-005` / `M2-07` only; `SDD-004` / `M3-00` is evidence ready, and SDD-002/004/005 Owner UAT remains pending |
+| Accepted modules | `13 / 42` (`31.0%`) |
+| Evidence ready | `7 / 42` |
+| Blocked | `0 / 42` |
+| Active implementation SDD | `SDD-005` / `M2-07` and `SDD-006` / `M5-00` are convergence candidates; `SDD-004` / `M3-00` is evidence ready |
 | Earliest owner blocker | Record SDD-002 Owner UAT before accepting M2 or starting any controlled external action |
-| Next executable module | Finish and independently verify the public-safe M2-07 foundation; all real action modules remain gated |
+| Next executable module | Complete combined verification and Owner UAT for the convergence baseline; all real action modules remain gated |
 
 ## Milestone progress
 
@@ -41,7 +41,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | M2 — Governed shadow campaign | `IN_PROGRESS` | `0 / 7` | 6 evidence ready; 1 market-localization foundation in progress | Six-member AgentTeams run, DeepSeek gateway/Canary, revision/audit, fault denial, trace, sourced market context; Owner UAT pending |
 | M3 — Controlled live activation | `IN_PROGRESS` | `0 / 8` | 1 non-executing foundation evidence ready; 7 not started | Exact grants, persistent scheduler, Bluesky Direct, honest Handoffs, receipts/reconciliation |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 not started | Interaction → outcome → scoped learning → next mission, isolated SignalProvider PoC |
-| M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 not started | Fresh install, restore drill, conformance, accessibility, evidence export and demo |
+| M5 — Runnable candidate | `IN_PROGRESS` | `0 / 6` | 1 in progress, 5 not started | Local onboarding/production UX foundation, then fresh install, restore drill, conformance, accessibility, evidence export and demo |
 | M6 — External calibration | `NOT_STARTED` | `0 / 4` | 4 not started | Design-partner shadow run, isolation, reliability and external acceptance report |
 
 ## Module register
@@ -107,6 +107,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
+| M5-00 | Production UX 1.4 and local onboarding foundation | `IN_PROGRESS` | M0-05, M1-03–M1-06, M2-02, M2-04; SDD-006 | Local display-name entry, example/real-material onboarding, authoritative desktop shell, truthful runtime/account/manual-publish states, accessibility and Owner visual UAT |
 | M5-01 | Fresh Docker install and upgrade path | `NOT_STARTED` | M0–M4 | New machine runs normal and fail-closed paths without hidden developer services |
 | M5-02 | Backup, restore and unknown-action recovery drill | `NOT_STARTED` | M5-01 | Empty-database restore, Blob digest verification and no automatic resend |
 | M5-03 | Complete UI state matrix, i18n and accessibility | `NOT_STARTED` | M1–M4 | English/Chinese parity, visual regression, keyboard navigation and axe checks |

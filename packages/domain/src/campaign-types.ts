@@ -1,4 +1,4 @@
-import type {AccountMandate, DomainId, OrganizationGraph, Platform} from './types.js';
+import type {AccountMandate, DataMode, DomainId, OrganizationGraph, Platform} from './types.js';
 
 export type EvidenceRef = {
   id: DomainId;
@@ -8,7 +8,7 @@ export type EvidenceRef = {
   sourceUrl: string;
   capturedAt: string;
   contentDigest: string;
-  publicSafe: true;
+  publicSafe: boolean;
 };
 
 export type Claim = {
@@ -76,7 +76,7 @@ export type CapabilitySnapshot = {
   platform: Platform;
   capturedAt: string;
   expiresAt: string;
-  source: 'M1_PUBLIC_SAFE_FIXTURE';
+  source: 'M1_PUBLIC_SAFE_FIXTURE' | 'LOCAL_UNVERIFIED_DECLARATION';
   executionMode: 'PREPARE_ONLY' | 'DIRECT_PLANNED_NOT_CONNECTED' | 'NATIVE_HANDOFF_PLANNED';
   constraints: Record<string, FieldConstraint>;
   disclaimer: string;
@@ -161,7 +161,7 @@ export type CampaignDocument = {
   schemaVersion: 1;
   id: DomainId;
   organizationId: DomainId;
-  dataMode: 'DEMO_SEED';
+  dataMode: DataMode;
   live: false;
   graph: OrganizationGraph;
   brief: CampaignBrief;
@@ -185,7 +185,7 @@ export type CampaignEnvelope = {
   gapCodes: string[];
   createdAt: string;
   updatedAt: string;
-  mode: 'DEMO_SEED';
+  mode: DataMode;
   live: false;
 };
 

@@ -1,0 +1,89 @@
+'use client';
+
+import {Bot, CalendarClock, ChevronRight, FileCode2, ShieldCheck, UsersRound} from 'lucide-react';
+import {useTranslations} from 'next-intl';
+import {useSearchParams} from 'next/navigation';
+import {useState, type KeyboardEvent} from 'react';
+import {Button} from '@/components/ui/button';
+import {Drawer} from '@/components/ui/dialog';
+import {StatusBadge} from '@/components/ui/status-badge';
+import {Link} from '@/i18n/navigation';
+import {loadSkill} from '@/lib/production-api';
+import type {RepositorySkill, TeamAgent} from '@/lib/production-types';
+
+type TeamTab = 'overview' | 'employees' | 'skills' | 'schedules';
+const tabs: TeamTab[] = ['overview', 'employees', 'skills', 'schedules'];
+
+export function TeamFeature({agents, skills, dataMode}: {agents: TeamAgent[]; skills: RepositorySkill[]; dataMode: 'LOCAL_PRIVATE' | 'PUBLIC_SAFE_EXAMPLE'}) {
+  const t = useTranslations('Production');
+  const query = useSearchParams().get('view');
+  const active: TeamTab = tabs.includes(query as TeamTab) ? query as TeamTab : 'overview';
+  const [selectedAgent, setSelectedAgent] = useState<TeamAgent | null>(null);
+  const [selectedSkill, setSelectedSkill] = useState<RepositorySkill | null>(null);
+  const [selectedSkillContent, setSelectedSkillContent] = useState<string | null>(null);
+  const [selectedSkillError, setSelectedSkillError] = useState<string | null>(null);
+  const inspectSkill = async (skill: RepositorySkill) => {
+    setSelectedSkill(skill);
+    setSelectedSkillContent(null);
+    setSelectedSkillError(null);
+    try {
+      const result = await loadSkill(skill.id);
+      setSelectedSkillContent(result.skill.content);
+    } catch (caught) {
+      setSelectedSkillError(caught instanceof Error ? caught.message : 'SKILL_LOAD_FAILED');
+    }
+  };
+  const tabKey = (event: KeyboardEvent<HTMLAnchorElement>, tab: TeamTab) => {
+    if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+    event.preventDefault();
+    const index = tabs.indexOf(tab);
+    const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : event.key === 'ArrowRight' ? (index + 1) % tabs.length : (index - 1 + tabs.length) % tabs.length;
+    document.querySelector<HTMLAnchorElement>(`[data-team-tab="${tabs[next]}"]`)?.click();
+  };
+  return <div>
+    <nav className="lc-team-tabs" role="tablist" aria-label={t('teamTabList')}>{tabs.map((tab) => <Link key={tab} data-team-tab={tab} href={`/ai-team?view=${tab}`} role="tab" aria-selected={active === tab} tabIndex={active === tab ? 0 : -1} onKeyDown={(event) => tabKey(event, tab)} className="lc-tab no-underline"><strong className="block text-[13px]">{t(`teamTabs.${tab}`)}</strong><small className="mt-0.5 block text-[9px] text-[var(--lc-ink-muted)]">{tab === 'employees' ? t('memberCount', {count: agents.length}) : tab === 'skills' ? t('skillCount', {count: skills.length}) : tab === 'schedules' ? t('noPersistentJobs') : t('rolesConfigured')}</small></Link>)}</nav>
+    <section id={`team-panel-${active}`} role="tabpanel" className="lc-page-enter">{active === 'overview' ? <WorkOverview agents={agents} dataMode={dataMode} /> : active === 'employees' ? <Employees agents={agents} onSelect={setSelectedAgent} /> : active === 'skills' ? <SkillsView skills={skills} onSelect={(skill) => void inspectSkill(skill)} /> : <SchedulesView />}</section>
+    <AgentDrawer agent={selectedAgent} skills={skills} onClose={() => setSelectedAgent(null)} />
+    <SkillDrawer skill={selectedSkill} content={selectedSkillContent} error={selectedSkillError} onClose={() => { setSelectedSkill(null); setSelectedSkillContent(null); setSelectedSkillError(null); }} />
+  </div>;
+}
+
+function WorkOverview({agents, dataMode}: {agents: TeamAgent[]; dataMode: 'LOCAL_PRIVATE' | 'PUBLIC_SAFE_EXAMPLE'}) {
+  const t = useTranslations('Production');
+  const observedRunning = agents.filter((agent) => agent.status === 'RUNNING' && agent.metrics.source !== 'NO_RUNTIME_OBSERVATION').length;
+  return <section className="lc-runtime-board"><header className="flex min-h-[68px] items-center justify-between border-b border-white/10 px-5"><div className="flex items-center gap-3"><span className="grid size-8 place-items-center rounded-full border border-[var(--lc-mint)] text-[var(--lc-mint)]"><UsersRound size={16} aria-hidden /></span><div><small className="text-[9px] text-white/70">{t('collaborationReadiness')}</small><strong className="mt-1 block text-[15px]">{t('rolesReadyRuntimePending')}</strong></div></div><span className="rounded-sm border border-white/15 px-2 py-1 text-[9px] text-white/75">{dataMode === 'PUBLIC_SAFE_EXAMPLE' ? t('demoData') : t('localPrivateShort')}</span></header><div className="grid grid-cols-[minmax(0,1.25fr)_minmax(340px,.75fr)]"><div className="border-r border-white/10 p-5"><p className="font-[var(--lc-font-mono)] text-[9px] uppercase tracking-[0.08em] text-white/70">{t('configuredTeam')}</p><div className="mt-3 grid grid-cols-2 gap-x-6">{agents.map((agent) => <div key={agent.code} className="flex min-h-[62px] items-center gap-3 border-t border-white/10"><span className={`lc-agent-avatar lc-agent-${agent.code.toLowerCase()}`} data-size="sm" aria-hidden /><div className="min-w-0"><strong className="block text-[11px]">{agent.code} · {t(`agents.${agent.code}.name`)}</strong><span className="mt-1 block truncate text-[9px] text-white/70">{t(`agents.${agent.code}.responsibility`)}</span></div></div>)}</div></div><aside className="p-5"><p className="font-[var(--lc-font-mono)] text-[9px] uppercase tracking-[0.08em] text-white/70">{t('taskQueue')}</p><ol className="mt-3 space-y-0"><QueueItem index="1" title={t('campaignPersistedFriendly')} detail={t('campaignPersistedBody')} done /><QueueItem index="2" title={t('revisionsReadyFriendly')} detail={t('revisionsReadyBody', {count: 4})} done /><QueueItem index="3" title={t('auditQueuedFriendly')} detail={t('auditQueuedBody')} /><QueueItem index="4" title={t('ownerReviewQueued')} detail={t('ownerReviewQueuedBody')} /></ol></aside></div><dl className="grid grid-cols-4 border-t border-white/10"><RuntimeMetric label={t('stableEmployees')} value={String(agents.length)} note={t('configured')} /><RuntimeMetric label={t('observedRunning')} value={String(observedRunning)} note={t('noAuthoritativeObservation')} /><RuntimeMetric label={t('tokens')} value="—" note={t('notObserved')} /><RuntimeMetric label={t('scheduledJobs')} value="0" note={t('noPersistentJobs')} /></dl><div className="border-t border-white/10 px-5 py-3 text-[10px] leading-5 text-white/70"><ShieldCheck className="mr-2 inline text-[var(--lc-mint)]" size={14} aria-hidden />{t('teamMetricNoteFriendly')}<details className="ml-6 mt-1"><summary className="cursor-pointer">{t('technicalDetails')}</summary><code className="mt-1 block font-[var(--lc-font-mono)]">NO_RUNTIME_OBSERVATION · {dataMode}</code></details></div></section>;
+}
+function Employees({agents, onSelect}: {agents: TeamAgent[]; onSelect: (agent: TeamAgent) => void}) {
+  const t = useTranslations('Production');
+  return <><div className="lc-agent-card-grid grid grid-cols-3 gap-3">{agents.map((agent) => <button key={agent.code} onClick={() => onSelect(agent)} className="lc-agent-card"><div className="grid grid-cols-[66px_minmax(0,1fr)_auto] items-center gap-3"><span className={`lc-agent-avatar lc-agent-${agent.code.toLowerCase()}`} data-size="md" aria-hidden /><div className="min-w-0"><small className="font-[var(--lc-font-mono)] text-[9px] text-[var(--lc-ink-muted)]">{agent.code} · {t('configuredRole')}</small><h2 className="mt-1 text-[17px] font-semibold">{t(`agents.${agent.code}.name`)}</h2><p className="truncate text-[9px] text-[var(--lc-ink-muted)]">{agent.roleId}</p></div><StatusBadge tone="warning">{t('runtimePending')}</StatusBadge></div><p className="mt-4 min-h-[42px] text-[11px] leading-5 text-[var(--lc-ink-muted)]">{t(`agents.${agent.code}.responsibility`)}</p><div className="mt-3 flex flex-wrap gap-1">{agent.skillIds.map((id) => <span key={id} className="rounded-sm border border-[var(--lc-line)] bg-[var(--lc-canvas)] px-1.5 py-1 text-[8px] text-[var(--lc-ink-muted)]">{id}</span>)}</div><dl className="mt-4 grid grid-cols-2 border-t border-[var(--lc-line)] pt-3"><div><dt className="text-[8px] text-[var(--lc-ink-muted)]">{t('tokens')}</dt><dd className="mt-1 text-[10px] font-semibold">{t('notObserved')}</dd></div><div><dt className="text-[8px] text-[var(--lc-ink-muted)]">{t('daily')}</dt><dd className="mt-1 text-[10px] font-semibold">{t('notObserved')}</dd></div></dl><span className="mt-3 block text-[9px] font-semibold text-[var(--lc-info)]">{t('viewResponsibilityConfig')} →</span></button>)}</div><p className="mt-3 text-[11px] text-[var(--lc-ink-muted)]">{t('metricsSourceFriendly')}</p></>;
+}
+function SkillsView({skills, onSelect}: {skills: RepositorySkill[]; onSelect: (skill: RepositorySkill) => void}) {
+  const t = useTranslations('Production');
+  return <section className="lc-rule-sheet"><div className="lc-section-title border-b border-[var(--lc-line)] px-4 py-2"><div><h2>{t('teamTabs.skills')}</h2><p>{t('skillAvailabilityFriendly')}</p></div><StatusBadge tone="positive">{t('repositoryReadOnly')}</StatusBadge></div>{skills.map((skill, index) => <button key={skill.id} onClick={() => onSelect(skill)} className="grid min-h-[66px] w-full grid-cols-[36px_minmax(240px,1.2fr)_minmax(240px,1fr)_120px_20px] items-center gap-3 border-0 border-t border-[var(--lc-line)] bg-transparent px-4 text-left hover:bg-[#fafaf6]"><span className="font-[var(--lc-font-mono)] text-[9px] text-[var(--lc-ink-muted)]">{String(index + 1).padStart(2, '0')}</span><span><strong className="block text-[13px]"><RepositorySkillName skill={skill} /></strong><small className="font-[var(--lc-font-mono)] text-[9px] text-[var(--lc-ink-muted)]">{skill.id}</small></span><span className="text-xs text-[var(--lc-ink-muted)]">{skill.roleIds.join(' · ')}</span><StatusBadge tone="positive">{t('availableReadOnly')}</StatusBadge><ChevronRight size={14} aria-hidden /></button>)}</section>;
+}
+function SchedulesView() {
+  const t = useTranslations('Production');
+  return <div className="lc-rule-sheet grid min-h-[390px] place-items-center"><div className="max-w-xl text-center"><CalendarClock className="mx-auto text-[var(--lc-warning)]" size={30} aria-hidden /><h2 className="mt-4 text-xl font-semibold">{t('noScheduledTasks')}</h2><p className="mt-3 text-[13px] leading-6 text-[var(--lc-ink-muted)]">{t('noScheduledTasksFriendly')}</p><div className="mt-5 grid grid-cols-3 gap-2 text-left"><PlannedItem title={t('feedbackDigest')} /><PlannedItem title={t('readOnlySync')} /><PlannedItem title={t('nextCampaignPrep')} /></div><details className="lc-technical-details mx-auto max-w-md"><summary>{t('technicalDetails')}</summary><code>PLANNED · NO_RUNTIME_OBSERVATION · SDD_007_REQUIRED</code></details></div></div>;
+}
+
+function AgentDrawer({agent, skills, onClose}: {agent: TeamAgent | null; skills: RepositorySkill[]; onClose: () => void}) {
+  const t = useTranslations('Production');
+  const [skillContent, setSkillContent] = useState<{id: string; content: string} | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const inspect = async (id: string) => { setError(null); try { const result = await loadSkill(id); setSkillContent({id, content: result.skill.content}); } catch (caught) { setError(caught instanceof Error ? caught.message : 'SKILL_LOAD_FAILED'); } };
+  return <Drawer open={agent !== null} onOpenChange={(open) => { if (!open) { setSkillContent(null); onClose(); } }} closeLabel={t('closeDrawer')} title={agent === null ? t('agent') : `${agent.code} · ${t(`agents.${agent.code}.name`)}`} description={agent === null ? '' : t('agentDrawerDescription')}>
+    {agent === null ? null : <div><div className="flex items-center gap-4 bg-[var(--lc-canvas)] p-4"><span className={`lc-agent-avatar lc-agent-${agent.code.toLowerCase()}`} data-size="md" aria-hidden /><div><span className="lc-mode-pill" data-mode="local">{t('configuredRole')}</span><h2 className="mt-2 text-base font-semibold">{t(`agents.${agent.code}.name`)}</h2><p className="mt-1 text-xs text-[var(--lc-ink-muted)]">{t('runtimeNoObservationFriendly')}</p></div></div><section className="mt-6"><h3 className="text-sm font-semibold">{t('responsibility')}</h3><p className="mt-2 text-[14px] leading-6 text-[var(--lc-ink-muted)]">{t(`agents.${agent.code}.responsibility`)}</p></section><section className="mt-6"><div className="flex items-center gap-2"><FileCode2 size={15} aria-hidden /><h3 className="text-sm font-semibold">{t('skills')}</h3></div><p className="mt-2 text-[11px] text-[var(--lc-ink-muted)]">{t('skillSource')}</p><div className="mt-3 space-y-2">{agent.skillIds.map((id) => { const skill = skills.find((item) => item.id === id); return <button key={id} onClick={() => inspect(id)} className="flex w-full items-center gap-3 rounded-md border border-[var(--lc-line)] bg-white px-3 py-3 text-left hover:border-[var(--lc-line-strong)]"><Bot size={15} aria-hidden className="text-[var(--lc-accent)]" /><span className="min-w-0 flex-1"><strong className="block text-xs">{skill === undefined ? id : <RepositorySkillName skill={skill} />}</strong><small className="font-[var(--lc-font-mono)] text-[9px] text-[var(--lc-ink-muted)]">{id}</small></span><ChevronRight size={14} aria-hidden /></button>; })}</div></section>{error === null ? null : <p role="alert" className="mt-4 text-xs text-[var(--lc-danger)]">{error}</p>}{skillContent === null ? null : <SkillSource id={skillContent.id} content={skillContent.content} />}<details className="lc-technical-details"><summary>{t('technicalDetails')}</summary><code>{agent.roleId} · {agent.status} · {agent.metrics.source}</code></details><div className="mt-6"><Button disabled variant="secondary">{t('startAgentFriendly')}</Button></div></div>}
+  </Drawer>;
+}
+
+function SkillDrawer({skill, content, error, onClose}: {skill: RepositorySkill | null; content: string | null; error: string | null; onClose: () => void}) {
+  const t = useTranslations('Production');
+  const displayName = skill === null ? '' : skillLabel(skill, t);
+  return <Drawer open={skill !== null} onOpenChange={(open) => { if (!open) onClose(); }} closeLabel={t('closeDrawer')} title={displayName} description={skill === null ? '' : t('skillDrawerDescription', {id: skill.id, license: skill.license})}>{error === null ? null : <p role="alert" className="text-xs text-[var(--lc-danger)]">{error}</p>}{skill === null || content === null ? null : <SkillSource id={skill.id} content={content} />}</Drawer>;
+}
+function SkillSource({id, content}: {id: string; content: string}) { const t = useTranslations('Production'); return <section><div className="flex items-center justify-between"><h3 className="text-xs font-semibold">{id}/SKILL.md</h3><StatusBadge tone="positive">{t('repositoryReadOnly')}</StatusBadge></div><pre className="lc-scrollbar mt-3 max-h-[560px] overflow-auto whitespace-pre-wrap rounded-md bg-[var(--lc-sidebar)] p-4 font-[var(--lc-font-mono)] text-[11px] leading-5 text-white/75">{content}</pre></section>; }
+function RepositorySkillName({skill}: {skill: RepositorySkill}) { const t = useTranslations('Production'); return skillLabel(skill, t); }
+function skillLabel(skill: RepositorySkill, t: ReturnType<typeof useTranslations<'Production'>>) { const labels: Record<string, string> = {'trace-safe-escalation': t('teamSkills.traceSafeEscalation'), 'evidence-and-claim-grounding': t('teamSkills.evidenceClaimGrounding'), 'campaign-strategy': t('teamSkills.campaignStrategy'), 'account-native-expression': t('teamSkills.accountNativeExpression'), 'independent-action-audit': t('teamSkills.independentActionAudit')}; return labels[skill.id] ?? skill.name; }
+function QueueItem({index, title, detail, done = false}: {index: string; title: string; detail: string; done?: boolean}) { return <li className="grid min-h-[54px] grid-cols-[23px_minmax(0,1fr)] items-center gap-2 border-t border-white/10"><span className={`grid size-5 place-items-center rounded-full font-[var(--lc-font-mono)] text-[8px] ${done ? 'bg-[var(--lc-mint)] text-[var(--lc-sidebar)]' : 'bg-white/8 text-white/70'}`}>{done ? '✓' : index}</span><div><strong className="block text-[10px]">{title}</strong><small className="text-[9px] text-white/70">{detail}</small></div></li>; }
+function RuntimeMetric({label, value, note}: {label: string; value: string; note: string}) { return <div className="min-h-[72px] border-r border-white/10 px-5 py-3 last:border-r-0"><dt className="text-[9px] text-white/70">{label}</dt><dd className="mt-1 font-[var(--lc-font-mono)] text-[17px] font-semibold">{value}<small className="ml-2 font-[var(--lc-font-sans)] text-[9px] font-normal text-white/70">{note}</small></dd></div>; }
+function PlannedItem({title}: {title: string}) { const t = useTranslations('Production'); return <div className="border border-[var(--lc-line)] bg-[var(--lc-surface)] p-3"><strong className="block text-[10px]">{title}</strong><span className="mt-2 block text-[9px] text-[var(--lc-ink-muted)]">{t('plannedNotRunning')}</span></div>; }

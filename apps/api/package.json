@@ -10,6 +10,7 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@lumiclaw/blob-store": "*",
     "@lumiclaw/db": "*",
     "@lumiclaw/domain": "*",
     "@lumiclaw/governed-shadow": "*",

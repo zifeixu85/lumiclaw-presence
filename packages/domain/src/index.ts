@@ -11,6 +11,8 @@ export * from './graph-schema.js';
 export * from './graph.js';
 export * from './id.js';
 export * from './market-localization.js';
+export * from './local-presence.js';
+export * from './local-campaign.js';
 export * from './rfc3339.js';
 export * from './schedule.js';
 export * from './types.js';

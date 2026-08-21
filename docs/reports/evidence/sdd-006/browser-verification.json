@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 2,
+  "result": "PASS",
+  "baseUrl": "http://127.0.0.1:3166",
+  "viewport": {
+    "width": 1440,
+    "height": 900
+  },
+  "generatedAt": "2026-08-16T11:07:06.048Z",
+  "locales": [
+    "zh-CN",
+    "en"
+  ],
+  "checks": {
+    "firstOpenDefaultsChinese": true,
+    "firstOpenDisplayNameOnly": true,
+    "onboardingStepRail": true,
+    "visibleLocaleRecovery": true,
+    "englishOnboardingLocalized": true,
+    "twoHonestPaths": true,
+    "exampleChoiceAvailableImmediately": true,
+    "mdUploadVisible": true,
+    "extractedTextVisible": true,
+    "pdfDocxHonest": true,
+    "localAuthorityFieldsConfirmed": true,
+    "contextFieldsRemainDistinct": true,
+    "contextMultiSelectWorks": true,
+    "defaultScheduleTimeZoneIsSingle": true,
+    "workspaceEntered": true,
+    "localPrivateWorkspaceBadge": true,
+    "noPublicExampleCampaignLeak": true,
+    "todayHierarchy": true,
+    "noHorizontalOverflow1440": true,
+    "campaignOwnAuthority": true,
+    "campaignInformationArchitecture": true,
+    "fullContentBeforeApproval": true,
+    "approvalBlockedWithoutAudit": true,
+    "compactActiveAgentAndTrace": true,
+    "drawerMotionContract": true,
+    "drawerScrollLock": true,
+    "drawerFocusRestored": true,
+    "frozenTeamTabsPresent": true,
+    "metricProvenance": true,
+    "noFakeLiveAnimation": true,
+    "teamKeyboardTabs": true,
+    "teamUrlStateRestored": true,
+    "sixAgents": true,
+    "professionalAgentAvatars": true,
+    "teamSkillsReadable": true,
+    "skillDrawerFocusRestored": true,
+    "scheduledTasksHonest": true,
+    "targetPlatformAndAccountVisible": true,
+    "reviewExportsDoNotClaimHandoff": true,
+    "openOfficialBlockedWithoutAuthorization": true,
+    "ownerCompleteBlockedWithoutAuthorization": true,
+    "publishAuthorizationTruth": true,
+    "apiBypassCannotCreateManualHandoff": true,
+    "authoritativeOrganizationBrandProductVisible": true,
+    "brandContextSeparationVisible": true,
+    "connectorControlsDisabled": true,
+    "runtimeNotConfiguredInDiagnostics": true,
+    "noBrowserSecretInput": true,
+    "englishTodayLocalized": true,
+    "englishTeamLocalized": true,
+    "englishPublishGateLocalized": true,
+    "reducedMotionRespected": true,
+    "noHorizontalOverflow1024": true,
+    "desktopWorkspaceAt1024": true,
+    "desktopGate": true
+  },
+  "consoleErrors": [],
+  "screenshots": [
+    {
+      "name": "01-first-open.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "b4065a3fc09cd463ad5d0084985d68710409f236abeb16434aa053b62df6cc41"
+    },
+    {
+      "name": "02-onboarding-path-choice.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "31e54470bf98df5b6140b462f9b83f2adf8284cc68a6324380587f03589a21c7"
+    },
+    {
+      "name": "03-local-private-context-confirmation.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "7fadbecb29b3f532624a7ec4c850ba1f73197599445230d0952dc46bbc36f4d4"
+    },
+    {
+      "name": "04-today.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "9ec78d6199e164265edd72d16fe90590820269e8399b66b6c8408c3912078efd"
+    },
+    {
+      "name": "05-campaign.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "aeda3795f73543fe2d35bf52155c572b86a1f656b8a9a638eb665e61ad307913"
+    },
+    {
+      "name": "06-full-content-review-drawer.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "7d406e408e9e3e45008b480becd07aff5c65a63841f4265ff9b926472b83f9d1"
+    },
+    {
+      "name": "07-ai-team-overview.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "dfc1308bf06679c0d802d9e65e06b2a19ab398f0421c20fc07b838e8b45254a1"
+    },
+    {
+      "name": "08-ai-employees.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "03b0de972167d578e0743e9c9b106787e139c9866a5fcda6669b4411a56ddb2e"
+    },
+    {
+      "name": "09-team-skills.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "fc1006eee9a6baabc18672985fa59ded1c9f5ffe8d6bc1d0ec9c4c8ff981e650"
+    },
+    {
+      "name": "10-scheduled-tasks.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "1cd19342ab27ea6f812902188be0ae66b5c2855d9d4b30349a57468c056ae3e0"
+    },
+    {
+      "name": "11-publish-center.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "a7bee2c74f57356f9355ce90a2154f37f1d27cc9fbe3209febac23acd83ed8aa"
+    },
+    {
+      "name": "12-brand-knowledge.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "4abe183813dd0410cf14d2ffecf70be971fd582553cce6ea32e2cceaacdc7bb6"
+    },
+    {
+      "name": "13-settings-readiness.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "75b24cfe0b6447fe491d7118d4f3e0dbf0fa6efa1203ef590335e37e100981e9"
+    },
+    {
+      "name": "14-en-today.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "8620bc58b023a4362d9b361d29fec119e08cd25531055f8a45bb6a4665488ac6"
+    },
+    {
+      "name": "15-en-ai-team.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "51819271b5e292620e171e762ae19eefca0ddfc5d87232e4ebd561ae7cafd25f"
+    },
+    {
+      "name": "16-en-publish-center.png",
+      "width": 1440,
+      "height": 900,
+      "sha256": "4e094dab5ffab55f488ec349b42fa90bf6ce39bc4577be00b4165fe3f408ef3d"
+    },
+    {
+      "name": "17-desktop-gate.png",
+      "width": 800,
+      "height": 900,
+      "sha256": "8bbe5694ad491364b1352fe3e99b0517e0e0807ec5d9ba8eda38f8225d0c4f47"
+    }
+  ]
+}

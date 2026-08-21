@@ -4,8 +4,8 @@
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
 > **快照日期：** 2026-08-16
-> **当前阶段：** M2 市场本地化基础进行中；M3 非执行基础模块证据已就绪
-> **当前实现真相：** M0 与 M1 已验收。M2-01～M2-06 已实现并完成工程验证，包括固定版本真实六成员 AgentTeams Mission、DeepSeek Provider 合同、一次由 Owner 本地控制且产生 7 个已接受脱敏模型回执的 DeepSeek Canary、不可变 Revision、独立审校/复审、精确不可执行 Owner Review、Trace、Ledger 与确定性故障拒绝。Owner UAT 仍待完成。`SDD-005` 只授权 public-safe 的 US/JP/DE 市场包、确定性上下文与角色投影基础；`SDD-004` 只授权非执行的多平台能力与桌面手工发布包基础。两者都不授权客户数据能力声明、ActionGrant、Connector、凭据、合规保证、外部平台动作或 `PUBLISHED`。不声明 EvoLink 真实验证、外部用户校准或业务结果。当前视觉壳仍是功能骨架，不是最终产品设计。
+> **当前阶段：** PR #5/#6/#7 收敛；M2 市场本地化与 M5 生产 UX 基础仍在进行中
+> **当前实现真相：** M0 与 M1 已验收。M2-01～M2-06 已实现并完成工程验证，包括锁定版本的六成员 AgentTeams Shadow 路径；Owner UAT 仍待完成。`SDD-004` 提供非执行桌面手工发布包基础，证据已就绪。`SDD-005` 只增加 public-safe 的 US/JP/DE 市场上下文合同；`SDD-006` 增加具备 PostgreSQL/Blob 持久化与发布 fail-closed 的生产 UX/本地 Onboarding 候选。SDD-005/006 的组合验证和 Owner UAT 仍待完成。这些切片都不授权客户数据能力声明、AgentTeams 常驻安装、ActionGrant、Connector、凭据、合规保证、外部平台动作或 `PUBLISHED`。不声明 EvoLink 真实验证、外部用户校准或业务结果。
 
 ## 进度状态合同
 
@@ -25,12 +25,12 @@
 
 | 指标 | 当前值 |
 |---|---|
-| 已验收模块 | `13 / 41`（`31.7%`） |
-| 证据已就绪 | `7 / 41` |
-| 被阻塞 | `0 / 41` |
-| 当前实现 SDD | 仅 `SDD-005` / `M2-07`；`SDD-004` / `M3-00` 已证据就绪，SDD-002/004/005 Owner UAT 均待完成 |
+| 已验收模块 | `13 / 42`（`31.0%`） |
+| 证据已就绪 | `7 / 42` |
+| 被阻塞 | `0 / 42` |
+| 当前实现 SDD | `SDD-005` / `M2-07` 与 `SDD-006` / `M5-00` 为收敛候选；`SDD-004` / `M3-00` 已证据就绪 |
 | 最早 Owner 阻塞项 | 在接受 M2 或启动任何受控外部动作前，记录 SDD-002 Owner UAT |
-| 下一个可执行模块 | 完成并独立复验 public-safe 的 M2-07 基础；全部真实动作模块继续受 Gate 约束 |
+| 下一个可执行模块 | 完成组合基线的独立验证与 Owner UAT；全部真实动作模块继续受 Gate 约束 |
 
 ## 里程碑总进度
 
@@ -41,7 +41,7 @@
 | M2 — Governed shadow campaign | `IN_PROGRESS` | `0 / 7` | 6 个证据已就绪；1 个市场本地化基础进行中 | 六成员 AgentTeams、DeepSeek Gateway/Canary、Revision/Audit、故障拒绝、Trace 与带来源市场上下文；Owner UAT 待完成 |
 | M3 — Controlled live activation | `IN_PROGRESS` | `0 / 8` | 1 个非执行基础模块证据已就绪；7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 个未开始 | Interaction → Outcome → Scoped Learning → 下一 Mission，隔离 SignalProvider PoC |
-| M5 — Runnable candidate | `NOT_STARTED` | `0 / 5` | 5 个未开始 | Fresh Install、恢复演练、Conformance、可访问性、Evidence Export 与 Demo |
+| M5 — Runnable candidate | `IN_PROGRESS` | `0 / 6` | 1 个开发中、5 个未开始 | 本地 Onboarding/生产 UX 基础，然后完成 Fresh Install、恢复演练、Conformance、可访问性、Evidence Export 与 Demo |
 | M6 — External calibration | `NOT_STARTED` | `0 / 4` | 4 个未开始 | 设计伙伴 Shadow、隔离、可靠性与外部验收报告 |
 
 ## 模块进度表
@@ -107,6 +107,7 @@
 
 | ID | 模块 | 状态 | 依赖 | 必须提交的证据 / 验收 |
 |---|---|---|---|---|
+| M5-00 | Production UX 1.4 与本地 Onboarding 基础 | `IN_PROGRESS` | M0-05、M1-03–M1-06、M2-02、M2-04；SDD-006 | 本地用户名进入、示例/真实资料 Onboarding、权威桌面工作区、诚实的 Runtime/账号/人工发布状态、可访问性与 Owner 视觉验收 |
 | M5-01 | Fresh Docker Install 与升级路径 | `NOT_STARTED` | M0–M4 | 新机器无需隐藏开发服务即可运行正常和失败关闭路径 |
 | M5-02 | Backup、Restore 与 Unknown Action 恢复演练 | `NOT_STARTED` | M5-01 | 空库恢复、Blob Digest 验证且不自动重发 |
 | M5-03 | 完整 UI 状态矩阵、i18n 与可访问性 | `NOT_STARTED` | M1–M4 | 中英文一致、视觉回归、键盘导航与 axe 检查 |
