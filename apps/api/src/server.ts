@@ -141,8 +141,10 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     if (isSecretBearingObject(request.body)) return reply.status(422).send(errorBody('BROWSER_SECRET_FIELD_FORBIDDEN'));
     const identity = validateLocalCampaignIdentityInput(request.body);
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
-    const currentSession = await requireMutableOnboardingSession(localPresenceRepository, profile.id);
-    if (currentSession.path !== 'LOCAL_MATERIALS' || currentSession.state !== 'CONTEXT_READY' || currentSession.marketCodes.length === 0 || currentSession.contentLocales.length === 0 || currentSession.platforms.length === 0 || currentSession.defaultTimeZone === null) throw new LocalPresenceContractError('LOCAL_ONBOARDING_NOT_READY');
+    const currentSession = await localPresenceRepository.getSession(profile.id);
+    if (currentSession === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
+    if (currentSession.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_ONBOARDING_ALREADY_COMPLETED');
+    if (currentSession.path !== 'LOCAL_MATERIALS' || !['CONTEXT_READY', 'COMPLETION_PENDING'].includes(currentSession.state) || currentSession.marketCodes.length === 0 || currentSession.contentLocales.length === 0 || currentSession.platforms.length === 0 || currentSession.defaultTimeZone === null) throw new LocalPresenceContractError('LOCAL_ONBOARDING_NOT_READY');
     const materials = (await localPresenceRepository.listMaterials(profile.id)).filter((item) => item.state === 'READY');
     const document = createLocalPrivateCampaignDocument({
       ownerProfileId: profile.id,
@@ -152,9 +154,11 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
       context: {marketCodes: currentSession.marketCodes, contentLocales: currentSession.contentLocales, platforms: currentSession.platforms, defaultTimeZone: currentSession.defaultTimeZone},
       materials
     });
-    const created = await repository.create(document.organizationId, document, `sdd006-local-private-${profile.id}`, sha256Digest(document), now());
+    const documentDigest = sha256Digest(document);
+    await localPresenceRepository.reserveLocalOnboardingCompletion(profile.id, materials.map((material) => material.id), documentDigest, now());
+    const created = await repository.create(document.organizationId, document, `sdd006-local-private-${profile.id}`, documentDigest, now());
     if (!created.ok) throw new LocalPresenceContractError('LOCAL_CAMPAIGN_INITIALIZATION_CONFLICT');
-    const session = await localPresenceRepository.completeLocalOnboarding(profile.id, document.organizationId, document.id, now());
+    const session = await localPresenceRepository.completeLocalOnboarding(profile.id, document.organizationId, document.id, documentDigest, now());
     return {code: 'LOCAL_ONBOARDING_COMPLETE', source: 'LOCAL_PRIVATE_USER_CONFIRMED', dataMode: 'LOCAL_PRIVATE', externalActionAllowed: false, session, campaign: created.envelope};
   });
 
@@ -537,7 +541,7 @@ function sendMutation(reply: FastifyReply, result: MutationResult, status: 200 |
 function sendDomainOrUnavailable(reply: FastifyReply, error: unknown) {
   if (error instanceof CampaignPreparationError) return reply.status(422).send({...errorBody(error.code), details: error.details});
   if (error instanceof LocalPresenceContractError) {
-    const status = ['LOCAL_PROFILE_ALREADY_EXISTS', 'LOCAL_ONBOARDING_ALREADY_COMPLETED', 'LOCAL_MATERIAL_BOUND_TO_CAMPAIGN', 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'].includes(error.code) ? 409 : error.code.includes('NOT_FOUND') ? 404 : error.code.includes('TYPE_PLANNED') || error.code.includes('TYPE_UNSUPPORTED') ? 415 : 422;
+    const status = ['LOCAL_PROFILE_ALREADY_EXISTS', 'LOCAL_ONBOARDING_ALREADY_COMPLETED', 'LOCAL_ONBOARDING_COMPLETION_IN_PROGRESS', 'LOCAL_ONBOARDING_COMPLETION_CONFLICT', 'LOCAL_ONBOARDING_MATERIAL_SET_CHANGED', 'LOCAL_MATERIAL_BOUND_TO_CAMPAIGN', 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'].includes(error.code) ? 409 : error.code.includes('NOT_FOUND') ? 404 : error.code.includes('TYPE_PLANNED') || error.code.includes('TYPE_UNSUPPORTED') ? 415 : 422;
     return reply.status(status).send(errorBody(error.code));
   }
   if (error instanceof ScheduleContractError) return reply.status(422).send({...errorBody(error.code), details: error.message});
@@ -676,6 +680,7 @@ async function requireMutableOnboardingSession(repository: LocalPresenceReposito
   const session = await repository.getSession(ownerProfileId);
   if (session === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
   if (session.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_ONBOARDING_ALREADY_COMPLETED');
+  if (session.state === 'COMPLETION_PENDING') throw new LocalPresenceContractError('LOCAL_ONBOARDING_COMPLETION_IN_PROGRESS');
   return session;
 }
 

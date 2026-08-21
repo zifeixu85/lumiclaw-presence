@@ -170,3 +170,7 @@ Executor 未修改 `IMPLEMENTATION-STATUS.md` 或 `IMPLEMENTATION-STATUS.zh-CN.m
 - Owner UAT：`PENDING`
 - 最终模块状态：`PENDING`；Executor 未改 canonical progress
 - Draft PR：[PR #6](https://github.com/zifeixu85/lumiclaw-presence/pull/6)，`OPEN / DRAFT`；不得 merge。创建时远端 CI 为 `IN_PROGRESS`，不替代已通过的本地门禁或后续 Coordinator 决策。
+
+## 十二、Convergence correction（2026-08-22）
+
+PR #6 精确源 Head `7edfb87257310d5342b24f2ec0265f2d0596302a` 的 SDD-005 主文档与 7 份 Spec Kit 文档各有一个额外 EOF 空行，因此源报告原“Diff whitespace PASS”不能作为该 Head 的精确事实；该分支对 root `verify:static` 的改动还会替换而不是追加既有 SDD-002 report gate。PR #5/#6/#7 convergence 分支已清理 EOF、同时保留 SDD-002/004/005/006 四份报告门禁，并在组合 full verify 中通过。SDD-005 仍只有 exact-three public-safe fixture；Owner UAT 与 external calibration 均为 `PENDING`。组合证据见 `docs/reports/acceptance/PR-567-CONVERGENCE-ACCEPTANCE.md`。

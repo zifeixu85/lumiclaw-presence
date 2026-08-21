@@ -206,3 +206,7 @@ docker compose --project-name lumiclaw-sdd006-owner-uat down --volumes --remove-
 ## 十一、Coordinator 验收决定
 
 `PENDING`。Coordinator 需在最终 remote full SHA 上复核视觉 REVISE、既有安全回归、changed files、CI、AC/证据 digest；Owner 再执行步骤 1–9 的视觉 UAT 后，才可决定 canonical state。本报告不声明 `ACCEPTED`。
+
+## 十二、Convergence correction（2026-08-22）
+
+PR #5/#6/#7 组合复核发现源 Head 未覆盖的 completion race：API 原先在读取材料后先创建 Campaign，最后才由 local-presence repository 锁定并完成 session；并发上传可能进入读取与锁定之间，使 completed session 的 material IDs 与 Campaign EvidenceRefs 不一致。Convergence 分支新增 `COMPLETION_PENDING`、exact material-ID/document-digest reservation 与 migration `000010_onboarding_completion_reservation.cjs`；同 digest 支持中断恢复，上传、删除、重选和不同 digest 均 fail closed。新增 API barrier test 与真实 PostgreSQL reservation 对抗检查后，组合结果为 40 files / 368 tests、14 fresh-PG checks、55 browser checks / 17 screenshots。Owner UAT 仍为 `PENDING`，本纠正不声明 `ACCEPTED`。完整记录见 `docs/reports/acceptance/PR-567-CONVERGENCE-ACCEPTANCE.md`。

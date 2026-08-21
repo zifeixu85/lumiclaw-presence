@@ -170,3 +170,7 @@ Executor 未修改 `IMPLEMENTATION-STATUS.md`、中文镜像、`ROADMAP.md`、`A
 - Owner 决定：`PENDING`
 - 最终模块状态：`EVIDENCE_READY`；Owner UAT 前不得标 `ACCEPTED`
 - 下一 Module / SDD：需由 Coordinator 另行建立；优先依据已冻结 UX 1.1 拆分正式前端收敛与 AI 团队一级导航，M3-01～M3-07 保持 `NOT_STARTED`。
+
+## 十二、Convergence correction（2026-08-22）
+
+PR #5 精确源 Head `9791045d300f4c6777abc92bcaf6af992df89519` 的父 SDD 元数据第 4～9 行仍含 Markdown hard-break 尾随空格，因此本报告原“Diff whitespace PASS”不能作为该源 Head 的精确事实。PR #5/#6/#7 convergence 分支已清理这些空格，并以 `git diff 9e241da98be00c56204894c67b7599d37ff10505 --check` 重新得到 0 error。其余 SDD-004 合同、测试与成熟度边界不因本纠正提升；Owner UAT 仍为 `PENDING`。组合证据见 `docs/reports/acceptance/PR-567-CONVERGENCE-ACCEPTANCE.md`。

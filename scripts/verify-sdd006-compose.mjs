@@ -76,7 +76,7 @@ function postgresRepositoryCompletedMutationCodes(ownerProfileId) {
       () => repository.selectLocalMaterials(ownerProfileId, now),
       () => repository.chooseExample(ownerProfileId, 'example-org', 'example-campaign', {marketCodes: ['US'], contentLocales: ['en-US'], platforms: ['LINKEDIN'], defaultTimeZone: 'America/Los_Angeles'}, now),
       () => repository.setContext(ownerProfileId, {marketCodes: ['US'], contentLocales: ['en-US'], platforms: ['LINKEDIN'], defaultTimeZone: 'America/New_York'}, now),
-      () => repository.completeLocalOnboarding(ownerProfileId, 'replacement-org', 'replacement-campaign', now),
+      () => repository.completeLocalOnboarding(ownerProfileId, 'replacement-org', 'replacement-campaign', '0'.repeat(64), now),
       () => repository.ingestMaterial({ownerProfileId, fileName: 'repository-post-completion.md', declaredMediaType: 'text/markdown', bytes: new TextEncoder().encode('# must fail')}, now)
     ];
     const codes = [];
@@ -86,6 +86,35 @@ function postgresRepositoryCompletedMutationCodes(ownerProfileId) {
     }
     await repository.close();
     process.stdout.write(JSON.stringify(codes));
+  `;
+  return JSON.parse(docker(['exec', '-T', 'api', 'node', '--input-type=module', '-e', source]));
+}
+
+function postgresCompletionReservationResult(ownerProfileId, materialId, racingBytes) {
+  const source = `
+    import {LocalContentAddressedBlobStore} from '@lumiclaw/blob-store';
+    import {PostgresLocalPresenceRepository} from '@lumiclaw/db';
+    const repository = new PostgresLocalPresenceRepository(process.env.DATABASE_URL, new LocalContentAddressedBlobStore(process.env.BLOB_ROOT));
+    const now = new Date('2026-08-16T08:30:00.000Z');
+    const ownerProfileId = ${JSON.stringify(ownerProfileId)};
+    const materialId = ${JSON.stringify(materialId)};
+    const digest = 'a'.repeat(64);
+    const reserved = await repository.reserveLocalOnboardingCompletion(ownerProfileId, [materialId], digest, now);
+    const codes = [];
+    for (const mutate of [
+      () => repository.ingestMaterial({ownerProfileId, fileName: 'reservation-race.md', declaredMediaType: 'text/markdown', bytes: new Uint8Array(${JSON.stringify([...racingBytes])})}, now),
+      () => repository.selectLocalMaterials(ownerProfileId, now),
+      () => repository.deleteMaterial(ownerProfileId, materialId)
+    ]) {
+      try { await mutate(); codes.push('MUTATION_SUCCEEDED'); }
+      catch (error) { codes.push(error?.code ?? 'UNKNOWN_ERROR'); }
+    }
+    const replay = await repository.reserveLocalOnboardingCompletion(ownerProfileId, [materialId], digest, now);
+    let conflictCode = 'NO_CONFLICT';
+    try { await repository.reserveLocalOnboardingCompletion(ownerProfileId, [materialId], 'b'.repeat(64), now); }
+    catch (error) { conflictCode = error?.code ?? 'UNKNOWN_ERROR'; }
+    await repository.close();
+    process.stdout.write(JSON.stringify({reservedState: reserved.state, replayState: replay.state, codes, conflictCode}));
   `;
   return JSON.parse(docker(['exec', '-T', 'api', 'node', '--input-type=module', '-e', source]));
 }
@@ -124,6 +153,20 @@ try {
   const persistedMaterialIds = JSON.parse(postgresScalar('select material_ids::text from local_onboarding_sessions limit 1'));
   if (materialCount !== 1 || persistedMaterialIds.length !== 1 || persistedMaterialIds[0] !== duplicateResults[0].body.material.id) throw new Error('SDD006_CONCURRENT_DUPLICATE_PERSISTENCE_INCONSISTENT');
   checks.concurrentDuplicateUploadIsIdempotentAndConsistent = true;
+
+  const reservationContext = await postJson('/api/v1/local-onboarding/context', {marketCodes: ['US'], contentLocales: ['en-US'], platforms: ['LINKEDIN'], defaultTimeZone: 'America/Los_Angeles'});
+  if (reservationContext.status !== 200 || reservationContext.body.session?.state !== 'CONTEXT_READY') throw new Error('SDD006_RESERVATION_CONTEXT_FAILED');
+  const reservationRaceBytes = Buffer.from('# must not enter a reserved completion snapshot');
+  const reservationResult = postgresCompletionReservationResult(profile.body.profile.id, duplicateResults[0].body.material.id, reservationRaceBytes);
+  if (
+    reservationResult.reservedState !== 'COMPLETION_PENDING'
+    || reservationResult.replayState !== 'COMPLETION_PENDING'
+    || !reservationResult.codes.every((code) => code === 'LOCAL_ONBOARDING_COMPLETION_IN_PROGRESS')
+    || reservationResult.conflictCode !== 'LOCAL_ONBOARDING_COMPLETION_CONFLICT'
+    || Number(postgresScalar('select count(*) from local_material_manifests')) !== 1
+    || blobExists(reservationRaceBytes)
+  ) throw new Error('SDD006_COMPLETION_RESERVATION_DID_NOT_FAIL_CLOSED');
+  checks.completionReservationFreezesExactMaterialSnapshot = true;
 
   docker(['down', '--volumes', '--remove-orphans']);
   docker(['up', '--no-build', '--detach'], true);

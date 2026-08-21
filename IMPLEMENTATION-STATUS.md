@@ -3,9 +3,9 @@
 [English](IMPLEMENTATION-STATUS.md) | [简体中文](IMPLEMENTATION-STATUS.zh-CN.md) | [Architecture](ARCHITECTURE.md) | [Roadmap](ROADMAP.md)
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
-> **Snapshot:** 2026-08-16
+> **Snapshot:** 2026-08-22
 > **Current phase:** PR #5/#6/#7 convergence; M2 localization and M5 production UX foundations remain in progress
-> **Current implementation truth:** M0 and M1 are accepted. M2-01 through M2-06 are implemented and engineering-verified, including the pinned six-member AgentTeams shadow path; their Owner UAT is pending. `SDD-004` provides a non-executing desktop manual-package foundation and is evidence ready. `SDD-005` adds only public-safe US/JP/DE market-context contracts, while `SDD-006` adds a production-UX/local-onboarding candidate with PostgreSQL/Blob persistence and fail-closed publishing. SDD-005/006 combined verification and Owner UAT remain pending. None of these slices authorizes customer-data claims, persistent AgentTeams installation, ActionGrants, connectors, credentials, compliance guarantees, external platform actions or `PUBLISHED`. EvoLink live verification, external-user calibration, and business outcomes are not claimed.
+> **Current implementation truth:** M0 and M1 are accepted. M2-01 through M2-06 are implemented and engineering-verified, including the pinned six-member AgentTeams shadow path; their Owner UAT is pending. `SDD-004` provides a non-executing desktop manual-package foundation and is evidence ready. `SDD-005` adds only public-safe US/JP/DE market-context contracts, while `SDD-006` adds a production-UX/local-onboarding candidate with PostgreSQL/Blob persistence and fail-closed publishing. The Integration Executor completed combined machine verification for SDD-004/005/006; Coordinator independent verification and Owner UAT remain pending. None of these slices authorizes customer-data claims, persistent AgentTeams installation, ActionGrants, connectors, credentials, compliance guarantees, external platform actions or `PUBLISHED`. EvoLink live verification, external-user calibration, and business outcomes are not claimed.
 
 ## Progress contract
 
@@ -30,7 +30,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | Blocked | `0 / 42` |
 | Active implementation SDD | `SDD-005` / `M2-07` and `SDD-006` / `M5-00` are convergence candidates; `SDD-004` / `M3-00` is evidence ready |
 | Earliest owner blocker | Record SDD-002 Owner UAT before accepting M2 or starting any controlled external action |
-| Next executable module | Complete combined verification and Owner UAT for the convergence baseline; all real action modules remain gated |
+| Next executable module | Coordinator independently verifies the convergence baseline, then records Owner UAT; all real action modules remain gated |
 
 ## Milestone progress
 

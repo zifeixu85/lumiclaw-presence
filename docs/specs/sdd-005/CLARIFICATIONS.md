@@ -14,4 +14,3 @@
 | CL-10 | Is current UX 1.1 core workspace modified? | No. Only an isolated evidence surface unless Owner authorizes a change request. |
 | CL-11 | What status is allowed without a real enterprise? | At most `EVIDENCE_READY`; external calibration remains pending. |
 | CL-12 | Can sources be copied wholesale? | No. Store metadata and bounded paraphrases; follow source citation/license limits. |
-

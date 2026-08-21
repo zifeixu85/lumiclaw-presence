@@ -5,4 +5,3 @@ The specification and lifecycle artifacts agree on one bounded, non-executing sl
 No unresolved product, privacy, source, license, architecture, AgentTeams, UX, testability or rollback conflict blocks implementation. No database, API, provider, credential or external action is required. Any such discovery pauses implementation and requires a change request.
 
 The SDD is `SPEC_READY`. Machine evidence can support at most `EVIDENCE_READY`; real-enterprise localization quality remains an external calibration gate.
-

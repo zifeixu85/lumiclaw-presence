@@ -231,4 +231,3 @@ Rollback is a pure Git revert unless the Executor proposes a schema or service c
 Allowed claim after machine verification: `IMPLEMENTED / ENGINEERING_VERIFIED` public-safe market-context foundation. Required Owner UAT pending state: `EVIDENCE_READY`.
 
 Not allowed: culturally correct, compliant, customer-approved, globally covered, production-ready or business-effective localization.
-

@@ -3,9 +3,9 @@
 [English](IMPLEMENTATION-STATUS.md) | [简体中文](IMPLEMENTATION-STATUS.zh-CN.md) | [技术架构](ARCHITECTURE.zh-CN.md) | [路线图](ROADMAP.zh-CN.md)
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
-> **快照日期：** 2026-08-16
+> **快照日期：** 2026-08-22
 > **当前阶段：** PR #5/#6/#7 收敛；M2 市场本地化与 M5 生产 UX 基础仍在进行中
-> **当前实现真相：** M0 与 M1 已验收。M2-01～M2-06 已实现并完成工程验证，包括锁定版本的六成员 AgentTeams Shadow 路径；Owner UAT 仍待完成。`SDD-004` 提供非执行桌面手工发布包基础，证据已就绪。`SDD-005` 只增加 public-safe 的 US/JP/DE 市场上下文合同；`SDD-006` 增加具备 PostgreSQL/Blob 持久化与发布 fail-closed 的生产 UX/本地 Onboarding 候选。SDD-005/006 的组合验证和 Owner UAT 仍待完成。这些切片都不授权客户数据能力声明、AgentTeams 常驻安装、ActionGrant、Connector、凭据、合规保证、外部平台动作或 `PUBLISHED`。不声明 EvoLink 真实验证、外部用户校准或业务结果。
+> **当前实现真相：** M0 与 M1 已验收。M2-01～M2-06 已实现并完成工程验证，包括锁定版本的六成员 AgentTeams Shadow 路径；Owner UAT 仍待完成。`SDD-004` 提供非执行桌面手工发布包基础，证据已就绪。`SDD-005` 只增加 public-safe 的 US/JP/DE 市场上下文合同；`SDD-006` 增加具备 PostgreSQL/Blob 持久化与发布 fail-closed 的生产 UX/本地 Onboarding 候选。Integration Executor 已完成 SDD-004/005/006 组合机器验证；Coordinator 独立复验与 Owner UAT 仍待完成。这些切片都不授权客户数据能力声明、AgentTeams 常驻安装、ActionGrant、Connector、凭据、合规保证、外部平台动作或 `PUBLISHED`。不声明 EvoLink 真实验证、外部用户校准或业务结果。
 
 ## 进度状态合同
 
@@ -30,7 +30,7 @@
 | 被阻塞 | `0 / 42` |
 | 当前实现 SDD | `SDD-005` / `M2-07` 与 `SDD-006` / `M5-00` 为收敛候选；`SDD-004` / `M3-00` 已证据就绪 |
 | 最早 Owner 阻塞项 | 在接受 M2 或启动任何受控外部动作前，记录 SDD-002 Owner UAT |
-| 下一个可执行模块 | 完成组合基线的独立验证与 Owner UAT；全部真实动作模块继续受 Gate 约束 |
+| 下一个可执行模块 | Coordinator 独立复验组合基线后记录 Owner UAT；全部真实动作模块继续受 Gate 约束 |
 
 ## 里程碑总进度
 

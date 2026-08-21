@@ -30,4 +30,3 @@
 - Run targeted and full gates.
 - Write `docs/reports/acceptance/SDD-005-ACCEPTANCE.md`.
 - Commit, push, open Draft PR and return Worktree/Branch/Base/Commit/changed files/tests/evidence/limitations/rollback/next step.
-

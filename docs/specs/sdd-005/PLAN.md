@@ -11,4 +11,3 @@
 9. Commit, push and open a Draft PR; return structured status to Coordinator.
 
 No database migration, API, provider, credential or external action is planned. Any need for one requires a Coordinator-approved change request before implementation.
-

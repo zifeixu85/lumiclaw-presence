@@ -6,7 +6,7 @@ export const LOCAL_MATERIAL_ACCEPT = '.md,.txt';
 
 export type LocalProfileState = 'PROFILE_READY' | 'ONBOARDING_COMPLETE';
 export type OnboardingPath = 'UNSELECTED' | 'PUBLIC_SAFE_EXAMPLE' | 'LOCAL_MATERIALS';
-export type OnboardingState = 'MATERIAL_CHOICE' | 'MATERIALS_READY' | 'CONTEXT_READY' | 'COMPLETED';
+export type OnboardingState = 'MATERIAL_CHOICE' | 'MATERIALS_READY' | 'CONTEXT_READY' | 'COMPLETION_PENDING' | 'COMPLETED';
 export type LocalDataMode = 'LOCAL_PRIVATE' | 'PUBLIC_SAFE_EXAMPLE';
 export type MaterialState = 'READY' | 'UNSUPPORTED' | 'REJECTED' | 'FAILED';
 export type ReadinessState = 'AVAILABLE' | 'UNAVAILABLE' | 'NOT_CONFIGURED' | 'UNKNOWN';
@@ -110,7 +110,8 @@ export interface LocalPresenceRepository {
   chooseExample(ownerProfileId: string, organizationId: string, campaignId: string, context: LocalOnboardingContext, now: Date): Promise<LocalOnboardingSession>;
   selectLocalMaterials(ownerProfileId: string, now: Date): Promise<LocalOnboardingSession>;
   setContext(ownerProfileId: string, context: LocalOnboardingContext, now: Date): Promise<LocalOnboardingSession>;
-  completeLocalOnboarding(ownerProfileId: string, organizationId: string, campaignId: string, now: Date): Promise<LocalOnboardingSession>;
+  reserveLocalOnboardingCompletion(ownerProfileId: string, expectedMaterialIds: readonly string[], completionDigest: string, now: Date): Promise<LocalOnboardingSession>;
+  completeLocalOnboarding(ownerProfileId: string, organizationId: string, campaignId: string, completionDigest: string, now: Date): Promise<LocalOnboardingSession>;
   ingestMaterial(input: MaterialIngestInput, now: Date): Promise<LocalMaterialManifest>;
   listMaterials(ownerProfileId: string): Promise<LocalMaterialManifest[]>;
   deleteMaterial(ownerProfileId: string, materialId: string): Promise<boolean>;

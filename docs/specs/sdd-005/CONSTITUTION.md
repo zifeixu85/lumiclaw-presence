@@ -10,4 +10,3 @@
 8. Public pack or Organization knowledge changes never silently rewrite approved artifacts.
 9. No crawling, credentials, connector, ActionGrant, external action or customer upload pipeline is authorized.
 10. Only Coordinator may update canonical status; Executor returns evidence and a structured handoff.
-

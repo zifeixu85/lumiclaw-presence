@@ -15,6 +15,7 @@ import {
 export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
   #profile: LocalOwnerProfile | undefined;
   #session: LocalOnboardingSession | undefined;
+  #completionDigest: string | undefined;
   readonly #materials = new Map<string, LocalMaterialManifest>();
   readonly #bytes = new Map<string, Uint8Array>();
   readonly #handoffs: ManualPublishHandoff[] = [];
@@ -59,9 +60,27 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
     return clone(this.#session)!;
   }
 
-  public async completeLocalOnboarding(ownerProfileId: string, organizationId: string, campaignId: string, now: Date): Promise<LocalOnboardingSession> {
-    const session = this.requireMutableSession(ownerProfileId);
-    if (session.path !== 'LOCAL_MATERIALS' || session.state !== 'CONTEXT_READY' || this.readyMaterials(ownerProfileId).length < 1) throw new LocalPresenceContractError('LOCAL_ONBOARDING_NOT_READY');
+  public async reserveLocalOnboardingCompletion(ownerProfileId: string, expectedMaterialIds: readonly string[], completionDigest: string, now: Date): Promise<LocalOnboardingSession> {
+    const session = this.requireSession(ownerProfileId);
+    if (session.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_ONBOARDING_ALREADY_COMPLETED');
+    if (session.state === 'COMPLETION_PENDING') {
+      if (this.#completionDigest !== completionDigest || !sameIds(session.materialIds, expectedMaterialIds)) throw new LocalPresenceContractError('LOCAL_ONBOARDING_COMPLETION_CONFLICT');
+      return clone(session)!;
+    }
+    if (session.path !== 'LOCAL_MATERIALS' || session.state !== 'CONTEXT_READY') throw new LocalPresenceContractError('LOCAL_ONBOARDING_NOT_READY');
+    const readyMaterialIds = this.readyMaterials(ownerProfileId).map((material) => material.id);
+    if (readyMaterialIds.length < 1) throw new LocalPresenceContractError('LOCAL_MATERIAL_REQUIRED');
+    if (!sameIds(readyMaterialIds, expectedMaterialIds)) throw new LocalPresenceContractError('LOCAL_ONBOARDING_MATERIAL_SET_CHANGED');
+    if (!/^[a-f0-9]{64}$/u.test(completionDigest)) throw new LocalPresenceContractError('LOCAL_ONBOARDING_COMPLETION_DIGEST_INVALID');
+    this.#completionDigest = completionDigest;
+    this.#session = {...session, state: 'COMPLETION_PENDING', materialIds: readyMaterialIds, updatedAt: now.toISOString()};
+    return clone(this.#session)!;
+  }
+
+  public async completeLocalOnboarding(ownerProfileId: string, organizationId: string, campaignId: string, completionDigest: string, now: Date): Promise<LocalOnboardingSession> {
+    const session = this.requireSession(ownerProfileId);
+    if (session.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_ONBOARDING_ALREADY_COMPLETED');
+    if (session.path !== 'LOCAL_MATERIALS' || session.state !== 'COMPLETION_PENDING' || this.#completionDigest !== completionDigest || this.readyMaterials(ownerProfileId).length < 1) throw new LocalPresenceContractError('LOCAL_ONBOARDING_COMPLETION_CONFLICT');
     this.#session = {...session, organizationId, campaignId, state: 'COMPLETED', updatedAt: now.toISOString()};
     this.completeProfile(now);
     return clone(this.#session)!;
@@ -111,6 +130,7 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
   private requireMutableSession(ownerProfileId: string): LocalOnboardingSession {
     const session = this.requireSession(ownerProfileId);
     if (session.state === 'COMPLETED') throw new LocalPresenceContractError('LOCAL_ONBOARDING_ALREADY_COMPLETED');
+    if (session.state === 'COMPLETION_PENDING') throw new LocalPresenceContractError('LOCAL_ONBOARDING_COMPLETION_IN_PROGRESS');
     return session;
   }
 
@@ -122,3 +142,4 @@ export class MemoryLocalPresenceRepository implements LocalPresenceRepository {
 }
 
 function clone<T>(value: T): T { return value === undefined ? value : structuredClone(value); }
+function sameIds(left: readonly string[], right: readonly string[]): boolean { return left.length === right.length && left.every((id, index) => id === right[index]); }

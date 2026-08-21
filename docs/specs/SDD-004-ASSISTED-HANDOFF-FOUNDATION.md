@@ -1,12 +1,12 @@
 # SDD-004 — Multi-platform activation and assisted-handoff foundation
 
 > Status: `EVIDENCE_READY`
-> Milestone: `M3 — Controlled live activation`  
-> Progress module IDs: `M3-00`  
-> Owner: LumiClaw product/design Owner  
-> Goal objective / task reference: one-day, non-executing foundation for truthful multi-platform readiness and handoff  
-> Target evidence maturity: `ENGINEERING_VERIFIED`  
-> Acceptance report: `docs/reports/acceptance/SDD-004-ACCEPTANCE.md`  
+> Milestone: `M3 — Controlled live activation`
+> Progress module IDs: `M3-00`
+> Owner: LumiClaw product/design Owner
+> Goal objective / task reference: one-day, non-executing foundation for truthful multi-platform readiness and handoff
+> Target evidence maturity: `ENGINEERING_VERIFIED`
+> Acceptance report: `docs/reports/acceptance/SDD-004-ACCEPTANCE.md`
 > Last updated: `2026-08-16`
 
 > **Owner Override:** `docs/specs/sdd-004/CHANGE-REQUEST-1-DESKTOP-MANUAL-PUBLISH-ASSISTANT.md`（`SPEC_READY`）governs conflicting current UI, builder and acceptance language. The current product path is desktop `MANUAL_DESKTOP_ASSISTANT`; the three capability layers remain internal/future contracts only.

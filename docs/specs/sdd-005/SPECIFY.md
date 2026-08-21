@@ -15,4 +15,3 @@ As a team operating in several countries, I want LumiClaw to combine our own app
 ## Non-result
 
 The slice does not generate a legally or culturally certified post, connect an account, publish content, ingest a customer document or prove commercial outcomes.
-

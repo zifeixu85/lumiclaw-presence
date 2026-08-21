@@ -12,4 +12,3 @@
 - [x] No unresolved clarification blocks implementation.
 
 Result: `SPEC_READY`.
-

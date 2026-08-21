@@ -1,4 +1,5 @@
 import {afterEach, describe, expect, it} from 'vitest';
+import {MemoryLocalPresenceRepository} from './memory-local-presence-repository.js';
 import {buildApi} from './server.js';
 
 const apps: ReturnType<typeof buildApi>[] = [];
@@ -7,6 +8,32 @@ const localIdentity = {organizationName: '星河工作室', brandName: '星河',
 afterEach(async () => Promise.all(apps.splice(0).map(async (app) => app.close())));
 
 function makeApp() { const app = buildApi({now}); apps.push(app); return app; }
+
+class DelayedReservationRepository extends MemoryLocalPresenceRepository {
+  readonly #entered: Promise<void>;
+  #markEntered!: () => void;
+  readonly #released: Promise<void>;
+  #release!: () => void;
+  #delayed = false;
+
+  public constructor() {
+    super();
+    this.#entered = new Promise((resolve) => { this.#markEntered = resolve; });
+    this.#released = new Promise((resolve) => { this.#release = resolve; });
+  }
+
+  public waitUntilReservationStarts(): Promise<void> { return this.#entered; }
+  public releaseReservation(): void { this.#release(); }
+
+  public override async reserveLocalOnboardingCompletion(ownerProfileId: string, expectedMaterialIds: readonly string[], completionDigest: string, reservationNow: Date) {
+    if (!this.#delayed) {
+      this.#delayed = true;
+      this.#markEntered();
+      await this.#released;
+    }
+    return super.reserveLocalOnboardingCompletion(ownerProfileId, expectedMaterialIds, completionDigest, reservationNow);
+  }
+}
 
 describe('SDD-006 local onboarding API', () => {
   it('starts with display-name-only local identity and rejects browser secret-shaped fields', async () => {
@@ -60,6 +87,34 @@ describe('SDD-006 local onboarding API', () => {
     expect(afterDeleteAttempt.session).toEqual(reopen.session);
     expect(afterDeleteAttempt.materials).toEqual(reopen.materials);
     expect(afterDeleteAttempt.campaign.digest).toBe(reopen.campaign.digest);
+  });
+
+  it('fails closed when a material arrives between the completion snapshot read and its reservation', async () => {
+    const localPresenceRepository = new DelayedReservationRepository();
+    const app = buildApi({now, localPresenceRepository});
+    apps.push(app);
+    await app.inject({method: 'POST', url: '/api/v1/local-owner-profile', payload: {displayName: 'Concurrent Owner'}});
+    await app.inject({method: 'POST', url: '/api/v1/local-onboarding/materials-path'});
+    await app.inject({method: 'POST', url: '/api/v1/local-materials', headers: {'content-type': 'text/markdown', 'x-lumiclaw-file-name': 'first.md'}, payload: Buffer.from('# first')});
+    const context = {marketCodes: ['CN'], contentLocales: ['zh-CN'], platforms: ['XIAOHONGSHU'], defaultTimeZone: 'Asia/Shanghai'};
+    await app.inject({method: 'POST', url: '/api/v1/local-onboarding/context', payload: context});
+
+    const completing = app.inject({method: 'POST', url: '/api/v1/local-onboarding/complete', payload: localIdentity});
+    await localPresenceRepository.waitUntilReservationStarts();
+    const racingUpload = await app.inject({method: 'POST', url: '/api/v1/local-materials', headers: {'content-type': 'text/plain', 'x-lumiclaw-file-name': 'racing.txt'}, payload: Buffer.from('arrived during completion')});
+    expect(racingUpload.statusCode).toBe(201);
+    localPresenceRepository.releaseReservation();
+    const rejectedCompletion = await completing;
+    expect(rejectedCompletion.statusCode).toBe(422);
+    expect(rejectedCompletion.json().code).toBe('LOCAL_ONBOARDING_NOT_READY');
+    const afterRace = (await app.inject({method: 'GET', url: '/api/v1/local-workspace'})).json();
+    expect(afterRace).toMatchObject({session: {state: 'MATERIALS_READY'}, campaign: null});
+    expect(afterRace.materials).toHaveLength(2);
+
+    await app.inject({method: 'POST', url: '/api/v1/local-onboarding/context', payload: context});
+    const retried = await app.inject({method: 'POST', url: '/api/v1/local-onboarding/complete', payload: localIdentity});
+    expect(retried.statusCode).toBe(200);
+    expect(retried.json().campaign.document.evidenceRefs).toHaveLength(2);
   });
 
   it('labels example/team metrics, exposes repository Skills, and blocks unapproved manual publishing', async () => {
