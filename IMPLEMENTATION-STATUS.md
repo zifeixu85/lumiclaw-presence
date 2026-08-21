@@ -79,7 +79,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | M2-04 | Artifact revision, independent audit and owner review | `EVIDENCE_READY` | M1-05, M2-02 | Immutable revision, initial FAIL, correction, independent re-audit, and exact non-executable review verified |
 | M2-05 | Media assets and EvoLink adapter boundary | `EVIDENCE_READY` | M0-04, M2-03 | Content-addressed ingest, rights/cost receipt, and no-auto-approval contract verified; EvoLink live Canary pending |
 | M2-06 | Trace, ledger and Flight fault denial | `EVIDENCE_READY` | M2-02, M2-04 | Frozen claim fault denial, replay, immutable trace/ledger, and zero external action verified |
-| M2-07 | Market localization knowledge packs and scoped Agent context | `IN_PROGRESS` | M1-02, M2-02; SDD-005 | Sourced US/JP/DE public-safe packs, Organization override fixture, deterministic context/digest, Producer/Auditor projections and isolated evidence |
+| M2-07 | Market localization knowledge packs and scoped Agent context | `EVIDENCE_READY` | M1-02, M2-02; SDD-005 | Sourced US/JP/DE public-safe packs, Organization override fixture, deterministic context/digest, Producer/Auditor projections and isolated evidence; Owner UAT pending |
 
 ### M3 — Controlled live activation
 
@@ -107,12 +107,17 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 
 | ID | Module | State | Dependency | Required evidence / acceptance |
 |---|---|---|---|---|
-| M5-00 | Production UX 1.4 and local onboarding foundation | `IN_PROGRESS` | M0-05, M1-03–M1-06, M2-02, M2-04; SDD-006 | Local display-name entry, example/real-material onboarding, authoritative desktop shell, truthful runtime/account/manual-publish states, accessibility and Owner visual UAT |
+| M5-00 | Production UX 1.4 and local onboarding foundation | `EVIDENCE_READY` | M0-05, M1-03–M1-06, M2-02, M2-04; SDD-006 | Local display-name entry, example/real-material onboarding, authoritative desktop shell, truthful runtime/account/manual-publish states and accessibility are engineering verified; Owner visual UAT pending |
 | M5-01 | Fresh Docker install and upgrade path | `NOT_STARTED` | M0–M4 | New machine runs normal and fail-closed paths without hidden developer services |
 | M5-02 | Backup, restore and unknown-action recovery drill | `NOT_STARTED` | M5-01 | Empty-database restore, Blob digest verification and no automatic resend |
 | M5-03 | Complete UI state matrix, i18n and accessibility | `NOT_STARTED` | M1–M4 | English/Chinese parity, visual regression, keyboard navigation and axe checks |
 | M5-04 | Provider and connector conformance suite | `NOT_STARTED` | M3, M4-04 | Success/failure/timeout/unknown/duplicate/capability cases with public-safe fixtures |
 | M5-05 | Agent ablation, evidence export and stable Hero demo | `NOT_STARTED` | M5-01–M5-04 | Same-condition comparison, allowlist export and repeatable demo runbook |
+| M5-06 | Guided persona, knowledge and account onboarding | `IN_PROGRESS` | M5-00, M2-07; SDD-008 | Versioned founder persona, organization/product facts, X/XHS account operating profiles, multi-source MD/TXT/free-text intake, explicit conflict resolution and approved KnowledgeSnapshot |
+| M5-07 | Persistent Goal, Agent-generated plan and selected-platform compiler | `NOT_STARTED` | M5-06; SDD-009 | Persistent 7/30-day Goal, real Planner draft plus Owner approval, and deterministic Mission bundles only for selected X/XHS accounts |
+| M5-08 | Persistent local AgentTeams runtime and Secret broker | `NOT_STARTED` | M5-07, M5-09; SDD-007 | Fixed-version six-member runtime, terminal-only Secret broker, PostgreSQL jobs/leases, dispatch, restart and recovery without hidden Mock success |
+| M5-09 | X/XHS artifacts, independent audit and manual PublishPackage | `NOT_STARTED` | M5-07, M3-00; SDD-010 | Versioned X post/thread and Xiaohongshu image-note artifacts, independent audit, exact OwnerDecision invalidation and safe copy/download/open package |
+| M5-10 | Full dogfood install, recovery and recording gate | `NOT_STARTED` | M5-06–M5-09; SDD-011 | Fresh install/upgrade/rollback, public-safe Owner dogfood normal and fail-closed loops, restart recovery and reproducible narrated demo evidence |
 
 ### M6 — External calibration
 
