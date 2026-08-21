@@ -123,6 +123,42 @@
       "xiaohongshu": "小红书 · 计划人工交接"
     }
   },
+  "ActivationEvidence": {
+    "eyebrow": "SDD-004 CR1 · 桌面端安全证据",
+    "title": "去发布",
+    "summary": "批准精确版本后，只通过一个桌面助手，把已批准正文和按序图片带到预期平台账号。",
+    "safety": "这个隔离证据面不会跳转、预填网页、上传图片、点击发布，也不会声称内容已经发布成功。",
+    "platformList": "同一条手工流程，如实说明平台差异",
+    "goPublish": "去发布",
+    "expectedAccount": "预期账号",
+    "exactRevision": "精确版本",
+    "currentState": "当前状态",
+    "actionList": "手工发布步骤",
+    "actions": {
+      "copyText": "复制正文",
+      "copyTextNote": "只复制已批准的精确版本。",
+      "copyMedia": "复制/下载图片",
+      "copyMediaNote": "按批准顺序处理 {count} 个媒体文件。",
+      "openPage": "打开官方发布页",
+      "openPageNote": "不会把正文、链接或图片放进网页。",
+      "manualComplete": "人工完成",
+      "manualCompleteNote": "请自行确认页面中的账号；这不是发布成功回执。"
+    },
+    "manualLimit": "手工限制：",
+    "awaiting": "人工完成后：等待系统核对，发布结果仍未确认。",
+    "unknown": "外部结果不确定：先核对，系统不会重新发布。",
+    "blockedExamples": "安全阻断示例",
+    "technicalDetails": "技术合同详情",
+    "plannedReconciliation": "定时只读账号同步与精确 Revision 匹配仍为 PLANNED，本切片没有实现。",
+    "fixtureNote": "公开安全 Storybook 证据 · 仅桌面浏览器 · 无真实账号、Secret、结果回传或外部动作。",
+    "states": {
+      "userAction": "等待你的手工操作",
+      "opened": "已打开官方页面，尚未发布",
+      "awaiting": "等待系统核对",
+      "unknown": "状态待核对，不重新发布",
+      "planned": "候选平台 · 仍在规划"
+    }
+  },
   "States": {
     "needsInput": "需要补充资料",
     "preparing": "正在准备计划",

@@ -123,6 +123,42 @@
       "xiaohongshu": "Xiaohongshu · manual handoff planned"
     }
   },
+  "ActivationEvidence": {
+    "eyebrow": "SDD-004 CR1 · Desktop-only safe evidence",
+    "title": "Go publish",
+    "summary": "After you approve the exact revision, use one desktop assistant to carry the approved copy and ordered media into the intended platform account.",
+    "safety": "This isolated evidence surface never navigates, prefills a page, uploads media, clicks publish, or claims a post succeeded.",
+    "platformList": "The same manual flow, with truthful platform limits",
+    "goPublish": "Go publish",
+    "expectedAccount": "Expected account",
+    "exactRevision": "Exact revision",
+    "currentState": "Current state",
+    "actionList": "Manual publish steps",
+    "actions": {
+      "copyText": "Copy text",
+      "copyTextNote": "Copy only the exact approved revision.",
+      "copyMedia": "Copy or download images",
+      "copyMediaNote": "Keep the approved order across {count} media item(s).",
+      "openPage": "Open official publish page",
+      "openPageNote": "No copy, link, or media is placed into the page.",
+      "manualComplete": "Complete manually",
+      "manualCompleteNote": "Confirm the visible account yourself; this is not a success receipt."
+    },
+    "manualLimit": "Manual limit:",
+    "awaiting": "After manual completion: awaiting system reconciliation; publication remains unconfirmed.",
+    "unknown": "Unknown external result: reconcile first. The system will not resend.",
+    "blockedExamples": "Fail-closed examples",
+    "technicalDetails": "Technical contract details",
+    "plannedReconciliation": "Scheduled read-only account sync and exact Revision matching remain PLANNED and are not implemented in this slice.",
+    "fixtureNote": "Public-safe Storybook evidence · desktop browser only · no real account, secret, result return, or external action.",
+    "states": {
+      "userAction": "Ready for your manual action",
+      "opened": "Official page opened; not published",
+      "awaiting": "Awaiting system reconciliation",
+      "unknown": "Status needs reconciliation; no resend",
+      "planned": "Candidate platform · planned"
+    }
+  },
   "States": {
     "needsInput": "Needs material",
     "preparing": "Preparing plan",
