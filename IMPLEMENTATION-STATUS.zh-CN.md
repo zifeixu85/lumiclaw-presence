@@ -79,7 +79,7 @@
 | M2-04 | Artifact Revision、Independent Audit 与 Owner Review | `EVIDENCE_READY` | M1-05、M2-02 | 不可变 Revision、初审 FAIL、修订、独立复审与精确不可执行 Review 已验证 |
 | M2-05 | Media Asset 与 EvoLink Adapter 边界 | `EVIDENCE_READY` | M0-04、M2-03 | Content-addressed Ingest、权利/费用 Receipt 与不自动批准合同已验证；EvoLink 真实 Canary 待完成 |
 | M2-06 | Trace、Ledger 与 Flight 故障拒绝 | `EVIDENCE_READY` | M2-02、M2-04 | 冻结 Claim 故障拒绝、Replay、不可变 Trace/Ledger 与零外部动作已验证 |
-| M2-07 | 市场本地化知识包与作用域 Agent 上下文 | `IN_PROGRESS` | M1-02、M2-02；SDD-005 | 带来源 US/JP/DE public-safe 市场包、Organization 覆盖 Fixture、确定性 Context/Digest、Producer/Auditor 投影与隔离证据 |
+| M2-07 | 市场本地化知识包与作用域 Agent 上下文 | `EVIDENCE_READY` | M1-02、M2-02；SDD-005 | 带来源 US/JP/DE public-safe 市场包、Organization 覆盖 Fixture、确定性 Context/Digest、Producer/Auditor 投影与隔离证据；Owner UAT 待完成 |
 
 ### M3 — Controlled live activation
 
@@ -107,12 +107,17 @@
 
 | ID | 模块 | 状态 | 依赖 | 必须提交的证据 / 验收 |
 |---|---|---|---|---|
-| M5-00 | Production UX 1.4 与本地 Onboarding 基础 | `IN_PROGRESS` | M0-05、M1-03–M1-06、M2-02、M2-04；SDD-006 | 本地用户名进入、示例/真实资料 Onboarding、权威桌面工作区、诚实的 Runtime/账号/人工发布状态、可访问性与 Owner 视觉验收 |
+| M5-00 | Production UX 1.4 与本地 Onboarding 基础 | `EVIDENCE_READY` | M0-05、M1-03–M1-06、M2-02、M2-04；SDD-006 | 本地用户名进入、示例/真实资料 Onboarding、权威桌面工作区、诚实的 Runtime/账号/人工发布状态与可访问性已工程验证；Owner 视觉 UAT 待完成 |
 | M5-01 | Fresh Docker Install 与升级路径 | `NOT_STARTED` | M0–M4 | 新机器无需隐藏开发服务即可运行正常和失败关闭路径 |
 | M5-02 | Backup、Restore 与 Unknown Action 恢复演练 | `NOT_STARTED` | M5-01 | 空库恢复、Blob Digest 验证且不自动重发 |
 | M5-03 | 完整 UI 状态矩阵、i18n 与可访问性 | `NOT_STARTED` | M1–M4 | 中英文一致、视觉回归、键盘导航与 axe 检查 |
 | M5-04 | Provider 与 Connector Conformance | `NOT_STARTED` | M3、M4-04 | Success/Failure/Timeout/Unknown/Duplicate/Capability 的公开安全 Fixture |
 | M5-05 | Agent 消融、Evidence Export 与稳定 Hero Demo | `NOT_STARTED` | M5-01–M5-04 | 同条件比较、Allowlist Export 与可重复 Demo Runbook |
+| M5-06 | 分步人设、知识与账号档案 Onboarding | `IN_PROGRESS` | M5-00、M2-07；SDD-008 | 版本化创始人人设、企业/产品事实、X/小红书账号运营档案、多来源 MD/TXT/自由文字接入、显式冲突决定与已批准 KnowledgeSnapshot |
+| M5-07 | 持久 Goal、Agent 生成计划与已选平台编译器 | `NOT_STARTED` | M5-06；SDD-009 | 持久 7/30 日 Goal、真实 Planner 草案与 Owner 批准，并只为已选 X/小红书账号确定性编译 Mission Bundle |
+| M5-08 | 常驻本地 AgentTeams Runtime 与 Secret Broker | `NOT_STARTED` | M5-07、M5-09；SDD-007 | 固定版本六成员 Runtime、仅终端 Secret Broker、PostgreSQL Job/Lease、Dispatch、重启与恢复，且无隐藏 Mock 成功 |
+| M5-09 | X/小红书产物、独立审校与人工 PublishPackage | `NOT_STARTED` | M5-07、M3-00；SDD-010 | 版本化 X 单帖/线程与小红书图文产物、独立审校、精确 OwnerDecision 失效及安全复制/下载/打开发布包 |
+| M5-10 | 完整 Dogfood 安装、恢复与录屏门禁 | `NOT_STARTED` | M5-06–M5-09；SDD-011 | Fresh Install/升级/回滚、public-safe Owner Dogfood 正常与失败关闭闭环、重启恢复及可复现带讲解 Demo 证据 |
 
 ### M6 — External calibration
 
