@@ -14,6 +14,7 @@ import {blockedManualPublishAuthorization, isSecretBearingObject, LOCAL_MATERIAL
 import {isSecretBearingKnowledgeObject, knowledgeEtag, KnowledgeContractError, parseKnowledgeEtag, validateKnowledgeSessionInput, validateSourceCandidates, validateTextSource, type KnowledgePlatform, type KnowledgeRepository, type ProfileKind} from '@lumiclaw/domain';
 import {accountBindingsFromKnowledge, createOperatingGoalRevision, goalEtag, GoalPlanContractError, planEtag, stableContractId, validateOperatingGoalInput, type AccountOperatingProfileInput, type ContentBrief, type ContentPlanSlot, type GoalPlanRepository, type MissionBundle, type OperatingGoalInput, type OperatingGoalRevision, type PlanSourceBinding, type PlannerSubmission} from '@lumiclaw/domain';
 import {artifactRevisionEtag, auditDecisionEtag, buildManualPublishPackage, controlledAuditFindings, createArtifactAuditDecision, createArtifactOwnerDecision, createArtifactRevision, createControlledProducerSubmission, createOwnerEditRevision, createRegenerationRequest, effectiveArtifactState, effectivePackageState, ownerDecisionEtag, packageEtag, parseArtifactAuditFindings, parseArtifactPayload, parseProducerSubmission, quarantineProducerSubmission, recordPackageHelperEvent, ArtifactContractError, type ArtifactAuditDecision, type ArtifactOwnerDecision, type ArtifactPublishRepository, type ArtifactRevisionV3, type AuditResult, type MissionExecutionBundle, type OwnerArtifactDecisionResult, type ProducerSubmission} from '@lumiclaw/domain';
+import {AGENTTEAMS_RUNTIME_VERSION,AGENTTEAMS_SOURCE_COMMIT,AGENTTEAMS_SOURCE_TAR_SHA256,missionRunEtag,parseMissionRunEtag,PersistentRuntimeError,type MissionRun,type PersistentRuntimeRepository,type RuntimeReadinessState,type RuntimeWorkerHeartbeat} from '@lumiclaw/domain';
 import {LocalContentAddressedBlobStore} from '@lumiclaw/blob-store';
 import {
   acceptRuntimeSubmission,
@@ -45,7 +46,7 @@ import {
   type TaskContract,
   type ShadowMissionRepository
 } from '@lumiclaw/governed-shadow';
-import {PostgresArtifactPublishRepository, PostgresCampaignRepository, PostgresGoalPlanRepository, PostgresKnowledgeRepository, PostgresLocalPresenceRepository} from '@lumiclaw/db';
+import {PostgresArtifactPublishRepository, PostgresCampaignRepository, PostgresGoalPlanRepository, PostgresKnowledgeRepository, PostgresLocalPresenceRepository,PostgresPersistentRuntimeRepository} from '@lumiclaw/db';
 import {approveContentPlanV2, compileMissionIntentV2, continueSelectedPlatformMissionV2, importPlannerSubmissionV2, reviseContentPlanV2} from '@lumiclaw/mission-compiler';
 import {timingSafeEqual} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
@@ -60,7 +61,8 @@ import {liveTaskActionPhaseAllowed} from './live-ticket-policy.js';
 import {openApiDocument} from './openapi.js';
 import {LiveRuntimeTicketStore, LiveTicketError, readComposeSecret, type LiveTicketAction, type LiveTicketBinding} from './live-runtime-security.js';
 
-type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; localPresenceRepository?: LocalPresenceRepository; knowledgeRepository?: KnowledgeRepository; goalPlanRepository?: GoalPlanRepository; artifactPublishRepository?: ArtifactPublishRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
+type GatewayReadiness={state:RuntimeReadinessState;providerMode:string;controlledFake:boolean;configured:boolean;fingerprint:string|null;updatedAt:string|null};
+type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; localPresenceRepository?: LocalPresenceRepository; knowledgeRepository?: KnowledgeRepository; goalPlanRepository?: GoalPlanRepository; artifactPublishRepository?: ArtifactPublishRepository; persistentRuntimeRepository?:PersistentRuntimeRepository;gatewayReadinessProbe?:()=>Promise<GatewayReadiness>;now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
 type CampaignParams = {campaignId: string};
 type MissionParams = {missionId: string};
 type RuntimeEventBody =
@@ -81,12 +83,13 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   const knowledgeRepository = options.knowledgeRepository ?? new MemoryKnowledgeRepository();
   const goalPlanRepository = options.goalPlanRepository ?? new MemoryGoalPlanRepository();
   const artifactPublishRepository = options.artifactPublishRepository ?? new MemoryArtifactPublishRepository();
+  const persistentRuntimeRepository=options.persistentRuntimeRepository;
   const runtimeImportToken = options.runtimeImportToken;
   const ticketStore = new LiveRuntimeTicketStore(options.runtimeBootstrapSecret, () => now().getTime());
   const deepseekApiKey = options.deepseekApiKey;
   const liveModelProviderFactory = options.liveModelProviderFactory ?? ((apiKey: string) => new DeepSeekModelProvider({apiKey, executionClass: 'CANARY'}));
   app.addContentTypeParser(['text/plain', 'text/markdown', 'application/octet-stream', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'audio/mpeg', 'audio/mp4', 'audio/wav'], {parseAs: 'buffer'}, (_request, body, done) => done(null, body));
-  app.addHook('onClose', async () => { await repository.close(); await shadowRepository.close(); await localPresenceRepository.close(); await knowledgeRepository.close(); await goalPlanRepository.close(); await artifactPublishRepository.close(); });
+  app.addHook('onClose', async () => { await repository.close(); await shadowRepository.close(); await localPresenceRepository.close(); await knowledgeRepository.close(); await goalPlanRepository.close(); await artifactPublishRepository.close(); await persistentRuntimeRepository?.close(); });
   app.addHook('preHandler',async(request)=>{const requestPath=request.url.split('?')[0]??'';if(!/^\/api\/v1\/(?:local-workspace|goals(?:\/|$)|missions(?:\/|$)|mission-bundles(?:\/|$)|content-plans(?:\/|$)|artifacts(?:\/|$)|artifact-submissions(?:\/|$)|manual-publish-packages(?:\/|$))/u.test(requestPath))return;const profile=await localPresenceRepository.getProfile();if(profile!==undefined){await reconcileKnowledgeSupersessions(knowledgeRepository,goalPlanRepository,profile.id,now());await reconcileArtifactSupersessions(goalPlanRepository,artifactPublishRepository,profile.id,now());}});
 
   app.get('/health', async (_request, reply) => {
@@ -374,16 +377,38 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     const checkedAt = now().toISOString();
     let postgresAvailable = false;
     try { postgresAvailable = await localPresenceRepository.health(); } catch {}
+    const runtime=await runtimeReadiness(persistentRuntimeRepository,options.gatewayReadinessProbe,now());
     return reply.header('cache-control', 'no-store').send({code: 'ENVIRONMENT_READINESS', secretCollectionAllowed: false, items: [
       {service: 'WEB', state: 'UNKNOWN', source: 'CLIENT_OBSERVATION', checkedAt, reasonCode: 'WEB_CONFIRMS_AFTER_RESPONSE', remediation: null},
       {service: 'API', state: 'AVAILABLE', source: 'API_SELF_CHECK', checkedAt, reasonCode: 'READINESS_HANDLER_REACHED', remediation: null},
       {service: 'POSTGRESQL', state: postgresAvailable ? 'AVAILABLE' : 'UNAVAILABLE', source: 'POSTGRESQL_PROBE', checkedAt, reasonCode: postgresAvailable ? 'LOCAL_SCHEMA_REACHABLE' : 'LOCAL_SCHEMA_UNAVAILABLE', remediation: postgresAvailable ? null : 'Start the project-scoped PostgreSQL and migration services.'},
-      {service: 'AGENTTEAMS_ADAPTER', state: 'AVAILABLE', source: 'BUILD_CONTRACT', checkedAt, reasonCode: 'ADAPTER_CONTRACT_BUILT', remediation: null},
-      {service: 'AGENTTEAMS_RUNTIME', state: 'NOT_CONFIGURED', source: 'RUNTIME_CONFIGURATION', checkedAt, reasonCode: 'SDD_007_REQUIRED', remediation: 'Complete the later SDD-007 terminal broker and pinned runtime setup.'}
+      {service:'MODEL_GATEWAY',state:runtime.probes.gateway.state,source:'MODEL_GATEWAY_HEALTH',checkedAt,reasonCode:runtime.probes.gateway.reasonCode,remediation:runtime.probes.gateway.remediation},
+      {service:'MISSION_WORKER',state:runtime.probes.worker.state,source:'MISSION_WORKER_HEARTBEAT',checkedAt,reasonCode:runtime.probes.worker.reasonCode,remediation:runtime.probes.worker.remediation},
+      {service:'AGENTTEAMS_RUNTIME',state:runtime.probes.agentTeams.state,source:'PINNED_AGENTTEAMS_CONTROLLER',checkedAt,reasonCode:runtime.probes.agentTeams.reasonCode,remediation:runtime.probes.agentTeams.remediation},
+      {service:'PERSISTENT_RUNTIME',state:runtime.state,source:'FOUR_WAY_AUTHORITY_CONJUNCTION',checkedAt,reasonCode:runtime.reasonCode,remediation:runtime.remediation}
     ]});
   });
 
-  app.get('/api/v1/ai-team', async () => ({code: 'AI_TEAM_ROSTER', metricSource: 'NO_RUNTIME_OBSERVATION', agents: aiTeamRoster()}));
+  app.get('/api/v1/runtime/readiness',async(_request,reply)=>reply.header('cache-control','no-store').send({code:'RUNTIME_READINESS',secretCollectionAllowed:false,...await runtimeReadiness(persistentRuntimeRepository,options.gatewayReadinessProbe,now())}));
+
+  app.get('/api/v1/ai-team', async (_request,reply) => {
+    if(persistentRuntimeRepository===undefined)return {code: 'AI_TEAM_ROSTER', metricSource: 'NO_RUNTIME_OBSERVATION', agents: aiTeamRoster()};
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;
+    const projection=await persistentRuntimeRepository.getProjection(profile.id);const configured=aiTeamRoster();
+    return reply.header('cache-control','no-store').send({...projection,code:'RUNTIME_TEAM_PROJECTION',metricSource:'POSTGRESQL_RUNTIME_OBSERVATION',agents:configured.map((agent)=>{const live=projection.agents.find((item)=>item.roleId===agent.roleId)!;return {...agent,status:live.status,runtimeActorId:live.runtimeActorId,attemptId:live.attemptId,taskId:live.taskId,metrics:{tokens:null,tokenSource:'NO_RUNTIME_OBSERVATION',dailyCompleted:projection.attempts.filter((item)=>item.roleId===agent.roleId&&item.state==='ACCEPTED').length,completionSource:'POSTGRESQL_RUNTIME_OBSERVATION'}};})});
+  });
+
+  app.post<{Body:{bundleId:string;bundleDigest:string}}>('/api/v1/mission-runs',async(request,reply)=>{
+    if(persistentRuntimeRepository===undefined)return reply.status(503).send(errorBody('RUNTIME_NOT_CONFIGURED'));const profile=await requireLocalProfile(localPresenceRepository,reply);const key=requireIdempotency(request,reply);if(profile===undefined||key===undefined)return;
+    if(!isExactRecord(request.body,['bundleDigest','bundleId'])||typeof request.body.bundleId!=='string'||!isDigest(request.body.bundleDigest))return reply.status(422).send(errorBody('SUBMISSION_SCHEMA_INVALID'));
+    const bundle=await goalPlanRepository.getBundle(profile.id,request.body.bundleId);if(bundle===undefined)return reply.status(404).send(errorBody('MISSION_BUNDLE_NOT_FOUND'));if(bundle.canonicalDigest!==request.body.bundleDigest)return reply.status(412).send(errorBody('SUBMISSION_INPUT_MISMATCH'));
+    const result=await persistentRuntimeRepository.createRun(profile.id,bundle,profile.id,key,now());return reply.status(result.replayed?200:201).header('cache-control','no-store').header('ETag',runtimeRunEtag(result.run)).header('idempotency-replayed',String(result.replayed)).header('location',`/api/v1/mission-runs/${result.run.id}`).send({code:result.replayed?'MISSION_RUN_REPLAYED':'MISSION_RUN_CREATED',...result});
+  });
+  app.get<{Params:{runId:string}}>('/api/v1/mission-runs/:runId',async(request,reply)=>{if(persistentRuntimeRepository===undefined)return reply.status(503).send(errorBody('RUNTIME_NOT_CONFIGURED'));const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const run=await persistentRuntimeRepository.getRun(profile.id,request.params.runId);if(run===undefined)return reply.status(404).send(errorBody('MISSION_RUN_NOT_FOUND'));return reply.header('cache-control','no-store').header('ETag',runtimeRunEtag(run)).send({code:'MISSION_RUN',run,projection:await persistentRuntimeRepository.getProjection(profile.id,run.id)});});
+  app.get<{Params:{runId:string}}>('/api/v1/mission-runs/:runId/team',async(request,reply)=>{if(persistentRuntimeRepository===undefined)return reply.status(503).send(errorBody('RUNTIME_NOT_CONFIGURED'));const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const run=await persistentRuntimeRepository.getRun(profile.id,request.params.runId);if(run===undefined)return reply.status(404).send(errorBody('MISSION_RUN_NOT_FOUND'));return reply.header('cache-control','no-store').send(await persistentRuntimeRepository.getProjection(profile.id,run.id));});
+  app.get<{Params:{runId:string}}>('/api/v1/mission-runs/:runId/events',async(request,reply)=>{if(persistentRuntimeRepository===undefined)return reply.status(503).send(errorBody('RUNTIME_NOT_CONFIGURED'));const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const run=await persistentRuntimeRepository.getRun(profile.id,request.params.runId);if(run===undefined)return reply.status(404).send(errorBody('MISSION_RUN_NOT_FOUND'));const projection=await persistentRuntimeRepository.getProjection(profile.id,run.id);return reply.header('cache-control','no-store').send({code:'RUNTIME_EVENT_LIST',runId:run.id,events:projection.events});});
+  app.post<{Params:{runId:string}}>('/api/v1/mission-runs/:runId/cancel',async(request,reply)=>{if(persistentRuntimeRepository===undefined)return reply.status(503).send(errorBody('RUNTIME_NOT_CONFIGURED'));const profile=await requireLocalProfile(localPresenceRepository,reply);const key=requireIdempotency(request,reply);const expected=runtimeExpectedVersion(request,request.params.runId);if(profile===undefined||key===undefined)return;if(expected===undefined)return reply.status(428).send(errorBody('ETAG_REQUIRED'));const result=await persistentRuntimeRepository.cancelRun(profile.id,request.params.runId,expected,key,now());return reply.header('cache-control','no-store').header('ETag',runtimeRunEtag(result.run)).header('idempotency-replayed',String(result.replayed)).send({code:'MISSION_RUN_CANCEL_RESULT',...result});});
+  app.post<{Params:{runId:string}}>('/api/v1/mission-runs/:runId/retry-blocked',async(request,reply)=>{if(persistentRuntimeRepository===undefined)return reply.status(503).send(errorBody('RUNTIME_NOT_CONFIGURED'));const profile=await requireLocalProfile(localPresenceRepository,reply);const key=requireIdempotency(request,reply);const expected=runtimeExpectedVersion(request,request.params.runId);if(profile===undefined||key===undefined)return;if(expected===undefined)return reply.status(428).send(errorBody('ETAG_REQUIRED'));const result=await persistentRuntimeRepository.retryBlocked(profile.id,request.params.runId,expected,key,now());return reply.header('cache-control','no-store').header('ETag',runtimeRunEtag(result.run)).header('idempotency-replayed',String(result.replayed)).send({code:'MISSION_RUN_RETRY_RESULT',...result});});
 
   app.get('/api/v1/skills', async () => ({code: 'REPOSITORY_SKILL_LIST', source: 'REPOSITORY_OWNED', skills: repositorySkills.map(({id, name, roleIds}) => ({id, name, roleIds, state: 'AVAILABLE', license: 'Apache-2.0'}))}));
   app.get<{Params: {skillId: string}}>('/api/v1/skills/:skillId', async (request, reply) => {
@@ -748,6 +773,7 @@ function sendDomainOrUnavailable(reply: FastifyReply, error: unknown) {
     const status = error.code === 'OWNER_BOUNDARY_VIOLATION' ? 403 : error.code.includes('NOT_FOUND') ? 404 : error.code === 'IDEMPOTENCY_KEY_REQUIRED' || error.code === 'ETAG_REQUIRED' ? 428 : error.code === 'IDEMPOTENCY_KEY_REUSED' || error.code === 'AUDIT_PASS_REQUIRED' || error.code === 'AUDITOR_INDEPENDENCE_REQUIRED' ? 409 : error.code.includes('STALE') || error.code.includes('INVALIDATED') || error.code === 'ARTIFACT_INPUT_MISMATCH' ? 412 : 422;
     return reply.status(status).send({...errorBody(error.code), details:error.details});
   }
+  if(error instanceof PersistentRuntimeError){if(error.code==='RUN_VERSION_CONFLICT'){const current=runtimeConflictEtag(error.details);if(current!==undefined)reply.header('ETag',current);return reply.status(412).send({...errorBody(error.code),currentEtag:current??null});}const status=error.code==='RUNTIME_NOT_CONFIGURED'||error.code==='RUNTIME_UNREACHABLE'?503:error.code==='DUPLICATE_SUBMISSION'||error.code==='RECOVERY_REVIEW_REQUIRED'?409:error.code==='JOB_LEASE_LOST'?412:422;return reply.status(status).send({...errorBody(error.code),details:error.message});}
   if (error instanceof ScheduleContractError) return reply.status(422).send({...errorBody(error.code), details: error.message});
   if (error instanceof ShadowContractError) return reply.status(['IDEMPOTENCY_KEY_REUSED', 'IDEMPOTENT_RESPONSE_VERSION_ADVANCED', 'MISSION_VERSION_CONFLICT', 'MISSION_STATE_CONFLICT', 'OWNER_REVIEW_DUPLICATE', 'RUNTIME_PROJECT_ALREADY_DISPATCHED'].includes(error.code) ? 409 : 422).send({...errorBody(error.code), details: error.details ?? error.message});
   if (error !== null && typeof error === 'object' && 'statusCode' in error && typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 500) {
@@ -871,8 +897,35 @@ function aiTeamRoster() {
     {code: 'A3', roleId: 'founder-identity-producer', name: '创始人内容', responsibility: '仅生产创始人身份的平台内容。', skillIds: ['account-native-expression']},
     {code: 'A4', roleId: 'product-account-producer', name: '产品内容', responsibility: '仅生产产品账号的平台内容。', skillIds: ['account-native-expression']},
     {code: 'A5', roleId: 'independent-auditor', name: '独立审校', responsibility: '独立检查证据、权限与平台约束。', skillIds: ['evidence-and-claim-grounding', 'independent-action-audit']}
-  ].map((agent) => ({...agent, status: 'NOT_CONFIGURED', metrics: {tokens: 0, dailyCompleted: 0, source: 'NO_RUNTIME_OBSERVATION'}}));
+  ].map((agent) => ({...agent, status: 'NOT_CONFIGURED', metrics: {tokens: null, tokenSource: 'NO_RUNTIME_OBSERVATION', dailyCompleted: null, completionSource: 'NO_RUNTIME_OBSERVATION'}}));
 }
+
+export async function runtimeReadiness(repository:PersistentRuntimeRepository|undefined,gatewayProbe:BuildOptions['gatewayReadinessProbe'],checkedAt:Date){
+  const notConfigured={state:'NOT_CONFIGURED' as RuntimeReadinessState,reasonCode:'RUNTIME_NOT_CONFIGURED',remediation:'Start this component from the terminal-only runtime launcher.'};
+  if(repository===undefined)return {state:'NOT_CONFIGURED' as const,reasonCode:'RUNTIME_NOT_CONFIGURED',remediation:'Configure the terminal-only gateway Secret and start the persistent runtime.',configured:false,fingerprint:null,updatedAt:null,providerMode:'UNKNOWN',controlledFake:false,probes:{controlPlane:notConfigured,gateway:notConfigured,worker:notConfigured,agentTeams:notConfigured}};
+  const database=await repository.health().catch(()=>false);const controlPlane=database?{state:'READY' as RuntimeReadinessState,reasonCode:null,remediation:null}:{state:'UNREACHABLE' as RuntimeReadinessState,reasonCode:'RUNTIME_UNREACHABLE',remediation:'Restore PostgreSQL and rerun migrations.'};
+  if(!database)return {state:'UNREACHABLE' as const,reasonCode:'RUNTIME_UNREACHABLE',remediation:controlPlane.remediation,configured:false,fingerprint:null,updatedAt:null,providerMode:'UNKNOWN',controlledFake:false,probes:{controlPlane,gateway:notConfigured,worker:notConfigured,agentTeams:notConfigured}};
+  if(gatewayProbe===undefined)return {state:'NOT_CONFIGURED' as const,reasonCode:'RUNTIME_NOT_CONFIGURED',remediation:'Start Model Gateway and the isolated host mission-worker supervisor.',configured:false,fingerprint:null,updatedAt:null,providerMode:'UNKNOWN',controlledFake:false,probes:{controlPlane,gateway:notConfigured,worker:notConfigured,agentTeams:notConfigured}};
+  let gateway:GatewayReadiness;let heartbeat:RuntimeWorkerHeartbeat|null;
+  try{[gateway,heartbeat]=await Promise.all([gatewayProbe(),repository.getWorkerHeartbeat(checkedAt)]);}catch{return {state:'UNREACHABLE' as const,reasonCode:'RUNTIME_UNREACHABLE',remediation:'Restore the unavailable runtime component; fixture fallback is disabled.',configured:false,fingerprint:null,updatedAt:null,providerMode:'UNKNOWN',controlledFake:false,probes:{controlPlane,gateway:{state:'UNREACHABLE' as RuntimeReadinessState,reasonCode:'RUNTIME_UNREACHABLE',remediation:'Restore Model Gateway.'},worker:{state:'UNREACHABLE' as RuntimeReadinessState,reasonCode:'RUNTIME_UNREACHABLE',remediation:'Restore mission-worker heartbeat.'},agentTeams:{state:'UNREACHABLE' as RuntimeReadinessState,reasonCode:'RUNTIME_UNREACHABLE',remediation:'Restore pinned AgentTeams.'}}};}
+  const heartbeatFresh=heartbeat!==null&&checkedAt.getTime()-Date.parse(heartbeat.observedAt)>=0&&checkedAt.getTime()<Date.parse(heartbeat.expiresAt);
+  const observed=heartbeat?.agentTeams;const pinned=heartbeatFresh&&observed?.identityEvidence?.verified===true&&observed.memberCount===6&&observed.runtimeVersion===AGENTTEAMS_RUNTIME_VERSION&&observed.runtimeDigest===AGENTTEAMS_SOURCE_TAR_SHA256&&observed.sourceCommit===AGENTTEAMS_SOURCE_COMMIT&&observed.sourceTarSha256===AGENTTEAMS_SOURCE_TAR_SHA256&&observed.identityEvidence.expected.sourceCommit===AGENTTEAMS_SOURCE_COMMIT&&observed.identityEvidence.expected.sourceTarSha256===AGENTTEAMS_SOURCE_TAR_SHA256;
+  const agentTeamsReady=pinned&&observed?.state==='READY';
+  const gatewayStatus={state:gateway.state,reasonCode:gateway.state==='READY'?gateway.controlledFake?'CONTROLLED_FAKE_ENGINEERING_TEST':null:gateway.state==='NOT_CONFIGURED'?'RUNTIME_NOT_CONFIGURED':'RUNTIME_UNREACHABLE',remediation:gateway.state==='READY'?null:gateway.state==='NOT_CONFIGURED'?'Configure DeepSeek from the no-echo terminal CLI.':'Restore Model Gateway.'};
+  const workerStatus={state:heartbeatFresh?'READY' as RuntimeReadinessState:'STARTING' as RuntimeReadinessState,reasonCode:heartbeatFresh?null:'MISSION_WORKER_HEARTBEAT_MISSING',remediation:heartbeatFresh?null:'Start the isolated local mission-worker host supervisor.'};
+  const agentTeamsStatus={state:agentTeamsReady?'READY' as RuntimeReadinessState:observed?.state==='UNREACHABLE'?'UNREACHABLE' as RuntimeReadinessState:heartbeatFresh?'INCOMPATIBLE' as RuntimeReadinessState:'STARTING' as RuntimeReadinessState,reasonCode:agentTeamsReady?null:observed?.state==='UNREACHABLE'?'RUNTIME_UNREACHABLE':heartbeatFresh?'RUNTIME_VERSION_INCOMPATIBLE':'MISSION_WORKER_HEARTBEAT_MISSING',remediation:agentTeamsReady?null:'Restore the exact pinned AgentTeams v1.2.0 six-member profile.'};
+  let state:RuntimeReadinessState='READY';let reasonCode:string|null=null;let remediation:string|null=null;
+  if(gateway.state==='NOT_CONFIGURED'){state='NOT_CONFIGURED';reasonCode='RUNTIME_NOT_CONFIGURED';remediation='Configure the terminal-only Secret and start the host supervisor.';}
+  else if(gateway.state==='UNREACHABLE'||agentTeamsStatus.state==='UNREACHABLE'){state='UNREACHABLE';reasonCode='RUNTIME_UNREACHABLE';remediation='Restore all four runtime probes.';}
+  else if(!heartbeatFresh){state='STARTING';reasonCode='MISSION_WORKER_HEARTBEAT_MISSING';remediation='Wait for or restore mission-worker heartbeat.';}
+  else if(!agentTeamsReady||gateway.state==='INCOMPATIBLE'){state='INCOMPATIBLE';reasonCode='RUNTIME_VERSION_INCOMPATIBLE';remediation='Restore the exact pinned AgentTeams source and image identity.';}
+  else if(gateway.controlledFake||gateway.state==='DEGRADED'){state='DEGRADED';reasonCode='CONTROLLED_FAKE_ENGINEERING_TEST';remediation='Controlled fake is engineering-only; configure DeepSeek for a provider canary.';}
+  return {state,reasonCode,remediation,configured:gateway.configured,fingerprint:gateway.fingerprint,updatedAt:gateway.updatedAt,providerMode:gateway.providerMode,controlledFake:gateway.controlledFake,probes:{controlPlane,gateway:gatewayStatus,worker:workerStatus,agentTeams:agentTeamsStatus}};
+}
+
+function runtimeRunEtag(run:MissionRun){return missionRunEtag(run);}
+function runtimeExpectedVersion(request:FastifyRequest,runId:string){try{return parseMissionRunEtag(typeof request.headers['if-match']==='string'?request.headers['if-match']:undefined,runId);}catch{return undefined;}}
+function runtimeConflictEtag(details:unknown){if(details===null||typeof details!=='object'||Array.isArray(details))return undefined;const value=details as {runId?:unknown;rowVersion?:unknown};return typeof value.runId==='string'&&Number.isSafeInteger(value.rowVersion)&&Number(value.rowVersion)>0?missionRunEtag({id:value.runId,rowVersion:Number(value.rowVersion)}):undefined;}
 
 async function requireLocalProfile(repository: LocalPresenceRepository, reply: FastifyReply) {
   const profile = await repository.getProfile();
@@ -972,10 +1025,12 @@ async function start(): Promise<void> {
   if (connectionString === undefined) throw new Error('DATABASE_URL is required.');
   const blobRoot = process.env.BLOB_ROOT;
   if (blobRoot === undefined) throw new Error('BLOB_ROOT is required.');
-  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), localPresenceRepository: new PostgresLocalPresenceRepository(connectionString, new LocalContentAddressedBlobStore(blobRoot)), knowledgeRepository: new PostgresKnowledgeRepository(connectionString,new LocalContentAddressedBlobStore(blobRoot)), goalPlanRepository: new PostgresGoalPlanRepository(connectionString), artifactPublishRepository:new PostgresArtifactPublishRepository(connectionString), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
+  const gatewayStatusUrl=process.env.MODEL_GATEWAY_URL;const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), localPresenceRepository: new PostgresLocalPresenceRepository(connectionString, new LocalContentAddressedBlobStore(blobRoot)), knowledgeRepository: new PostgresKnowledgeRepository(connectionString,new LocalContentAddressedBlobStore(blobRoot)), goalPlanRepository: new PostgresGoalPlanRepository(connectionString), artifactPublishRepository:new PostgresArtifactPublishRepository(connectionString),persistentRuntimeRepository:new PostgresPersistentRuntimeRepository(connectionString),...(gatewayStatusUrl===undefined?{}:{gatewayReadinessProbe:async()=>fetchJsonHealth<GatewayReadiness>(gatewayStatusUrl)}), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
   const port = Number.parseInt(process.env.PORT ?? '4000', 10);
   await app.listen({host: '0.0.0.0', port});
 }
+
+async function fetchJsonHealth<T>(origin:string):Promise<T>{const response=await fetch(`${origin}/health`,{signal:AbortSignal.timeout(2_000)});return response.json() as Promise<T>;}
 
 if (process.argv[1]?.endsWith('/server.js')) {
   start().catch((error: unknown) => { console.error(error); process.exitCode = 1; });

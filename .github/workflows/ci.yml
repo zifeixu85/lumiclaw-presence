@@ -181,6 +181,69 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  sdd007-persistent-runtime-postgres:
+    name: SDD-007 fresh PostgreSQL lineage, leases, tickets and recovery
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4
+        env:
+          POSTGRES_DB: lumiclaw
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d lumiclaw"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      SDD007_POSTGRES_ADMIN_URL: postgres://postgres@127.0.0.1:5432/lumiclaw
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - run: npm ci
+      - name: Verify fresh migrations, exact lineage, dual-worker fencing and staged recovery
+        run: npm run verify:sdd007:postgres
+      - name: Upload public-safe SDD-007 PostgreSQL evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdd-007-postgres-evidence
+          path: .evidence/sdd-007/postgres.json
+          if-no-files-found: error
+          retention-days: 7
+
+  sdd007-persistent-runtime-browser:
+    name: SDD-007 bilingual runtime projection and accessibility
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - run: npm ci
+      - name: Install exact Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Build browser review surface
+        run: npm run storybook:build
+      - name: Verify bilingual fail-closed runtime projection
+        run: npm run verify:sdd007:browser
+      - name: Upload public-safe SDD-007 browser evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdd-007-browser-evidence
+          path: .evidence/sdd-007/browser/
+          if-no-files-found: error
+          retention-days: 7
+
   real-agentteams-arm64:
     name: Self-provisioned real AgentTeams v1.2.0 (manual ARM64 evidence runner)
     if: github.event_name == 'workflow_dispatch'
@@ -199,7 +262,9 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: sdd-002-real-agentteams-evidence
-          path: .evidence/sdd-002/agentteams-real-runtime.json
+          name: sdd-002-sdd-007-real-agentteams-evidence
+          path: |
+            .evidence/sdd-002/agentteams-real-runtime.json
+            .evidence/sdd-007/agentteams-persistent-driver.json
           if-no-files-found: error
           retention-days: 7

@@ -194,7 +194,43 @@ Open <http://127.0.0.1:3100>. The default locale is Simplified Chinese; English 
 
 The first open asks only for a local display name—no email, password, or remote registration. You can then choose the public-safe example or upload UTF-8 `.md` / `.txt` material (2 MiB per file). Manifests, extracted text, and content-addressed Blobs persist with the project PostgreSQL/Blob volumes. PDF/DOCX remain explicitly `PLANNED`; Market, content Locale, Platform, and IANA Time Zone are stored as separate values.
 
-Publishing is currently a desktop manual assistant. Copying text, downloading example media, opening an official publish page, or reporting manual completion creates only an `AWAITING_RECONCILIATION` receipt—never `PUBLISHED`. Account OAuth/connection tests and the resident AgentTeams Runtime remain disabled for later SDDs, and the browser never collects a model API key.
+Publishing is currently a desktop manual assistant. Copying text, downloading example media, opening an official publish page, or reporting manual completion creates only an `AWAITING_RECONCILIATION` receipt—never `PUBLISHED`. Account OAuth/connection tests remain disabled, and the browser never collects a model API key. The persistent AgentTeams candidate below is an engineering path whose Owner UAT and real-provider evidence remain pending; it does not enable publishing.
+
+### Persistent AgentTeams runtime engineering candidate (SDD-007)
+
+This path consumes the same PostgreSQL control plane as Web/API/CLI, but its privileged Docker adapter is a local host supervisor. Compose alone starts PostgreSQL, migration, Model Gateway, API, and Web; it does **not** provision AgentTeams or start `mission-worker`. Before starting the supervisor, the exact upstream AgentTeams v1.2.0 controller, manager, and six fixed role containers must already exist. The disposable `npm run verify:sdd007:agentteams-real` verifier can provision and prove that topology for engineering evidence, but it removes its containers during cleanup and is not the product launcher.
+
+Use only public-safe inputs. For a controlled-fake provider (CI/engineering only), run:
+
+~~~bash
+npm run runtime:secret:prepare-fake
+npm run build
+npm run runtime:compose:fake
+# In another terminal, after the exact six-member AgentTeams topology is running:
+npm run runtime:supervisor
+~~~
+
+For Owner-only DeepSeek UAT, run `npm run runtime:secret:configure` in a TTY instead of the fake preparation command, then use `npm run runtime:compose:deepseek`. The command hides input and stores only a `0600` local secret. Never place the key in chat, Git, `.env`, command arguments, issues, screenshots, or logs.
+
+Check status from another terminal:
+
+~~~bash
+npm run runtime:secret:status
+curl --fail http://127.0.0.1:4100/api/v1/runtime/readiness
+curl --fail http://127.0.0.1:4401/health
+~~~
+
+Expected readiness is `READY` only when PostgreSQL, Model Gateway, a fresh mission-worker heartbeat, and the inspected immutable AgentTeams identity/profile all agree. Controlled fake is deliberately `DEGRADED`, never real-provider `READY`. `INCOMPATIBLE`, a missing heartbeat, a six-member/image/profile mismatch, or an unreachable gateway is a hard failure; there is no mock-success fallback.
+
+Stop in this order: press Ctrl-C in the supervisor terminal, then remove only the exact Compose project:
+
+~~~bash
+docker compose -f compose.yml -f compose.persistent-runtime.yml --profile persistent-runtime --project-name lumiclaw-sdd007 down
+# If the DeepSeek overlay was used:
+docker compose -f compose.yml -f compose.persistent-runtime.yml -f compose.persistent-runtime-deepseek.yml --profile persistent-runtime --project-name lumiclaw-sdd007 down
+~~~
+
+The base local PostgreSQL configuration uses trust authentication but is published only on loopback. This is a single-user local competition boundary, not protection from another malicious process or user on the same host. The supervisor creates an isolated `0700` `.runtime/sdd007/supervisor-home` and Docker config, does not inherit the real host `HOME`, shell, cloud credentials, or provider-key environment variables, and can only inspect/execute the fixed AgentTeams container set. See the [SDD-007 Chinese acceptance report](docs/reports/acceptance/SDD-007-ACCEPTANCE.md) for failure signs, evidence, rollback, and Owner UAT.
 
 ### Preliminary-round SHADOW demo
 

@@ -2,7 +2,7 @@ import {campaignDocumentSchema, organizationGraphSchema} from '@lumiclaw/domain'
 
 export const openApiDocument = {
   openapi: '3.1.0',
-  info: {title: 'LumiClaw Presence Control API', version: '0.6.0-sdd010', description: 'Local-first Goal/Plan/selected X/Xiaohongshu Artifact review, independent Audit, exact Owner decision, and deterministic manual publish package control plane. Controlled fixtures are labeled; AgentTeams, models, connectors and external publish-state verification do not run.'},
+  info: {title: 'LumiClaw Presence Control API', version: '0.7.0-sdd007', description: 'Local-first Goal/Plan/Artifact authority plus a PostgreSQL-owned persistent AgentTeams v1.2.0 runtime. Runtime success means accepted TaskContract outputs only; it never implies Audit PASS, Owner approval, publication, or business success.'},
   servers: [{url: '/'}],
   paths: {
     '/api/v1/local-workspace': {get: {summary: 'Reopen the PostgreSQL-owned local profile, recoverable knowledge onboarding, Campaign, historical handoffs and publish-authorization gate', responses: {'200': {description: 'No-store local workspace and KnowledgeOverview with row-version ETag; publishing remains blocked'}}}},
@@ -65,8 +65,15 @@ export const openApiDocument = {
       post: {summary: 'Extract and persist one UTF-8 MD/TXT file server-side before onboarding completion', parameters: [{name: 'X-LumiClaw-File-Name', in: 'header', required: true, schema: {type: 'string', minLength: 3, maxLength: 180}}], requestBody: {required: true, content: {'text/markdown': {schema: {type: 'string', format: 'binary', maxLength: 2097152}}, 'text/plain': {schema: {type: 'string', format: 'binary', maxLength: 2097152}}}}, responses: {'201': {description: 'Manifest and content-addressed Blob persisted'}, '409': {description: 'LOCAL_ONBOARDING_ALREADY_COMPLETED; use a future authoritative Campaign update/invalidation flow'}, '413': {description: '2 MiB limit exceeded'}, '422': {description: 'Filename, UTF-8, binary or media type rejected; PDF/DOCX return PLANNED code'}, '428': {description: 'Local profile required'}}}
     },
     '/api/v1/local-materials/{materialId}': {delete: {summary: 'Delete an unbound onboarding material; completed-Campaign evidence fails closed', parameters: [{name: 'materialId', in: 'path', required: true, schema: {type: 'string', format: 'uuid'}}], responses: {'200': {description: 'Unbound material deleted'}, '404': {description: 'Material not found'}, '409': {description: 'LOCAL_MATERIAL_BOUND_TO_CAMPAIGN; use a future retract/invalidate flow'}}}},
-    '/api/v1/environment-readiness': {get: {summary: 'Probe Web/API/PostgreSQL/AgentTeams adapter/runtime using deterministic provenance-bearing states', responses: {'200': {description: 'No-store readiness; unconfigured runtime reports SDD_007_REQUIRED and never fabricated green'}}}},
-    '/api/v1/ai-team': {get: {summary: 'Return the six stable Agent roles and NO_RUNTIME_OBSERVATION metrics', responses: {'200': {description: 'A0-A5 responsibility roster; zero means no authoritative observation'}}}},
+    '/api/v1/environment-readiness': {get: {summary: 'Probe Web/API/PostgreSQL/AgentTeams adapter/runtime using deterministic provenance-bearing states', responses: {'200': {description: 'No-store readiness; NOT_CONFIGURED, INCOMPATIBLE, and UNREACHABLE remain distinct and never fabricate green'}}}},
+    '/api/v1/runtime/readiness':{get:{summary:'Read stable persistent-runtime and terminal-only gateway configuration status',responses:{'200':{description:'Configured/fingerprint only; no Secret value or set-key API'}}}},
+    '/api/v1/ai-team': {get: {summary: 'Return the exact six stable roles with PostgreSQL run/job/attempt projection when configured', responses: {'200': {description: 'A0-A5 roster plus real runtime observation; no mock fallback'}}}},
+    '/api/v1/mission-runs':{post:{summary:'Create or replay a persistent run for an exact immutable Bundle digest',parameters:[idempotencyHeader()],requestBody:{required:true,content:{'application/json':{schema:{$ref:'#/components/schemas/MissionRunCreateInput'}}}},responses:{'201':{description:'MissionRun and dependency jobs created transactionally'},'200':{description:'Exact idempotent replay'},'412':{description:'Bundle digest mismatch'}}}},
+    '/api/v1/mission-runs/{runId}':{get:{summary:'Read one owner-scoped MissionRun and its live PostgreSQL projection',parameters:[runId()],responses:{'200':{description:'Run/job/attempt/binding/event projection'},'404':{description:'Run not found'}}}},
+    '/api/v1/mission-runs/{runId}/team':{get:{summary:'Read exact-six live team projection for a run',parameters:[runId()],responses:{'200':{description:'PostgreSQL runtime projection'}}}},
+    '/api/v1/mission-runs/{runId}/events':{get:{summary:'Read append-only progressively redacted runtime events',parameters:[runId()],responses:{'200':{description:'Public-safe runtime event list'}}}},
+    '/api/v1/mission-runs/{runId}/cancel':{post:{summary:'Cancel undispatched work or enter recovery for dispatched work',parameters:[runId(),idempotencyHeader(),runtimeIfMatchHeader()],responses:{'200':{description:'CANCELLED or RECOVERING result'},'412':{description:'Stale MissionRun row version'},'428':{description:'Idempotency-Key or If-Match required'}}}},
+    '/api/v1/mission-runs/{runId}/retry-blocked':{post:{summary:'Retry only a safely retryable blocked run',parameters:[runId(),idempotencyHeader(),runtimeIfMatchHeader()],responses:{'200':{description:'Run requeued'},'409':{description:'Reconciliation review required'},'412':{description:'Stale MissionRun row version'},'428':{description:'Idempotency-Key or If-Match required'}}}},
     '/api/v1/skills': {get: {summary: 'List repository-owned Skills and role bindings', responses: {'200': {description: 'Repository Skill summaries'}}}},
     '/api/v1/skills/{skillId}': {get: {summary: 'Read one repository-owned SKILL.md', parameters: [{name: 'skillId', in: 'path', required: true, schema: {type: 'string'}}], responses: {'200': {description: 'Skill source and metadata'}, '404': {description: 'Skill not found'}}}},
     '/api/v1/manual-publish-handoffs': {
@@ -98,6 +105,7 @@ export const openApiDocument = {
     '/api/v1/shadow-missions/{missionId}/evidence': {get: {summary: 'Export allowlisted, redacted, replayable evidence', parameters: [organizationHeader()], responses: {'200': {description: 'Public-safe evidence'}}}}
   },
   components: {schemas: {
+    MissionRunCreateInput:{type:'object',additionalProperties:false,required:['bundleId','bundleDigest'],properties:{bundleId:{type:'string',minLength:1},bundleDigest:digestSchema()}},
     CampaignDocument: campaignDocumentSchema,
     OrganizationGraph: organizationGraphSchema,
     LocalOwnerProfileInput: {type: 'object', additionalProperties: false, required: ['displayName'], properties: {displayName: {type: 'string', minLength: 1, maxLength: 64}}},
@@ -149,6 +157,8 @@ function planId(){return {name:'planId',in:'path',required:true,schema:{type:'st
 function bundleId(){return {name:'bundleId',in:'path',required:true,schema:{type:'string'}} as const;}
 function artifactId(){return {name:'artifactId',in:'path',required:true,schema:{type:'string'}} as const;}
 function packageId(){return {name:'packageId',in:'path',required:true,schema:{type:'string'}} as const;}
+function runId(){return {name:'runId',in:'path',required:true,schema:{type:'string'}} as const;}
+function runtimeIfMatchHeader(){return {name:'If-Match',in:'header',required:true,schema:{type:'string',pattern:'^"mission-run-.+-v[1-9][0-9]*"$'},description:'Exact PostgreSQL MissionRun row version.'} as const;}
 function digestSchema(){return {type:'string',pattern:'^[a-f0-9]{64}$'} as const;}
 function goalInputProperties(){return {objective:shortText(2000),horizonDays:{enum:[7,30]},startsAt:{type:'string',format:'date'},endsAt:{type:'string',format:'date'},cadence:{enum:['DAILY','WEEKDAYS','THREE_PER_WEEK']},selectedAccountIds:{type:'array',minItems:1,maxItems:2,uniqueItems:true,items:{type:'string',format:'uuid'}},targetMarket:{type:'string',pattern:'^[A-Z]{2}$'},contentLocale:{type:'string',pattern:'^[a-z]{2}(?:-[A-Z]{2})?$'},timeZone:shortText(80),successSignals:{type:'array',minItems:1,maxItems:4,uniqueItems:true,items:{$ref:'#/components/schemas/GoalSuccessSignal'}},knowledgeSnapshotId:{type:'string',format:'uuid'},knowledgeSnapshotDigest:digestSchema()} as const;}
 function knowledgeIfMatchHeader() { return {name: 'If-Match', in: 'header', required: true, schema: {type: 'string', pattern: '^"knowledge-[0-9]+"$'}, description: 'Exact PostgreSQL onboarding row version.'} as const; }

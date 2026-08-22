@@ -1,4 +1,4 @@
-import type {ArtifactWorkspace, CampaignEnvelope, EnvironmentReadinessItem, GoalWorkspace, KnowledgeOverview, LocalMaterialManifest, LocalOnboardingSession, LocalOwnerProfile, ManualPublishAuthorization, ManualPublishHandoff} from '@lumiclaw/domain';
+import type {AgentTaskAttempt,ArtifactWorkspace, CampaignEnvelope, EnvironmentReadinessItem, GoalWorkspace, KnowledgeOverview, LocalMaterialManifest, LocalOnboardingSession, LocalOwnerProfile, ManualPublishAuthorization, ManualPublishHandoff,MissionJob,RuntimeEvent,RuntimeReadinessState} from '@lumiclaw/domain';
 
 export type WorkspaceSection = 'today' | 'goals' | 'campaigns' | 'ai-team' | 'calendar' | 'publish' | 'feedback' | 'knowledge' | 'accounts' | 'settings';
 
@@ -24,9 +24,10 @@ export type TeamAgent = {
   responsibility: string;
   skillIds: string[];
   status: 'NOT_CONFIGURED' | 'IDLE' | 'RUNNING' | 'ERROR';
-  metrics: {tokens: number; dailyCompleted: number; source: 'NO_RUNTIME_OBSERVATION' | 'PUBLIC_SAFE_EXAMPLE'};
+  runtimeActorId?:string|null;attemptId?:string|null;taskId?:string|null;
+  metrics: {tokens:null;tokenSource:'NO_RUNTIME_OBSERVATION';dailyCompleted:number|null;completionSource:'NO_RUNTIME_OBSERVATION'|'POSTGRESQL_RUNTIME_OBSERVATION'};
 };
 
 export type RepositorySkill = {id: string; name: string; roleIds: readonly string[]; state: 'AVAILABLE'; license: 'Apache-2.0'};
-export type TeamResponse = {code: string; metricSource: string; agents: TeamAgent[]};
+export type TeamResponse = {code: string; metricSource: string; agents: TeamAgent[];readiness?:RuntimeReadinessState;reasonCode?:string|null;runtimeVersion?:string;runtimeDigest?:string;teamProfileVersion?:string;teamProfileDigest?:string;bundleDigest?:string|null;runId?:string|null;lastHeartbeat?:string|null;jobs?:MissionJob[];attempts?:AgentTaskAttempt[];events?:RuntimeEvent[];boundary?:{runtimeSucceededMeans:string;auditPass:false;ownerApproved:false;published:false;businessSuccess:false}};
 export type SkillListResponse = {code: string; source: 'REPOSITORY_OWNED'; skills: RepositorySkill[]};

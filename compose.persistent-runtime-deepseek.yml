@@ -1,0 +1,11 @@
+services:
+  model-gateway:
+    environment:
+      MODEL_GATEWAY_MODE: DEEPSEEK_CANARY
+      DEEPSEEK_SECRET_FILE: /run/secrets/deepseek_api_key
+    secrets:
+      - deepseek_api_key
+
+secrets:
+  deepseek_api_key:
+    file: ${LUMICLAW_DEEPSEEK_SECRET_FILE:-.runtime/sdd007/secrets/deepseek-api-key}

@@ -1,4 +1,4 @@
-import {artifactRevisionEtag, ownerDecisionEtag, packageEtag, type AccountOperatingProfileInput, type ArtifactAuditDecision, type ArtifactOwnerDecision, type ArtifactPayload, type ArtifactRevisionV3, type AuditFinding, type AuditResult, type ContentBrief, type ContentPlanRevision, type ContentPlanSlot, type KnowledgeOverview, type KnowledgePlatform, type KnowledgeStep, type LocalCampaignIdentityInput, type LocalOnboardingContext, type ManualPublishPackage, type MissionExecutionBundle, type MissionIntentBundle, type OperatingGoalInput, type OperatingGoalRevision, type OrganizationProfileInput, type OwnerArtifactDecisionResult, type PersonaProfileInput, type PlanSourceBinding, type PlannerSubmission, type ProductProfileInput, type ProfileKind} from '@lumiclaw/domain';
+import type {AccountOperatingProfileInput, ArtifactAuditDecision, ArtifactOwnerDecision, ArtifactPayload, ArtifactRevisionV3, AuditFinding, AuditResult, ContentBrief, ContentPlanRevision, ContentPlanSlot, KnowledgeOverview, KnowledgePlatform, KnowledgeStep, LocalCampaignIdentityInput, LocalOnboardingContext, ManualPublishPackage, MissionExecutionBundle, MissionIntentBundle, OperatingGoalInput, OperatingGoalRevision, OrganizationProfileInput, OwnerArtifactDecisionResult, PersonaProfileInput, PlanSourceBinding, PlannerSubmission, ProductProfileInput, ProfileKind} from '@lumiclaw/domain';
 import type {EnvironmentReadiness, SkillListResponse, TeamResponse, WorkspaceSnapshot} from './production-types';
 
 export class ProductApiError extends Error {
@@ -76,6 +76,9 @@ function exactHeaders(etag: string, key: string): HeadersInit { return {'content
 function goalEtagValue(goal: OperatingGoalRevision): string { return `"goal-${goal.goalId}-r${goal.revision}-${goal.canonicalDigest}"`; }
 function planEtagValue(plan: ContentPlanRevision): string { return `"plan-${plan.planId}-r${plan.revision}-${plan.canonicalDigest}"`; }
 function bundleEtagValue(bundle: MissionIntentBundle|MissionExecutionBundle): string { return `"bundle-${bundle.bundleId}-g${bundle.generation}-${bundle.canonicalDigest}"`; }
+function artifactRevisionEtag(value: ArtifactRevisionV3): string { return `"artifact-${value.id}-r${value.revision}-${value.canonicalDigest}"`; }
+function ownerDecisionEtag(value: ArtifactOwnerDecision): string { return `"owner-decision-${value.id}-${value.canonicalDigest}"`; }
+function packageEtag(value: ManualPublishPackage): string { return `"package-${value.id}-${value.manifestDigest}"`; }
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {...init, cache: 'no-store'});
   const payload = await response.json() as {code?: string};

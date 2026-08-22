@@ -10,7 +10,11 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@lumiclaw/db": "*",
+    "@lumiclaw/domain": "*",
     "@lumiclaw/governed-shadow": "*",
-    "@lumiclaw/process-health": "*"
+    "@lumiclaw/mission-compiler": "*",
+    "@lumiclaw/process-health": "*",
+    "@lumiclaw/runtime-agentteams": "*"
   }
 }
