@@ -59,6 +59,7 @@
     "verify:sdd007:agentteams-real": "npm run verify:agentteams-real",
     "verify:sdd007:postgres": "npm run build --workspace @lumiclaw/blob-store && npm run build --workspace @lumiclaw/domain && npm run build --workspace @lumiclaw/mission-compiler && npm run build --workspace @lumiclaw/db && npm run build --workspace @lumiclaw/api && node scripts/verify-sdd007-postgres.mjs",
     "verify:sdd007:browser": "node scripts/verify-sdd007-browser.mjs",
+    "verify:sdd007:compose": "node scripts/verify-sdd007-compose.mjs",
     "uat:live-deepseek": "node scripts/start-live-deepseek-uat.mjs",
     "verify:live-conformance": "node scripts/verify-live-deepseek-conformance.mjs",
     "verify:live-agentteams-no-secret": "node scripts/verify-live-agentteams-no-secret.mjs",
