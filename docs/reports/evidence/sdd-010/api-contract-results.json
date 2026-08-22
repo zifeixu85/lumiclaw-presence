@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-010",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "checks": {
+    "concurrency": [
+      {
+        "status": 201,
+        "code": "OWNER_EDIT_ARTIFACT_REVISION_CREATED"
+      },
+      {
+        "status": 412,
+        "code": "OWNER_DECISION_STALE"
+      }
+    ],
+    "staleAudit": {
+      "status": 412,
+      "code": "PACKAGE_INPUT_INVALIDATED"
+    },
+    "ownerIsolation": true,
+    "noPublishSuccessMutation": true
+  },
+  "counts": {
+    "revisions": 5,
+    "quarantines": 0,
+    "audits": 4,
+    "decisions": 3,
+    "regeneration_requests": 1,
+    "packages": 2,
+    "files": 11,
+    "helper_events": 3,
+    "invalidations": 2
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-010",
+  "classification": "PUBLIC_SAFE_SOURCE_REVIEW",
+  "reviewedAt": "2026-08-22T06:44:16.000Z",
+  "sources": [
+    {
+      "sourceId": "X.HELP.POST",
+      "url": "https://help.x.com/en/using-x/how-to-post",
+      "authority": "PLATFORM_OFFICIAL",
+      "result": "PASS",
+      "observations": [
+        "The official help page remained reachable.",
+        "It documented the regular 280-character composer path and up to four total media items."
+      ],
+      "expiresAt": "2026-09-21T15:00:00+08:00"
+    },
+    {
+      "sourceId": "X.OFFICIAL.COMPOSE.ENTRY",
+      "url": "https://x.com/compose/post",
+      "authority": "PLATFORM_OFFICIAL_ENTRY_POINT",
+      "result": "AUTHENTICATION_BOUNDARY_CONFIRMED",
+      "httpStatusWithoutSession": 403,
+      "observations": [
+        "The allowlisted HTTPS host and path responded at the expected unauthenticated boundary.",
+        "No query string, content, account identifier, token or cookie is stored in the registry or package."
+      ],
+      "expiresAt": "2026-09-21T15:00:00+08:00"
+    },
+    {
+      "sourceId": "XHS.CREATOR.ENTRY",
+      "url": "https://creator.xiaohongshu.com/publish",
+      "authority": "PLATFORM_OFFICIAL_ENTRY_POINT",
+      "result": "PASS",
+      "httpStatusWithoutSession": 200,
+      "observations": [
+        "The official creator entry remained reachable over HTTPS.",
+        "Current account fields and composer counters still require an authenticated Owner probe; they are not claimed as universal hard limits."
+      ],
+      "expiresAt": "2026-09-05T16:55:00+08:00"
+    }
+  ],
+  "boundary": "Source review validates only registered public entry points and the documented X regular-post envelope. It is not an authenticated account capability probe or a legal/compliance guarantee."
+}

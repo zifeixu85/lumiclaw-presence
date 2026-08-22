@@ -49,7 +49,7 @@ export function ProductionWorkspace({locale, initialSection = 'today', initialSn
 
   const publicExampleReady = snapshot.session?.path === 'PUBLIC_SAFE_EXAMPLE' && snapshot.session.state === 'COMPLETED';
   const approvedKnowledgeReady = snapshot.knowledge?.session.state === 'KNOWLEDGE_APPROVED_NEEDS_GOAL';
-  if (!publicExampleReady && (!approvedKnowledgeReady || initialSection !== 'goals')) return <><DesktopGate /><OnboardingFlow
+  if (!publicExampleReady && !approvedKnowledgeReady) return <><DesktopGate /><OnboardingFlow
     locale={locale}
     snapshot={snapshot}
     busy={busy}

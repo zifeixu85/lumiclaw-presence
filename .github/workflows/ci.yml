@@ -151,6 +151,36 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  sdd010-artifact-audit-package:
+    name: SDD-010 X/XHS artifact, audit, package and Chromium
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - run: npm ci
+      - name: Install exact Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Regenerate deterministic artifact and package goldens
+        run: npm run evidence:sdd010:golden
+      - name: Golden contracts are current
+        run: git diff --exit-code -- docs/reports/evidence/sdd-010/golden-contracts.json
+      - name: Fresh PostgreSQL, append-only rollback, restart and bilingual Chromium contract
+        run: npm run verify:sdd010:compose
+      - name: Upload public-safe SDD-010 evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdd-010-artifact-audit-package-evidence
+          path: |
+            docs/reports/evidence/sdd-010/*.json
+            docs/reports/evidence/sdd-010/*.png
+          if-no-files-found: error
+          retention-days: 7
+
   real-agentteams-arm64:
     name: Self-provisioned real AgentTeams v1.2.0 (manual ARM64 evidence runner)
     if: github.event_name == 'workflow_dispatch'

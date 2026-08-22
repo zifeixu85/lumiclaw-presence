@@ -11,6 +11,7 @@ import type {EnvironmentReadiness, SkillListResponse, TeamResponse, WorkspaceSec
 import {CampaignFeature} from './campaign-feature';
 import {GoalMissionFeature} from './goal-mission-feature';
 import {PublishFeature} from './publish-feature';
+import {ArtifactPublishFeature} from './artifact-publish-feature';
 import {TeamFeature} from './team-feature';
 
 type Props = {locale: AppLocale; section: WorkspaceSection; snapshot: WorkspaceSnapshot; readiness: EnvironmentReadiness; team: TeamResponse; skills: SkillListResponse; onReload: () => Promise<void>};
@@ -18,6 +19,7 @@ type Props = {locale: AppLocale; section: WorkspaceSection; snapshot: WorkspaceS
 export function WorkspaceFeature({section, snapshot, readiness, team, skills, onReload}: Props) {
   const campaign = snapshot.campaign;
   if (section === 'goals') return <GoalMissionFeature snapshot={snapshot} onReload={onReload} />;
+  if (section === 'publish' && snapshot.goals?.bundles.some((bundle)=>bundle.kind==='MISSION_EXECUTION')) return <><PageHeader titleKey="publishTitle" bodyKey="publishBody" eyebrowKey="publish" /><ArtifactPublishFeature snapshot={snapshot} onReload={onReload}/></>;
   if (campaign === null) return <EmptyControlPlane />;
   if (section === 'campaigns') return <CampaignFeature campaign={campaign} />;
   if (section === 'ai-team') return <><PageHeader titleKey="teamTitle" bodyKey="teamBody" eyebrowKey="team" /><Suspense fallback={null}><TeamFeature agents={team.agents} skills={skills.skills} dataMode={snapshot.session?.dataMode ?? 'LOCAL_PRIVATE'} /></Suspense></>;

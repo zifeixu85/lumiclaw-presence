@@ -1,0 +1,680 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-010",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "generatedAt": "2026-08-22T07:48:40.011Z",
+  "checks": {
+    "freshComposeHealthy": true,
+    "migration13Applied": true,
+    "emptyRollbackPass": true,
+    "postgresRepositoryAuthorityNegativeMatrix": true,
+    "postgresSameKeyConcurrencyAndRestartReplay": true,
+    "postgresExactPackageConcurrencyReplay": true,
+    "compositeArtifactLineageForeignKeys": true,
+    "chromiumBilingualJourney": true,
+    "appendOnlyCounts": true,
+    "authorityRowsImmutable": true,
+    "populatedRollbackNeedsOwnerDecision": true,
+    "concurrentRevisionOneWinner": true,
+    "staleAuditBlocked": true,
+    "restartStable": true,
+    "browserOwnerOverrideIgnored": true,
+    "noPublishSuccessMutation": true,
+    "postgresDownFailsClosed": true
+  },
+  "events": [
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "down",
+        "--volumes",
+        "--remove-orphans"
+      ],
+      "startedAt": "2026-08-22T07:47:39.749Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "up",
+        "--no-build",
+        "--detach"
+      ],
+      "startedAt": "2026-08-22T07:47:40.038Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:47:53.168Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:47:54.801Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:47:56.396Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:47:57.987Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:47:59.576Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select count(*) from pgmigrations where name='000013_x_xhs_artifact_audit_manual_publish_package'"
+      ],
+      "startedAt": "2026-08-22T07:47:59.700Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "create database lumiclaw_sdd010_empty_down"
+      ],
+      "startedAt": "2026-08-22T07:47:59.792Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "-e",
+        "DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd010_empty_down",
+        "api",
+        "npm",
+        "--workspace",
+        "@lumiclaw/db",
+        "run",
+        "migrate:up"
+      ],
+      "startedAt": "2026-08-22T07:47:59.913Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "-e",
+        "DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd010_empty_down",
+        "api",
+        "npm",
+        "--workspace",
+        "@lumiclaw/db",
+        "run",
+        "migrate:down"
+      ],
+      "startedAt": "2026-08-22T07:48:00.438Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw_sdd010_empty_down",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select to_regclass('public.artifact_revisions_v3') is null"
+      ],
+      "startedAt": "2026-08-22T07:48:00.763Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "create database lumiclaw_sdd010_authority"
+      ],
+      "startedAt": "2026-08-22T07:48:00.841Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "-e",
+        "DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd010_authority",
+        "api",
+        "npm",
+        "--workspace",
+        "@lumiclaw/db",
+        "run",
+        "migrate:up"
+      ],
+      "startedAt": "2026-08-22T07:48:00.995Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "-e",
+        "SDD010_POSTGRES_AUTHORITY_URL=postgres://postgres@postgres:5432/lumiclaw_sdd010_authority",
+        "api",
+        "npx",
+        "vitest",
+        "run",
+        "apps/api/src/artifact-publish-postgres-authority.test.ts",
+        "--configLoader=runner"
+      ],
+      "startedAt": "2026-08-22T07:48:01.410Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw_sdd010_authority",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select json_build_object('revisions',(select count(*) from artifact_revisions_v3),'audits',(select count(*) from artifact_audit_decisions_v3),'decisions',(select count(*) from artifact_owner_decisions_v3),'packages',(select count(*) from manual_publish_packages_v3),'files',(select count(*) from manual_publish_package_files_v3),'idempotency',(select count(*) from artifact_publish_idempotency_v3),'lineage_foreign_keys',(select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('artifact_audit_decisions_v3','artifact_owner_decisions_v3','manual_publish_packages_v3')))::text"
+      ],
+      "startedAt": "2026-08-22T07:48:02.665Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select json_build_object('revisions',(select count(*) from artifact_revisions_v3),'quarantines',(select count(*) from artifact_submission_quarantines_v3),'audits',(select count(*) from artifact_audit_decisions_v3),'decisions',(select count(*) from artifact_owner_decisions_v3),'regeneration_requests',(select count(*) from artifact_regeneration_requests_v3),'packages',(select count(*) from manual_publish_packages_v3),'files',(select count(*) from manual_publish_package_files_v3),'helper_events',(select count(*) from manual_publish_helper_events_v3),'invalidations',(select count(*) from artifact_invalidation_events_v3))::text"
+      ],
+      "startedAt": "2026-08-22T07:48:11.689Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-c",
+        "update artifact_revisions_v3 set producer_identity_id='tampered' where revision=1"
+      ],
+      "result": "EXPECTED_FAIL"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "-e",
+        "DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw",
+        "api",
+        "npm",
+        "--workspace",
+        "@lumiclaw/db",
+        "run",
+        "migrate:down"
+      ],
+      "result": "EXPECTED_FAIL"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select json_build_object('revisions',(select count(*) from artifact_revisions_v3),'packages',(select count(*) from manual_publish_packages_v3),'events',(select count(*) from manual_publish_helper_events_v3))::text"
+      ],
+      "startedAt": "2026-08-22T07:48:12.258Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "restart",
+        "api"
+      ],
+      "startedAt": "2026-08-22T07:48:12.341Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:12.762Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:14.353Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:15.935Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:17.523Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:19.113Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "restart",
+        "postgres",
+        "api"
+      ],
+      "startedAt": "2026-08-22T07:48:19.246Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:21.640Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:23.230Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:24.805Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:26.394Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:28.000Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select json_build_object('revisions',(select count(*) from artifact_revisions_v3),'packages',(select count(*) from manual_publish_packages_v3),'events',(select count(*) from manual_publish_helper_events_v3))::text"
+      ],
+      "startedAt": "2026-08-22T07:48:28.112Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "stop",
+        "postgres"
+      ],
+      "startedAt": "2026-08-22T07:48:28.201Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "start",
+        "postgres"
+      ],
+      "startedAt": "2026-08-22T07:48:32.874Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "restart",
+        "api"
+      ],
+      "startedAt": "2026-08-22T07:48:33.108Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:33.508Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:35.097Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:36.697Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:38.293Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "startedAt": "2026-08-22T07:48:39.882Z",
+      "result": "PASS"
+    }
+  ],
+  "failure": null
+}

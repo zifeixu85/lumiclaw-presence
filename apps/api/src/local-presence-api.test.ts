@@ -126,7 +126,7 @@ describe('SDD-006 local onboarding API', () => {
     expect(exampleReentry.statusCode).toBe(409); expect(exampleReentry.json().code).toBe('LOCAL_ONBOARDING_ALREADY_COMPLETED');
     const document = example.json().campaign.document;
     const revision = document.artifactRevisions[0];
-    const handoff = await app.inject({method: 'POST', url: '/api/v1/manual-publish-handoffs', payload: {organizationId: document.organizationId, campaignId: document.id, artifactRevisionId: revision.id, platform: revision.platform, action: 'OWNER_REPORTED_COMPLETE'}});
+    const handoff = await app.inject({method: 'POST', url: '/api/v1/manual-publish-handoffs', payload: {organizationId: document.organizationId, campaignId: document.id, artifactRevisionId: revision.id, platform: revision.platform, action: 'OPEN_OFFICIAL_PAGE'}});
     expect(handoff.statusCode).toBe(409); expect(handoff.json()).toMatchObject({code: 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED', createsHandoff: false, createsPublishedState: false, readBackEvidencePresent: false, authorization: {state: 'BLOCKED', requiredAuthorities: ['INDEPENDENT_AUDIT_PASS', 'EXACT_EXTERNAL_ACTION_OWNER_DECISION'], externalActionAllowed: false}});
     const list = await app.inject({method: 'GET', url: '/api/v1/manual-publish-handoffs'});
     expect(list.json()).toMatchObject({authorization: {reasonCode: 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'}, handoffs: []});
