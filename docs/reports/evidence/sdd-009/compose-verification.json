@@ -3,7 +3,7 @@
   "sdd": "SDD-009",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-22T14:37:15.739Z",
+  "generatedAt": "2026-08-22T15:50:19.783Z",
   "checks": {
     "freshComposeHealthy": true,
     "migration12Applied": true,
@@ -39,7 +39,7 @@
         "--volumes",
         "--remove-orphans"
       ],
-      "startedAt": "2026-08-22T14:35:22.946Z",
+      "startedAt": "2026-08-22T15:49:26.077Z",
       "result": "PASS"
     },
     {
@@ -51,7 +51,7 @@
         "build",
         "api"
       ],
-      "startedAt": "2026-08-22T14:35:23.057Z",
+      "startedAt": "2026-08-22T15:49:26.143Z",
       "result": "PASS"
     },
     {
@@ -64,7 +64,7 @@
         "--no-build",
         "--detach"
       ],
-      "startedAt": "2026-08-22T14:36:26.785Z",
+      "startedAt": "2026-08-22T15:49:33.746Z",
       "result": "PASS"
     },
     {
@@ -77,7 +77,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:36:43.956Z",
+      "startedAt": "2026-08-22T15:49:48.978Z",
       "result": "PASS"
     },
     {
@@ -90,7 +90,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:36:45.722Z",
+      "startedAt": "2026-08-22T15:49:50.693Z",
       "result": "PASS"
     },
     {
@@ -103,7 +103,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:36:47.441Z",
+      "startedAt": "2026-08-22T15:49:52.378Z",
       "result": "PASS"
     },
     {
@@ -116,7 +116,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:36:49.129Z",
+      "startedAt": "2026-08-22T15:49:54.058Z",
       "result": "PASS"
     },
     {
@@ -139,7 +139,7 @@
         "-c",
         "select count(*) from pgmigrations where name='000012_persistent_goal_selected_platform_compiler'"
       ],
-      "startedAt": "2026-08-22T14:36:49.217Z",
+      "startedAt": "2026-08-22T15:49:54.136Z",
       "result": "PASS"
     },
     {
@@ -162,7 +162,7 @@
         "-c",
         "create database lumiclaw_sdd009_empty_down"
       ],
-      "startedAt": "2026-08-22T14:36:49.352Z",
+      "startedAt": "2026-08-22T15:49:54.217Z",
       "result": "PASS"
     },
     {
@@ -182,7 +182,7 @@
         "run",
         "migrate:up"
       ],
-      "startedAt": "2026-08-22T14:36:49.508Z",
+      "startedAt": "2026-08-22T15:49:54.316Z",
       "result": "PASS"
     },
     {
@@ -204,7 +204,7 @@
         "--",
         "3"
       ],
-      "startedAt": "2026-08-22T14:36:50.176Z",
+      "startedAt": "2026-08-22T15:49:54.789Z",
       "result": "PASS"
     },
     {
@@ -227,7 +227,7 @@
         "-c",
         "select to_regclass('public.operating_goal_revisions') is null"
       ],
-      "startedAt": "2026-08-22T14:36:50.577Z",
+      "startedAt": "2026-08-22T15:49:55.145Z",
       "result": "PASS"
     },
     {
@@ -250,7 +250,7 @@
         "-c",
         "create database lumiclaw_sdd009_regression"
       ],
-      "startedAt": "2026-08-22T14:36:50.666Z",
+      "startedAt": "2026-08-22T15:49:55.226Z",
       "result": "PASS"
     },
     {
@@ -270,7 +270,7 @@
         "run",
         "migrate:up"
       ],
-      "startedAt": "2026-08-22T14:36:50.774Z",
+      "startedAt": "2026-08-22T15:49:55.322Z",
       "result": "PASS"
     },
     {
@@ -292,7 +292,7 @@
         "apps/api/src/goal-plan-postgres-regression.test.ts",
         "--configLoader=runner"
       ],
-      "startedAt": "2026-08-22T14:36:51.256Z",
+      "startedAt": "2026-08-22T15:49:55.725Z",
       "result": "PASS"
     },
     {
@@ -315,7 +315,7 @@
         "-c",
         "select json_build_object('goal_revisions',(select count(*) from operating_goal_revisions),'plan_revisions',(select count(*) from content_plan_revisions_v2),'bundles',(select count(*) from mission_bundle_generations_v2),'invalidations',(select count(*) from mission_bundle_status_events_v2),'supersession_outbox',(select count(*) from knowledge_snapshot_supersession_outbox_v2),'supersession_receipts',(select count(*) from knowledge_snapshot_supersession_receipts_v2),'pending_supersessions',(select count(*) from knowledge_snapshot_supersession_outbox_v2 o where not exists(select 1 from knowledge_snapshot_supersession_receipts_v2 r where r.owner_profile_id=o.owner_profile_id and r.event_id=o.event_id)))::text"
       ],
-      "startedAt": "2026-08-22T14:36:53.678Z",
+      "startedAt": "2026-08-22T15:49:57.754Z",
       "result": "PASS"
     },
     {
@@ -338,7 +338,7 @@
         "-c",
         "select json_build_object('goal_revisions',(select count(*) from operating_goal_revisions),'plan_revisions',(select count(*) from content_plan_revisions_v2),'bundles',(select count(*) from mission_bundle_generations_v2),'invalidations',(select count(*) from mission_bundle_status_events_v2),'idempotency',(select count(*) from goal_plan_idempotency_records_v2))::text"
       ],
-      "startedAt": "2026-08-22T14:37:02.388Z",
+      "startedAt": "2026-08-22T15:50:06.563Z",
       "result": "PASS"
     },
     {
@@ -358,9 +358,9 @@
         "-v",
         "ON_ERROR_STOP=1",
         "-c",
-        "update operating_goal_revisions set state='PAUSED' where goal_id='goal_5d587bd510a93728f7ec99d9' and revision=1"
+        "update operating_goal_revisions set state='PAUSED' where goal_id='goal_6694c44ad90146d5f98a8b5c' and revision=1"
       ],
-      "startedAt": "2026-08-22T14:37:02.579Z",
+      "startedAt": "2026-08-22T15:50:06.759Z",
       "result": "EXPECTED_FAIL"
     },
     {
@@ -382,7 +382,7 @@
         "--",
         "3"
       ],
-      "startedAt": "2026-08-22T14:37:02.911Z",
+      "startedAt": "2026-08-22T15:50:07.128Z",
       "result": "EXPECTED_FAIL"
     },
     {
@@ -405,7 +405,7 @@
         "-c",
         "select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('operating_goal_revisions','operating_goal_account_bindings','content_plan_revisions_v2','mission_bundle_generations_v2','mission_bundle_status_events_v2')"
       ],
-      "startedAt": "2026-08-22T14:37:02.911Z",
+      "startedAt": "2026-08-22T15:50:07.128Z",
       "result": "PASS"
     },
     {
@@ -417,7 +417,7 @@
         "restart",
         "api"
       ],
-      "startedAt": "2026-08-22T14:37:02.992Z",
+      "startedAt": "2026-08-22T15:50:07.208Z",
       "result": "PASS"
     },
     {
@@ -430,7 +430,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:37:03.353Z",
+      "startedAt": "2026-08-22T15:50:07.549Z",
       "result": "PASS"
     },
     {
@@ -443,7 +443,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:37:05.045Z",
+      "startedAt": "2026-08-22T15:50:09.244Z",
       "result": "PASS"
     },
     {
@@ -456,7 +456,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:37:06.714Z",
+      "startedAt": "2026-08-22T15:50:10.913Z",
       "result": "PASS"
     },
     {
@@ -469,7 +469,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:37:08.384Z",
+      "startedAt": "2026-08-22T15:50:12.582Z",
       "result": "PASS"
     },
     {
@@ -482,7 +482,7 @@
         "postgres",
         "api"
       ],
-      "startedAt": "2026-08-22T14:37:08.467Z",
+      "startedAt": "2026-08-22T15:50:12.664Z",
       "result": "PASS"
     },
     {
@@ -495,7 +495,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:37:10.334Z",
+      "startedAt": "2026-08-22T15:50:14.390Z",
       "result": "PASS"
     },
     {
@@ -508,7 +508,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:37:12.081Z",
+      "startedAt": "2026-08-22T15:50:16.111Z",
       "result": "PASS"
     },
     {
@@ -521,7 +521,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:37:13.758Z",
+      "startedAt": "2026-08-22T15:50:17.798Z",
       "result": "PASS"
     },
     {
@@ -534,7 +534,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:37:15.438Z",
+      "startedAt": "2026-08-22T15:50:19.478Z",
       "result": "PASS"
     },
     {
@@ -557,7 +557,7 @@
         "-c",
         "select json_build_object('goal_revisions',(select count(*) from operating_goal_revisions),'plan_revisions',(select count(*) from content_plan_revisions_v2),'bundles',(select count(*) from mission_bundle_generations_v2),'invalidations',(select count(*) from mission_bundle_status_events_v2),'idempotency',(select count(*) from goal_plan_idempotency_records_v2))::text"
       ],
-      "startedAt": "2026-08-22T14:37:15.532Z",
+      "startedAt": "2026-08-22T15:50:19.596Z",
       "result": "PASS"
     }
   ],

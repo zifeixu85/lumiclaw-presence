@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "result": "PASS",
-  "generatedAt": "2026-08-22T14:40:40.779Z",
+  "generatedAt": "2026-08-22T15:49:10.924Z",
   "project": "lumiclaw-sdd008-verify",
   "checks": {
     "freshComposeHealthy": true,
@@ -34,7 +34,7 @@
         "--volumes",
         "--remove-orphans"
       ],
-      "startedAt": "2026-08-22T14:39:51.211Z",
+      "startedAt": "2026-08-22T15:47:22.691Z",
       "result": "PASS"
     },
     {
@@ -46,7 +46,7 @@
         "build",
         "api"
       ],
-      "startedAt": "2026-08-22T14:39:51.293Z",
+      "startedAt": "2026-08-22T15:47:22.867Z",
       "result": "PASS"
     },
     {
@@ -59,7 +59,7 @@
         "--no-build",
         "--detach"
       ],
-      "startedAt": "2026-08-22T14:39:52.240Z",
+      "startedAt": "2026-08-22T15:48:22.265Z",
       "result": "PASS"
     },
     {
@@ -72,7 +72,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:05.057Z",
+      "startedAt": "2026-08-22T15:48:36.311Z",
       "result": "PASS"
     },
     {
@@ -85,7 +85,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:06.984Z",
+      "startedAt": "2026-08-22T15:48:38.237Z",
       "result": "PASS"
     },
     {
@@ -98,7 +98,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:08.893Z",
+      "startedAt": "2026-08-22T15:48:40.118Z",
       "result": "PASS"
     },
     {
@@ -111,7 +111,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:10.772Z",
+      "startedAt": "2026-08-22T15:48:42.009Z",
       "result": "PASS"
     },
     {
@@ -134,7 +134,7 @@
         "-c",
         "select count(*) from pgmigrations where name='000011_guided_knowledge_onboarding'"
       ],
-      "startedAt": "2026-08-22T14:40:10.897Z",
+      "startedAt": "2026-08-22T15:48:42.126Z",
       "result": "PASS"
     },
     {
@@ -157,7 +157,7 @@
         "-c",
         "create database lumiclaw_sdd008_empty_down"
       ],
-      "startedAt": "2026-08-22T14:40:10.990Z",
+      "startedAt": "2026-08-22T15:48:42.206Z",
       "result": "PASS"
     },
     {
@@ -177,7 +177,7 @@
         "run",
         "migrate:up"
       ],
-      "startedAt": "2026-08-22T14:40:11.117Z",
+      "startedAt": "2026-08-22T15:48:42.312Z",
       "result": "PASS"
     },
     {
@@ -199,7 +199,7 @@
         "--",
         "4"
       ],
-      "startedAt": "2026-08-22T14:40:11.669Z",
+      "startedAt": "2026-08-22T15:48:42.867Z",
       "result": "PASS"
     },
     {
@@ -222,7 +222,7 @@
         "-c",
         "select to_regclass('public.knowledge_snapshots') is null"
       ],
-      "startedAt": "2026-08-22T14:40:12.080Z",
+      "startedAt": "2026-08-22T15:48:43.240Z",
       "result": "PASS"
     },
     {
@@ -245,7 +245,7 @@
         "-c",
         "create database lumiclaw_sdd008_legacy"
       ],
-      "startedAt": "2026-08-22T14:40:12.164Z",
+      "startedAt": "2026-08-22T15:48:43.320Z",
       "result": "PASS"
     },
     {
@@ -265,7 +265,7 @@
         "run",
         "migrate:up"
       ],
-      "startedAt": "2026-08-22T14:40:12.270Z",
+      "startedAt": "2026-08-22T15:48:43.476Z",
       "result": "PASS"
     },
     {
@@ -287,7 +287,7 @@
         "--",
         "4"
       ],
-      "startedAt": "2026-08-22T14:40:12.758Z",
+      "startedAt": "2026-08-22T15:48:43.976Z",
       "result": "PASS"
     },
     {
@@ -310,7 +310,7 @@
         "-c",
         "insert into local_owner_profiles(id,singleton_key,schema_version,display_name,state,created_at,updated_at) values('018f0000-0000-7000-8000-000000000001',true,1,'Legacy fixture Owner','PROFILE_READY',now(),now());insert into local_onboarding_sessions(owner_profile_id,schema_version,path,state,data_mode,organization_id,campaign_id,market_code,content_locale,platform,time_zone,material_ids,created_at,updated_at,market_codes,content_locales,platforms,default_time_zone,completion_digest) values('018f0000-0000-7000-8000-000000000001',1,'LOCAL_MATERIALS','MATERIALS_READY','LOCAL_PRIVATE',null,null,null,null,null,null,'[\"018f0000-0000-7000-8000-000000000002\"]'::jsonb,now(),now(),'[]'::jsonb,'[]'::jsonb,'[]'::jsonb,null,null);insert into local_material_manifests(owner_profile_id,id,schema_version,file_name,media_type,byte_size,digest,state,extracted_text,failure_code,blob_ref,created_at,updated_at) values('018f0000-0000-7000-8000-000000000001','018f0000-0000-7000-8000-000000000002',1,'legacy.md','text/markdown',55,'a5739a623341619a2e71c8f6e7ae343177d1143832c3c463449b90d6d510f5fc','READY','# Legacy public-safe fixture\\nOwner review is required.',null,'{\"algorithm\":\"sha256\",\"digest\":\"a5739a623341619a2e71c8f6e7ae343177d1143832c3c463449b90d6d510f5fc\",\"size\":55}'::jsonb,now(),now());"
       ],
-      "startedAt": "2026-08-22T14:40:13.117Z",
+      "startedAt": "2026-08-22T15:48:44.328Z",
       "result": "PASS"
     },
     {
@@ -330,7 +330,7 @@
         "run",
         "migrate:up"
       ],
-      "startedAt": "2026-08-22T14:40:13.216Z",
+      "startedAt": "2026-08-22T15:48:44.413Z",
       "result": "PASS"
     },
     {
@@ -353,7 +353,7 @@
         "-c",
         "select status||'|'||trim(blob_digest)||'|'||source_kind from source_document_revisions"
       ],
-      "startedAt": "2026-08-22T14:40:13.659Z",
+      "startedAt": "2026-08-22T15:48:44.802Z",
       "result": "PASS"
     },
     {
@@ -375,7 +375,7 @@
         "--",
         "4"
       ],
-      "startedAt": "2026-08-22T14:40:14.164Z",
+      "startedAt": "2026-08-22T15:48:45.247Z",
       "result": "EXPECTED_FAIL"
     },
     {
@@ -398,7 +398,7 @@
         "-c",
         "select json_agg(name order by run_on)::text from pgmigrations"
       ],
-      "startedAt": "2026-08-22T14:40:14.164Z",
+      "startedAt": "2026-08-22T15:48:45.247Z",
       "result": "PASS"
     },
     {
@@ -421,7 +421,7 @@
         "-c",
         "select json_build_object('sources',(select count(*) from source_document_revisions),'profiles',(select count(*) from knowledge_profile_revisions),'snapshots',(select count(*) from knowledge_snapshots),'approved',(select count(*) from knowledge_snapshots where state='APPROVED'),'campaigns',(select count(*) from campaigns),'agent_runs',(select count(*) from agent_runs))::text"
       ],
-      "startedAt": "2026-08-22T14:40:22.795Z",
+      "startedAt": "2026-08-22T15:48:53.842Z",
       "result": "PASS"
     },
     {
@@ -433,7 +433,7 @@
         "restart",
         "api"
       ],
-      "startedAt": "2026-08-22T14:40:22.910Z",
+      "startedAt": "2026-08-22T15:48:53.945Z",
       "result": "PASS"
     },
     {
@@ -446,7 +446,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:23.273Z",
+      "startedAt": "2026-08-22T15:48:54.302Z",
       "result": "PASS"
     },
     {
@@ -459,7 +459,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:25.171Z",
+      "startedAt": "2026-08-22T15:48:56.262Z",
       "result": "PASS"
     },
     {
@@ -472,7 +472,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:27.051Z",
+      "startedAt": "2026-08-22T15:48:58.138Z",
       "result": "PASS"
     },
     {
@@ -485,7 +485,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:28.922Z",
+      "startedAt": "2026-08-22T15:49:00.012Z",
       "result": "PASS"
     },
     {
@@ -498,7 +498,7 @@
         "postgres",
         "api"
       ],
-      "startedAt": "2026-08-22T14:40:29.018Z",
+      "startedAt": "2026-08-22T15:49:00.081Z",
       "result": "PASS"
     },
     {
@@ -511,7 +511,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:31.966Z",
+      "startedAt": "2026-08-22T15:49:01.664Z",
       "result": "PASS"
     },
     {
@@ -524,7 +524,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:33.857Z",
+      "startedAt": "2026-08-22T15:49:03.551Z",
       "result": "PASS"
     },
     {
@@ -537,7 +537,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:35.775Z",
+      "startedAt": "2026-08-22T15:49:05.422Z",
       "result": "PASS"
     },
     {
@@ -550,7 +550,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T14:40:37.653Z",
+      "startedAt": "2026-08-22T15:49:07.297Z",
       "result": "PASS"
     },
     {
@@ -573,7 +573,7 @@
         "-c",
         "select json_build_object('sources',(select count(*) from source_document_revisions),'profiles',(select count(*) from knowledge_profile_revisions),'snapshots',(select count(*) from knowledge_snapshots),'approved',(select count(*) from knowledge_snapshots where state='APPROVED'),'campaigns',(select count(*) from campaigns),'agent_runs',(select count(*) from agent_runs))::text"
       ],
-      "startedAt": "2026-08-22T14:40:37.765Z",
+      "startedAt": "2026-08-22T15:49:07.397Z",
       "result": "PASS"
     },
     {
@@ -596,7 +596,7 @@
         "-c",
         "select count(*) from knowledge_profile_revisions where kind='PRODUCT'"
       ],
-      "startedAt": "2026-08-22T14:40:37.851Z",
+      "startedAt": "2026-08-22T15:49:07.477Z",
       "result": "PASS"
     },
     {
@@ -619,7 +619,7 @@
         "-c",
         "select count(*) from knowledge_profile_revisions where kind='PRODUCT'"
       ],
-      "startedAt": "2026-08-22T14:40:37.988Z",
+      "startedAt": "2026-08-22T15:49:07.599Z",
       "result": "PASS"
     },
     {
@@ -642,7 +642,7 @@
         "-c",
         "select coalesce(string_agg(redacted_metadata::text,'|'),'') from knowledge_audit_events where event_code='KNOWLEDGE_REQUEST_REJECTED'"
       ],
-      "startedAt": "2026-08-22T14:40:38.108Z",
+      "startedAt": "2026-08-22T15:49:07.690Z",
       "result": "PASS"
     },
     {
@@ -658,7 +658,7 @@
         "-e",
         "require('node:fs').unlinkSync(\"/var/lib/lumiclaw/blobs/d9/ce60341bdae3bc9151fb8e84e4535025142dd602ea1fbac83f2362d5220c52\")"
       ],
-      "startedAt": "2026-08-22T14:40:38.200Z",
+      "startedAt": "2026-08-22T15:49:07.763Z",
       "result": "PASS"
     },
     {
@@ -675,7 +675,7 @@
         "-e",
         "import {LocalContentAddressedBlobStore} from '@lumiclaw/blob-store';const store=new LocalContentAddressedBlobStore(process.env.BLOB_ROOT);await store.put(Buffer.from(\"IyBGb3VuZGVyIHZvaWNlCkV2aWRlbmNlIGJlZm9yZSBjbGFpbXMuIE5ldmVyIGd1YXJhbnRlZSBncm93dGgu\",'base64'));"
       ],
-      "startedAt": "2026-08-22T14:40:38.300Z",
+      "startedAt": "2026-08-22T15:49:07.853Z",
       "result": "PASS"
     },
     {
@@ -696,9 +696,9 @@
         "ON_ERROR_STOP=1",
         "-At",
         "-c",
-        "select count(*) from knowledge_snapshot_source_bindings where snapshot_id='01a029ea-5ab8-7c7a-9430-06f6ec52f379'"
+        "select count(*) from knowledge_snapshot_source_bindings where snapshot_id='01a02a29-158f-7d91-aecd-56c276b07e4b'"
       ],
-      "startedAt": "2026-08-22T14:40:38.430Z",
+      "startedAt": "2026-08-22T15:49:07.960Z",
       "result": "PASS"
     },
     {
@@ -718,9 +718,9 @@
         "-v",
         "ON_ERROR_STOP=1",
         "-c",
-        "delete from knowledge_snapshots where id='01a029ea-5ab8-7c7a-9430-06f6ec52f379'"
+        "delete from knowledge_snapshots where id='01a02a29-158f-7d91-aecd-56c276b07e4b'"
       ],
-      "startedAt": "2026-08-22T14:40:38.597Z",
+      "startedAt": "2026-08-22T15:49:08.122Z",
       "result": "EXPECTED_FAIL"
     },
     {
@@ -740,9 +740,9 @@
         "-v",
         "ON_ERROR_STOP=1",
         "-c",
-        "update knowledge_snapshots set state='DRAFT',approved_by=null,approved_at=null where id='01a029ea-5ab8-7c7a-9430-06f6ec52f379'"
+        "update knowledge_snapshots set state='DRAFT',approved_by=null,approved_at=null where id='01a02a29-158f-7d91-aecd-56c276b07e4b'"
       ],
-      "startedAt": "2026-08-22T14:40:38.679Z",
+      "startedAt": "2026-08-22T15:49:08.206Z",
       "result": "EXPECTED_FAIL"
     },
     {
@@ -762,9 +762,9 @@
         "-v",
         "ON_ERROR_STOP=1",
         "-c",
-        "delete from knowledge_snapshot_source_bindings where snapshot_id='01a029ea-5ab8-7c7a-9430-06f6ec52f379' and source_revision_id='01a029ea-523b-75c7-8d27-7d6a53d91515'"
+        "delete from knowledge_snapshot_source_bindings where snapshot_id='01a02a29-158f-7d91-aecd-56c276b07e4b' and source_revision_id='01a02a29-0d59-7a23-bf94-613d56669fba'"
       ],
-      "startedAt": "2026-08-22T14:40:38.760Z",
+      "startedAt": "2026-08-22T15:49:08.282Z",
       "result": "EXPECTED_FAIL"
     },
     {
@@ -787,7 +787,7 @@
         "-c",
         "select count(*) from campaigns"
       ],
-      "startedAt": "2026-08-22T14:40:38.846Z",
+      "startedAt": "2026-08-22T15:49:08.362Z",
       "result": "PASS"
     },
     {
@@ -810,7 +810,7 @@
         "-c",
         "select count(*) from agent_runs"
       ],
-      "startedAt": "2026-08-22T14:40:38.931Z",
+      "startedAt": "2026-08-22T15:49:08.442Z",
       "result": "PASS"
     },
     {
@@ -833,7 +833,7 @@
         "-c",
         "select json_build_object('documents',(select count(*) from source_documents),'revisions',(select count(*) from source_document_revisions),'snapshots',(select count(*) from knowledge_snapshots),'source_bindings',(select count(*) from knowledge_snapshot_source_bindings))::text"
       ],
-      "startedAt": "2026-08-22T14:40:39.012Z",
+      "startedAt": "2026-08-22T15:49:08.524Z",
       "result": "PASS"
     },
     {
@@ -853,7 +853,7 @@
         "--",
         "4"
       ],
-      "startedAt": "2026-08-22T14:40:39.445Z",
+      "startedAt": "2026-08-22T15:49:08.970Z",
       "result": "EXPECTED_FAIL"
     },
     {
@@ -876,7 +876,7 @@
         "-c",
         "select to_regclass('public.knowledge_snapshots') is not null"
       ],
-      "startedAt": "2026-08-22T14:40:39.445Z",
+      "startedAt": "2026-08-22T15:49:08.970Z",
       "result": "PASS"
     },
     {
@@ -899,7 +899,7 @@
         "-c",
         "select json_build_object('documents',(select count(*) from source_documents),'revisions',(select count(*) from source_document_revisions),'snapshots',(select count(*) from knowledge_snapshots),'source_bindings',(select count(*) from knowledge_snapshot_source_bindings))::text"
       ],
-      "startedAt": "2026-08-22T14:40:39.526Z",
+      "startedAt": "2026-08-22T15:49:09.059Z",
       "result": "PASS"
     },
     {
@@ -912,7 +912,7 @@
         "--volumes",
         "--remove-orphans"
       ],
-      "startedAt": "2026-08-22T14:40:39.609Z",
+      "startedAt": "2026-08-22T15:49:09.142Z",
       "result": "PASS"
     }
   ],

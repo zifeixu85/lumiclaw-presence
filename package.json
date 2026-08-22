@@ -56,7 +56,7 @@
     "verify:shadow-postgres": "npm run build --workspace @lumiclaw/domain && npm run build --workspace @lumiclaw/db && npm run build --workspace @lumiclaw/governed-shadow && tsx scripts/verify-shadow-postgres.ts",
     "verify:agentteams-images": "node scripts/verify-agentteams-images.mjs",
     "verify:agentteams-real:inner": "node scripts/verify-agentteams-real-runtime.mjs",
-    "verify:agentteams-real": "npm run build --workspace @lumiclaw/domain && npm run build --workspace @lumiclaw/runtime-agentteams && node scripts/verify-agentteams-real-environment.mjs",
+    "verify:agentteams-real": "npm run build:packages && npm run build --workspace @lumiclaw/mission-worker && node scripts/verify-agentteams-real-environment.mjs",
     "verify:sdd007:agentteams-real": "npm run verify:agentteams-real",
     "verify:sdd007:postgres": "npm run build:packages && npm run build --workspace @lumiclaw/api && node scripts/verify-sdd007-postgres.mjs",
     "verify:sdd007:browser": "node scripts/verify-sdd007-browser.mjs",

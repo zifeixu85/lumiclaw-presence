@@ -31,7 +31,7 @@ const producerSubmission=closed(['schemaVersion','evidenceMaturity','agentTeamsE
 const producer=closed(['submissions'],{submissions:{type:'array',minItems:1,maxItems:30,items:producerSubmission}});
 
 const finding=closed(['checkCode','result','path','message','evidenceBindings','recoveryAction'],{checkCode:{enum:['SCHEMA_AND_ORDER','SOURCE_GROUNDING','CLAIM_EVIDENCE','GOAL_AND_PLAN_FIT','ACCOUNT_VOICE','PLATFORM_CONSTRAINTS','SENSITIVE_RISK']},result:{enum:['PASS','FAIL','ESCALATE']},path:text,message:text,evidenceBindings:{type:'array',items:digest},recoveryAction:{oneOf:[{type:'null'},text]}});
-const auditItem=closed(['artifactRevisionId','auditorIdentityId','createdAt','evidenceBindings','findings','result'],{artifactRevisionId:text,auditorIdentityId:text,createdAt:{type:'string',format:'date-time'},evidenceBindings:{type:'array',items:digest},findings:{type:'array',minItems:7,maxItems:7,items:finding},result:{enum:['PASS','FAIL','ESCALATE']}});
+const auditItem=closed(['artifactRevisionId','auditorIdentityId','evidenceBindings','findings','result'],{artifactRevisionId:text,auditorIdentityId:text,evidenceBindings:{type:'array',items:digest},findings:{type:'array',minItems:7,maxItems:7,items:finding},result:{enum:['PASS','FAIL','ESCALATE']}});
 const audit=closed(['audits'],{audits:{type:'array',minItems:1,maxItems:30,items:auditItem}});
 
 const registry:Record<string,{kind:RuntimeTaskContract['kind'];roleIds:string[];schema:JsonSchema}>={

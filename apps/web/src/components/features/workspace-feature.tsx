@@ -20,9 +20,9 @@ export function WorkspaceFeature({section, snapshot, readiness, team, skills, on
   const campaign = snapshot.campaign;
   if (section === 'goals') return <GoalMissionFeature snapshot={snapshot} onReload={onReload} />;
   if (section === 'publish' && snapshot.goals?.bundles.some((bundle)=>bundle.kind==='MISSION_EXECUTION')) return <><PageHeader titleKey="publishTitle" bodyKey="publishBody" eyebrowKey="publish" /><ArtifactPublishFeature snapshot={snapshot} onReload={onReload}/></>;
+  if (section === 'ai-team') return <><PageHeader titleKey="teamTitle" bodyKey="teamBody" eyebrowKey="team" /><Suspense fallback={null}><TeamFeature team={team} skills={skills.skills} dataMode={snapshot.session?.dataMode ?? 'LOCAL_PRIVATE'} /></Suspense></>;
   if (campaign === null) return <EmptyControlPlane />;
   if (section === 'campaigns') return <CampaignFeature campaign={campaign} />;
-  if (section === 'ai-team') return <><PageHeader titleKey="teamTitle" bodyKey="teamBody" eyebrowKey="team" /><Suspense fallback={null}><TeamFeature team={team} skills={skills.skills} dataMode={snapshot.session?.dataMode ?? 'LOCAL_PRIVATE'} /></Suspense></>;
   if (section === 'publish') return <><PageHeader titleKey="publishTitle" bodyKey="publishBody" eyebrowKey="publish" /><PublishFeature campaign={campaign} handoffs={snapshot.handoffs} authorization={snapshot.publishAuthorization} /></>;
   if (section === 'calendar') return <><PageHeader titleKey="calendarTitle" bodyKey="calendarBody" eyebrowKey="calendar" /><CalendarView snapshot={snapshot} /></>;
   if (section === 'feedback') return <><PageHeader titleKey="feedbackTitle" bodyKey="feedbackBody" eyebrowKey="feedback" /><FeedbackView /></>;

@@ -4,11 +4,12 @@ import {DockerAgentTeamsV120Driver} from '@lumiclaw/runtime-agentteams';
 import {createServer} from 'node:http';
 import {readFile,stat} from 'node:fs/promises';
 import {RuntimeOutputAuthority} from './output-authority.js';
+import {missionWorkerHealthStatus,notConfiguredMissionWorkerReadiness} from './readiness.js';
 import {HttpGatewayTicketIssuer,PersistentMissionWorker} from './worker.js';
 
 const port=integerEnv('PORT',4001);const connectionString=requiredEnv('DATABASE_URL');const driverMode=process.env.AGENTTEAMS_DRIVER??'NOT_CONFIGURED';const gatewayControlOrigin=driverMode==='DOCKER_HOST_SUPERVISOR'?requiredEnv('MODEL_GATEWAY_URL'):'http://127.0.0.1:1';const gatewayWorkerOrigin=driverMode==='DOCKER_HOST_SUPERVISOR'?requiredEnv('MODEL_GATEWAY_WORKER_ORIGIN'):'http://host.docker.internal:1';const workerId=process.env.MISSION_WORKER_ID??`mission-worker-${process.pid}`;const pollMs=integerEnv('MISSION_WORKER_POLL_MS',1_000);const leaseMs=integerEnv('MISSION_WORKER_LEASE_MS',120_000);
 const runtime=new PostgresPersistentRuntimeRepository(connectionString);const goals=new PostgresGoalPlanRepository(connectionString);const artifacts=new PostgresArtifactPublishRepository(connectionString);const driver=new DockerAgentTeamsV120Driver();const authority=new RuntimeOutputAuthority(goals,artifacts);
-let worker:PersistentMissionWorker|undefined;let heartbeatAt:string|null=null;let lastTick:'IDLE'|'RECOVERED_MATERIALIZATION'|'ACCEPTED'|'BLOCKED'|'NOT_CONFIGURED'='NOT_CONFIGURED';let stopping=false;
+let worker:PersistentMissionWorker|undefined;let heartbeatAt:string|null=null;let lastTick:'IDLE'|'RECOVERED_MATERIALIZATION'|'RECOVERED_SUBMISSION'|'CONFIRMED_COMPLETION'|'ACCEPTED'|'BLOCKED'|'NOT_CONFIGURED'='NOT_CONFIGURED';let stopping=false;
 
 if(driverMode==='DOCKER_HOST_SUPERVISOR'){
   const bootstrap=await readSecret(requiredEnv('RUNTIME_GATEWAY_BOOTSTRAP_FILE'),32);
@@ -18,7 +19,7 @@ if(driverMode==='DOCKER_HOST_SUPERVISOR'){
 const server=createServer(async(request,response)=>{
   response.setHeader('cache-control','no-store');response.setHeader('content-type','application/json');
   if(request.method!=='GET'||request.url!=='/health'){response.writeHead(404);response.end(JSON.stringify({code:'MISSION_WORKER_ROUTE_NOT_FOUND',externalActionAllowed:false}));return;}
-  const health=await readiness();response.writeHead(health.state==='UNREACHABLE'?503:200);response.end(JSON.stringify(health));
+  const health=await readiness();response.writeHead(missionWorkerHealthStatus(health.state));response.end(JSON.stringify(health));
 });
 server.listen(port,'0.0.0.0');
 void loop();
@@ -27,7 +28,7 @@ for(const signal of ['SIGTERM','SIGINT'] as const)process.once(signal,()=>{stopp
 async function loop(){while(!stopping){if(worker!==undefined){lastTick=await worker.tick().catch(()=>'BLOCKED');heartbeatAt=new Date().toISOString();}await delay(pollMs);}}
 
 async function readiness(){
-  if(driverMode==='NOT_CONFIGURED')return {service:'mission-worker',state:'NOT_CONFIGURED' as const,reasonCode:'RUNTIME_NOT_CONFIGURED',controlPlane:{state:await runtime.health().catch(()=>false)?'READY':'UNREACHABLE',source:'POSTGRESQL'},worker:{state:'NOT_CONFIGURED',workerId,heartbeatAt:null,lastTick:'NOT_CONFIGURED'},gateway:{state:'NOT_CONFIGURED',providerMode:'UNKNOWN',controlledFake:false,configured:false,fingerprint:null,updatedAt:null},agentTeams:{state:'NOT_CONFIGURED',memberCount:0,version:'UNOBSERVED',sourceCommit:'UNOBSERVED',sourceTarSha256:'UNOBSERVED',teamProfileVersion:'UNOBSERVED',teamProfileDigest:'UNOBSERVED',imageDigests:[],pinnedIdentityVerified:false,identityEvidence:null},authority:{mode:'NOT_CONFIGURED',dockerSocketMounted:false,fixedCommandSurface:true,webDockerAuthority:false,apiDockerAuthority:false,gatewayDockerAuthority:false},externalActionAllowed:false,secretPresentInResponse:false};
+  if(driverMode==='NOT_CONFIGURED')return notConfiguredMissionWorkerReadiness(await runtime.health().catch(()=>false),workerId);
   const [postgresql,agentTeams,gateway]=await Promise.all([runtime.health().catch(()=>false),driver.readiness(),probeGateway()]);
   const heartbeatFresh=heartbeatAt!==null&&Date.now()-Date.parse(heartbeatAt)<=Math.max(30_000,pollMs*5);
   let state:RuntimeReadinessState='READY';let reasonCode:string|null=null;

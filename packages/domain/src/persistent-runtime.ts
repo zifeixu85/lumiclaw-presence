@@ -481,6 +481,19 @@ export interface PersistentRuntimeRepository {
     runtimeActorId: string,
     at: Date,
   ): Promise<void>;
+  recordSubmissionIntent(
+    workerId: string,
+    jobId: string,
+    attemptId: string,
+    leaseToken: string,
+    envelope: RuntimeSubmissionEnvelope,
+    now: Date,
+  ): Promise<void>;
+  acquireSubmissionRecovery(
+    workerId: string,
+    leaseMs: number,
+    now: Date,
+  ): Promise<{ lease: RuntimeLease; envelope: RuntimeSubmissionEnvelope | null } | undefined>;
   stageMaterialization(
     workerId: string,
     jobId: string,
@@ -506,6 +519,19 @@ export interface PersistentRuntimeRepository {
     batchId: string,
     now: Date,
   ): Promise<{ accepted: boolean; duplicate: boolean; run: MissionRun }>;
+  acquirePendingCompletion(
+    workerId: string,
+    leaseMs: number,
+    now: Date,
+  ): Promise<{ lease: RuntimeLease; batch: RuntimeMaterializationBatch } | undefined>;
+  confirmRuntimeCompletion(
+    workerId: string,
+    jobId: string,
+    attemptId: string,
+    leaseToken: string,
+    batchId: string,
+    now: Date,
+  ): Promise<void>;
   quarantineSubmission(
     workerId: string,
     jobId: string,

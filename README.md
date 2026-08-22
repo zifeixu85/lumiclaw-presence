@@ -222,7 +222,9 @@ curl --fail http://127.0.0.1:4100/api/v1/runtime/readiness
 curl --fail http://127.0.0.1:4401/health
 ~~~
 
-Expected readiness is `READY` only when PostgreSQL, Model Gateway, a fresh mission-worker heartbeat, and the inspected immutable AgentTeams identity/profile all agree. Controlled fake is deliberately `DEGRADED`, never real-provider `READY`. `INCOMPATIBLE`, a missing heartbeat, a six-member/image/profile mismatch, or an unreachable gateway is a hard failure; there is no mock-success fallback.
+Expected readiness is `READY` only when PostgreSQL, Model Gateway, a fresh mission-worker heartbeat, and the inspected immutable AgentTeams identity/profile all agree. Controlled fake is deliberately `DEGRADED`, never real-provider `READY`. Compose without the host supervisor has no heartbeat and is therefore `UNREACHABLE / MISSION_WORKER_HEARTBEAT_MISSING`, even when its controlled-fake Gateway is healthy. `INCOMPATIBLE`, a stale heartbeat, a six-member/image/profile mismatch, or an unreachable gateway is a hard failure; the AI Team projection applies the same combined readiness and has no mock-success fallback.
+
+The production worker starts fenced lease heartbeats immediately after acquire. Every AgentTeams Docker operation has a hard timeout with TERM→KILL cleanup. A generated output is persisted as an immutable submission intent before external Submit, so a submit→stage crash is recovered by observing the exact AgentTeams task result without another provider call. PostgreSQL acceptance leaves a durable completion intent; a restarted worker retries the same typed internal AgentTeams completion and records confirmation without rebuilding a revision. The orchestration-only Leader emits a deterministic receipt and never receives a model ticket.
 
 Stop in this order: press Ctrl-C in the supervisor terminal, then remove only the exact Compose project:
 

@@ -142,6 +142,8 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
       expect(lease).toBeDefined();
       expect([winner, loser].filter(Boolean)).toHaveLength(1);
       if (lease === undefined) throw new Error("LEASE_REQUIRED");
+      await runtimeA.heartbeatLease(lease.job.leaseOwner!,lease.job.id,lease.attempt.id,lease.leaseToken,60_000,new Date(t0.getTime()+59_000));
+      expect(await runtimeRestarted.acquireJob('worker-stale-contender',60_000,new Date(t0.getTime()+61_000))).toBeUndefined();
       const binding = runtimeBinding(lease, authority.first);
       const actor = binding.memberBindings.find(
         (item) => item.roleId === lease.job.roleId,
@@ -153,7 +155,7 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
         lease.leaseToken,
         binding,
         lease.job.taskContractId,
-        new Date(t0.getTime() + 100),
+        new Date(t0.getTime() + 61_010),
       );
       await expect(
         runtimeA.recordAck(
@@ -163,7 +165,7 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
           lease.leaseToken,
           lease.job.taskContractId,
           "@wrong-actor:matrix.local",
-          new Date(t0.getTime() + 200),
+          new Date(t0.getTime() + 61_020),
         ),
       ).rejects.toMatchObject({ code: "SUBMISSION_INPUT_MISMATCH" });
       await runtimeA.recordAck(
@@ -173,7 +175,7 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
         lease.leaseToken,
         lease.job.taskContractId,
         actor,
-        new Date(t0.getTime() + 200),
+        new Date(t0.getTime() + 61_020),
       );
 
       const ticketRepository = new PostgresModelGatewayTicketRepository(
@@ -183,7 +185,7 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
         lease,
         authority.first,
         actor,
-        new Date(t0.getTime() + 30_000),
+        new Date(t0.getTime() + 90_000),
       );
       const claimsA = { ...pair.claims, nonce: "a".repeat(43) };
       const claimsB = { ...pair.claims, nonce: "b".repeat(43) };
@@ -191,12 +193,12 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
         ticketRepository.issue(
           claimsA,
           sha256Digest(claimsA.nonce),
-          new Date(t0.getTime() + 300),
+          new Date(t0.getTime() + 61_030),
         ),
         ticketRepository.issue(
           claimsB,
           sha256Digest(claimsB.nonce),
-          new Date(t0.getTime() + 300),
+          new Date(t0.getTime() + 61_030),
         ),
       ]);
       expect(issued.filter((item) => item.status === "fulfilled")).toHaveLength(
@@ -211,12 +213,12 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
         ticketRepository.consume(
           active,
           ticketDigest,
-          new Date(t0.getTime() + 400),
+          new Date(t0.getTime() + 61_040),
         ),
         ticketRepository.consume(
           active,
           ticketDigest,
-          new Date(t0.getTime() + 400),
+          new Date(t0.getTime() + 61_040),
         ),
       ]);
       expect(consumed.sort()).toEqual(["REPLAYED", "USED"]);
@@ -233,13 +235,29 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
         authority.first,
         actor,
         payload,
-        new Date(t0.getTime() + 600),
+        new Date(t0.getTime() + 61_200),
       );
+      await runtimeA.recordSubmissionIntent(
+        lease.job.leaseOwner!,lease.job.id,lease.attempt.id,lease.leaseToken,envelope,
+        new Date(t0.getTime() + 61_100),
+      );
+      const submissionRecoveryAt = new Date(t0.getTime() + 120_000);
+      const [ordinaryBeforeStage, submissionRecoveryA, submissionRecoveryB] = await Promise.all([
+        runtimeA.acquireJob("worker-ordinary", 60_000, submissionRecoveryAt),
+        runtimeA.acquireSubmissionRecovery("worker-submit-recovery-a", 60_000, submissionRecoveryAt),
+        runtimeRestarted.acquireSubmissionRecovery("worker-submit-recovery-b", 60_000, submissionRecoveryAt),
+      ]);
+      expect(ordinaryBeforeStage).toBeUndefined();
+      const submissionRecovery = submissionRecoveryA ?? submissionRecoveryB;
+      expect([submissionRecoveryA,submissionRecoveryB].filter(Boolean)).toHaveLength(1);
+      expect(submissionRecovery?.envelope).toEqual(envelope);
+      if(submissionRecovery===undefined)throw new Error('SUBMISSION_RECOVERY_REQUIRED');
+      await expect(runtimeA.heartbeatLease(lease.job.leaseOwner!,lease.job.id,lease.attempt.id,lease.leaseToken,60_000,new Date(submissionRecoveryAt.getTime()+1))).rejects.toMatchObject({code:'JOB_LEASE_LOST'});
       const batch = await runtimeA.stageMaterialization(
-        lease.job.leaseOwner!,
-        lease.job.id,
-        lease.attempt.id,
-        lease.leaseToken,
+        submissionRecovery.lease.job.leaseOwner!,
+        submissionRecovery.lease.job.id,
+        submissionRecovery.lease.attempt.id,
+        submissionRecovery.lease.leaseToken,
         envelope,
         `urn:lumiclaw:protocol:${envelope.outputDigest}`,
         [
@@ -250,9 +268,9 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
             payload,
           },
         ],
-        new Date(t0.getTime() + 600),
+        new Date(submissionRecoveryAt.getTime() + 10),
       );
-      const recoveryAt = new Date(t0.getTime() + 61_000);
+      const recoveryAt = new Date(submissionRecoveryAt.getTime() + 61_000);
       const [ordinary, recovery] = await Promise.all([
         runtimeA.acquireJob("worker-ordinary", 60_000, recoveryAt),
         runtimeRestarted.acquireStagedMaterialization(
@@ -273,6 +291,16 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
         new Date(recoveryAt.getTime() + 10),
       );
       expect(finalized).toMatchObject({ accepted: true, duplicate: false });
+      const [completionA,completionB]=await Promise.all([
+        runtimeA.acquirePendingCompletion('worker-completion-a',60_000,new Date(recoveryAt.getTime()+20)),
+        runtimeRestarted.acquirePendingCompletion('worker-completion-b',60_000,new Date(recoveryAt.getTime()+20)),
+      ]);
+      const completion=completionA??completionB;
+      expect([completionA,completionB].filter(Boolean)).toHaveLength(1);
+      expect(completion?.batch.id).toBe(batch.id);
+      if(completion===undefined)throw new Error('COMPLETION_OUTBOX_REQUIRED');
+      await runtimeA.confirmRuntimeCompletion(completion.lease.job.leaseOwner!,completion.lease.job.id,completion.lease.attempt.id,completion.lease.leaseToken,completion.batch.id,new Date(recoveryAt.getTime()+30));
+      expect(await runtimeRestarted.acquirePendingCompletion('worker-completion-replay',60_000,new Date(recoveryAt.getTime()+31))).toBeUndefined();
       const acceptedEventsBefore = Number(
         (
           await pool.query<{ count: string }>(
@@ -300,7 +328,7 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
       );
       expect(acceptedEventsAfter).toBe(acceptedEventsBefore);
 
-      const claimAt = new Date(recoveryAt.getTime() + 30);
+      const claimAt = new Date(recoveryAt.getTime() + 40);
       const claim = await runtimeA.acquireJob("worker-claim", 60_000, claimAt);
       expect(claim?.job.kind).toBe("FREEZE_CLAIMS");
       if (claim === undefined) throw new Error("CLAIM_LEASE_REQUIRED");

@@ -3,7 +3,7 @@
   "sdd": "SDD-009",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-22T14:37:02.326Z",
+  "generatedAt": "2026-08-22T15:50:06.501Z",
   "webUrl": "http://127.0.0.1:3199",
   "apiUrl": "http://127.0.0.1:4199",
   "locales": [
@@ -54,7 +54,7 @@
     },
     {
       "name": "02-mission-intent-zh.png",
-      "sha256": "a79c941b7a42f8016d2c8daf22eff6f23dc49863a749b7e091e3e3b11e57e1fb",
+      "sha256": "4e1e04bc84d81df9732e9a43148a0a247fa73513fb85e9df0181a8ca3ca0373b",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -62,7 +62,7 @@
     },
     {
       "name": "03-plan-review-revision-zh.png",
-      "sha256": "d030c953d44d12818626576e40bb4374a93a3bc4743405b88b2507e3398782fb",
+      "sha256": "aaa147b134b10fdc52090635166ce73bef2eec25bb97358b0fb1c738b1c09f40",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -70,7 +70,7 @@
     },
     {
       "name": "04-mission-execution-zh.png",
-      "sha256": "539857e94de8a4281aea3a09e60a8ea877cc4d307599799ffaf12e65aec48228",
+      "sha256": "7db3d4f2b18086050475255dd1e87876d988ecea578cf212feb48e18b20e396b",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -78,7 +78,7 @@
     },
     {
       "name": "05-invalidation-recovery-zh.png",
-      "sha256": "d0b8693eb3dbb3538979d28c0c801e6d4c1c77b5defe296bebd1ab2bda166405",
+      "sha256": "7e59609514ae78d5534de25bdc9a9dfdbc6070f9a1791b73e836e353f177ff9d",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -86,7 +86,7 @@
     },
     {
       "name": "05b-recompiled-execution-zh.png",
-      "sha256": "cd80cb0959a52517857f648cf1f5845bb62c62295392341a77ec6132a845759d",
+      "sha256": "573d079c87663c12c165957dbd1e2b5e1e612f530e343e7806d723c8375dee6c",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -94,7 +94,7 @@
     },
     {
       "name": "06-goal-execution-en.png",
-      "sha256": "ab2de421abb1a1a8bced3a0aab8839e0984f2ee6d180fe9e6bc8e945627c05fe",
+      "sha256": "d1b124fdfc5f5a469e3201e313a0be9f42fd944a9fb6740bb1142cdccc1db390",
       "viewport": {
         "width": 1440,
         "height": 1000

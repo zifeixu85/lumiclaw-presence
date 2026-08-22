@@ -8,7 +8,7 @@
 >
 > Branch / Authorized base：`codex/sdd-007-persistent-agentteams-runtime` / `2b5673d0c408060034297328cd2522f4d9578ad1`
 >
-> Runtime evidence source HEAD：`129501744bd8f5e6c023fc49613d6221143d9d43`
+> Runtime evidence source HEAD：`PENDING_NEW_CLEAN_SOURCE_GATE`（旧 `129501744bd8f5e6c023fc49613d6221143d9d43` 证据已因本轮 runtime/Compose source 变化失效）
 >
 > Final evidence-report commit / Draft PR：由最终 `STATUS_HANDOFF` 固定
 >
@@ -25,10 +25,10 @@
 工程证据达到以下边界：
 
 - 固定官方 AgentTeams v1.2.0 tag 对应 commit `793db242257a569d911b1aa59c1cd554af78511f`、source tar SHA-256 `a4a9d66fabc49e1d08246d9b8b65d2b67742b71b2b43d3dfc0d27e8861f0770c`、Apache-2.0，以及 controller/manager/worker 的 immutable image ID / RepoDigest。readiness 读取实际 `docker inspect` 结果并输出 expected vs actual；常量不能自证 READY。
-- controlled-real 验证使用真实 controller、manager 和六个实际 AgentTeams Worker，完成六次 ACK/Submit/check；五个领域成员各自从其 exact-role Worker 容器发出 Gateway HTTP，请求者不是 mission-worker；Leader 的 provider call 为 0，两个 Producer 与 Auditor actor 分离。
-- migration `000014` 建立 run/job/attempt/binding/event、heartbeat、ticket、staging batch/item 等权威表。fresh PostgreSQL 覆盖双 worker lease CAS、过期/retry/stale lease ticket fencing、并发 one-use、跨域 staging 原子提交和 crash recovery。
+- controlled-real verifier 已改为只走 production `PersistentMissionWorker.tick`；五个领域成员必须各自从 exact-role Worker 容器发出 Gateway HTTP，Leader provider call 为 0。门禁会在 submit→stage 与 finalize→completion confirmation 之间各注入一次 crash，创建新 worker、等待旧 lease 过期，再通过 exact submission observation / completion outbox 收敛。旧 source evidence 不作为最终背书。
+- migration `000014` 建立 run/job/attempt/binding/event、heartbeat、ticket、staging batch/item 等权威表。fresh PostgreSQL 覆盖 acquire 后 fenced heartbeat、双 worker lease CAS、过期/retry/stale lease ticket fencing、并发 one-use、durable submission intent、跨域 staging 原子提交、completion outbox 和 crash recovery。
 - Secret 仅从 TTY 隐藏输入进入 `0700` secret root 下的 `0600` regular file/Compose Secret；symlink、unsafe mode 和失败后临时文件残留均被拒绝或补偿。supervisor 使用隔离 `HOME/DOCKER_CONFIG`，不继承宿主 HOME、Shell、云凭证或 provider-key 环境变量。
-- readiness 是 PostgreSQL、Model Gateway、mission-worker heartbeat、actual pinned AgentTeams identity/profile 四路合取。controlled fake 最高为 `DEGRADED`，不能冒充 real-provider `READY`。
+- readiness 是 PostgreSQL、Model Gateway、mission-worker heartbeat、actual pinned AgentTeams identity/profile 四路合取。controlled fake 且 heartbeat/identity 齐全时最高为 `DEGRADED`；heartbeat 缺失/过期为 `UNREACHABLE`，AI Team projection 也不能以旧 run/binding 冒充 READY。
 
 本报告不声明 `ACCEPTED`。Owner 浏览器/故障恢复 UAT 与真实 DeepSeek Canary 均为 `PENDING`，因此提议最高状态是 `EVIDENCE_READY`。真实外部平台动作数固定为 0。
 
@@ -41,9 +41,9 @@
 | AgentTeams | upstream v1.2.0 controller + manager + exact six Workers；Leader orchestration-only；两个 Producer/Auditor 分离；真实 ACK/Submit/check。没有 fork 或重建 Manager/Worker/Matrix。 |
 | Worker-origin model | supervisor 固定 `docker inspect/exec` allowlist；`/generate` 从 assigned exact-role Worker 容器发出；同一 Worker 完成 submit/check round-trip。Web/API/Gateway 无 Docker socket 或 Docker 权限。 |
 | Model Gateway | ticket 签名绑定 owner/run/job/task/attempt/attemptNumber/runtimeTask/runtimeActor/phase/model/inputDigest/requestDigest/policy/system/outputSchema/expiry/nonce/workerIdDigest/leaseTokenDigest；issue/consume 均核对 PostgreSQL 当前 lease lineage。 |
-| Output authority | 版本化 closed schemas 与 domain parser 共用；未知/额外字段在 provider/authority 前 fail closed；staged candidate 在 finalize 前对产品域不可见。 |
-| Recovery | 普通 acquire 排除 `SUBMITTED`；`STAGED` 仅走专用 recovery。finalize 将产品写、batch `COMMITTED`、attempt/job `ACCEPTED` 放在同一事务，恢复同一 batch，不重跑 provider/driver、不新建 revision。 |
-| API/UI | create/read/team/events/readiness；cancel/retry 需要 Idempotency-Key 和 ETag/If-Match；AI Team 六成员、job/attempt/event/heartbeat、runtime/profile/bundle digest 与脱敏 Trace 来自 PG。Token 未观测时为 `null / NO_RUNTIME_OBSERVATION`。 |
+| Output authority | 版本化 closed schemas 与 domain parser 共用；未知/额外字段在 provider/authority 前 fail closed；staged candidate 在 finalize 前对产品域不可见。Audit `createdAt` 不接受模型字段，权威时间仅来自可信 worker clock，并以该时间执行 profile expiry 与 canonical binding。 |
+| Recovery | acquire 后立即 fenced heartbeat；外部操作有 hard timeout 与 TERM→KILL。Model 输出在 AgentTeams submit 前写入 immutable submission intent；submit→stage crash 后 observe exact runtime payload/digest，缺失时只重放同一 payload，不再调用 provider。`STAGED` 仅走专用 recovery。finalize 原子提交产品写与 runtime ACCEPTED；durable completion outbox 随后幂等完成 AgentTeams typed internal completion 并记录 confirmation。 |
+| API/UI | create/read/team/events/readiness；cancel/retry 需要 Idempotency-Key 和 ETag/If-Match；approved knowledge + team authority 已加载时，即使 legacy campaign 为 null，真实 `/ai-team` 仍可见；未批准知识或 team load 失败则 fail closed。AI Team 数据与 combined readiness 来自 PG 四路权威，Token 未观测时为 `null / NO_RUNTIME_OBSERVATION`。 |
 | Secret/launcher | terminal-only secret CLI；strict file safety；Compose secret；non-root host UID/GID launcher；固定 loopback control gateway；隔离 supervisor HOME/DOCKER_CONFIG；固定容器和命令面。 |
 | 不在范围 | OAuth、账号连接、图片生成、自动发布、ActionGrant/Action Operator、recurring external action、云 Secret 管理、生产级本地主机隔离。 |
 
@@ -67,6 +67,8 @@
 - `apps/api/src/persistent-runtime-postgres.test.ts`：真实 `CONTENT_PLAN` staging 在 finalize 前 plan authority/head/idempotency 均为 0/不变；多 item materialization 中途 constraint failure 整体回滚；并发恢复后恰好一个 plan/head/output、一个 accepted event，batch `COMMITTED`、attempt/job `ACCEPTED`，provider/driver 不重跑。
 - `apps/model-gateway/src/postgres-fencing.test.ts`：经 `buildModelGateway + PostgresModelGatewayTicketRepository + provider spy` 从 HTTP 边界验证 stale worker digest、旧 lease token digest、expired lease、retry/new attempt 与 task/actor mismatch 时 providerCalls=0；同 ticket 并发仅 providerCalls=1。
 - cancel/retry 对 Idempotency-Key 和 ETag/If-Match 做 replay/concurrency；stale ETag 返回 HTTP 412、stable body code `RUN_VERSION_CONFLICT` 和 current ETag。
+- worker 对抗测试确认 lease 领取后第一项外部操作前已有 heartbeat；慢 dispatch/ACK 不被第二 worker reclaim；外部进程 hard timeout 后 TERM→KILL、heartbeat 在 `finally` 停止，随后 lease 可由 recovery worker 接管；旧 lease 在 bind/ticket/provider/submit 前被 fence。
+- submission intent 与 accepted completion 都是 durable PG lineage：submit 成功后、stage 前 crash 通过 `observeSubmission` 恢复 exact digest，provider 不重跑；finalize 后、complete 前 crash 或 complete timeout 通过 outbox 重试同一 task，PG accepted/product rows 不回滚、不重复。
 
 ### 3.3 Secret、supervisor 与安全边界
 
@@ -82,16 +84,17 @@
 - `apps/web/src/components/features/team-feature.tsx` 展示 PG 六成员、jobs、attempts、events、heartbeat、runtime/profile/bundle/run/task/digest；Token 固定未伪造，accepted count 仅来自 PG observation。
 - zh-CN/en message parity 为 980 keys；默认中文和英文 Storybook runtime/unreachable stories均构建。
 - Web 自动化保留 axe serious/critical 0、键盘 tab/focus trap/Escape/focus restore、AI Team tab Arrow/Home/End 合同、reduced-motion 与 desktop gate；SDD-008/009/010 API、PostgreSQL、UI 与构建回归保持绿色。Owner 的真实浏览器运行状态确认仍为 `PENDING`。
+- ProductionWorkspace 路由测试使用 approved knowledge、真实六成员 projection、`campaign=null`，确认 `/ai-team` 在 campaign guard 前渲染；未批准知识与 team authority load failure 均不显示成员。API/UI 测试确认停止或过期 mission-worker heartbeat 后 combined readiness 为 `UNREACHABLE`，旧 PG binding 不能保留 READY。
 
 ### 3.5 机器证据与 SHA-256
 
 | Evidence | 内容 | SHA-256 |
 |---|---|---|
-| `.evidence/sdd-007/postgres.json` | fresh PG、migration、lease、ticket fencing、staged atomic recovery、ETag/idempotency | `d9ef8a5e530f831146dd8bbe217ea2a104e731365ecffdd726edec0310d45941` |
-| `.evidence/sdd-007/compose.json` | controlled-fake startup、Web/API/CLI parity、Gateway/API/PostgreSQL restart、host UID/GID Secret read、Secret/Docker scope、exact cleanup | `ee23a471b5bbe83b80765df20a41f6d02fe0ecba88286c2b633c5ad7a8bebb5f` |
-| `.evidence/sdd-007/browser/browser-verification.json` | Chromium zh-CN/en、axe、keyboard、1024 desktop/800 desktop gate、无 console error | `d2ac224d2bcbe9d9d7db31fc2fef84858e33195764ed5c60e9a3e940580ecdcc` |
-| `.evidence/sdd-007/agentteams-persistent-driver.json` | authorized base `2b5673d0…`、source HEAD `12950174…`、actual vs expected identity、six-member ACK/Submit/check、five worker-origin calls、Leader 0 call | `624f8c52afdc749606697e41d2820e33abad558b39f1cba09b7f5a5e158b2d94` |
-| `.evidence/sdd-002/agentteams-real-runtime.json` | source HEAD `12950174…`、upstream official installer、source/license/image identity、真实 runtime lifecycle 与 exact cleanup | `324229faea1ed82b30938204802ae5986126e5dd15556095bd0750ed33a3ee2d` |
+| `.evidence/sdd-007/postgres.json` | fresh PG、lease heartbeat/CAS、ticket fencing、durable intent、staged atomic recovery、completion outbox、ETag/idempotency | `PENDING_FINAL_RERUN_SHA256` |
+| `.evidence/sdd-007/compose.json` | controlled-fake missing-heartbeat `UNREACHABLE`、Web/API/CLI parity、Gateway/API/PostgreSQL restart、Secret/Docker scope、exact cleanup | `PENDING_FINAL_RERUN_SHA256` |
+| `.evidence/sdd-007/browser/browser-verification.json` | Chromium zh-CN/en、axe、keyboard、1024 desktop/800 desktop gate、无 console error | `PENDING_FINAL_RERUN_SHA256` |
+| `.evidence/sdd-007/agentteams-persistent-driver.json` | new clean source HEAD、actual vs expected identity、production worker path、Leader 0 call、submit→stage 与 completion crash recovery | `PENDING_NEW_CLEAN_SOURCE_GATE_SHA256` |
+| `.evidence/sdd-002/agentteams-real-runtime.json` | 同一 new clean source HEAD、official installer、source/license/image identity、真实 runtime lifecycle 与 exact cleanup | `PENDING_NEW_CLEAN_SOURCE_GATE_SHA256` |
 | 本报告 | 18 条二元 AC、Owner UAT、限制、Rollback | 在最终 `STATUS_HANDOFF` 固定 |
 
 这些 `.evidence/` 文件是 ignored local/public-safe 机器证据，由 CI artifact 或 handoff digest 引用，不把私有 transcript 或 Secret 提交到 Git。
@@ -102,21 +105,22 @@
 |---|---|
 | `npm run lint` | `PASS`，0 error / 0 warning。 |
 | `npm run typecheck` | `PASS`，全部 workspace。 |
+| `npx vitest run apps/web/src/components/production-workspace.test.ts apps/api/src/runtime-readiness.test.ts apps/mission-worker/src/readiness.test.ts apps/mission-worker/src/worker.test.ts apps/mission-worker/src/output-authority.test.ts packages/domain/src/runtime-output-schemas.test.ts packages/runtime-agentteams/src/persistent-driver.test.ts scripts/verify-sdd007-agentteams-driver.test.ts --configLoader=runner` | `PASS`，8 files / 30 tests；真实无 campaign AI Team、missing/stale heartbeat、DB-down health、立即 heartbeat/lease fencing、hard timeout cleanup、durable submit/completion recovery、Leader 0 call、trusted audit clock 与 real-gate source/crash合同。 |
 | `npx vitest run scripts/persistent-runtime-secret-cli.test.ts scripts/run-persistent-runtime-supervisor.test.ts scripts/run-persistent-runtime-compose.test.ts scripts/mission-worker-health-contract.test.ts apps/web/src/components/production-workspace.test.ts apps/api/src/knowledge-onboarding-api.test.ts apps/api/src/goal-plan-api.test.ts --configLoader=runner` | `PASS`，7 files / 24 tests；symlink/mode/temp cleanup、isolated HOME/DOCKER_CONFIG、credential env/恶意 URL、host UID/GID/wrong UID、legacy/new health、首开 team projection、source-delete stale 负测。 |
 | `npx vitest run scripts/persistent-runtime-cli.test.ts --configLoader=runner` | `PASS`，1 file / 3 tests；只读 exact loopback API、PG run/task/digests、无 Secret/Token 伪造。 |
 | `npx vitest run apps/api/src/persistent-runtime-postgres.test.ts apps/api/src/runtime-mutation-api.test.ts apps/model-gateway/src/server.test.ts apps/mission-worker/src/worker.test.ts packages/mission-compiler/src/persistent-runtime.test.ts scripts/persistent-runtime-secret-cli.test.ts scripts/run-persistent-runtime-supervisor.test.ts --configLoader=runner` | `PASS`（无 PG env 时 PG suite 按合同 skip；fresh PG 由下一项强制执行）。 |
 | `SDD007_POSTGRES_ADMIN_URL=postgres://postgres@127.0.0.1:56432/postgres npm run verify:sdd007:postgres` | `PASS`；随机 fresh authority/gateway/rollback DB，结束强制 drop；PostgreSQL 17.10。 |
-| `SDD007_COMPOSE_NO_BUILD=1 npm run verify:sdd007:compose` | `PASS`；独立 project fresh startup，controlled fake `STARTING` 而非 READY，Web/API/CLI 同 PG，Gateway/API/PostgreSQL stop/restart，host UID/GID `0600` Secret read、Secret 不进 API/log/PG dump，Docker socket=false，external action=0，project/volume/temp Secret cleanup PASS。 |
+| `SDD007_COMPOSE_NO_BUILD=1 npm run verify:sdd007:compose` | `PASS`；独立 project fresh startup；因该场景不启动 supervisor/mission-worker，controlled fake 必须 `UNREACHABLE / MISSION_WORKER_HEARTBEAT_MISSING` 而非 READY；Web/API/CLI 同 PG，Gateway/API/PostgreSQL stop/restart，host UID/GID `0600` Secret read、Secret 不进 API/log/PG dump，Docker socket=false，external action=0，project/volume/temp Secret cleanup PASS。 |
 | `npm run storybook:build && npm run verify:sdd007:browser` | `PASS`；Chromium zh-CN/en、14 项 runtime/blocked/Token/Trace/keyboard/desktop 断言、axe serious/critical 0、console error 0、3 张截图。 |
-| `npm run verify:sdd007:agentteams-real` | `PASS`；clean committed source HEAD `129501744bd8f5e6c023fc49613d6221143d9d43`（authorized base ancestor verified）；official source/installer、actual controller+manager+six Workers identity、六 ACK/Submit/check、五次 exact-role Worker-origin Gateway call、Leader 0 call、Producer/Auditor 分离；exact containers/volume/provider/temp credentials cleanup PASS。 |
+| `npm run verify:sdd007:agentteams-real` | `PENDING_NEW_CLEAN_SOURCE_GATE`；必须从本轮 source commit 的 clean HEAD 执行，且内外层 evidence HEAD 一致；验证 production worker path、五次 exact-role Worker-origin Gateway call、Leader 0 call、submit→stage 与 finalize→completion 两次 crash/restart recovery 及 exact cleanup。旧 `12950174…` 证据失效。 |
 | `SDD008_SKIP_BUILD=1 npm run verify:sdd008:compose` | `PASS`；23 browser checks / 6 screenshots，18 Compose checks；fresh/legacy migration、restart、concurrency、Blob/source-delete/history/rollback，zh-CN/en 与 axe。 |
 | `SDD009_SKIP_BUILD=1 npm run verify:sdd009:compose` | `PASS`；30 browser checks / 8 screenshots，22 Compose checks；fresh PG regression、S1/S2 draft/supersession outbox、same-Mission replan、append-only、业务 read recovery、idempotency/concurrency。 |
 | `SDD010_SKIP_BUILD=1 npm run verify:sdd010:compose` | `PASS`；22 browser checks / 8 screenshots，17 Compose checks；Artifact/Audit/OwnerDecision/Package authority、restart、append-only、no published success，重新生成明确要求新 MissionRun。 |
 | `npm run check:messages` | `PASS`，zh-CN/en 980 keys。 |
-| `npm test` | `PASS`，59 passed / 4 skipped files；481 passed / 4 skipped tests。 |
+| `npm test` | `PASS`，63 passed / 4 skipped files；500 passed / 4 skipped tests。 |
 | `npm run check:secrets && npm run check:compose && npm run check:sdd007-runtime-manifest` | `PASS`；Secret、Docker socket/port/secret scope、pinned manifests。 |
 | `npm run check:report:sdd007` | `PASS`，18 条 AC 与必需章节/术语。 |
-| `npm run verify` | `PASS`，从头执行 static、59 passed / 4 skipped files、481 passed / 4 skipped tests、980 i18n keys、47 status modules、18 条 SDD-007 AC、553-file Secret scan、Compose/runtime manifests、711-component SBOM、production build 与 Storybook safety；未从失败步骤续跑。真实 AgentTeams 证据仍单独受 clean committed source 门禁。 |
+| `npm run verify` | `PASS`，从头执行 static、63 passed / 4 skipped files、500 passed / 4 skipped tests、980 i18n keys、47 status modules、18 条 SDD-007 AC、558-file Secret scan、Compose/runtime manifests、711-component SBOM、production build与 Storybook safety；未从失败步骤续跑。真实 AgentTeams 证据仍单独受 clean committed source 门禁。 |
 
 ## 五、验收标准结果
 
@@ -124,21 +128,21 @@
 |---|---|---|
 | AC-01 | `PASS` | terminal-only configure 隐藏输入，只输出 configured/fingerprint；浏览器/API 无 Secret set/read 字段。 |
 | AC-02 | `PASS` | actual inspect 同时核对 controller、manager、exact six workers image ID/RepoDigest、source/profile/topology；任一错误为 `INCOMPATIBLE`。 |
-| AC-03 | `PASS` | controlled-real Bundle 由 exact six AgentTeams members 完成 ACK/Submit/check；Leader provider call=0，两个 Producer 与 Auditor actor 分离。 |
-| AC-04 | `PASS` | provider HTTP 从 assigned exact-role Worker 容器的固定 `docker exec` 发出；同一 Worker submit/check；mission-worker 不代调 provider。 |
+| AC-03 | `PENDING_FINAL_GATE` | verifier 已改为 production `PersistentMissionWorker.tick`；clean source 后必须由 exact six members 完成 ACK/Submit/check，Leader provider call=0，两个 Producer 与 Auditor actor 分离。 |
+| AC-04 | `PENDING_FINAL_GATE` | clean-source real gate 必须证明 provider HTTP 从 assigned exact-role Worker 容器固定 `docker exec` 发出，同一 Worker submit/check，mission-worker direct provider call=0。 |
 | AC-05 | `PASS` | AI Team Web/API/CLI 同读 PostgreSQL；六成员、job/attempt/event/readiness/digests 可见；Token 为 null + `NO_RUNTIME_OBSERVATION`。 |
-| AC-06 | `PASS` | mission-worker lease/heartbeat/CAS/idempotency；普通 acquire 排除 `SUBMITTED`；双 worker 不重复 accepted output。 |
-| AC-07 | `PASS` | staged candidate 对产品 authority/head/idempotency 不可见；plan + 多 item 故障回滚/恢复后恰好一次，产品写与 runtime ACCEPTED 同事务。 |
+| AC-06 | `PASS` | acquire 后立即 fenced heartbeat；driver hard timeout TERM→KILL 并在 finally 停止 heartbeat；普通 acquire 排除已 dispatch/submitted 路径；fresh PG 双 worker与旧 lease不能重复 bind/provider/submit/accepted output。 |
+| AC-07 | `PASS` | external submit 前持久 immutable output intent；submit→stage crash 通过 exact observe 恢复且 provider 不重跑。staged candidate 对产品 authority/head/idempotency 不可见，产品写与 runtime ACCEPTED 同事务；accepted 后 completion outbox 可跨 crash/timeout 幂等确认。 |
 | AC-08 | `PASS` | ticket 全量绑定 lineage/request/policy/schema/current lease identity；stale owner/token、expired/retry/task/actor mismatch providerCalls=0，并发 one-use providerCalls=1。 |
-| AC-09 | `PASS` | versioned closed output registry 与 domain parser 一致；未知/额外字段在 provider/authority 前 fail closed。 |
-| AC-10 | `PASS` | readiness 为 PG + Gateway + fresh heartbeat + actual pinned identity 四路合取；controlled fake 最高 `DEGRADED`。 |
+| AC-09 | `PASS` | versioned closed output registry 与 domain parser 一致；未知/额外字段在 provider/authority 前 fail closed；模型不能提供 Audit `createdAt`，trusted clock 参与 canonical digest 与 profile expiry，backdate/expired profile 稳定拒绝。 |
+| AC-10 | `PASS` | readiness 为 PG + Gateway + fresh heartbeat + actual pinned identity 四路合取；controlled fake 且其余三路正常时最高 `DEGRADED`，missing/stale heartbeat 为 `UNREACHABLE`；AI Team projection 不能以旧 binding 维持 READY。 |
 | AC-11 | `PASS` | cancel/retry 要求 Idempotency-Key + If-Match；并发/replay/stale ETag 负测，412 body code 与 current ETag 稳定。 |
-| AC-12 | `PASS` | worker/runtime/gateway unavailable、invalid output、ticket replay/expiry 全部 blocked/quarantine/recovering，无 hidden fixture success。 |
+| AC-12 | `PASS` | worker/runtime/gateway unavailable、hung driver timeout、lost lease、invalid output、ticket replay/expiry 全部 blocked/quarantine/recovering；Leader production path 为确定性 orchestration receipt，不签 ticket、不调用 provider，无 verifier-only 假绿。 |
 | AC-13 | `PASS` | TTY/file/Compose secret、symlink/O_NOFOLLOW/mode/temp cleanup；Secret 不进入 Web/API/PG/Git/log/prompt/trace/evidence。 |
 | AC-14 | `PASS` | supervisor strict env、隔离 HOME/DOCKER_CONFIG、fixed loopback gateway/fixed containers；Web/API/Gateway 无 Docker 权限/socket。 |
 | AC-15 | `PASS` | Runtime Skill aggregate 按 bundle.skillLocks 原顺序去重 subset，最多 12；拒绝越界，不修改冻结 SDD-009 类型。 |
 | AC-16 | `PASS` | `SUCCEEDED_RUNTIME`/accepted output 不改变 Audit、OwnerDecision、Publish 或 Business state；真实外部动作=0。 |
-| AC-17 | `PASS` | zh-CN/en 980-key parity、Storybook runtime states、axe/keyboard/focus/desktop gate 与 SDD-008/009/010 回归绿色。 |
+| AC-17 | `PASS` | `campaign=null` 的真实 ProductionWorkspace `/ai-team` 在 approved knowledge + loaded team 时可见，未批准/team load failure fail closed；zh-CN/en、axe/keyboard/focus/desktop gate 与 SDD-008/009/010 回归绿色。 |
 | AC-18 | `PASS` | migration、runtime/source/image/profile/Skill、PG recovery/fencing、secret scan、license、known gaps、Owner UAT 和 Rollback 均进入报告/机器证据；Owner decision 仍 `PENDING`。 |
 
 ## 六、Owner 参与验收
@@ -207,7 +211,7 @@ Rollback 原则是停止写入、保留证据、forward-fix：
 | Branch | `codex/sdd-007-persistent-agentteams-runtime` |
 | Authorized base | `2b5673d0c408060034297328cd2522f4d9578ad1` |
 | Full HEAD / Draft PR | 最终提交、push、Draft PR 后由结构化 `STATUS_HANDOFF` 填报 |
-| Runtime evidence source HEAD | `129501744bd8f5e6c023fc49613d6221143d9d43` |
+| Runtime evidence source HEAD | `PENDING_NEW_CLEAN_SOURCE_GATE`（旧证据明确失效） |
 | Migration | `000014_persistent_agentteams_runtime.cjs` |
 | Runtime/source/license | AgentTeams v1.2.0 / `793db242257a569d911b1aa59c1cd554af78511f` / source tar SHA-256 `a4a9…0770c` / Apache-2.0 |
 | Provider evidence | controlled fake `ENGINEERING_VERIFIED`；real DeepSeek `PENDING` |

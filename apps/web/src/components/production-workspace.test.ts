@@ -7,7 +7,7 @@ import {createElement, useState, type ReactNode} from 'react';
 import {afterEach, describe, expect, it, vi} from 'vitest';
 import messages from '../../messages/en.json';
 import type * as ProductionApi from '@/lib/production-api';
-import type {WorkspaceSnapshot} from '@/lib/production-types';
+import type {SkillListResponse, TeamResponse, WorkspaceSnapshot} from '@/lib/production-types';
 import {Drawer} from './ui/dialog';
 import {OnboardingFlow} from './onboarding/onboarding-flow';
 import {ProductionWorkspace} from './production-workspace';
@@ -30,6 +30,11 @@ Object.defineProperty(HTMLCanvasElement.prototype, 'getContext', {configurable: 
 
 const firstOpen: WorkspaceSnapshot = {code: 'LOCAL_FIRST_OPEN', profile: null, session: null, materials: [], handoffs: [], campaign: null, publishAuthorization: {state: 'BLOCKED', reasonCode: 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED', auditState: 'MISSING', ownerDecisionState: 'MISSING', requiredAuthorities: ['INDEPENDENT_AUDIT_PASS', 'EXACT_EXTERNAL_ACTION_OWNER_DECISION'], remediationCodes: ['SDD_007_REQUIRED', 'CONNECTOR_SDD_REQUIRED'], reviewExportAllowed: true, externalActionAllowed: false, handoffCreationAllowed: false}};
 const initializedOnboarding: WorkspaceSnapshot = {...firstOpen, code: 'LOCAL_WORKSPACE_REOPENED', profile: {schemaVersion: 1, id: '018f0000-0000-7000-8000-000000000001', displayName: 'Local Owner', state: 'PROFILE_READY', createdAt: '2026-08-22T00:00:00.000Z', updatedAt: '2026-08-22T00:00:00.000Z'}};
+const approvedWithoutCampaign = {...initializedOnboarding, knowledge: {session: {ownerId: initializedOnboarding.profile!.id, state: 'KNOWLEDGE_APPROVED_NEEDS_GOAL', currentStep: 'REVIEW', rowVersion: 8, targetMarket: 'US', contentLocale: 'en-US', timeZone: 'America/Los_Angeles', currentSnapshotId: 'snapshot-approved', currentSnapshotDigest: 'a'.repeat(64), updatedAt: '2026-08-22T00:00:00.000Z'}, sources: [], profiles: {persona: null, organization: null, product: null, accounts: {}}, draft: null, approvedHistory: []}} as WorkspaceSnapshot;
+const unapprovedWithoutCampaign = {...approvedWithoutCampaign, knowledge: {...approvedWithoutCampaign.knowledge!, session: {...approvedWithoutCampaign.knowledge!.session, state: 'READY_FOR_APPROVAL'}}} as WorkspaceSnapshot;
+const sixMemberTeam: TeamResponse = {code: 'RUNTIME_TEAM_PROJECTION', metricSource: 'POSTGRESQL_RUNTIME_OBSERVATION', readiness: 'UNREACHABLE', reasonCode: 'MISSION_WORKER_HEARTBEAT_MISSING', agents: Array.from({length: 6}, (_, index) => ({code: `A${index}` as `A${0 | 1 | 2 | 3 | 4 | 5}`, roleId: ['presence-mission-leader', 'evidence-claim-steward', 'campaign-planner', 'founder-identity-producer', 'product-account-producer', 'independent-auditor'][index]!, name: `Role ${index}`, responsibility: `Responsibility ${index}`, skillIds: [], status: 'NOT_CONFIGURED', metrics: {tokens: null, tokenSource: 'NO_RUNTIME_OBSERVATION', dailyCompleted: 0, completionSource: 'POSTGRESQL_RUNTIME_OBSERVATION'}}))};
+const emptySkills: SkillListResponse = {code: 'REPOSITORY_SKILL_LIST', source: 'REPOSITORY_OWNED', skills: []};
+const availableReadiness = {code: 'ENVIRONMENT_READINESS', secretCollectionAllowed: false as const, items: []};
 const noop = async () => {};
 afterEach(() => { cleanup(); vi.resetAllMocks(); });
 
@@ -77,6 +82,35 @@ describe('Production UX accessibility contracts', () => {
 
     await waitFor(() => expect(screen.getByText('TEAM_AUTHORITY_UNREACHABLE')).toBeTruthy());
     expect(productionApiMocks.loadTeam).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders the real AI Team route after knowledge approval even when no legacy campaign exists', () => {
+    render(createElement(Provider, null, createElement(ProductionWorkspace, {locale: 'en', initialSection: 'ai-team', initialSnapshot: approvedWithoutCampaign, initialReadiness: availableReadiness, initialTeam: sixMemberTeam, initialSkills: emptySkills})));
+
+    expect(screen.getByRole('heading', {name: 'AI Team'})).toBeTruthy();
+    expect(screen.getByText('Runtime unreachable')).toBeTruthy();
+    expect(screen.queryByText('Runtime ready')).toBeNull();
+    for (let index = 0; index < 6; index += 1) expect(screen.getByText(new RegExp(`^A${index} ·`, 'u'))).toBeTruthy();
+  });
+
+  it('does not expose AI Team before knowledge approval', () => {
+    render(createElement(Provider, null, createElement(ProductionWorkspace, {locale: 'en', initialSection: 'ai-team', initialSnapshot: unapprovedWithoutCampaign, initialReadiness: availableReadiness, initialTeam: sixMemberTeam, initialSkills: emptySkills})));
+
+    expect(screen.queryByRole('heading', {name: 'AI Team'})).toBeNull();
+    expect(screen.queryByText(/^A0 ·/u)).toBeNull();
+  });
+
+  it('fails closed on the approved AI Team route when team authority cannot load', async () => {
+    productionApiMocks.loadWorkspace.mockResolvedValue(approvedWithoutCampaign);
+    productionApiMocks.loadReadiness.mockResolvedValue(availableReadiness);
+    productionApiMocks.loadSkills.mockResolvedValue(emptySkills);
+    productionApiMocks.loadTeam.mockRejectedValue(new Error('TEAM_AUTHORITY_UNREACHABLE'));
+
+    render(createElement(Provider, null, createElement(ProductionWorkspace, {locale: 'en', initialSection: 'ai-team'})));
+
+    await waitFor(() => expect(screen.getByText('TEAM_AUTHORITY_UNREACHABLE')).toBeTruthy());
+    expect(screen.queryByRole('heading', {name: 'AI Team'})).toBeNull();
+    expect(screen.queryByText(/^A0 ·/u)).toBeNull();
   });
 
   it('asks only for a local display name and has no browser secret or remote identity field', async () => {

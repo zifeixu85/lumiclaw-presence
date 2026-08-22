@@ -1,6 +1,7 @@
 import { AGENTTEAMS_IMAGE_DIGESTS, GOAL_ROLE_IDS } from "@lumiclaw/domain";
 import { describe, expect, it } from "vitest";
 import {
+  runBoundedProcess,
   verifyAgentTeamsRuntimeIdentity,
   type RuntimeImageObservation,
 } from "./persistent-driver.js";
@@ -16,6 +17,23 @@ const repositories = {
 } as const;
 
 describe("SDD-007 runtime identity probe", () => {
+  it("hard-times out a hung external operation and reports the stable runtime boundary", async () => {
+    const started = Date.now();
+    await expect(
+      runBoundedProcess(
+        process.execPath,
+        ["-e", "process.on('SIGTERM',()=>{});setInterval(()=>{},1000)"],
+        undefined,
+        40,
+        30,
+      ),
+    ).rejects.toMatchObject({
+      code: "RUNTIME_UNREACHABLE",
+      message: "AGENTTEAMS_OPERATION_TIMEOUT",
+    });
+    expect(Date.now() - started).toBeLessThan(2_000);
+  });
+
   it("requires observed exact topology plus controller, manager and six worker RepoDigests", () => {
     const verified = verifyAgentTeamsRuntimeIdentity(fixture());
     expect(verified).toMatchObject({

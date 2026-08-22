@@ -126,12 +126,21 @@ export interface PersistentAgentTeamsDriver {
     knownRuntimeTaskIds: string[];
     submittedOutputDigests: string[];
   }>;
+  observeSubmission(
+    binding: RuntimeBinding,
+    contract: RuntimeTaskContract,
+  ): Promise<
+    | { state: "MISSING" }
+    | { state: "SUBMITTED" | "COMPLETED"; payload: unknown; outputDigest: string; submittedAt: string }
+  >;
 }
 
 export class DockerAgentTeamsV120Driver implements PersistentAgentTeamsDriver {
   public constructor(
     private readonly docker = "docker",
     private readonly controller = "agentteams-controller",
+    private readonly operationTimeoutMs = 120_000,
+    private readonly terminateGraceMs = 2_000,
   ) {}
   public async readiness() {
     const identity = {
@@ -280,6 +289,10 @@ export class DockerAgentTeamsV120Driver implements PersistentAgentTeamsDriver {
     contract: RuntimeTaskContract,
     runtimeActorId: string,
   ) {
+    const checked = await this.callTool(leader, "taskflow", "check_task", {
+      taskId: contract.taskId,
+    });
+    if (checked.ok === true && checked.task?.status === "in_progress") return;
     const result = await this.callTool(
       contract.roleId,
       "taskflow",
@@ -438,6 +451,30 @@ export class DockerAgentTeamsV120Driver implements PersistentAgentTeamsDriver {
     return {
       knownRuntimeTaskIds: rows.map((row) => row.taskId),
       submittedOutputDigests,
+    };
+  }
+  public async observeSubmission(
+    binding: RuntimeBinding,
+    contract: RuntimeTaskContract,
+  ) {
+    if (binding.runId !== contract.runId)
+      throw new PersistentRuntimeError("SUBMISSION_INPUT_MISMATCH");
+    const checked = await this.callTool(leader, "taskflow", "check_task", {
+      taskId: contract.taskId,
+    });
+    const status = checked.task?.status;
+    const persisted = await this.readTaskResult(contract.roleId, contract.taskId);
+    if (persisted === undefined) return { state: "MISSING" as const };
+    if (status !== "submitted" && status !== "completed")
+      throw new PersistentRuntimeError(
+        "SUBMISSION_INPUT_MISMATCH",
+        "AGENTTEAMS_RESULT_WITHOUT_SUBMITTED_STATE",
+      );
+    return {
+      state: status === "completed" ? ("COMPLETED" as const) : ("SUBMITTED" as const),
+      payload: persisted.payload,
+      outputDigest: persisted.outputDigest,
+      submittedAt: dateField(checked.task, "submitted_at"),
     };
   }
   private async topology(requireVerified = true) {
@@ -616,37 +653,78 @@ export class DockerAgentTeamsV120Driver implements PersistentAgentTeamsDriver {
     ) as ToolResult;
   }
   private async exec(args: string[], input?: string): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const child = spawn(this.docker, args, {
-        stdio: ["pipe", "pipe", "pipe"],
-      });
-      let stdout = "";
-      let stderr = "";
-      child.stdout.setEncoding("utf8");
-      child.stderr.setEncoding("utf8");
-      child.stdout.on("data", (chunk: string) => {
-        stdout += chunk;
-      });
-      child.stderr.on("data", (chunk: string) => {
-        stderr += chunk;
-      });
-      child.once("error", () =>
-        reject(new PersistentRuntimeError("RUNTIME_UNREACHABLE")),
-      );
-      child.once("close", (code) =>
-        code === 0
-          ? resolve(stdout.trim())
-          : reject(
-              new PersistentRuntimeError(
-                "RUNTIME_UNREACHABLE",
-                stderr.trim() || `DOCKER_EXIT_${code}`,
-              ),
-            ),
-      );
-      if (input === undefined) child.stdin.end();
-      else child.stdin.end(input);
-    });
+    return runBoundedProcess(
+      this.docker,
+      args,
+      input,
+      this.operationTimeoutMs,
+      this.terminateGraceMs,
+    );
   }
+}
+
+export function runBoundedProcess(
+  command: string,
+  args: string[],
+  input: string | undefined,
+  timeoutMs: number,
+  terminateGraceMs: number,
+): Promise<string> {
+  if (timeoutMs < 1 || terminateGraceMs < 1)
+    throw new PersistentRuntimeError(
+      "SUBMISSION_SCHEMA_INVALID",
+      "AGENTTEAMS_OPERATION_TIMEOUT_INVALID",
+    );
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, { stdio: ["pipe", "pipe", "pipe"] });
+    let stdout = "";
+    let stderr = "";
+    let timedOut = false;
+    let killTimer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = setTimeout(() => {
+      timedOut = true;
+      child.kill("SIGTERM");
+      killTimer = setTimeout(() => child.kill("SIGKILL"), terminateGraceMs);
+      killTimer.unref();
+    }, timeoutMs);
+    timeout.unref();
+    const finish = () => {
+      clearTimeout(timeout);
+      if (killTimer !== undefined) clearTimeout(killTimer);
+    };
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      stdout += chunk;
+    });
+    child.stderr.on("data", (chunk: string) => {
+      stderr += chunk;
+    });
+    child.once("error", () => {
+      finish();
+      reject(new PersistentRuntimeError("RUNTIME_UNREACHABLE"));
+    });
+    child.once("close", (code) => {
+      finish();
+      if (timedOut)
+        reject(
+          new PersistentRuntimeError(
+            "RUNTIME_UNREACHABLE",
+            "AGENTTEAMS_OPERATION_TIMEOUT",
+          ),
+        );
+      else if (code === 0) resolve(stdout.trim());
+      else
+        reject(
+          new PersistentRuntimeError(
+            "RUNTIME_UNREACHABLE",
+            stderr.trim() || `DOCKER_EXIT_${code}`,
+          ),
+        );
+    });
+    if (input === undefined) child.stdin.end();
+    else child.stdin.end(input);
+  });
 }
 
 export function verifyAgentTeamsRuntimeIdentity(input: {
