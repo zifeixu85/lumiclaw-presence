@@ -8,7 +8,7 @@
 >
 > Branch / Authorized base：`codex/sdd-007-persistent-agentteams-runtime` / `2b5673d0c408060034297328cd2522f4d9578ad1`
 >
-> Runtime evidence source HEAD：`eb0421472f5864a9bf37437bc172b9bb8200c3a6`
+> Runtime evidence source HEAD：`a576947b8294ec7545363c25866f022b1ea57100`
 >
 > Final evidence-report commit / Draft PR：由最终 `STATUS_HANDOFF` 固定
 >
@@ -203,7 +203,7 @@ Rollback 原则是停止写入、保留证据、forward-fix：
 | Branch | `codex/sdd-007-persistent-agentteams-runtime` |
 | Authorized base | `2b5673d0c408060034297328cd2522f4d9578ad1` |
 | Full HEAD / Draft PR | 最终提交、push、Draft PR 后由结构化 `STATUS_HANDOFF` 填报 |
-| Runtime evidence source HEAD | `eb0421472f5864a9bf37437bc172b9bb8200c3a6` |
+| Runtime evidence source HEAD | `a576947b8294ec7545363c25866f022b1ea57100` |
 | Migration | `000014_persistent_agentteams_runtime.cjs` |
 | Runtime/source/license | AgentTeams v1.2.0 / `793db242257a569d911b1aa59c1cd554af78511f` / source tar SHA-256 `a4a9…0770c` / Apache-2.0 |
 | Provider evidence | controlled fake `ENGINEERING_VERIFIED`；real DeepSeek `PENDING` |
