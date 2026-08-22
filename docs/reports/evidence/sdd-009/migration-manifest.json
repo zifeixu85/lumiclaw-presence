@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-009",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "migration": "000012_persistent_goal_selected_platform_compiler",
+  "tables": [
+    "operating_goal_revisions",
+    "operating_goal_heads",
+    "operating_goal_account_bindings",
+    "content_plan_revisions_v2",
+    "content_plan_heads_v2",
+    "mission_bundle_generations_v2",
+    "mission_bundle_status_events_v2",
+    "goal_plan_idempotency_records_v2",
+    "knowledge_snapshot_context_bindings_v2",
+    "knowledge_snapshot_supersession_outbox_v2",
+    "knowledge_snapshot_supersession_receipts_v2"
+  ],
+  "emptyDown": {
+    "result": "PASS"
+  },
+  "populatedDown": {
+    "result": "BLOCKED",
+    "stableCode": "SDD009_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED",
+    "requiredBoundary": "Export authoritative data and obtain explicit Owner decision before destructive rollback."
+  },
+  "immutability": {
+    "result": "BLOCKED",
+    "stableCode": "SDD009_APPEND_ONLY_AUTHORITY"
+  },
+  "ownerIsolation": {
+    "compositeForeignKeys": true,
+    "browserOwnerOverrideIgnored": true
+  },
+  "supersessionOutbox": {
+    "transactionalWithApproval": true,
+    "appendOnly": true,
+    "deliveryReceiptAppendOnly": true,
+    "retryIdempotent": true
+  }
+}

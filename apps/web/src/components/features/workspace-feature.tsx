@@ -9,13 +9,15 @@ import {StatusBadge} from '@/components/ui/status-badge';
 import {Link} from '@/i18n/navigation';
 import type {EnvironmentReadiness, SkillListResponse, TeamResponse, WorkspaceSection, WorkspaceSnapshot} from '@/lib/production-types';
 import {CampaignFeature} from './campaign-feature';
+import {GoalMissionFeature} from './goal-mission-feature';
 import {PublishFeature} from './publish-feature';
 import {TeamFeature} from './team-feature';
 
-type Props = {locale: AppLocale; section: WorkspaceSection; snapshot: WorkspaceSnapshot; readiness: EnvironmentReadiness; team: TeamResponse; skills: SkillListResponse};
+type Props = {locale: AppLocale; section: WorkspaceSection; snapshot: WorkspaceSnapshot; readiness: EnvironmentReadiness; team: TeamResponse; skills: SkillListResponse; onReload: () => Promise<void>};
 
-export function WorkspaceFeature({section, snapshot, readiness, team, skills}: Props) {
+export function WorkspaceFeature({section, snapshot, readiness, team, skills, onReload}: Props) {
   const campaign = snapshot.campaign;
+  if (section === 'goals') return <GoalMissionFeature snapshot={snapshot} onReload={onReload} />;
   if (campaign === null) return <EmptyControlPlane />;
   if (section === 'campaigns') return <CampaignFeature campaign={campaign} />;
   if (section === 'ai-team') return <><PageHeader titleKey="teamTitle" bodyKey="teamBody" eyebrowKey="team" /><Suspense fallback={null}><TeamFeature agents={team.agents} skills={skills.skills} dataMode={snapshot.session?.dataMode ?? 'LOCAL_PRIVATE'} /></Suspense></>;

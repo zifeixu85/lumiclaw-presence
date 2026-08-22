@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-009",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "compilerVersion": "2.0.0",
+  "generatedAt": "2026-08-22T00:00:00.000Z",
+  "deterministic": true,
+  "scenarios": [
+    {
+      "name": "7-day-x-xhs",
+      "horizonDays": 7,
+      "selectedPlatforms": [
+        "X",
+        "XIAOHONGSHU"
+      ],
+      "slotCount": 7,
+      "intentBundleId": "bundle_16b8cb0c4517e1965edbbf8d",
+      "intentDigest": "e58c2a3cd2ce81fa6fce38de8fc97a78ebeb6d1d4c2971dbf4d5e51c5dae2ee4",
+      "planId": "plan_70f23c183b0667c74c603414",
+      "planDigest": "09b06ba3ae674a1dfe33d14cee763f85300c31e165219dbd60678fa1bcd2e186",
+      "executionBundleId": "bundle_6318fb4063577415f2a26530",
+      "executionDigest": "665c91847df9d33c57e9d588db40a6fab6e4202e8bade9c2ddd814db3e43dd27",
+      "producerTaskDigests": [
+        {
+          "roleId": "founder-identity-producer",
+          "platformCode": "X",
+          "inputDigest": "a6b242117b26c43feb535b19e8e17e90926e8962d1aa954cc7bba7de4de93cdf",
+          "mandateDigest": "7f024c0a919918bc4bb1deb2022d777dfbe99dc7d4932663748c304c2c96b29b"
+        },
+        {
+          "roleId": "product-account-producer",
+          "platformCode": "XIAOHONGSHU",
+          "inputDigest": "77787958b51decefd93111ead53cc325bf77b9e2f6eba79f361192345936640d",
+          "mandateDigest": "6dccb4124431d6d4afb8d539b229d67b2907087549950a2b588b5ec3f39ae935"
+        }
+      ],
+      "forbiddenPlatformMatrix": {
+        "BLUESKY": true,
+        "LINKEDIN": true,
+        "X": true,
+        "XIAOHONGSHU": true
+      }
+    },
+    {
+      "name": "30-day-x-xhs",
+      "horizonDays": 30,
+      "selectedPlatforms": [
+        "X",
+        "XIAOHONGSHU"
+      ],
+      "slotCount": 30,
+      "intentBundleId": "bundle_5043f1e99c80884ec06c9489",
+      "intentDigest": "429bcb3a5fa56152c9dd248855d6129217b4b8e8fafef2d7293ecbe6df34e40a",
+      "planId": "plan_70f23c183b0667c74c603414",
+      "planDigest": "28fe38bdfdf00a0aa926cbeb773875c21296134eb706266ec728ff9bd567bdab",
+      "executionBundleId": "bundle_8c49bdd7e861c06659acf26b",
+      "executionDigest": "a044fa8b1071226a2cd43c2995c0379956dca017b7ea8ddc737de88c5f5adf72",
+      "producerTaskDigests": [
+        {
+          "roleId": "founder-identity-producer",
+          "platformCode": "X",
+          "inputDigest": "6530a4fbfc2d47a49d1a71e77bb490f8272a9f020586eafebe0aaf8992ce3878",
+          "mandateDigest": "7f024c0a919918bc4bb1deb2022d777dfbe99dc7d4932663748c304c2c96b29b"
+        },
+        {
+          "roleId": "product-account-producer",
+          "platformCode": "XIAOHONGSHU",
+          "inputDigest": "6ff91b74d3c67f5385175f7ce2e2f4a33fc9ad3375836246e946f813b2013159",
+          "mandateDigest": "6dccb4124431d6d4afb8d539b229d67b2907087549950a2b588b5ec3f39ae935"
+        }
+      ],
+      "forbiddenPlatformMatrix": {
+        "BLUESKY": true,
+        "LINKEDIN": true,
+        "X": true,
+        "XIAOHONGSHU": true
+      }
+    },
+    {
+      "name": "7-day-x-only",
+      "horizonDays": 7,
+      "selectedPlatforms": [
+        "X"
+      ],
+      "slotCount": 7,
+      "intentBundleId": "bundle_c8e4319b954189e3170ec700",
+      "intentDigest": "c56f75fa6f2115a962f7af4bb90e416900f20fe32078359faa5466cb402fcec7",
+      "planId": "plan_70f23c183b0667c74c603414",
+      "planDigest": "a88f8d152c1f1b331e40027cb4d6c06916c2203dff3052042e55d74613c596e4",
+      "executionBundleId": "bundle_40f2f4298c2fed41ed6036b4",
+      "executionDigest": "c5b932f2c6f5f3049262aaedbc00dd598f617a69fd0877963a45e5de635e0cb0",
+      "producerTaskDigests": [
+        {
+          "roleId": "founder-identity-producer",
+          "platformCode": "X",
+          "inputDigest": "b31f4805487670f1f2f0c1b5a2808171ad65fa37f86d3a034f800676e9dc4583",
+          "mandateDigest": "7f024c0a919918bc4bb1deb2022d777dfbe99dc7d4932663748c304c2c96b29b"
+        },
+        {
+          "roleId": "product-account-producer",
+          "platformCode": "X",
+          "inputDigest": "fcfe2fa9bfa1292d1fcbbdfb8c0c789e25422fb05978d1b527a833f69dcc5312",
+          "mandateDigest": "6dccb4124431d6d4afb8d539b229d67b2907087549950a2b588b5ec3f39ae935"
+        }
+      ],
+      "forbiddenPlatformMatrix": {
+        "BLUESKY": true,
+        "LINKEDIN": true,
+        "X": true,
+        "XIAOHONGSHU": true
+      }
+    },
+    {
+      "name": "7-day-xhs-only",
+      "horizonDays": 7,
+      "selectedPlatforms": [
+        "XIAOHONGSHU"
+      ],
+      "slotCount": 7,
+      "intentBundleId": "bundle_090b5df2e89a2b75b883d956",
+      "intentDigest": "f6cfbca5d181c0ceac1fb8833d4bad2637d12390efa6c9a60b3eec7cc6ae3f1a",
+      "planId": "plan_70f23c183b0667c74c603414",
+      "planDigest": "3f0790ea2a10e720bf9cfea0b45e8bd0a223608c7cad67267998ca0846659bf4",
+      "executionBundleId": "bundle_82bd29214fb55c577b28b7c7",
+      "executionDigest": "e06a183c306eabf7cbf59b42295382fc646d677ce22219e74c2ee47abd77f45c",
+      "producerTaskDigests": [
+        {
+          "roleId": "founder-identity-producer",
+          "platformCode": "XIAOHONGSHU",
+          "inputDigest": "530707143039cb3cd6fb82b721afc370afda6832658aa690970d43c2c5882532",
+          "mandateDigest": "7f024c0a919918bc4bb1deb2022d777dfbe99dc7d4932663748c304c2c96b29b"
+        },
+        {
+          "roleId": "product-account-producer",
+          "platformCode": "XIAOHONGSHU",
+          "inputDigest": "4d903ba4deea12e9cb596b4475e1b0fb7f062760a6d6b267d2cee3294dbc8144",
+          "mandateDigest": "6dccb4124431d6d4afb8d539b229d67b2907087549950a2b588b5ec3f39ae935"
+        }
+      ],
+      "forbiddenPlatformMatrix": {
+        "BLUESKY": true,
+        "LINKEDIN": true,
+        "X": true,
+        "XIAOHONGSHU": true
+      }
+    }
+  ],
+  "v1Compatibility": {
+    "schemaVersion": 1,
+    "platforms": [
+      "X",
+      "XIAOHONGSHU",
+      "BLUESKY",
+      "LINKEDIN"
+    ],
+    "digest": "95ff9637ffbbc531f6f02f731b7428c2534731f27847b0f9e0fe7160ef481d8b",
+    "expectedDigest": "95ff9637ffbbc531f6f02f731b7428c2534731f27847b0f9e0fe7160ef481d8b",
+    "unchanged": true
+  }
+}

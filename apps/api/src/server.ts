@@ -12,6 +12,7 @@ import {
 } from '@lumiclaw/domain';
 import {blockedManualPublishAuthorization, isSecretBearingObject, LOCAL_MATERIAL_MAX_BYTES, LocalPresenceContractError, normalizeLocalDisplayName, validateLocalCampaignIdentityInput, validateOnboardingContext, type LocalOnboardingSession, type LocalPresenceRepository, type ManualPublishHandoff} from '@lumiclaw/domain';
 import {isSecretBearingKnowledgeObject, knowledgeEtag, KnowledgeContractError, parseKnowledgeEtag, validateKnowledgeSessionInput, validateSourceCandidates, validateTextSource, type KnowledgePlatform, type KnowledgeRepository, type ProfileKind} from '@lumiclaw/domain';
+import {accountBindingsFromKnowledge, createOperatingGoalRevision, goalEtag, GoalPlanContractError, planEtag, stableContractId, validateOperatingGoalInput, type AccountOperatingProfileInput, type ContentBrief, type ContentPlanSlot, type GoalPlanRepository, type MissionBundle, type OperatingGoalInput, type OperatingGoalRevision, type PlanSourceBinding, type PlannerSubmission} from '@lumiclaw/domain';
 import {LocalContentAddressedBlobStore} from '@lumiclaw/blob-store';
 import {
   acceptRuntimeSubmission,
@@ -43,7 +44,8 @@ import {
   type TaskContract,
   type ShadowMissionRepository
 } from '@lumiclaw/governed-shadow';
-import {PostgresCampaignRepository, PostgresKnowledgeRepository, PostgresLocalPresenceRepository} from '@lumiclaw/db';
+import {PostgresCampaignRepository, PostgresGoalPlanRepository, PostgresKnowledgeRepository, PostgresLocalPresenceRepository} from '@lumiclaw/db';
+import {approveContentPlanV2, compileMissionIntentV2, continueSelectedPlatformMissionV2, importPlannerSubmissionV2, reviseContentPlanV2} from '@lumiclaw/mission-compiler';
 import {timingSafeEqual} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import path from 'node:path';
@@ -51,11 +53,12 @@ import Fastify, {type FastifyInstance, type FastifyReply, type FastifyRequest} f
 import {MemoryCampaignRepository} from './memory-campaign-repository.js';
 import {MemoryLocalPresenceRepository} from './memory-local-presence-repository.js';
 import {MemoryKnowledgeRepository} from './memory-knowledge-repository.js';
+import {MemoryGoalPlanRepository} from './memory-goal-plan-repository.js';
 import {liveTaskActionPhaseAllowed} from './live-ticket-policy.js';
 import {openApiDocument} from './openapi.js';
 import {LiveRuntimeTicketStore, LiveTicketError, readComposeSecret, type LiveTicketAction, type LiveTicketBinding} from './live-runtime-security.js';
 
-type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; localPresenceRepository?: LocalPresenceRepository; knowledgeRepository?: KnowledgeRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
+type BuildOptions = {repository?: CampaignRepository; shadowRepository?: ShadowMissionRepository; localPresenceRepository?: LocalPresenceRepository; knowledgeRepository?: KnowledgeRepository; goalPlanRepository?: GoalPlanRepository; now?: () => Date; runtimeImportToken?: string | undefined; deepseekApiKey?: string | undefined; runtimeBootstrapSecret?: string | undefined; liveModelProviderFactory?: ((apiKey: string) => ModelProvider) | undefined};
 type CampaignParams = {campaignId: string};
 type MissionParams = {missionId: string};
 type RuntimeEventBody =
@@ -74,18 +77,21 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   const shadowRepository = options.shadowRepository ?? new MemoryShadowMissionRepository();
   const localPresenceRepository = options.localPresenceRepository ?? new MemoryLocalPresenceRepository();
   const knowledgeRepository = options.knowledgeRepository ?? new MemoryKnowledgeRepository();
+  const goalPlanRepository = options.goalPlanRepository ?? new MemoryGoalPlanRepository();
   const runtimeImportToken = options.runtimeImportToken;
   const ticketStore = new LiveRuntimeTicketStore(options.runtimeBootstrapSecret, () => now().getTime());
   const deepseekApiKey = options.deepseekApiKey;
   const liveModelProviderFactory = options.liveModelProviderFactory ?? ((apiKey: string) => new DeepSeekModelProvider({apiKey, executionClass: 'CANARY'}));
   app.addContentTypeParser(['text/plain', 'text/markdown', 'application/octet-stream', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'audio/mpeg', 'audio/mp4', 'audio/wav'], {parseAs: 'buffer'}, (_request, body, done) => done(null, body));
-  app.addHook('onClose', async () => { await repository.close(); await shadowRepository.close(); await localPresenceRepository.close(); await knowledgeRepository.close(); });
+  app.addHook('onClose', async () => { await repository.close(); await shadowRepository.close(); await localPresenceRepository.close(); await knowledgeRepository.close(); await goalPlanRepository.close(); });
+  app.addHook('preHandler',async(request)=>{const path=request.url.split('?')[0]??'';if(!/^\/api\/v1\/(?:local-workspace|goals(?:\/|$)|missions(?:\/|$)|mission-bundles(?:\/|$)|content-plans(?:\/|$))/u.test(path))return;const profile=await localPresenceRepository.getProfile();if(profile!==undefined)await reconcileKnowledgeSupersessions(knowledgeRepository,goalPlanRepository,profile.id,now());});
 
   app.get('/health', async (_request, reply) => {
     try {
       if (!await repository.health()) throw new Error('database marker missing');
       if (!await shadowRepository.health()) throw new Error('shadow database marker missing');
       if (!await knowledgeRepository.health()) throw new Error('knowledge database marker missing');
+      if (!await goalPlanRepository.health()) throw new Error('goal database marker missing');
       return {service: 'api', status: 'ok', mode: 'DEMO_SEED', live: false, controlPlane: 'POSTGRESQL'};
     } catch {
       return reply.status(503).send({service: 'api', status: 'unavailable', code: 'CONTROL_PLANE_UNAVAILABLE', mode: 'DEMO_SEED', live: false});
@@ -110,11 +116,11 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
     void reply.header('cache-control', 'no-store');
     const profile = await localPresenceRepository.getProfile();
     const publishAuthorization = blockedManualPublishAuthorization();
-    if (profile === undefined) return {code: 'LOCAL_FIRST_OPEN', profile: null, session: null, materials: [], handoffs: [], campaign: null, knowledge: null, publishAuthorization};
-    const [session, materials, handoffs, knowledge] = await Promise.all([localPresenceRepository.getSession(profile.id), localPresenceRepository.listMaterials(profile.id), localPresenceRepository.listManualHandoffs(profile.id), knowledgeRepository.ensureOwner(profile.id, now())]);
+    if (profile === undefined) return {code: 'LOCAL_FIRST_OPEN', profile: null, session: null, materials: [], handoffs: [], campaign: null, knowledge: null, goals: null, publishAuthorization};
+    const [session, materials, handoffs, knowledge, goals] = await Promise.all([localPresenceRepository.getSession(profile.id), localPresenceRepository.listMaterials(profile.id), localPresenceRepository.listManualHandoffs(profile.id), knowledgeRepository.ensureOwner(profile.id, now()), goalPlanRepository.getWorkspace(profile.id)]);
     const campaign = session?.organizationId !== null && session?.organizationId !== undefined && session.campaignId !== null ? await repository.get(session.organizationId, session.campaignId) : undefined;
     void reply.header('ETag', knowledgeEtag(knowledge.session.rowVersion));
-    return {code: 'LOCAL_WORKSPACE_REOPENED', profile, session: session ?? null, materials, handoffs, campaign: campaign ?? null, knowledge, publishAuthorization};
+    return {code: 'LOCAL_WORKSPACE_REOPENED', profile, session: session ?? null, materials, handoffs, campaign: campaign ?? null, knowledge, goals, publishAuthorization};
   });
 
   app.post('/api/v1/local-owner-profile', async (request, reply) => {
@@ -177,7 +183,7 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
   app.post('/api/v1/knowledge/sources/text', async (request, reply) => {
     if(isSecretBearingKnowledgeObject(request.body))return rejectKnowledgeRequest(reply,'BROWSER_SECRET_FIELD_FORBIDDEN'); const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return; const headers=knowledgeMutationHeaders(request);
     if(!isRecord(request.body)||Object.keys(request.body).sort().join(',')!=='label,text')return reply.status(422).send(errorBody('SOURCE_TEXT_SCHEMA_INVALID')); const input=validateTextSource({...request.body,candidates:[]});
-    const overview=await knowledgeRepository.ingestTextSource({ownerId:profile.id,...input},headers.version,headers.idempotencyKey,now()); return reply.status(201).header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'SOURCE_TEXT_REVISION_CREATED',overview});
+    const overview=await knowledgeRepository.ingestTextSource({ownerId:profile.id,...input},headers.version,headers.idempotencyKey,now());return reply.status(201).header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'SOURCE_TEXT_REVISION_CREATED',overview});
   });
 
   app.get<{Params:{sourceId:string}}>('/api/v1/knowledge/sources/:sourceId', async (request, reply) => { const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return; const source=await knowledgeRepository.getSource(profile.id,request.params.sourceId);if(source===undefined)return reply.status(404).send(errorBody('SOURCE_NOT_FOUND'));return reply.header('cache-control','no-store').send({code:'SOURCE_DOCUMENT_REOPENED',source}); });
@@ -186,8 +192,83 @@ export function buildApi(options: BuildOptions = {}): FastifyInstance {
 
   app.get('/api/v1/knowledge/snapshots/draft',async(_request,reply)=>{const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const overview=await knowledgeRepository.ensureOwner(profile.id,now());return reply.header('cache-control','no-store').header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'KNOWLEDGE_SNAPSHOT_DRAFT',draft:overview.draft,overview});});
   app.post('/api/v1/knowledge/snapshots/resolve-conflict',async(request,reply)=>{if(isSecretBearingKnowledgeObject(request.body)||!isExactRecord(request.body,['conflictId','selectedItemId','note'])||typeof request.body.conflictId!=='string'||typeof request.body.selectedItemId!=='string'||typeof request.body.note!=='string')return rejectKnowledgeRequest(reply,'CONFLICT_RESOLUTION_SCHEMA_INVALID');const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const headers=knowledgeMutationHeaders(request);const overview=await knowledgeRepository.resolveConflict(profile.id,request.body.conflictId,request.body.selectedItemId,request.body.note,headers.version,headers.idempotencyKey,now());return reply.header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'KNOWLEDGE_CONFLICT_RESOLVED',overview});});
-  app.post('/api/v1/knowledge/snapshots/approve',async(request,reply)=>{if(isSecretBearingKnowledgeObject(request.body)||!isExactRecord(request.body,['snapshotId','canonicalDigest'])||typeof request.body.snapshotId!=='string'||typeof request.body.canonicalDigest!=='string')return rejectKnowledgeRequest(reply,'SNAPSHOT_APPROVAL_SCHEMA_INVALID');const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const headers=knowledgeMutationHeaders(request);const overview=await knowledgeRepository.approveSnapshot(profile.id,request.body.snapshotId,request.body.canonicalDigest,headers.version,headers.idempotencyKey,now());return reply.header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'AUTHORITATIVE_KNOWLEDGE_SNAPSHOT_APPROVED',overview});});
+  app.post('/api/v1/knowledge/snapshots/approve',async(request,reply)=>{if(isSecretBearingKnowledgeObject(request.body)||!isExactRecord(request.body,['snapshotId','canonicalDigest'])||typeof request.body.snapshotId!=='string'||typeof request.body.canonicalDigest!=='string')return rejectKnowledgeRequest(reply,'SNAPSHOT_APPROVAL_SCHEMA_INVALID');const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const headers=knowledgeMutationHeaders(request);const approvedAt=now();const overview=await knowledgeRepository.approveSnapshot(profile.id,request.body.snapshotId,request.body.canonicalDigest,headers.version,headers.idempotencyKey,approvedAt);await reconcileKnowledgeSupersessions(knowledgeRepository,goalPlanRepository,profile.id,approvedAt);return reply.header('ETag',knowledgeEtag(overview.session.rowVersion)).send({code:'AUTHORITATIVE_KNOWLEDGE_SNAPSHOT_APPROVED',overview});});
   app.get<{Params:{snapshotId:string}}>('/api/v1/knowledge/snapshots/:snapshotId/role-context',async(request,reply)=>{const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const digest=request.headers['x-lumiclaw-snapshot-digest'];if(typeof digest!=='string')return reply.status(428).send(errorBody('SNAPSHOT_DIGEST_REQUIRED'));const roleContext=await knowledgeRepository.getRoleContext(profile.id,request.params.snapshotId,digest);return reply.header('cache-control','no-store').send({code:'APPROVED_KNOWLEDGE_ROLE_CONTEXT',roleContext});});
+
+  app.get('/api/v1/goals', async (_request,reply) => {
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;
+    return reply.header('cache-control','no-store').send({code:'GOAL_WORKSPACE_REOPENED',workspace:await goalPlanRepository.getWorkspace(profile.id)});
+  });
+
+  app.post('/api/v1/goals', async (request,reply) => {
+    if(isSecretBearingKnowledgeObject(request.body))return rejectKnowledgeRequest(reply,'BROWSER_SECRET_FIELD_FORBIDDEN');
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;
+    const headers=knowledgeMutationHeaders(request); const value=validateOperatingGoalInput(request.body);
+    const goalId=stableContractId('goal',{ownerId:profile.id,idempotencyKey:headers.idempotencyKey});
+    const goal=createOperatingGoalRevision({ownerId:profile.id,goalId,revision:1,state:'DRAFT',parentDigest:null,value,createdAt:now().toISOString()});
+    const inputs=await approvedGoalInputs(knowledgeRepository,profile.id,goal,false);
+    if(headers.version!==inputs.guard.rowVersion)throw new GoalPlanContractError('KNOWLEDGE_SNAPSHOT_STALE');
+    const result=await goalPlanRepository.appendGoal(profile.id,goal,inputs.bindings,null,inputs.guard,headers.idempotencyKey,now());
+    return reply.status(result.replayed?200:201).header('ETag',goalEtag(result.goal)).header('Idempotency-Replayed',String(result.replayed)).send({code:result.replayed?'GOAL_MUTATION_REPLAYED':'OPERATING_GOAL_CREATED',goal:result.goal,accountBindings:inputs.bindings});
+  });
+
+  app.get<{Params:{goalId:string}}>('/api/v1/goals/:goalId',async(request,reply)=>{
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const goal=await goalPlanRepository.getGoal(profile.id,request.params.goalId);if(goal===undefined)return reply.status(404).send(errorBody('GOAL_NOT_FOUND'));return reply.header('cache-control','no-store').header('ETag',goalEtag(goal)).send({code:'OPERATING_GOAL_REOPENED',goal});
+  });
+
+  app.patch<{Params:{goalId:string}}>('/api/v1/goals/:goalId',async(request,reply)=>{
+    if(isSecretBearingKnowledgeObject(request.body))return rejectKnowledgeRequest(reply,'BROWSER_SECRET_FIELD_FORBIDDEN');const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;
+    const current=await requireGoal(goalPlanRepository,profile.id,request.params.goalId);const {canonicalDigest,...raw}=exactGoalPatch(request.body);
+    if(current.state==='DRAFT'&&current.parentDigest===canonicalDigest&&sha256Digest(goalInput(current))===sha256Digest(raw)){const headers=exactMutationHeaders(request,current.parentDigest,previousGoalEtag(current));const inputs=await approvedGoalInputs(knowledgeRepository,profile.id,current,false);const result=await goalPlanRepository.appendGoal(profile.id,current,inputs.bindings,current.parentDigest,inputs.guard,headers.idempotencyKey,now());return reply.header('ETag',goalEtag(result.goal)).header('Idempotency-Replayed',String(result.replayed)).send({code:'GOAL_MUTATION_REPLAYED',goal:result.goal,invalidated:true});}
+    const headers=exactMutationHeaders(request,current.canonicalDigest,goalEtag(current));if(canonicalDigest!==current.canonicalDigest)throw new GoalPlanContractError('GOAL_DIGEST_MISMATCH');
+    const goal=createOperatingGoalRevision({ownerId:profile.id,goalId:current.goalId,revision:current.revision+1,state:'DRAFT',parentDigest:current.canonicalDigest,value:raw,createdAt:now().toISOString()});const inputs=await approvedGoalInputs(knowledgeRepository,profile.id,goal,false);
+    const result=await goalPlanRepository.appendGoal(profile.id,goal,inputs.bindings,current.canonicalDigest,inputs.guard,headers.idempotencyKey,now());return reply.header('ETag',goalEtag(result.goal)).header('Idempotency-Replayed',String(result.replayed)).send({code:result.replayed?'GOAL_MUTATION_REPLAYED':'OPERATING_GOAL_REVISION_CREATED',goal:result.goal,invalidated:true});
+  });
+
+  for(const transition of ['activate','pause'] as const) app.post<{Params:{goalId:string}}>(`/api/v1/goals/:goalId/${transition}`,async(request,reply)=>{
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const current=await requireGoal(goalPlanRepository,profile.id,request.params.goalId);
+    if(!isExactRecord(request.body,['canonicalDigest'])||typeof request.body.canonicalDigest!=='string')throw new GoalPlanContractError('GOAL_DIGEST_MISMATCH');
+    const expectedState=transition==='activate'?'ACTIVE':'PAUSED';
+    if(current.state===expectedState&&current.parentDigest===request.body.canonicalDigest){const headers=exactMutationHeaders(request,current.parentDigest,previousGoalEtag(current));const inputs=await approvedGoalInputs(knowledgeRepository,profile.id,current,false);const result=await goalPlanRepository.appendGoal(profile.id,current,inputs.bindings,current.parentDigest,inputs.guard,headers.idempotencyKey,now());return reply.header('ETag',goalEtag(result.goal)).header('Idempotency-Replayed',String(result.replayed)).send({code:transition==='activate'?'OPERATING_GOAL_ACTIVATED':'OPERATING_GOAL_PAUSED',goal:result.goal});}
+    const headers=exactMutationHeaders(request,current.canonicalDigest,goalEtag(current));if(request.body.canonicalDigest!==current.canonicalDigest)throw new GoalPlanContractError('GOAL_DIGEST_MISMATCH');
+    if(transition==='activate'&&!['DRAFT','PAUSED'].includes(current.state))throw new GoalPlanContractError('GOAL_STATE_CONFLICT');if(transition==='pause'&&current.state!=='ACTIVE')throw new GoalPlanContractError('GOAL_STATE_CONFLICT');
+    const goal=createOperatingGoalRevision({ownerId:profile.id,goalId:current.goalId,revision:current.revision+1,state:transition==='activate'?'ACTIVE':'PAUSED',parentDigest:current.canonicalDigest,value:goalInput(current),createdAt:now().toISOString()});const inputs=await approvedGoalInputs(knowledgeRepository,profile.id,goal,false);
+    const result=await goalPlanRepository.appendGoal(profile.id,goal,inputs.bindings,current.canonicalDigest,inputs.guard,headers.idempotencyKey,now());return reply.header('ETag',goalEtag(result.goal)).header('Idempotency-Replayed',String(result.replayed)).send({code:transition==='activate'?'OPERATING_GOAL_ACTIVATED':'OPERATING_GOAL_PAUSED',goal:result.goal});
+  });
+
+  app.post('/api/v1/missions/compile',async(request,reply)=>{
+    if(!isExactRecord(request.body,['goalId','goalDigest'])||typeof request.body.goalId!=='string'||typeof request.body.goalDigest!=='string')throw new GoalPlanContractError('MISSION_COMPILE_SCHEMA_INVALID');
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const goal=await requireGoal(goalPlanRepository,profile.id,request.body.goalId);const headers=exactMutationHeaders(request,goal.canonicalDigest,goalEtag(goal));if(request.body.goalDigest!==goal.canonicalDigest)throw new GoalPlanContractError('MISSION_INPUT_CHANGED');
+    const inputs=await approvedGoalInputs(knowledgeRepository,profile.id,goal,true);const workspace=await goalPlanRepository.getWorkspace(profile.id);const missionIntentId=stableContractId('mission',{ownerId:profile.id,goalId:goal.goalId});const lineage=workspace.bundles.filter((bundle)=>bundle.missionIntentId===missionIntentId).sort((left,right)=>right.generation-left.generation)[0];const existing=workspace.bundles.find((bundle)=>bundle.kind==='MISSION_INTENT'&&bundle.missionIntentId===missionIntentId&&bundle.inputBindings.operatingGoal.digest===goal.canonicalDigest&&bundle.inputBindings.knowledgeSnapshot.id===goal.knowledgeSnapshotId&&bundle.inputBindings.knowledgeSnapshot.digest===goal.knowledgeSnapshotDigest&&workspace.bundleStates.find((state)=>state.bundleId===bundle.bundleId)?.state!=='INVALIDATED');const bundle=compileMissionIntentV2({goal,knowledge:inputs.context,accountProfiles:inputs.bindings,lineage:existing?.kind==='MISSION_INTENT'?{generation:existing.generation,parentBundleId:existing.parentBundleId,parentBundleDigest:existing.parentBundleDigest}:{generation:(lineage?.generation??0)+1,parentBundleId:lineage?.bundleId??null,parentBundleDigest:lineage?.canonicalDigest??null}});const result=await goalPlanRepository.appendBundle(profile.id,bundle,goal.canonicalDigest,headers.idempotencyKey,now());
+    return reply.status(result.replayed?200:201).header('ETag',bundleEtag(result.bundle)).header('Idempotency-Replayed',String(result.replayed)).send({code:result.replayed?'MISSION_INTENT_REPLAYED':'MISSION_INTENT_COMPILED',bundle:result.bundle,plannerExecution:{status:'NOT_RUN',fixtureAllowedForEngineering:true,agentTeamsExecuted:false}});
+  });
+
+  app.get<{Params:{bundleId:string}}>('/api/v1/mission-bundles/:bundleId',async(request,reply)=>{
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const bundle=await goalPlanRepository.getBundle(profile.id,request.params.bundleId);if(bundle===undefined)return reply.status(404).send(errorBody('MISSION_BUNDLE_NOT_FOUND'));const workspace=await goalPlanRepository.getWorkspace(profile.id);const effective=workspace.bundleStates.find((item)=>item.bundleId===bundle.bundleId);return reply.header('cache-control','no-store').header('ETag',bundleEtag(bundle)).send({code:'MISSION_BUNDLE_REOPENED',bundle,effectiveState:effective?.state??bundle.state,invalidation:workspace.invalidations.find((item)=>item.bundleId===bundle.bundleId)??null});
+  });
+
+  app.post('/api/v1/content-plans',async(request,reply)=>{
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const submission=request.body as PlannerSubmission;if(!isRecord(submission)||typeof submission.intentBundleId!=='string')throw new GoalPlanContractError('PLANNER_SUBMISSION_SCHEMA_MISMATCH');const intent=await requireIntent(goalPlanRepository,profile.id,submission.intentBundleId);const headers=exactMutationHeaders(request,intent.canonicalDigest,bundleEtag(intent));
+    const planId=stableContractId('plan',{missionIntentId:intent.missionIntentId});const previous=await goalPlanRepository.getPlan(profile.id,planId);const submissionDigest=sha256Digest(submission);if(previous?.intentBundleId===intent.bundleId&&previous.plannerSubmissionDigest===submissionDigest){const replay=await goalPlanRepository.appendPlan(profile.id,previous,previous.parentDigest,headers.idempotencyKey,now());return reply.status(200).header('ETag',planEtag(replay.plan)).header('Idempotency-Replayed',String(replay.replayed)).send({code:'CONTENT_PLAN_REPLAYED',plan:replay.plan,agentTeamsExecuted:submission.evidenceMaturity==='AGENTTEAMS_RUNTIME',evidenceMaturity:submission.evidenceMaturity});}const plan=importPlannerSubmissionV2(intent,submission,now().toISOString(),previous);const result=await goalPlanRepository.appendPlan(profile.id,plan,previous?.canonicalDigest??null,headers.idempotencyKey,now());return reply.status(result.replayed?200:201).header('ETag',planEtag(result.plan)).header('Idempotency-Replayed',String(result.replayed)).send({code:result.replayed?'CONTENT_PLAN_REPLAYED':'CONTROLLED_PLANNER_SUBMISSION_IMPORTED',plan:result.plan,agentTeamsExecuted:submission.evidenceMaturity==='AGENTTEAMS_RUNTIME',evidenceMaturity:submission.evidenceMaturity});
+  });
+
+  app.get<{Params:{planId:string}}>('/api/v1/content-plans/:planId',async(request,reply)=>{
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const plan=await goalPlanRepository.getPlan(profile.id,request.params.planId);if(plan===undefined)return reply.status(404).send(errorBody('CONTENT_PLAN_NOT_FOUND'));return reply.header('cache-control','no-store').header('ETag',planEtag(plan)).send({code:'CONTENT_PLAN_REOPENED',plan});
+  });
+
+  app.patch<{Params:{planId:string}}>('/api/v1/content-plans/:planId',async(request,reply)=>{
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const current=await requirePlan(goalPlanRepository,profile.id,request.params.planId);if(!isExactRecord(request.body,['canonicalDigest','slots','currentBrief','sourceBindings'])||typeof request.body.canonicalDigest!=='string')throw new GoalPlanContractError('PLAN_DIGEST_MISMATCH');const intent=await requireIntent(goalPlanRepository,profile.id,current.intentBundleId);
+    if(current.parentDigest===request.body.canonicalDigest&&sha256Digest({slots:current.slots,currentBrief:current.currentBrief,sourceBindings:current.sourceBindings})===sha256Digest({slots:request.body.slots,currentBrief:request.body.currentBrief,sourceBindings:request.body.sourceBindings})){const headers=exactMutationHeaders(request,current.parentDigest,previousPlanEtag(current));const result=await goalPlanRepository.appendPlan(profile.id,current,current.parentDigest,headers.idempotencyKey,now());return reply.header('ETag',planEtag(result.plan)).header('Idempotency-Replayed',String(result.replayed)).send({code:'CONTENT_PLAN_REPLAYED',plan:result.plan});}
+    const headers=exactMutationHeaders(request,current.canonicalDigest,planEtag(current));if(request.body.canonicalDigest!==current.canonicalDigest)throw new GoalPlanContractError('PLAN_DIGEST_MISMATCH');
+    const plan=reviseContentPlanV2(intent,current,{slots:request.body.slots as ContentPlanSlot[],currentBrief:request.body.currentBrief as ContentBrief,sourceBindings:request.body.sourceBindings as PlanSourceBinding[]},current.canonicalDigest,now().toISOString());const result=await goalPlanRepository.appendPlan(profile.id,plan,current.canonicalDigest,headers.idempotencyKey,now());return reply.header('ETag',planEtag(result.plan)).header('Idempotency-Replayed',String(result.replayed)).send({code:result.replayed?'CONTENT_PLAN_REPLAYED':'CONTENT_PLAN_REVISION_CREATED',plan:result.plan});
+  });
+
+  app.post<{Params:{planId:string}}>('/api/v1/content-plans/:planId/approve',async(request,reply)=>{
+    const profile=await requireLocalProfile(localPresenceRepository,reply);if(profile===undefined)return;const current=await requirePlan(goalPlanRepository,profile.id,request.params.planId);if(!isExactRecord(request.body,['canonicalDigest'])||typeof request.body.canonicalDigest!=='string')throw new GoalPlanContractError('PLAN_DIGEST_MISMATCH');const intent=await requireIntent(goalPlanRepository,profile.id,current.intentBundleId);
+    if(current.state==='APPROVED'&&current.parentDigest===request.body.canonicalDigest){const headers=exactMutationHeaders(request,current.parentDigest,previousPlanEtag(current));const bundle=continueSelectedPlatformMissionV2(intent,current);const result=await goalPlanRepository.approvePlanAndAppendBundle(profile.id,current.parentDigest,current,bundle,headers.idempotencyKey,now());return reply.header('ETag',planEtag(result.plan)).header('X-LumiClaw-Bundle-ETag',bundleEtag(result.bundle)).header('Idempotency-Replayed',String(result.replayed)).send({code:'PLAN_APPROVAL_REPLAYED',plan:result.plan,bundle:result.bundle,agentTeamsExecuted:false,externalActionAllowed:false});}
+    const headers=exactMutationHeaders(request,current.canonicalDigest,planEtag(current));if(request.body.canonicalDigest!==current.canonicalDigest)throw new GoalPlanContractError('PLAN_DIGEST_MISMATCH');
+    const approved=approveContentPlanV2(intent,current,current.canonicalDigest,now().toISOString());const bundle=continueSelectedPlatformMissionV2(intent,approved);const result=await goalPlanRepository.approvePlanAndAppendBundle(profile.id,current.canonicalDigest,approved,bundle,headers.idempotencyKey,now());return reply.header('ETag',planEtag(result.plan)).header('X-LumiClaw-Bundle-ETag',bundleEtag(result.bundle)).header('Idempotency-Replayed',String(result.replayed)).send({code:result.replayed?'PLAN_APPROVAL_REPLAYED':'CONTENT_PLAN_APPROVED_EXECUTION_COMPILED',plan:result.plan,bundle:result.bundle,agentTeamsExecuted:false,externalActionAllowed:false});
+  });
 
   app.post('/api/v1/local-onboarding/example', async (_request, reply) => {
     const profile = await requireLocalProfile(localPresenceRepository, reply); if (profile === undefined) return;
@@ -629,6 +710,10 @@ function sendDomainOrUnavailable(reply: FastifyReply, error: unknown) {
     const status = error.code === 'OWNER_BOUNDARY_VIOLATION' ? 403 : error.code === 'SNAPSHOT_STALE' ? 412 : ['IDEMPOTENCY_KEY_REUSED','KNOWLEDGE_CONFLICT_UNRESOLVED','SNAPSHOT_GAPS_UNRESOLVED'].includes(error.code) ? 409 : error.code.includes('NOT_FOUND') ? 404 : error.code === 'SOURCE_TYPE_PLANNED' ? 415 : error.code === 'ETAG_REQUIRED' || error.code === 'IDEMPOTENCY_KEY_REQUIRED' || error.code === 'SNAPSHOT_DIGEST_REQUIRED' ? 428 : 422;
     return reply.status(status).send(errorBody(error.code));
   }
+  if (error instanceof GoalPlanContractError) {
+    const status = error.code === 'OWNER_BOUNDARY_VIOLATION' ? 403 : error.code.includes('NOT_FOUND') ? 404 : error.code.includes('STALE') || error.code.includes('VERSION_CONFLICT') || error.code.includes('DIGEST_MISMATCH') || error.code === 'MISSION_INPUT_CHANGED' ? 412 : error.code === 'IDEMPOTENCY_KEY_REQUIRED' || error.code === 'ETAG_REQUIRED' ? 428 : ['IDEMPOTENCY_KEY_REUSED','GOAL_STATE_CONFLICT','PLAN_STATE_CONFLICT','PRODUCER_COVERAGE_REQUIRED','PLAN_NOT_APPROVED','MISSION_GENERATION_CONFLICT'].includes(error.code) ? 409 : 422;
+    return reply.status(status).send({...errorBody(error.code),details:error.details});
+  }
   if (error instanceof ScheduleContractError) return reply.status(422).send({...errorBody(error.code), details: error.message});
   if (error instanceof ShadowContractError) return reply.status(['IDEMPOTENCY_KEY_REUSED', 'IDEMPOTENT_RESPONSE_VERSION_ADVANCED', 'MISSION_VERSION_CONFLICT', 'MISSION_STATE_CONFLICT', 'OWNER_REVIEW_DUPLICATE', 'RUNTIME_PROJECT_ALREADY_DISPATCHED'].includes(error.code) ? 409 : 422).send({...errorBody(error.code), details: error.details ?? error.message});
   if (error !== null && typeof error === 'object' && 'statusCode' in error && typeof error.statusCode === 'number' && error.statusCode >= 400 && error.statusCode < 500) {
@@ -766,6 +851,33 @@ function knowledgeMutationHeaders(request: FastifyRequest): {version:number;idem
   return {version:parseKnowledgeEtag(typeof request.headers['if-match']==='string'?request.headers['if-match']:undefined),idempotencyKey};
 }
 
+function exactMutationHeaders(request: FastifyRequest, expectedDigest: string, expectedEtag: string): {idempotencyKey:string} {
+  const idempotencyKey=request.headers['idempotency-key'];if(typeof idempotencyKey!=='string'||idempotencyKey.length<8||idempotencyKey.length>128)throw new GoalPlanContractError('IDEMPOTENCY_KEY_REQUIRED');
+  const ifMatch=request.headers['if-match'];if(typeof ifMatch!=='string')throw new GoalPlanContractError('ETAG_REQUIRED');if(ifMatch!==expectedEtag||!ifMatch.includes(expectedDigest))throw new GoalPlanContractError('MISSION_INPUT_CHANGED');return {idempotencyKey};
+}
+
+function exactGoalPatch(value: unknown): OperatingGoalInput & {canonicalDigest:string} {
+  if(!isExactRecord(value,['canonicalDigest','objective','horizonDays','startsAt','endsAt','cadence','selectedAccountIds','targetMarket','contentLocale','timeZone','successSignals','knowledgeSnapshotId','knowledgeSnapshotDigest'])||typeof value.canonicalDigest!=='string')throw new GoalPlanContractError('GOAL_SCHEMA_INVALID');
+  const {canonicalDigest,...input}=value;return {...validateOperatingGoalInput(input),canonicalDigest};
+}
+
+function goalInput(goal: OperatingGoalRevision): OperatingGoalInput { return {objective:goal.objective,horizonDays:goal.horizonDays,startsAt:goal.startsAt,endsAt:goal.endsAt,cadence:goal.cadence,selectedAccountIds:[...goal.selectedAccountIds],targetMarket:goal.targetMarket,contentLocale:goal.contentLocale,timeZone:goal.timeZone,successSignals:structuredClone(goal.successSignals),knowledgeSnapshotId:goal.knowledgeSnapshotId,knowledgeSnapshotDigest:goal.knowledgeSnapshotDigest}; }
+function bundleEtag(bundle: MissionBundle): string{return `\"bundle-${bundle.bundleId}-g${bundle.generation}-${bundle.canonicalDigest}\"`;}
+function previousGoalEtag(goal:OperatingGoalRevision):string{if(goal.revision<2||goal.parentDigest===null)throw new GoalPlanContractError('GOAL_VERSION_CONFLICT');return `\"goal-${goal.goalId}-r${goal.revision-1}-${goal.parentDigest}\"`;}
+function previousPlanEtag(plan:{planId:string;revision:number;parentDigest:string|null}):string{if(plan.revision<2||plan.parentDigest===null)throw new GoalPlanContractError('PLAN_VERSION_CONFLICT');return `\"plan-${plan.planId}-r${plan.revision-1}-${plan.parentDigest}\"`;}
+
+async function approvedGoalInputs(repository: KnowledgeRepository,ownerId:string,goal:OperatingGoalRevision,requireProducerCoverage:boolean){
+  const overview=await repository.getOverview(ownerId);const context=await repository.getRoleContext(ownerId,goal.knowledgeSnapshotId,goal.knowledgeSnapshotDigest);
+  const revisions=await Promise.all(goal.selectedAccountIds.map((revisionId)=>repository.getProfileRevision(ownerId,revisionId)));const profiles=revisions.filter((profile):profile is NonNullable<typeof profile>=>profile!==undefined&&profile.kind==='ACCOUNT').map((profile)=>({id:profile.id,revision:profile.version,digest:profile.digest,payload:profile.payload as AccountOperatingProfileInput}));
+  const bindings=accountBindingsFromKnowledge(goal,context,profiles,{requireProducerCoverage});
+  return {context,bindings,guard:{rowVersion:overview.session.rowVersion,snapshotId:context.snapshotId,snapshotDigest:context.snapshotDigest,accountProfileDigests:bindings.map((binding)=>({revisionId:binding.accountProfileRevisionId,digest:binding.digest}))}};
+}
+async function reconcileKnowledgeSupersessions(knowledgeRepository:KnowledgeRepository,goalPlanRepository:GoalPlanRepository,ownerId:string,at:Date):Promise<void>{const pending=await knowledgeRepository.listPendingSnapshotSupersessions(ownerId);for(const event of pending){await goalPlanRepository.invalidateBundles(ownerId,{reasonCode:'KNOWLEDGE_SNAPSHOT_CHANGED',currentDigest:event.approvedSnapshotDigest,supersededSnapshotId:event.supersededSnapshotId,supersededSnapshotDigest:event.supersededSnapshotDigest},at);await knowledgeRepository.acknowledgeSnapshotSupersession(ownerId,event.eventId,at);}}
+
+async function requireGoal(repository:GoalPlanRepository,ownerId:string,goalId:string){const goal=await repository.getGoal(ownerId,goalId);if(goal===undefined)throw new GoalPlanContractError('GOAL_NOT_FOUND');return goal;}
+async function requirePlan(repository:GoalPlanRepository,ownerId:string,planId:string){const plan=await repository.getPlan(ownerId,planId);if(plan===undefined)throw new GoalPlanContractError('CONTENT_PLAN_NOT_FOUND');return plan;}
+async function requireIntent(repository:GoalPlanRepository,ownerId:string,bundleId:string){const bundle=await repository.getBundle(ownerId,bundleId);if(bundle===undefined)throw new GoalPlanContractError('MISSION_BUNDLE_NOT_FOUND');if(bundle.kind!=='MISSION_INTENT')throw new GoalPlanContractError('MISSION_INPUT_CHANGED');const workspace=await repository.getWorkspace(ownerId);if(workspace.bundleStates.find((item)=>item.bundleId===bundleId)?.state==='INVALIDATED')throw new GoalPlanContractError('MISSION_INPUT_CHANGED');return bundle;}
+
 async function requireMutableOnboardingSession(repository: LocalPresenceRepository, ownerProfileId: string): Promise<LocalOnboardingSession> {
   const session = await repository.getSession(ownerProfileId);
   if (session === undefined) throw new LocalPresenceContractError('LOCAL_PROFILE_NOT_FOUND');
@@ -807,7 +919,7 @@ async function start(): Promise<void> {
   if (connectionString === undefined) throw new Error('DATABASE_URL is required.');
   const blobRoot = process.env.BLOB_ROOT;
   if (blobRoot === undefined) throw new Error('BLOB_ROOT is required.');
-  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), localPresenceRepository: new PostgresLocalPresenceRepository(connectionString, new LocalContentAddressedBlobStore(blobRoot)), knowledgeRepository: new PostgresKnowledgeRepository(connectionString,new LocalContentAddressedBlobStore(blobRoot)), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
+  const app = buildApi({repository: new PostgresCampaignRepository(connectionString), shadowRepository: new PostgresShadowMissionRepository(connectionString), localPresenceRepository: new PostgresLocalPresenceRepository(connectionString, new LocalContentAddressedBlobStore(blobRoot)), knowledgeRepository: new PostgresKnowledgeRepository(connectionString,new LocalContentAddressedBlobStore(blobRoot)), goalPlanRepository: new PostgresGoalPlanRepository(connectionString), runtimeImportToken: readComposeSecret('/run/secrets/lumiclaw_runtime_import_token'), deepseekApiKey: readComposeSecret('/run/secrets/deepseek_api_key'), runtimeBootstrapSecret: readComposeSecret('/run/secrets/lumiclaw_runtime_broker_bootstrap')});
   const port = Number.parseInt(process.env.PORT ?? '4000', 10);
   await app.listen({host: '0.0.0.0', port});
 }

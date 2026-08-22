@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-009",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "sequence": [
+    "restart api",
+    "restart PostgreSQL and api",
+    "GET /api/v1/local-workspace"
+  ],
+  "before": {
+    "goalId": "goal_778305a6c2e20089470e9be1",
+    "goalRevision": 4,
+    "goalDigest": "0aa5d2b07cab17921d489646bf205c25f20263574323081f031bda6bd1689c62",
+    "planId": "plan_753fcc6a287433656e7d76fc",
+    "planRevision": 5,
+    "planDigest": "c820a5b92e8a483c77faa708f2a4cb6cf30ffe256b4b52428f5d7dda21aabe77",
+    "intentBundleId": "bundle_f3a8d264b61a5e97fac917ba",
+    "intentDigest": "c030a93fcd7e9889b8772fd7626240a0e4d6f1d329a0cbcc775c1aa60ae04bf9",
+    "executionBundleId": "bundle_fdce6c616b54a77c89424d3c",
+    "executionDigest": "f3b2517bf448c966cb199e9c466dcc81f3cdc88f2dffceb3b11c9af1b3897576",
+    "rows": {
+      "goal_revisions": 4,
+      "plan_revisions": 5,
+      "bundles": 4,
+      "invalidations": 2,
+      "idempotency": 11
+    }
+  },
+  "after": {
+    "goalId": "goal_778305a6c2e20089470e9be1",
+    "goalRevision": 4,
+    "goalDigest": "0aa5d2b07cab17921d489646bf205c25f20263574323081f031bda6bd1689c62",
+    "planId": "plan_753fcc6a287433656e7d76fc",
+    "planRevision": 5,
+    "planDigest": "c820a5b92e8a483c77faa708f2a4cb6cf30ffe256b4b52428f5d7dda21aabe77",
+    "intentBundleId": "bundle_f3a8d264b61a5e97fac917ba",
+    "intentDigest": "c030a93fcd7e9889b8772fd7626240a0e4d6f1d329a0cbcc775c1aa60ae04bf9",
+    "executionBundleId": "bundle_fdce6c616b54a77c89424d3c",
+    "executionDigest": "f3b2517bf448c966cb199e9c466dcc81f3cdc88f2dffceb3b11c9af1b3897576",
+    "rows": {
+      "goal_revisions": 4,
+      "plan_revisions": 5,
+      "bundles": 4,
+      "invalidations": 2,
+      "idempotency": 11
+    }
+  },
+  "stable": true
+}

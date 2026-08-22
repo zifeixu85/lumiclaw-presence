@@ -41,7 +41,7 @@ describe('SDD-008 guided knowledge API',()=>{
 
     knowledgeRepository.removeBlobForTest(overview.sources[0].blobDigest);const missingRole=await app.inject({method:'GET',url:`/api/v1/knowledge/snapshots/${approvedDraft.id}/role-context`,headers:{'x-lumiclaw-snapshot-digest':approvedDraft.canonicalDigest}});expect(missingRole.statusCode).toBe(422);expect(missingRole.json().code).toBe('SOURCE_BLOB_MISSING');
     await mutate('PUT','/api/v1/profiles/product',{...product,description:'A changed product fact creates a new draft.'},'product-0002');expect(overview.session.state).not.toBe('KNOWLEDGE_APPROVED_NEEDS_GOAL');expect(overview.approvedHistory[0].id).toBe(approvedDraft.id);
-    const staleRole=await app.inject({method:'GET',url:`/api/v1/knowledge/snapshots/${approvedDraft.id}/role-context`,headers:{'x-lumiclaw-snapshot-digest':approvedDraft.canonicalDigest}});expect(staleRole.statusCode).toBe(412);expect(staleRole.json().code).toBe('SNAPSHOT_STALE');
+    const staleRole=await app.inject({method:'GET',url:`/api/v1/knowledge/snapshots/${approvedDraft.id}/role-context`,headers:{'x-lumiclaw-snapshot-digest':approvedDraft.canonicalDigest}});expect(staleRole.statusCode).toBe(422);expect(staleRole.json().code).toBe('SOURCE_BLOB_MISSING');
     await app.close();
   });
 

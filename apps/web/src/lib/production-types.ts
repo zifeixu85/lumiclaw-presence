@@ -1,6 +1,6 @@
-import type {CampaignEnvelope, EnvironmentReadinessItem, KnowledgeOverview, LocalMaterialManifest, LocalOnboardingSession, LocalOwnerProfile, ManualPublishAuthorization, ManualPublishHandoff} from '@lumiclaw/domain';
+import type {CampaignEnvelope, EnvironmentReadinessItem, GoalWorkspace, KnowledgeOverview, LocalMaterialManifest, LocalOnboardingSession, LocalOwnerProfile, ManualPublishAuthorization, ManualPublishHandoff} from '@lumiclaw/domain';
 
-export type WorkspaceSection = 'today' | 'campaigns' | 'ai-team' | 'calendar' | 'publish' | 'feedback' | 'knowledge' | 'accounts' | 'settings';
+export type WorkspaceSection = 'today' | 'goals' | 'campaigns' | 'ai-team' | 'calendar' | 'publish' | 'feedback' | 'knowledge' | 'accounts' | 'settings';
 
 export type WorkspaceSnapshot = {
   code: 'LOCAL_FIRST_OPEN' | 'LOCAL_WORKSPACE_REOPENED';
@@ -10,6 +10,7 @@ export type WorkspaceSnapshot = {
   handoffs: ManualPublishHandoff[];
   campaign: CampaignEnvelope | null;
   knowledge?: KnowledgeOverview | null;
+  goals?: GoalWorkspace | null;
   publishAuthorization: ManualPublishAuthorization;
 };
 
