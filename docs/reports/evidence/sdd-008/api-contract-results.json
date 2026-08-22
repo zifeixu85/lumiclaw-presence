@@ -1,0 +1,66 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-008",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "contracts": [
+    {
+      "name": "approved exact RoleContext",
+      "method": "GET",
+      "route": "/api/v1/knowledge/snapshots/:id/role-context",
+      "status": 200
+    },
+    {
+      "name": "concurrent stale ETag",
+      "method": "PUT",
+      "route": "/api/v1/profiles/product",
+      "statuses": [
+        200,
+        412
+      ],
+      "stableCode": "SNAPSHOT_STALE"
+    },
+    {
+      "name": "digest tamper",
+      "method": "POST",
+      "route": "/api/v1/knowledge/snapshots/approve",
+      "status": 422,
+      "stableCode": "SNAPSHOT_APPROVAL_DIGEST_MISMATCH"
+    },
+    {
+      "name": "secret-shaped account field",
+      "method": "PUT",
+      "route": "/api/v1/profiles/accounts/X",
+      "status": 422,
+      "stableCode": "BROWSER_SECRET_FIELD_FORBIDDEN"
+    },
+    {
+      "name": "missing source blob",
+      "method": "POST",
+      "route": "/api/v1/knowledge/snapshots/approve",
+      "status": 422,
+      "stableCode": "SOURCE_BLOB_MISSING"
+    },
+    {
+      "name": "delete source creates new draft",
+      "method": "DELETE",
+      "route": "/api/v1/knowledge/sources/:id",
+      "status": 200
+    },
+    {
+      "name": "historical RoleContext fails stale after source change",
+      "method": "GET",
+      "route": "/api/v1/knowledge/snapshots/:id/role-context",
+      "status": 412,
+      "stableCode": "SNAPSHOT_STALE"
+    }
+  ],
+  "rejectionAudit": {
+    "redacted": true,
+    "rawSecretPresent": false
+  },
+  "ownerBoundary": {
+    "compositeForeignKeysEnforced": true
+  },
+  "externalActionCount": 0
+}

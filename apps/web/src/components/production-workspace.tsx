@@ -1,6 +1,6 @@
 'use client';
 
-import type {LocalCampaignIdentityInput, LocalOnboardingContext} from '@lumiclaw/domain';
+import type {AccountOperatingProfileInput, KnowledgePlatform, KnowledgeStep, OrganizationProfileInput, PersonaProfileInput, ProductProfileInput, ProfileKind} from '@lumiclaw/domain';
 import type {AppLocale} from '@lumiclaw/i18n';
 import {AlertTriangle, LoaderCircle} from 'lucide-react';
 import {useTranslations} from 'next-intl';
@@ -9,7 +9,7 @@ import {OnboardingFlow} from '@/components/onboarding/onboarding-flow';
 import {DesktopGate} from '@/components/layout/desktop-gate';
 import {WorkspaceShell} from '@/components/layout/workspace-shell';
 import {Button} from '@/components/ui/button';
-import {completeLocalOnboarding, createLocalProfile, deleteLocalMaterial, loadReadiness, loadSkills, loadTeam, loadWorkspace, ProductApiError, saveOnboardingContext, selectExampleWorkspace, selectMaterialPath, uploadLocalMaterial} from '@/lib/production-api';
+import {addKnowledgeText, approveKnowledgeSnapshot, confirmLegacySource, createLocalProfile, deleteKnowledgeSource, loadReadiness, loadSkills, loadTeam, loadWorkspace, ProductApiError, resolveKnowledgeConflict, saveAccountProfile, saveKnowledgeProfile, saveKnowledgeSession, selectExampleWorkspace, selectMaterialPath, uploadKnowledgeFiles} from '@/lib/production-api';
 import type {EnvironmentReadiness, SkillListResponse, TeamResponse, WorkspaceSection, WorkspaceSnapshot} from '@/lib/production-types';
 import {WorkspaceFeature} from './features/workspace-feature';
 
@@ -38,11 +38,39 @@ export function ProductionWorkspace({locale, initialSection = 'today', initialSn
     return () => { live = false; };
   }, [initialReadiness, initialSkills, initialSnapshot, initialTeam, reload]);
 
-  const run = async (operation: () => Promise<void>) => { setBusy(true); setError(null); try { await operation(); await reload(); } catch (caught) { setError(errorCode(caught)); } finally { setBusy(false); } };
+  const run = async (operation: () => Promise<unknown>) => { setBusy(true); setError(null); try { await operation(); await reload(); } catch (caught) { setError(errorCode(caught)); } finally { setBusy(false); } };
+  const knowledgeVersion = () => {
+    const version = snapshot?.knowledge?.session.rowVersion;
+    if (version === undefined) throw new ProductApiError('KNOWLEDGE_ONBOARDING_NOT_READY', 409);
+    return version;
+  };
 
   if (snapshot === null || readiness === null || team === null || skills === null) return <><DesktopGate /><div className="lc-desktop-app grid min-h-screen place-items-center bg-[var(--lc-canvas)]"><div className="max-w-md text-center">{error === null ? <><LoaderCircle className="mx-auto animate-spin text-[var(--lc-accent)]" size={26} aria-hidden /><p className="mt-4 text-sm text-[var(--lc-ink-muted)]">{t('loading')}</p></> : <><AlertTriangle className="mx-auto text-[var(--lc-danger)]" size={28} aria-hidden /><h1 className="mt-4 font-[var(--lc-font-serif)] text-2xl font-semibold">{t('errorTitle')}</h1><code className="mt-3 block text-xs text-[var(--lc-danger)]">{error}</code><Button className="mt-5" variant="primary" onClick={() => run(async () => {})}>{t('retry')}</Button></>}</div></div></>;
 
-  if (snapshot.profile === null || snapshot.session?.state !== 'COMPLETED') return <><DesktopGate /><OnboardingFlow locale={locale} snapshot={snapshot} busy={busy} error={error} onStartExample={(name) => run(async () => { await createLocalProfile(name); await selectExampleWorkspace(); })} onStartLocal={(name) => run(async () => { await createLocalProfile(name); await selectMaterialPath(); })} onUseExample={() => run(selectExampleWorkspace)} onSelectLocal={() => run(selectMaterialPath)} onUpload={(file) => run(() => uploadLocalMaterial(file))} onDelete={(id) => run(() => deleteLocalMaterial(id))} onFinishLocal={(context: LocalOnboardingContext, identity: LocalCampaignIdentityInput) => run(async () => { await saveOnboardingContext(context); await completeLocalOnboarding(identity); })} /></>;
+  const publicExampleReady = snapshot.session?.path === 'PUBLIC_SAFE_EXAMPLE' && snapshot.session.state === 'COMPLETED';
+  if (!publicExampleReady) return <><DesktopGate /><OnboardingFlow
+    locale={locale}
+    snapshot={snapshot}
+    busy={busy}
+    error={error}
+    onStartExample={(name) => run(async () => { await createLocalProfile(name); await selectExampleWorkspace(); })}
+    onStartLocal={(name) => run(async () => { await createLocalProfile(name); await selectMaterialPath(); })}
+    onSelectLocal={() => run(selectMaterialPath)}
+    onMoveStep={(step: KnowledgeStep) => run(() => saveKnowledgeSession(knowledgeVersion(), {currentStep: step}))}
+    onSaveProfile={(kind: Exclude<ProfileKind, 'ACCOUNT'>, payload: PersonaProfileInput | OrganizationProfileInput | ProductProfileInput, next: KnowledgeStep) => run(() => saveKnowledgeProfile(kind, payload, knowledgeVersion(), next))}
+    onSaveOrganizationProduct={(organization: OrganizationProfileInput, product: ProductProfileInput) => run(async () => {
+      const afterOrganization = await saveKnowledgeProfile('ORGANIZATION', organization, knowledgeVersion(), 'ORGANIZATION_PRODUCT');
+      await saveKnowledgeProfile('PRODUCT', product, afterOrganization.session.rowVersion, 'SOURCES');
+    })}
+    onSaveAccount={(platform: KnowledgePlatform, payload: AccountOperatingProfileInput, next: KnowledgeStep) => run(() => saveAccountProfile(platform, payload, knowledgeVersion(), next))}
+    onUpload={(files) => run(() => uploadKnowledgeFiles(files, knowledgeVersion()))}
+    onAddText={(label, text) => run(() => addKnowledgeText(label, text, knowledgeVersion()))}
+    onDeleteSource={(id) => run(() => deleteKnowledgeSource(id, knowledgeVersion()))}
+    onConfirmLegacy={(id) => run(() => confirmLegacySource(id, knowledgeVersion()))}
+    onSaveContext={(targetMarket, contentLocale, timeZone) => run(() => saveKnowledgeSession(knowledgeVersion(), {currentStep: 'REVIEW', targetMarket, contentLocale, timeZone}))}
+    onResolve={(conflictId, itemId) => run(() => resolveKnowledgeConflict(conflictId, itemId, 'Owner confirmed this value in the guided review.', knowledgeVersion()))}
+    onApprove={(snapshotId, digest) => run(() => approveKnowledgeSnapshot(snapshotId, digest, knowledgeVersion()))}
+  /></>;
 
   return <><DesktopGate /><WorkspaceShell locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness}><WorkspaceFeature locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness} team={team} skills={skills} /></WorkspaceShell></>;
 }

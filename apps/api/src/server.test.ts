@@ -338,6 +338,13 @@ describe('M1 Campaign API contract', () => {
     expect(openapi.json().paths['/api/v1/campaigns/{campaignId}/shadow-missions']).toBeDefined();
     expect(openapi.json().paths['/api/v1/shadow-missions/{missionId}/runtime-events']).toBeDefined();
     expect(openapi.json().paths['/api/v1/local-workspace']).toBeDefined();
+    expect(openapi.json().paths['/api/v1/onboarding/session']).toBeDefined();
+    expect(openapi.json().paths['/api/v1/profiles/accounts/{platform}']).toBeDefined();
+    expect(openapi.json().paths['/api/v1/knowledge/sources/text'].post.requestBody.content['application/json'].schema.$ref).toBe('#/components/schemas/KnowledgeTextSourceInput');
+    expect(openapi.json().paths['/api/v1/knowledge/snapshots/approve']).toBeDefined();
+    expect(openapi.json().paths['/api/v1/knowledge/snapshots/{snapshotId}/role-context']).toBeDefined();
+    expect(openapi.json().components.schemas.KnowledgeTextSourceInput.properties.candidates).toBeUndefined();
+    expect(openapi.json().components.schemas.AccountOperatingProfileInput.properties.apiKey).toBeUndefined();
     expect(openapi.json().paths['/api/v1/local-materials'].post.requestBody.content['application/pdf']).toBeUndefined();
     expect(openapi.json().paths['/api/v1/manual-publish-handoffs'].post.responses['409'].description).toContain('Audit PASS');
     expect(openapi.json().components.schemas.LocalOwnerProfileInput.additionalProperties).toBe(false);

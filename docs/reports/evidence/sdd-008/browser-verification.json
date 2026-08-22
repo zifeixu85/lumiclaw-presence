@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "result": "PASS",
+  "generatedAt": "2026-08-21T21:02:42.139Z",
+  "baseUrl": "http://127.0.0.1:3188",
+  "locales": [
+    "zh-CN",
+    "en"
+  ],
+  "checks": {
+    "firstOpenDisplayNameOnly": true,
+    "sevenBusinessSteps": true,
+    "defaultChinese": true,
+    "englishParityFirstOpen": true,
+    "ordinarySourcesWithoutTechnicalFields": true,
+    "fiveSourcesVisible": true,
+    "friendlySourceStatus": true,
+    "refreshRestoresSourceDraft": true,
+    "defaultContextExplainsNoOverride": true,
+    "platformProfilesRemainDistinct": true,
+    "sourceExcerptsEnterReview": true,
+    "friendlyConflictStatus": true,
+    "authorityPriorityExplainedWithoutAutoSelection": true,
+    "friendlyApprovalStatus": true,
+    "stableCodesOnlySecondary": true,
+    "noSecretFieldsAnywhere": true,
+    "approvedFirstChineseFrameStartsAtTop": true,
+    "approvedKnowledgeCanStartNewDraft": true,
+    "noGoalOrAgentLaunch": true,
+    "refreshRestoresApproval": true,
+    "englishParityApproved": true,
+    "desktop1024NoOverflow": true,
+    "desktopGate": true
+  },
+  "consoleErrors": [],
+  "screenshots": [
+    {
+      "name": "01-first-open-zh.png",
+      "sha256": "9bf49d4a3d2eeaf28e3a1863ec2191880899fa492c6d613f1df3ed8cf13eabc3",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "02-five-source-draft.png",
+      "sha256": "cfd19d22e123b922ece528bd56513f13b1380320c43c2919085908b6f1c8bc74",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "03-structured-review-ready.png",
+      "sha256": "bfcc4c281688a8d6599e879c772088f3a161a01557dc6efa2a06bd938be430d9",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "04-approved-snapshot.png",
+      "sha256": "3c93c447e6db64654ed75a7532bc72c2e598a7352f50272783f9aaa5ed17d9d2",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "05-approved-snapshot-en.png",
+      "sha256": "d879ff1ea5d0bccedbf8b34d5fc94259c28ee874f6603584dccd0d9fa573c2c2",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "06-desktop-gate.png",
+      "sha256": "8bbe5694ad491364b1352fe3e99b0517e0e0807ec5d9ba8eda38f8225d0c4f47",
+      "viewport": {
+        "width": 800,
+        "height": 900
+      }
+    }
+  ]
+}

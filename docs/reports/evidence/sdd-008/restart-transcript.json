@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-008",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "sequence": [
+    "restart api",
+    "restart postgres and api",
+    "GET /api/v1/local-workspace"
+  ],
+  "beforeCounts": {
+    "sources": 5,
+    "profiles": 5,
+    "snapshots": 18,
+    "approved": 1,
+    "campaigns": 0,
+    "agent_runs": 0
+  },
+  "afterCounts": {
+    "sources": 5,
+    "profiles": 5,
+    "snapshots": 18,
+    "approved": 1,
+    "campaigns": 0,
+    "agent_runs": 0
+  },
+  "restored": {
+    "sessionState": "KNOWLEDGE_APPROVED_NEEDS_GOAL",
+    "currentSnapshotId": "01a02622-0601-7409-8f82-635116b558c1",
+    "snapshotVersion": 18,
+    "snapshotDigest": "b81819f68d045dde7990a124d163849e9fdb53f9297441bc2d17d5db96e57fb5",
+    "sourceCount": 5
+  },
+  "duplicateRevisionDetected": false
+}

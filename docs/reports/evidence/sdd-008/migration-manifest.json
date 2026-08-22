@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-008",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "migrations": [
+    "000001_foundation",
+    "000002_organization_graph",
+    "000003_campaign_control_plane",
+    "000004_persistent_schedule",
+    "000005_governed_shadow_campaign",
+    "000006_live_deepseek_uat",
+    "000007_local_onboarding",
+    "000008_local_private_campaign",
+    "000009_onboarding_multi_context",
+    "000010_onboarding_completion_reservation",
+    "000011_guided_knowledge_onboarding"
+  ],
+  "sdd008Migration": "000011_guided_knowledge_onboarding",
+  "freshEmptyDown": {
+    "result": "PASS",
+    "schemaRemoved": true
+  },
+  "populatedDown": {
+    "result": "BLOCKED",
+    "stableCode": "SDD008_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED",
+    "schemaAndDataPreserved": true
+  },
+  "legacyUpgrade": {
+    "result": "PASS",
+    "status": "LEGACY_NEEDS_REVIEW",
+    "sourceKind": "LEGACY_LOCAL_MATERIAL",
+    "digestPreserved": true
+  }
+}

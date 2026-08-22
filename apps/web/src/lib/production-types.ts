@@ -1,4 +1,4 @@
-import type {CampaignEnvelope, EnvironmentReadinessItem, LocalMaterialManifest, LocalOnboardingSession, LocalOwnerProfile, ManualPublishAuthorization, ManualPublishHandoff} from '@lumiclaw/domain';
+import type {CampaignEnvelope, EnvironmentReadinessItem, KnowledgeOverview, LocalMaterialManifest, LocalOnboardingSession, LocalOwnerProfile, ManualPublishAuthorization, ManualPublishHandoff} from '@lumiclaw/domain';
 
 export type WorkspaceSection = 'today' | 'campaigns' | 'ai-team' | 'calendar' | 'publish' | 'feedback' | 'knowledge' | 'accounts' | 'settings';
 
@@ -9,6 +9,7 @@ export type WorkspaceSnapshot = {
   materials: LocalMaterialManifest[];
   handoffs: ManualPublishHandoff[];
   campaign: CampaignEnvelope | null;
+  knowledge?: KnowledgeOverview | null;
   publishAuthorization: ManualPublishAuthorization;
 };
 
