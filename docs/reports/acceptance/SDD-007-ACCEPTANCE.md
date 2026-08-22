@@ -8,7 +8,9 @@
 >
 > Branch / Authorized base：`codex/sdd-007-persistent-agentteams-runtime` / `2b5673d0c408060034297328cd2522f4d9578ad1`
 >
-> Commit / Draft PR：由本报告所在交付提交与最终 `STATUS_HANDOFF` 固定
+> Runtime evidence source HEAD：`eb0421472f5864a9bf37437bc172b9bb8200c3a6`
+>
+> Final evidence-report commit / Draft PR：由最终 `STATUS_HANDOFF` 固定
 >
 > 报告状态：`EVIDENCE_READY_CANDIDATE / OWNER_UAT_PENDING / REAL_PROVIDER_PENDING`
 >
@@ -84,11 +86,11 @@
 
 | Evidence | 内容 | SHA-256 |
 |---|---|---|
-| `.evidence/sdd-007/postgres.json` | fresh PG、migration、lease、ticket fencing、staged atomic recovery、ETag/idempotency | 在最终 `STATUS_HANDOFF` 固定 |
+| `.evidence/sdd-007/postgres.json` | fresh PG、migration、lease、ticket fencing、staged atomic recovery、ETag/idempotency | `d9ef8a5e530f831146dd8bbe217ea2a104e731365ecffdd726edec0310d45941` |
 | `.evidence/sdd-007/compose.json` | controlled-fake startup、Web/API/CLI parity、Gateway/API/PostgreSQL restart、Secret/Docker scope、exact cleanup | `3fbcfda0d5f766ad4ca47a057d490c298999e6fa2e56490832d3dbf9c7fdd08a` |
 | `.evidence/sdd-007/browser/browser-verification.json` | Chromium zh-CN/en、axe、keyboard、1024 desktop/800 desktop gate、无 console error | `d2ac224d2bcbe9d9d7db31fc2fef84858e33195764ed5c60e9a3e940580ecdcc` |
-| `.evidence/sdd-007/agentteams-persistent-driver.json` | actual vs expected identity、six-member ACK/Submit/check、five worker-origin calls、Leader 0 call | 在最终 `STATUS_HANDOFF` 固定 |
-| `.evidence/sdd-002/agentteams-real-runtime.json` | upstream official installer、source/license/image identity、真实 runtime lifecycle 与清理 | 在最终 `STATUS_HANDOFF` 固定 |
+| `.evidence/sdd-007/agentteams-persistent-driver.json` | actual vs expected identity、six-member ACK/Submit/check、five worker-origin calls、Leader 0 call | `2beec0cf9449b1bb105b73f28b241bf57bbfb6f45e558577642aef0066f9d066` |
+| `.evidence/sdd-002/agentteams-real-runtime.json` | source HEAD `eb042147…`、upstream official installer、source/license/image identity、真实 runtime lifecycle 与 exact cleanup | `0f3ba69878b848d37dfab011246537cfa61681dd2e813afcf2af20161d6332cb` |
 | 本报告 | 18 条二元 AC、Owner UAT、限制、Rollback | 在最终 `STATUS_HANDOFF` 固定 |
 
 这些 `.evidence/` 文件是 ignored local/public-safe 机器证据，由 CI artifact 或 handoff digest 引用，不把私有 transcript 或 Secret 提交到 Git。
@@ -105,7 +107,7 @@
 | `SDD007_POSTGRES_ADMIN_URL=postgres://postgres@127.0.0.1:56432/postgres npm run verify:sdd007:postgres` | `PASS`；随机 fresh authority/gateway/rollback DB，结束强制 drop；PostgreSQL 17.10。 |
 | `npm run verify:sdd007:compose` | `PASS`；独立 project fresh startup，controlled fake `STARTING` 而非 READY，Web/API/CLI 同 PG，Gateway/API/PostgreSQL stop/restart，Secret 不进 API/log/PG dump，Docker socket=false，external action=0，project/volume/temp Secret cleanup PASS。 |
 | `npm run storybook:build && npm run verify:sdd007:browser` | `PASS`；Chromium zh-CN/en、14 项 runtime/blocked/Token/Trace/keyboard/desktop 断言、axe serious/critical 0、console error 0、3 张截图。 |
-| `npm run verify:sdd007:agentteams-real` | 预提交运行已完成 official source/installer、exact controller+manager+six Workers、六 ACK/Submit/check 与 cleanup，但 clean-source 证据门禁按预期拒绝未提交 Worktree；implementation commit 后将从 clean HEAD 重跑并只在 exit 0 后改为 `PASS`。 |
+| `npm run verify:sdd007:agentteams-real` | `PASS`；clean committed source HEAD `eb0421472f5864a9bf37437bc172b9bb8200c3a6`；official source/installer、actual controller+manager+six Workers identity、六 ACK/Submit/check、五次 exact-role Worker-origin Gateway call、Leader 0 call、Producer/Auditor 分离；exact containers/volume/provider/temp credentials cleanup PASS。 |
 | `npm run check:messages` | `PASS`，zh-CN/en 980 keys。 |
 | `npm test` | `PASS`，57 passed / 4 skipped files；470 passed / 4 skipped tests。 |
 | `npm run check:secrets && npm run check:compose && npm run check:sdd007-runtime-manifest` | `PASS`；Secret、Docker socket/port/secret scope、pinned manifests。 |
@@ -201,6 +203,7 @@ Rollback 原则是停止写入、保留证据、forward-fix：
 | Branch | `codex/sdd-007-persistent-agentteams-runtime` |
 | Authorized base | `2b5673d0c408060034297328cd2522f4d9578ad1` |
 | Full HEAD / Draft PR | 最终提交、push、Draft PR 后由结构化 `STATUS_HANDOFF` 填报 |
+| Runtime evidence source HEAD | `eb0421472f5864a9bf37437bc172b9bb8200c3a6` |
 | Migration | `000014_persistent_agentteams_runtime.cjs` |
 | Runtime/source/license | AgentTeams v1.2.0 / `793db242257a569d911b1aa59c1cd554af78511f` / source tar SHA-256 `a4a9…0770c` / Apache-2.0 |
 | Provider evidence | controlled fake `ENGINEERING_VERIFIED`；real DeepSeek `PENDING` |
