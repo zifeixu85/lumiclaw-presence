@@ -6,6 +6,7 @@ import {
   expectedPlanDates,
   sha256Digest,
   stableContractId,
+  validateLocalDate,
   validateAccountBindings,
   type AccountProfileBinding,
   type CampaignDocument,
@@ -71,6 +72,7 @@ export type CompileMissionIntentV2Input = {
   knowledge: KnowledgeRoleContext;
   accountProfiles: AccountProfileBinding[];
   compilerVersion?: string;
+  lineage?: {generation: number; parentBundleId: string | null; parentBundleDigest: string | null};
 };
 
 export function compileMissionIntentV2(input: CompileMissionIntentV2Input): MissionIntentBundle {
@@ -82,12 +84,16 @@ export function compileMissionIntentV2(input: CompileMissionIntentV2Input): Miss
   const approvedProfileDigests = new Map(input.knowledge.profileDigests.map((binding) => [binding.revisionId,binding.digest]));
   if (accounts.some((account) => approvedProfileDigests.get(account.accountProfileRevisionId) !== account.digest)) throw new GoalPlanContractError('ACCOUNT_PROFILE_MISSING');
   const missionIntentId = stableContractId('mission', {ownerId: input.goal.ownerId, goalId: input.goal.goalId});
-  const bundleId = stableContractId('bundle', {missionIntentId, generation: 1, goalDigest: input.goal.canonicalDigest, compilerVersion});
+  const lineage = input.lineage ?? {generation: 1, parentBundleId: null, parentBundleDigest: null};
+  if (!Number.isInteger(lineage.generation) || lineage.generation < 1) throw new GoalPlanContractError('MISSION_GENERATION_CONFLICT');
+  if ((lineage.generation === 1) !== (lineage.parentBundleId === null && lineage.parentBundleDigest === null)) throw new GoalPlanContractError('MISSION_GENERATION_CONFLICT');
+  if (lineage.generation > 1 && (lineage.parentBundleId === null || !/^[a-f0-9]{64}$/u.test(lineage.parentBundleDigest ?? ''))) throw new GoalPlanContractError('MISSION_GENERATION_CONFLICT');
+  const bundleId = stableContractId('bundle', {missionIntentId, generation: lineage.generation, goalDigest: input.goal.canonicalDigest, compilerVersion});
   const roles = roleRoster();
   const skillLocks = clone(SKILL_LOCKS);
   const inputBindings = missionInputBindings(input.goal, accounts, compilerVersion);
   const roleContexts = roleContextViews(missionIntentId, input.goal, input.knowledge, accounts);
-  const tasks = intentTasks(missionIntentId, input.goal, accounts, roleContexts);
+  const tasks = intentTasks(missionIntentId, bundleId, input.goal, accounts, roleContexts);
   const selectedPlatforms = [...new Set(accounts.map((account) => account.platformCode))].sort();
   const base: Omit<MissionIntentBundle, 'canonicalDigest'> = {
     schemaVersion: 2,
@@ -95,7 +101,9 @@ export function compileMissionIntentV2(input: CompileMissionIntentV2Input): Miss
     missionIntentId,
     ownerId: input.goal.ownerId,
     bundleId,
-    generation: 1,
+    generation: lineage.generation,
+    parentBundleId: lineage.parentBundleId,
+    parentBundleDigest: lineage.parentBundleDigest,
     state: 'COMPILED',
     compilerVersion,
     inputBindings,
@@ -114,7 +122,7 @@ export function compileMissionIntentV2(input: CompileMissionIntentV2Input): Miss
   return {...base, canonicalDigest: canonicalBundleDigest(base)};
 }
 
-export function importPlannerSubmissionV2(intent: MissionIntentBundle, submission: PlannerSubmission, createdAt: string): ContentPlanRevision {
+export function importPlannerSubmissionV2(intent: MissionIntentBundle, submission: PlannerSubmission, createdAt: string, previousPlan?: ContentPlanRevision): ContentPlanRevision {
   if (intent.state !== 'COMPILED') throw new GoalPlanContractError('MISSION_INPUT_CHANGED');
   const plannerTask = intent.tasks.find((task) => task.roleId === 'campaign-planner' && task.kind === 'PLAN_CONTENT');
   if (plannerTask === undefined) throw new GoalPlanContractError('PLANNER_TASK_MISSING');
@@ -126,11 +134,13 @@ export function importPlannerSubmissionV2(intent: MissionIntentBundle, submissio
   validatePlanPayload(intent, submission.slots, submission.currentBrief, submission.sourceBindings);
   const goal = intent.inputBindings.operatingGoal;
   const planId = stableContractId('plan', {missionIntentId: intent.missionIntentId});
+  if (previousPlan !== undefined && (previousPlan.ownerId !== intent.ownerId || previousPlan.missionIntentId !== intent.missionIntentId || previousPlan.planId !== planId)) throw new GoalPlanContractError('PLAN_VERSION_CONFLICT');
+  const revision = (previousPlan?.revision ?? 0) + 1;
   const base: Omit<ContentPlanRevision, 'canonicalDigest'> = {
     schemaVersion: 2,
     ownerId: intent.ownerId,
     planId,
-    revision: 1,
+    revision,
     goalId: goal.id,
     goalRevision: goal.revision,
     goalRevisionDigest: goal.digest,
@@ -142,7 +152,7 @@ export function importPlannerSubmissionV2(intent: MissionIntentBundle, submissio
     currentBrief: clone(submission.currentBrief),
     sourceBindings: clone(submission.sourceBindings),
     plannerSubmissionDigest: sha256Digest(submission),
-    parentDigest: null,
+    parentDigest: previousPlan?.canonicalDigest ?? null,
     approvedInputDigest: null,
     createdAt
   };
@@ -178,8 +188,7 @@ export function continueSelectedPlatformMissionV2(intent: MissionIntentBundle, a
   if (approvedPlan.state !== 'APPROVED') throw new GoalPlanContractError('PLAN_NOT_APPROVED');
   if (approvedPlan.intentBundleId !== intent.bundleId || approvedPlan.intentBundleDigest !== intent.canonicalDigest || approvedPlan.missionIntentId !== intent.missionIntentId) throw new GoalPlanContractError('MISSION_INPUT_CHANGED');
   validatePlanPayload(intent, approvedPlan.slots, approvedPlan.currentBrief, approvedPlan.sourceBindings);
-  const generation = approvedPlan.revision;
-  if (generation < 2) throw new GoalPlanContractError('PLAN_NOT_APPROVED');
+  const generation = Math.max(intent.generation + 1, approvedPlan.revision);
   const bundleId = stableContractId('bundle', {missionIntentId: intent.missionIntentId, generation, planDigest: approvedPlan.canonicalDigest, compilerVersion: intent.compilerVersion});
   const activationUnits = approvedPlan.slots.map((slot) => ({
     activationUnitId: stableContractId('unit', {missionIntentId: intent.missionIntentId, slotId: slot.slotId, accountId: slot.accountProfileRevisionId}),
@@ -262,9 +271,9 @@ function roleContextViews(missionIntentId: string, goal: OperatingGoalRevision, 
   return base.map((context) => ({...context, contextDigest: sha256Digest({missionIntentId, goalDigest: goal.canonicalDigest, snapshotDigest: knowledge.snapshotDigest, ...context})}));
 }
 
-function intentTasks(missionIntentId: string, goal: OperatingGoalRevision, accounts: AccountProfileBinding[], contexts: RoleContextView[]): MissionTaskTemplate[] {
+function intentTasks(missionIntentId: string, intentBundleId: string, goal: OperatingGoalRevision, accounts: AccountProfileBinding[], contexts: RoleContextView[]): MissionTaskTemplate[] {
   const task = (suffix: string, kind: MissionTaskTemplate['kind'], roleId: MissionRoleId, dependsOn: string[], accountProfileRevisionIds: string[], mandate: string, platformCode: AccountProfileBinding['platformCode'] | null, outputSchema: string, substantive: boolean): MissionTaskTemplate => {
-    const taskId = stableContractId('task', {missionIntentId, suffix});
+    const taskId = stableContractId('task', {missionIntentId, intentBundleId, suffix});
     const context = contexts.find((item) => item.roleId === roleId)!;
     const skillLockDigest = roleSkillDigest(roleId);
     return {taskId, kind, roleId, platformCode, accountProfileRevisionIds, mandate, dependsOn, inputDigest: sha256Digest({missionIntentId, goalDigest: goal.canonicalDigest, contextDigest: context.contextDigest, dependsOn, accountProfileRevisionIds, mandate, outputSchema, skillLockDigest}), outputSchema, skillLockDigest, substantive};
@@ -338,7 +347,8 @@ function validatePlanPayload(intent: MissionIntentBundle, slots: ContentPlanSlot
 function assertSlot(slot: ContentPlanSlot): void {
   const exact = ['slotId','localDate','localTime','platformCode','accountProfileRevisionId','producerRole','theme','contentObjective','claimConstraints','sourceItemIds','status'];
   if (!isRecord(slot) || Object.keys(slot).some((key) => !exact.includes(key)) || exact.some((key) => !(key in slot))) throw new GoalPlanContractError('PLAN_SCHEMA_INVALID');
-  if (!/^\d{4}-\d{2}-\d{2}$/u.test(slot.localDate) || (slot.localTime !== null && !/^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(slot.localTime)) || !['X','XIAOHONGSHU'].includes(slot.platformCode) || !['founder-identity-producer','product-account-producer'].includes(slot.producerRole) || slot.status !== 'PLANNED') throw new GoalPlanContractError('PLAN_SCHEMA_INVALID');
+  validateLocalDate(slot.localDate, 'PLAN_SCHEMA_INVALID');
+  if ((slot.localTime !== null && !/^(?:[01]\d|2[0-3]):[0-5]\d$/u.test(slot.localTime)) || !['X','XIAOHONGSHU'].includes(slot.platformCode) || !['founder-identity-producer','product-account-producer'].includes(slot.producerRole) || slot.status !== 'PLANNED') throw new GoalPlanContractError('PLAN_SCHEMA_INVALID');
   if (!text(slot.slotId,160) || !text(slot.theme,500) || !text(slot.contentObjective,1000) || !stringList(slot.claimConstraints,0,20,1000) || !stringList(slot.sourceItemIds,1,100,160)) throw new GoalPlanContractError('PLAN_SCHEMA_INVALID');
 }
 

@@ -180,7 +180,9 @@ export type MissionIntentBundle = {
   missionIntentId: string;
   ownerId: string;
   bundleId: string;
-  generation: 1;
+  generation: number;
+  parentBundleId: string | null;
+  parentBundleDigest: string | null;
   state: MissionBundleState;
   canonicalDigest: string;
   compilerVersion: string;
@@ -259,6 +261,13 @@ export type InvalidationEvent = {
   createdAt: string;
 };
 
+export type BundleInvalidationRequest =
+  | {reasonCode: 'GOAL_REVISION_CHANGED'; currentDigest: string; goalId: string}
+  | {reasonCode: 'PLAN_REVISION_CHANGED'; currentDigest: string; planId: string; missionIntentId: string}
+  | {reasonCode: 'KNOWLEDGE_SNAPSHOT_CHANGED'; currentDigest: string; supersededSnapshotId: string; supersededSnapshotDigest: string}
+  | {reasonCode: 'ACCOUNT_PROFILE_CHANGED'; currentDigest: string; supersededAccountProfileRevisionIds: string[]}
+  | {reasonCode: 'MISSION_INPUT_CHANGED'; currentDigest: string; missionIntentId: string};
+
 export type GoalWorkspace = {
   goals: OperatingGoalRevision[];
   plans: ContentPlanRevision[];
@@ -284,7 +293,7 @@ export interface GoalPlanRepository {
   appendBundle(ownerId: string, bundle: MissionBundle, expectedGoalDigest: string, idempotencyKey: string, now: Date): Promise<{bundle: MissionBundle; replayed: boolean}>;
   appendPlan(ownerId: string, plan: ContentPlanRevision, expectedHeadDigest: string | null, idempotencyKey: string, now: Date): Promise<{plan: ContentPlanRevision; replayed: boolean}>;
   approvePlanAndAppendBundle(ownerId: string, expectedPlanDigest: string, approvedPlan: ContentPlanRevision, bundle: MissionExecutionBundle, idempotencyKey: string, now: Date): Promise<{plan: ContentPlanRevision; bundle: MissionExecutionBundle; replayed: boolean}>;
-  invalidateBundles(ownerId: string, reasonCode: InvalidationEvent['reasonCode'], currentDigest: string, now: Date): Promise<InvalidationEvent[]>;
+  invalidateBundles(ownerId: string, request: BundleInvalidationRequest, now: Date): Promise<InvalidationEvent[]>;
   close(): Promise<void>;
 }
 
@@ -316,8 +325,8 @@ export function validateOperatingGoalInput(value: unknown): OperatingGoalInput {
   assertExactObject(value, ['objective','horizonDays','startsAt','endsAt','cadence','selectedAccountIds','targetMarket','contentLocale','timeZone','successSignals','knowledgeSnapshotId','knowledgeSnapshotDigest'], 'GOAL_SCHEMA_INVALID');
   if (!GOAL_HORIZONS.includes(value.horizonDays as GoalHorizonDays)) throw new GoalPlanContractError('GOAL_HORIZON_INVALID');
   if (!GOAL_CADENCES.includes(value.cadence as GoalCadence)) throw new GoalPlanContractError('GOAL_CADENCE_INVALID');
-  const startsAt = localDate(value.startsAt, 'GOAL_TIME_WINDOW_INVALID');
-  const endsAt = localDate(value.endsAt, 'GOAL_TIME_WINDOW_INVALID');
+  const startsAt = validateLocalDate(value.startsAt, 'GOAL_TIME_WINDOW_INVALID');
+  const endsAt = validateLocalDate(value.endsAt, 'GOAL_TIME_WINDOW_INVALID');
   const expectedEnd = addDays(startsAt, Number(value.horizonDays) - 1);
   if (endsAt !== expectedEnd) throw new GoalPlanContractError('GOAL_TIME_WINDOW_INVALID');
   const selectedAccountIds = uniqueStrings(value.selectedAccountIds, 1, 2, 'ACCOUNT_NOT_SELECTED');
@@ -424,7 +433,22 @@ function assertExactObject(value: unknown, keys: readonly string[], code: string
 function isRecord(value: unknown): value is Record<string, unknown> { return value !== null && typeof value === 'object' && !Array.isArray(value); }
 function text(value: unknown, max: number, code: string): string { if (typeof value !== 'string') throw new GoalPlanContractError(code); const normalized = value.normalize('NFC').trim(); if (normalized.length < 1 || normalized.length > max) throw new GoalPlanContractError(code); return normalized; }
 function uniqueStrings(value: unknown, min: number, max: number, code: string): string[] { if (!Array.isArray(value) || value.length < min || value.length > max || value.some((item) => typeof item !== 'string' || item.length < 1) || new Set(value).size !== value.length) throw new GoalPlanContractError(code); return [...value] as string[]; }
-function localDate(value: unknown, code: string): string { const date = text(value, 10, code); if (!/^\d{4}-\d{2}-\d{2}$/u.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00.000Z`))) throw new GoalPlanContractError(code); return date; }
+export function validateLocalDate(value: unknown, code = 'LOCAL_DATE_INVALID'): string {
+  const date = text(value, 10, code);
+  if (!/^\d{4}-\d{2}-\d{2}$/u.test(date)) throw new GoalPlanContractError(code);
+  const [yearText, monthText, dayText] = date.split('-');
+  const year = Number(yearText);
+  const month = Number(monthText);
+  const day = Number(dayText);
+  const instant = new Date(Date.UTC(year, month - 1, day));
+  if (
+    instant.getUTCFullYear() !== year
+    || instant.getUTCMonth() !== month - 1
+    || instant.getUTCDate() !== day
+    || instant.toISOString().slice(0, 10) !== date
+  ) throw new GoalPlanContractError(code);
+  return date;
+}
 function addDays(date: string, days: number): string { const value = new Date(`${date}T00:00:00.000Z`); value.setUTCDate(value.getUTCDate() + days); return value.toISOString().slice(0, 10); }
 function market(value: unknown): string { const result = text(value, 2, 'TARGET_MARKET_INVALID'); if (!/^[A-Z]{2}$/u.test(result)) throw new GoalPlanContractError('TARGET_MARKET_INVALID'); return result; }
 function locale(value: unknown): string { const result = text(value, 16, 'CONTENT_LOCALE_INVALID'); if (!/^[a-z]{2}(?:-[A-Z]{2})?$/u.test(result)) throw new GoalPlanContractError('CONTENT_LOCALE_INVALID'); return result; }

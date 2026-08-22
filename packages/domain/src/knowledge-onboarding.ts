@@ -173,6 +173,16 @@ export type KnowledgeRoleContext = {
   profileDigests: Array<{revisionId: string; digest: string}>;
 };
 
+export type KnowledgeSnapshotSupersession = {
+  eventId: string;
+  ownerId: string;
+  supersededSnapshotId: string;
+  supersededSnapshotDigest: string;
+  approvedSnapshotId: string;
+  approvedSnapshotDigest: string;
+  createdAt: string;
+};
+
 export interface KnowledgeRepository {
   health(): Promise<boolean>;
   ensureOwner(ownerId: string, now: Date): Promise<KnowledgeOverview>;
@@ -182,11 +192,14 @@ export interface KnowledgeRepository {
   ingestSource(input: KnowledgeSourceInput, expectedVersion: number, idempotencyKey: string, now: Date): Promise<KnowledgeOverview>;
   ingestTextSource(input: KnowledgeTextSourceInput, expectedVersion: number, idempotencyKey: string, now: Date): Promise<KnowledgeOverview>;
   getSource(ownerId: string, documentId: string): Promise<SourceDocumentRevision | undefined>;
+  getProfileRevision(ownerId: string, revisionId: string): Promise<ProfileRevision | undefined>;
   deleteSource(ownerId: string, documentId: string, expectedVersion: number, idempotencyKey: string, now: Date): Promise<KnowledgeOverview>;
   confirmLegacySource(ownerId: string, documentId: string, expectedVersion: number, idempotencyKey: string, now: Date): Promise<KnowledgeOverview>;
   resolveConflict(ownerId: string, conflictId: string, selectedItemId: string, note: string, expectedVersion: number, idempotencyKey: string, now: Date): Promise<KnowledgeOverview>;
   approveSnapshot(ownerId: string, snapshotId: string, canonicalDigest: string, expectedVersion: number, idempotencyKey: string, now: Date): Promise<KnowledgeOverview>;
   getRoleContext(ownerId: string, snapshotId: string, canonicalDigest: string): Promise<KnowledgeRoleContext>;
+  listPendingSnapshotSupersessions(ownerId: string): Promise<KnowledgeSnapshotSupersession[]>;
+  acknowledgeSnapshotSupersession(ownerId: string, eventId: string, now: Date): Promise<void>;
   recordSecurityRejection(ownerId: string, eventCode: string, now: Date): Promise<void>;
   close(): Promise<void>;
 }

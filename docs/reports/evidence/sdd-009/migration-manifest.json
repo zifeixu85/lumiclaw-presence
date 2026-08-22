@@ -11,7 +11,10 @@
     "content_plan_heads_v2",
     "mission_bundle_generations_v2",
     "mission_bundle_status_events_v2",
-    "goal_plan_idempotency_records_v2"
+    "goal_plan_idempotency_records_v2",
+    "knowledge_snapshot_context_bindings_v2",
+    "knowledge_snapshot_supersession_outbox_v2",
+    "knowledge_snapshot_supersession_receipts_v2"
   ],
   "emptyDown": {
     "result": "PASS"
@@ -28,5 +31,11 @@
   "ownerIsolation": {
     "compositeForeignKeys": true,
     "browserOwnerOverrideIgnored": true
+  },
+  "supersessionOutbox": {
+    "transactionalWithApproval": true,
+    "appendOnly": true,
+    "deliveryReceiptAppendOnly": true,
+    "retryIdempotent": true
   }
 }

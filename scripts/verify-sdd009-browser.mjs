@@ -21,20 +21,22 @@ try{
   await page.goto(`${webUrl}/zh-CN/goals`,{waitUntil:'networkidle'});
   await page.getByRole('heading',{name:'把目标变成一条可审阅、可恢复的运营节奏。'}).waitFor();
   checks.defaultChinese=await page.locator('html').getAttribute('lang')==='zh-CN';
-  checks.goalFormHasIndependentContext=await Promise.all(['Target Market','Content Locale','IANA Time Zone'].map((name)=>page.getByLabel(name).isVisible())).then((values)=>values.every(Boolean));
+  checks.goalFormHasIndependentContext=await Promise.all(['目标市场','内容语言','排期时区（IANA）'].map((name)=>page.getByLabel(name).isVisible())).then((values)=>values.every(Boolean));
   checks.ownerBoundaryVisible=await page.getByText(/所有 mutation 都绑定当前本机 Owner/u).isVisible();
   checks.successSignalsNotOutcomes=await page.getByText(/不代表增长、线索、收入/u).isVisible();
   checks.selectedApprovedAccounts=await page.locator('.lc-account-selector label[data-selected="true"]').count()===2;
-  await page.getByLabel('Goal Objective').focus();await page.keyboard.press('Tab');checks.keyboardTraversal=(await page.evaluate(()=>document.activeElement?.tagName))!=='BODY';
+  await page.getByLabel('目标说明').focus();await page.keyboard.press('Tab');checks.keyboardTraversal=(await page.evaluate(()=>document.activeElement?.tagName))!=='BODY';
   await capture(page,'01-goal-form-zh.png');await assertAxe(page,'goal-form-zh');
 
   await page.getByRole('button',{name:'保存并激活 Goal'}).click();
-  await page.getByText('ACTIVE',{exact:true}).waitFor();
-  checks.goalCreatedAndActivated=await page.getByText('ACTIVE OPERATING GOAL',{exact:true}).isVisible();
-  await page.reload({waitUntil:'networkidle'});checks.goalRefreshRecovery=await page.getByText('ACTIVE',{exact:true}).isVisible();
-  await page.getByRole('button',{name:'生成 MissionIntent'}).click();
+  await page.getByText('运行目标已激活',{exact:true}).waitFor();
+  checks.goalCreatedAndActivated=await page.getByText('当前持续运营目标',{exact:true}).isVisible();
+  await page.reload({waitUntil:'networkidle'});checks.goalRefreshRecovery=await page.getByText('运行目标已激活',{exact:true}).isVisible();
+  await page.getByRole('button',{name:'生成任务意图'}).click();
   await page.getByRole('heading',{name:'计划前，先看清输入与责任'}).waitFor();
   checks.intentExactlySixRoles=await page.locator('.lc-role-band article').count()===6;
+  const chineseRoles=['任务协调 Agent','事实核验 Agent','市场策划 Agent','创始人内容 Agent','产品内容 Agent','独立审校 Agent'];checks.chineseRoleNamesPrimary=(await Promise.all(chineseRoles.map((name)=>page.getByText(name,{exact:true}).first().isVisible()))).every(Boolean);
+  checks.englishRoleHeadingsNotPrimary=await page.getByText('Exactly six roles',{exact:true}).count()===0&&await page.getByText('Founder Identity Producer',{exact:true}).count()===0&&await page.getByText('Product Account Producer',{exact:true}).count()===0;
   checks.intentSelectedPlatforms=await page.getByText('X + XIAOHONGSHU',{exact:true}).isVisible();
   checks.intentHonestNoRun=await page.getByText(/尚未运行任何 Agent/u).isVisible();
   await capture(page,'02-mission-intent-zh.png');await assertAxe(page,'intent-zh');
@@ -43,6 +45,7 @@ try{
   await page.getByRole('heading',{name:'审阅并形成新的 Plan revision'}).waitFor();
   checks.fixtureClearlyMarked=await page.getByText(/这不是 AgentTeams 真实运行/u).isVisible();
   checks.sevenDayPlan=await page.locator('.lc-plan-grid nav button').count()===3;
+  checks.chineseFixtureConstraints=await page.getByText('不得声称 AgentTeams 已真实运行',{exact:true}).isVisible()&&await page.getByText('不得承诺增长、线索或收入',{exact:true}).isVisible();
   await page.getByLabel('主题 Theme').fill('Owner 调整：公开构建的治理取舍');
   const [revisionResponse]=await Promise.all([page.waitForResponse((response)=>response.url().includes('/api/v1/content-plans/')&&response.request().method()==='PATCH'),page.getByRole('button',{name:'形成新 Revision'}).click()]);
   if(!revisionResponse.ok())throw new Error(`PLAN_REVISION_FAILED:${revisionResponse.status()}:${await revisionResponse.text()}`);
@@ -51,7 +54,7 @@ try{
   await capture(page,'03-plan-review-revision-zh.png');await assertAxe(page,'plan-zh');
 
   await page.getByRole('button',{name:/批准 exact/u}).click();
-  const executionHeading=page.getByRole('heading',{name:'Selected-platform MissionExecution'});await executionHeading.waitFor();
+  const executionHeading=page.getByRole('heading',{name:'仅覆盖所选平台的执行合同'});await executionHeading.waitFor();
   checks.executionExactlySixTasks=await page.locator('.lc-dag article').count()===6;
   checks.twoSubstantiveProducerTasks=await page.locator('.lc-dag article[data-producer="true"]').count()===2;
   const producerBodies=await page.locator('.lc-dag article[data-producer="true"] p').allInnerTexts();checks.producerTasksDiffer=producerBodies.length===2&&producerBodies[0]!==producerBodies[1];
@@ -59,17 +62,18 @@ try{
   checks.noArtifactsOrActions=await page.getByText(/没有 Artifact、独立 Audit 结果、ActionGrant/u).isVisible();
   await executionHeading.scrollIntoViewIfNeeded();await capture(page,'04-mission-execution-zh.png');await assertAxe(page,'execution-zh');
 
-  const before=await api('/api/v1/local-workspace');const goal=latest(before.body.goals.goals);const mutation={canonicalDigest:goal.canonicalDigest,objective:`${goal.objective}（Owner 调整）`,horizonDays:goal.horizonDays,startsAt:goal.startsAt,endsAt:goal.endsAt,cadence:goal.cadence,selectedAccountIds:goal.selectedAccountIds,targetMarket:goal.targetMarket,contentLocale:goal.contentLocale,timeZone:goal.timeZone,successSignals:goal.successSignals,knowledgeSnapshotId:goal.knowledgeSnapshotId,knowledgeSnapshotDigest:goal.knowledgeSnapshotDigest};
+  const before=await api('/api/v1/local-workspace');const goal=latest(before.body.goals.goals);const firstIntent=before.body.goals.bundles.find((bundle)=>bundle.kind==='MISSION_INTENT');const firstExecution=before.body.goals.bundles.find((bundle)=>bundle.kind==='MISSION_EXECUTION');const mutation={canonicalDigest:goal.canonicalDigest,objective:`${goal.objective}（Owner 调整）`,horizonDays:goal.horizonDays,startsAt:goal.startsAt,endsAt:goal.endsAt,cadence:goal.cadence,selectedAccountIds:goal.selectedAccountIds,targetMarket:goal.targetMarket,contentLocale:goal.contentLocale,timeZone:goal.timeZone,successSignals:goal.successSignals,knowledgeSnapshotId:goal.knowledgeSnapshotId,knowledgeSnapshotDigest:goal.knowledgeSnapshotDigest};
   const patched=await api(`/api/v1/goals/${goal.goalId}`,{method:'PATCH',headers:{'content-type':'application/json','if-match':goalEtag(goal),'idempotency-key':'sdd009-browser-goal-invalidation-0001'},body:JSON.stringify(mutation)});
   if(patched.status!==200)throw new Error(`GOAL_INVALIDATION_SETUP_FAILED:${patched.status}:${patched.body.code}`);
-  await page.reload({waitUntil:'networkidle'});await page.getByRole('heading',{name:'Selected-platform MissionExecution'}).waitFor();
-  checks.invalidationReasonVisible=await page.getByText('GOAL_REVISION_CHANGED',{exact:true}).isVisible();
-  checks.recoveryActionVisible=await page.locator('code',{hasText:'REVIEW_AND_COMPILE_NEW_GENERATION'}).first().isVisible();
-  await page.getByText('这个 generation 已失效',{exact:true}).scrollIntoViewIfNeeded();await capture(page,'05-invalidation-recovery-zh.png');await assertAxe(page,'invalidation-zh');
+  await page.reload({waitUntil:'networkidle'});await page.getByText('旧 generation 已保留并停止继续',{exact:true}).waitFor();
+  checks.invalidationReasonVisible=await page.getByText(/GOAL_REVISION_CHANGED/u).isVisible();
+  checks.recoveryActionVisible=await page.getByText(/REVIEW_AND_COMPILE_NEW_GENERATION/u).isVisible();
+  await page.getByText('旧 generation 已保留并停止继续',{exact:true}).scrollIntoViewIfNeeded();await capture(page,'05-invalidation-recovery-zh.png');await assertAxe(page,'invalidation-zh');
+  await page.getByRole('button',{name:'复核并激活此 Goal revision'}).click();await page.getByText('运行目标已激活',{exact:true}).waitFor();await page.getByRole('button',{name:'生成任务意图'}).click();await page.getByRole('heading',{name:'计划前，先看清输入与责任'}).waitFor();await page.getByRole('button',{name:'导入受控 Fixture'}).click();await page.getByRole('heading',{name:'审阅并形成新的 Plan revision'}).waitFor();await page.getByRole('button',{name:/批准 exact/u}).click();await page.getByRole('heading',{name:'仅覆盖所选平台的执行合同'}).waitFor();const recovered=await api('/api/v1/local-workspace');const newIntent=[...recovered.body.goals.bundles].filter((bundle)=>bundle.kind==='MISSION_INTENT').sort((left,right)=>right.generation-left.generation)[0];const newExecution=[...recovered.body.goals.bundles].filter((bundle)=>bundle.kind==='MISSION_EXECUTION').sort((left,right)=>right.generation-left.generation)[0];checks.sameMissionReplanningLineage=newIntent.missionIntentId===firstIntent.missionIntentId&&newExecution.missionIntentId===firstExecution.missionIntentId&&newIntent.generation>firstExecution.generation&&newExecution.generation>newIntent.generation&&newIntent.parentBundleDigest===firstExecution.canonicalDigest;checks.replannedDigestsDistinct=newIntent.canonicalDigest!==firstIntent.canonicalDigest&&newExecution.canonicalDigest!==firstExecution.canonicalDigest;checks.replannedSelectedPlatforms=newExecution.selectedPlatforms.join(',')==='X,XIAOHONGSHU';await capture(page,'05b-recompiled-execution-zh.png');await assertAxe(page,'recompiled-execution-zh');
 
   await page.goto(`${webUrl}/en/goals`,{waitUntil:'networkidle'});
   await page.getByRole('heading',{name:'Turn a goal into a reviewable, recoverable operating rhythm.'}).waitFor();
-  checks.englishParity=await page.getByRole('heading',{name:'Selected-platform MissionExecution'}).isVisible()&&await page.getByText(/This generation is invalidated/u).isVisible()&&await page.getByText(/No model call, AgentTeams run/u).isVisible();
+  checks.englishParity=await page.getByRole('heading',{name:'Selected-platform MissionExecution'}).isVisible()&&await page.getByText('Mission Coordination Agent',{exact:true}).first().isVisible()&&await page.getByText(/No model call, AgentTeams run/u).isVisible();
   await capture(page,'06-goal-execution-en.png');await assertAxe(page,'execution-en');
 
   await page.setViewportSize({width:1024,height:900});await page.goto(`${webUrl}/zh-CN/goals`,{waitUntil:'networkidle'});checks.desktop1024NoHorizontalOverflow=await page.evaluate(()=>document.documentElement.scrollWidth<=document.documentElement.clientWidth);

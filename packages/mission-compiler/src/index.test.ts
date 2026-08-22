@@ -80,8 +80,17 @@ describe('SDD-009 selected-platform compiler v2', () => {
     expect(() => importPlannerSubmissionV2(intent,{...submission,inputDigest:'0'.repeat(64)},'2026-08-22T01:00:00.000Z')).toThrowError(expect.objectContaining({code:'PLANNER_SUBMISSION_INPUT_MISMATCH'}));
     expect(() => importPlannerSubmissionV2(intent,{...submission,outputSchemaDigest:'0'.repeat(64)},'2026-08-22T01:00:00.000Z')).toThrowError(expect.objectContaining({code:'PLANNER_SUBMISSION_SCHEMA_MISMATCH'}));
     expect(() => importPlannerSubmissionV2(intent,{...submission,slots:submission.slots.slice(0,-1)},'2026-08-22T01:00:00.000Z')).toThrowError(expect.objectContaining({code:'PLAN_SLOT_COVERAGE_INVALID'}));
+    const impossible=structuredClone(submission);impossible.slots[0]!.localDate='2026-02-30';
+    expect(() => importPlannerSubmissionV2(intent,impossible,'2026-08-22T01:00:00.000Z')).toThrowError(expect.objectContaining({code:'PLAN_SCHEMA_INVALID'}));
     const draft = importPlannerSubmissionV2(intent,submission,'2026-08-22T01:00:00.000Z');
     expect(() => approveContentPlanV2(intent,draft,'0'.repeat(64),'2026-08-22T02:00:00.000Z')).toThrowError(expect.objectContaining({code:'PLAN_DIGEST_MISMATCH'}));
+  });
+
+  it('appends same-Mission Intent, Plan and Execution generations without overwriting history',()=>{
+    const fixture=createV2Fixture();const first=compileMissionIntentV2({goal:fixture.goal,knowledge:fixture.knowledge,accountProfiles:fixture.accounts});const submission1=controlledPlannerSubmission(fixture.goal,fixture.accounts);const plan1=importPlannerSubmissionV2(first,submission1,'2026-08-22T01:00:00.000Z');const approved1=approveContentPlanV2(first,plan1,plan1.canonicalDigest,'2026-08-22T02:00:00.000Z');const execution1=continueSelectedPlatformMissionV2(first,approved1);
+    const nextGoal={...fixture.goal,revision:fixture.goal.revision+1,canonicalDigest:'b'.repeat(64)};const nextKnowledge={...fixture.knowledge,snapshotId:nextGoal.knowledgeSnapshotId,snapshotDigest:nextGoal.knowledgeSnapshotDigest};const second=compileMissionIntentV2({goal:nextGoal,knowledge:nextKnowledge,accountProfiles:fixture.accounts,lineage:{generation:execution1.generation+1,parentBundleId:execution1.bundleId,parentBundleDigest:execution1.canonicalDigest}});
+    expect(second.missionIntentId).toBe(first.missionIntentId);expect(second.generation).toBeGreaterThan(execution1.generation);expect(second.parentBundleDigest).toBe(execution1.canonicalDigest);
+    const planner=second.tasks.find((task)=>task.roleId==='campaign-planner')!;const template=controlledPlannerSubmission(nextGoal,fixture.accounts);const submission2={...template,intentBundleId:second.bundleId,intentBundleDigest:second.canonicalDigest,taskId:planner.taskId,inputDigest:planner.inputDigest,skillLockDigest:planner.skillLockDigest};const plan2=importPlannerSubmissionV2(second,submission2,'2026-08-23T01:00:00.000Z',approved1);expect(plan2.planId).toBe(plan1.planId);expect(plan2.revision).toBe(approved1.revision+1);expect(plan2.parentDigest).toBe(approved1.canonicalDigest);const approved2=approveContentPlanV2(second,plan2,plan2.canonicalDigest,'2026-08-23T02:00:00.000Z');const execution2=continueSelectedPlatformMissionV2(second,approved2);expect(execution2.generation).toBeGreaterThan(second.generation);expect(execution2.bundleId).not.toBe(execution1.bundleId);
   });
 
   it('creates a new revision and digest for an Owner slot edit', () => {

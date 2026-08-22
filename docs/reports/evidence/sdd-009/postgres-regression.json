@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-009",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "database": "fresh isolated lumiclaw_sdd009_regression",
+  "checks": {
+    "goalAPlanMutationLeavesMissionBValid": true,
+    "goalAMutationLeavesMissionBValid": true,
+    "sdd008ApprovedSnapshotContextBindingMaterializedWithoutDigestChange": true,
+    "s1RoleContextAndCompileDuringS2Draft": true,
+    "s2ApprovalInjectedInvalidationFailure": true,
+    "apiReadAfterRepositoryRestartFailsClosed": true,
+    "idempotentApprovalRetry": true,
+    "outboxDeliveredExactlyOnce": true,
+    "sameMissionIntentIdAfterS2Rebind": true,
+    "monotonicIntentPlanExecutionLineage": true,
+    "selectedPlatformOnly": true
+  },
+  "rows": {
+    "goal_revisions": 7,
+    "plan_revisions": 7,
+    "bundles": 6,
+    "invalidations": 4,
+    "supersession_outbox": 1,
+    "supersession_receipts": 1,
+    "pending_supersessions": 0
+  },
+  "runnerTranscript": "\u001b[1m\u001b[30m\u001b[46m RUN \u001b[49m\u001b[39m\u001b[22m \u001b[36mv4.1.10 \u001b[39m\u001b[90m/app\u001b[39m\n\n \u001b[32m✓\u001b[39m apps/api/src/goal-plan-postgres-regression.test.ts \u001b[2m(\u001b[22m\u001b[2m1 test\u001b[22m\u001b[2m)\u001b[22m\u001b[33m 389\u001b[2mms\u001b[22m\u001b[39m\n     \u001b[33m\u001b[2m✓\u001b[22m\u001b[39m scopes Goal/Plan invalidation, preserves S1 during draft, recovers an approval outbox failure, and replans the same Mission \u001b[33m 388\u001b[2mms\u001b[22m\u001b[39m\n\n\u001b[2m Test Files \u001b[22m \u001b[1m\u001b[32m1 passed\u001b[39m\u001b[22m\u001b[90m (1)\u001b[39m\n\u001b[2m      Tests \u001b[22m \u001b[1m\u001b[32m1 passed\u001b[39m\u001b[22m\u001b[90m (1)\u001b[39m\n\u001b[2m   Start at \u001b[22m 03:10:14\n\u001b[2m   Duration \u001b[22m 1.16s\u001b[2m (transform 500ms, setup 0ms, import 718ms, tests 389ms, environment 0ms)\u001b[22m"
+}

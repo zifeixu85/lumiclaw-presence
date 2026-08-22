@@ -16,6 +16,7 @@ import {
   type KnowledgeRepository,
   type KnowledgeRoleContext,
   type KnowledgeSnapshot,
+  type KnowledgeSnapshotSupersession,
   type KnowledgeSourceInput,
   type KnowledgeTextSourceInput,
   type ProfileKind,
@@ -35,6 +36,9 @@ export class MemoryKnowledgeRepository implements KnowledgeRepository {
   readonly #profiles: ProfileRevision[] = [];
   readonly #items: KnowledgeItem[] = [];
   readonly #snapshots: KnowledgeSnapshot[] = [];
+  readonly #snapshotContexts = new Map<string,{targetMarket:string;contentLocale:string;timeZone:string;contextDigest:string}>();
+  readonly #snapshotSupersessions:KnowledgeSnapshotSupersession[]=[];
+  readonly #supersessionReceipts=new Set<string>();
   readonly #resolutions = new Map<string, {selectedItemId: string; note: string}>();
   readonly #idempotency = new Map<string, IdempotencyRecord>();
 
@@ -88,6 +92,8 @@ export class MemoryKnowledgeRepository implements KnowledgeRepository {
     return clone(source);
   }
 
+  public async getProfileRevision(ownerId:string,revisionId:string):Promise<ProfileRevision|undefined>{const profile=this.#profiles.find((item)=>item.id===revisionId);if(profile===undefined)return undefined;if(profile.ownerId!==ownerId)throw new KnowledgeContractError('OWNER_BOUNDARY_VIOLATION');return clone(profile);}
+
   public async deleteSource(ownerId: string, documentId: string, expectedVersion: number, idempotencyKey: string, now: Date): Promise<KnowledgeOverview> {
     return this.mutate(ownerId, `DELETE:/knowledge/sources/${documentId}`, idempotencyKey, {documentId, expectedVersion}, async () => {
       const session = this.requireVersion(ownerId, expectedVersion);
@@ -138,22 +144,26 @@ export class MemoryKnowledgeRepository implements KnowledgeRepository {
       if (draft.gaps.length > 0) throw new KnowledgeContractError('SNAPSHOT_GAPS_UNRESOLVED');
       if (draft.conflictDecisions.some((item) => item.state !== 'RESOLVED')) throw new KnowledgeContractError('KNOWLEDGE_CONFLICT_UNRESOLVED');
       for (const source of this.activeSources(ownerId)) if (!this.#sourceBytes.has(source.blobDigest)) throw new KnowledgeContractError('SOURCE_BLOB_MISSING');
+      const previous=this.#snapshots.find((snapshot)=>snapshot.ownerId===ownerId&&snapshot.state==='APPROVED');
       for (const snapshot of this.#snapshots) if (snapshot.ownerId === ownerId && snapshot.state === 'APPROVED') snapshot.state = 'SUPERSEDED';
       draft.state = 'APPROVED'; draft.approvedBy = ownerId; draft.approvedAt = now.toISOString();
+      if(previous!==undefined){const eventId=`snapshot_supersession_${sha256Digest({ownerId,supersededSnapshotId:previous.id,approvedSnapshotId:draft.id}).slice(0,24)}`;if(!this.#snapshotSupersessions.some((event)=>event.eventId===eventId))this.#snapshotSupersessions.push({eventId,ownerId,supersededSnapshotId:previous.id,supersededSnapshotDigest:previous.canonicalDigest,approvedSnapshotId:draft.id,approvedSnapshotDigest:draft.canonicalDigest,createdAt:now.toISOString()});}
       this.#sessions.set(ownerId, {...session, state: 'KNOWLEDGE_APPROVED_NEEDS_GOAL', currentStep: 'REVIEW', currentSnapshotId: draft.id, currentSnapshotDigest: draft.canonicalDigest, rowVersion: session.rowVersion + 1, updatedAt: now.toISOString()});
       return this.overview(ownerId, this.requireSession(ownerId));
     });
   }
 
   public async getRoleContext(ownerId: string, snapshotId: string, canonicalDigest: string): Promise<KnowledgeRoleContext> {
-    const session = this.requireSession(ownerId);
-    if (session.state !== 'KNOWLEDGE_APPROVED_NEEDS_GOAL' || session.currentSnapshotId !== snapshotId || session.currentSnapshotDigest !== canonicalDigest) throw new KnowledgeContractError('SNAPSHOT_STALE');
+    this.requireSession(ownerId);
     const snapshot = this.#snapshots.find((item) => item.ownerId === ownerId && item.id === snapshotId && item.state === 'APPROVED');
     if (snapshot === undefined || snapshot.canonicalDigest !== canonicalDigest) throw new KnowledgeContractError('SNAPSHOT_APPROVAL_DIGEST_MISMATCH');
-    for (const source of this.activeSources(ownerId)) if (!this.#sourceBytes.has(source.blobDigest)) throw new KnowledgeContractError('SOURCE_BLOB_MISSING');
-    if (session.targetMarket === null || session.contentLocale === null || session.timeZone === null) throw new KnowledgeContractError('SNAPSHOT_STALE');
-    return {snapshotId, snapshotDigest: canonicalDigest, ownerId, targetMarket: session.targetMarket, contentLocale: session.contentLocale, timeZone: session.timeZone, items: snapshot.itemBindings.map(({id, kind, normalizedValue, sourceRevisionIds, profileRevisionIds, ownerAuthority}) => ({id, kind, normalizedValue, sourceRevisionIds, profileRevisionIds, ownerAuthority})), sourceDigests: snapshot.sourceRevisionDigests, profileDigests: snapshot.profileRevisionDigests};
+    for(const binding of snapshot.sourceRevisionDigests){const source=[...this.#sources.values()].find((item)=>item.ownerId===ownerId&&item.id===binding.revisionId&&item.blobDigest===binding.digest);if(source===undefined||!this.#sourceBytes.has(binding.digest))throw new KnowledgeContractError('SOURCE_BLOB_MISSING');}
+    const context=this.#snapshotContexts.get(snapshotId);if(context===undefined)throw new KnowledgeContractError('SNAPSHOT_CONTEXT_BINDING_UNAVAILABLE');
+    return {snapshotId, snapshotDigest: canonicalDigest, ownerId, targetMarket: context.targetMarket, contentLocale: context.contentLocale, timeZone: context.timeZone, items: snapshot.itemBindings.map(({id, kind, normalizedValue, sourceRevisionIds, profileRevisionIds, ownerAuthority}) => ({id, kind, normalizedValue, sourceRevisionIds, profileRevisionIds, ownerAuthority})), sourceDigests: snapshot.sourceRevisionDigests, profileDigests: snapshot.profileRevisionDigests};
   }
+
+  public async listPendingSnapshotSupersessions(ownerId:string):Promise<KnowledgeSnapshotSupersession[]>{return clone(this.#snapshotSupersessions.filter((event)=>event.ownerId===ownerId&&!this.#supersessionReceipts.has(event.eventId)));}
+  public async acknowledgeSnapshotSupersession(ownerId:string,eventId:string,now:Date):Promise<void>{void now;const event=this.#snapshotSupersessions.find((item)=>item.eventId===eventId);if(event===undefined)throw new KnowledgeContractError('SNAPSHOT_SUPERSESSION_NOT_FOUND');if(event.ownerId!==ownerId)throw new KnowledgeContractError('OWNER_BOUNDARY_VIOLATION');this.#supersessionReceipts.add(eventId);}
 
   public async close(): Promise<void> {}
   public async recordSecurityRejection(ownerId:string,eventCode:string,now:Date):Promise<void>{this.#auditEvents.push({ownerId,eventCode,at:now.toISOString()});}
@@ -202,8 +212,10 @@ export class MemoryKnowledgeRepository implements KnowledgeRepository {
     const base = {id: createUuidV7(now.getTime() + version + 401), ownerId, version, sessionRowVersion: session.rowVersion, sourceRevisionDigests: sources.map((item) => ({revisionId: item.id, digest: item.blobDigest})), profileRevisionDigests: [...activeProfileIds].sort().map((revisionId) => ({revisionId, digest: this.#profiles.find((item) => item.id === revisionId)!.digest})), itemBindings: [...items].sort((a, b) => a.id.localeCompare(b.id)), conflictDecisions: conflicts, gaps};
     const snapshot: KnowledgeSnapshot = {...base, state: conflicts.some((item) => item.state === 'NEEDS_OWNER_DECISION') ? 'NEEDS_OWNER' : 'DRAFT', canonicalDigest: snapshotDigest(base), approvedBy: null, approvedAt: null, createdAt: now.toISOString()};
     this.#snapshots.push(snapshot);
+    if(session.targetMarket!==null&&session.contentLocale!==null&&session.timeZone!==null)this.#snapshotContexts.set(snapshot.id,{targetMarket:session.targetMarket,contentLocale:session.contentLocale,timeZone:session.timeZone,contextDigest:sha256Digest({schemaVersion:2,snapshotId:snapshot.id,targetMarket:session.targetMarket,contentLocale:session.contentLocale,timeZone:session.timeZone})});
     const knowledgeState = conflicts.some((item) => item.state === 'NEEDS_OWNER_DECISION') ? 'NEEDS_OWNER_DECISION' : gaps.length === 0 ? 'READY_FOR_APPROVAL' : 'DRAFT';
-    this.#sessions.set(ownerId, {...session, state: knowledgeState, currentSnapshotId: snapshot.id, currentSnapshotDigest: snapshot.canonicalDigest});
+    const authoritative=this.#snapshots.find((item)=>item.ownerId===ownerId&&item.state==='APPROVED');
+    this.#sessions.set(ownerId, {...session, state: knowledgeState, currentSnapshotId: authoritative?.id??snapshot.id, currentSnapshotDigest: authoritative?.canonicalDigest??snapshot.canonicalDigest});
   }
 
   private activeSources(ownerId: string): SourceDocumentRevision[] { return [...this.#sources.values()].filter((item) => item.ownerId === ownerId && item.deletedAt === null).sort((a, b) => a.createdAt.localeCompare(b.createdAt)); }

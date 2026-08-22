@@ -3,7 +3,7 @@
   "sdd": "SDD-009",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-22T02:03:10.387Z",
+  "generatedAt": "2026-08-22T03:10:24.789Z",
   "webUrl": "http://127.0.0.1:3199",
   "apiUrl": "http://127.0.0.1:4199",
   "locales": [
@@ -20,10 +20,13 @@
     "goalCreatedAndActivated": true,
     "goalRefreshRecovery": true,
     "intentExactlySixRoles": true,
+    "chineseRoleNamesPrimary": true,
+    "englishRoleHeadingsNotPrimary": true,
     "intentSelectedPlatforms": true,
     "intentHonestNoRun": true,
     "fixtureClearlyMarked": true,
     "sevenDayPlan": true,
+    "chineseFixtureConstraints": true,
     "planEditAppendsRevision": true,
     "executionExactlySixTasks": true,
     "twoSubstantiveProducerTasks": true,
@@ -32,6 +35,9 @@
     "noArtifactsOrActions": true,
     "invalidationReasonVisible": true,
     "recoveryActionVisible": true,
+    "sameMissionReplanningLineage": true,
+    "replannedDigestsDistinct": true,
+    "replannedSelectedPlatforms": true,
     "englishParity": true,
     "desktop1024NoHorizontalOverflow": true,
     "desktopGate": true
@@ -40,7 +46,7 @@
   "screenshots": [
     {
       "name": "01-goal-form-zh.png",
-      "sha256": "2f16b988aa891ea2604bba2029adf0767c5dcb1004c2541f487e36582e70e58a",
+      "sha256": "fc164b7f0108381608209206c741e8b3d4486dfa6545fb2fc1c39d7182d08ac1",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -48,7 +54,7 @@
     },
     {
       "name": "02-mission-intent-zh.png",
-      "sha256": "00f3a221c5f18f50aa8a9c5a5da496f8ae0549a69fd8e8f39cc546aa2bc30a29",
+      "sha256": "1a56047708b731fb561ac3e0c5cd927bbd23dbd44390d565665a65fa1ba86f78",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -56,7 +62,7 @@
     },
     {
       "name": "03-plan-review-revision-zh.png",
-      "sha256": "93305cf922edacd3c7a7c7086f61f0d96b653e947462ec24909845c9a907cdb0",
+      "sha256": "ee766c88b65295657a829dfac8a5f1ecadc408167aff111cbe1520face7a9b39",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -64,7 +70,7 @@
     },
     {
       "name": "04-mission-execution-zh.png",
-      "sha256": "3961392b6e855e84bb5e95288b667ae15ffc3893db930d648c5303dfa63eae3d",
+      "sha256": "9119fad6be4318635219c082617574e2b80fc06e090de5541befdf36bdc89892",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -72,7 +78,15 @@
     },
     {
       "name": "05-invalidation-recovery-zh.png",
-      "sha256": "7502f8a7587839b18220be87675ec69c7ccfa41b3899c7cb7425d679e4929d49",
+      "sha256": "c234b0afab5a5b3d22739a9e9e933bf07bfd429003eb6566485cb7f5bae2eab9",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "05b-recompiled-execution-zh.png",
+      "sha256": "c75c6171c1946d0675a5016d8c2cb85e886ae5436e742502c62b6a0f016229ee",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -80,7 +94,7 @@
     },
     {
       "name": "06-goal-execution-en.png",
-      "sha256": "faabcff60090b851584dca5f361588fbf5b93d4edbcc608982ea63b7b9e1b238",
+      "sha256": "9d160aada468a81c0c4cd68adb941b224e032c12e517c20a2c6d363cd46def99",
       "viewport": {
         "width": 1440,
         "height": 1000

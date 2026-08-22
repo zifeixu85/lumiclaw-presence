@@ -5,7 +5,7 @@ export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {variant?: B
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button({className = '', variant = 'secondary', size = 'md', type = 'button', ...props}, ref) {
   const variants: Record<ButtonVariant, string> = {
-    primary: 'border-[var(--lc-accent)] bg-[var(--lc-accent)] text-white hover:bg-[#bd4f39]',
+    primary: 'border-[var(--lc-accent)] bg-[var(--lc-accent)] text-[var(--lc-sidebar)] hover:bg-[#f86b49]',
     secondary: 'border-[var(--lc-line)] bg-[var(--lc-surface)] text-[var(--lc-ink)] hover:border-[#aaa69c] hover:bg-white',
     ghost: 'border-transparent bg-transparent text-[var(--lc-ink-muted)] hover:bg-[var(--lc-surface-muted)] hover:text-[var(--lc-ink)]',
     danger: 'border-[var(--lc-danger)] bg-[var(--lc-danger-soft)] text-[var(--lc-danger)] hover:bg-[#efd4d0]'

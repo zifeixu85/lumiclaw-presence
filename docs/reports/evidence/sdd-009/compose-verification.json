@@ -3,11 +3,16 @@
   "sdd": "SDD-009",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-22T02:03:23.487Z",
+  "generatedAt": "2026-08-22T03:10:37.630Z",
   "checks": {
     "freshComposeHealthy": true,
     "migration12Applied": true,
     "emptyDownPass": true,
+    "postgresTwoMissionBindingIsolation": true,
+    "postgresSdd008ContextBindingUpgrade": true,
+    "postgresDraftPreservesApprovedBinding": true,
+    "postgresCrashOutboxRecoveredExactlyOnce": true,
+    "postgresSameMissionReplanning": true,
     "chromiumBilingualGoalJourney": true,
     "goalPlanBundleAuthorityPersisted": true,
     "exactSixRolesAndSelectedPlatforms": true,
@@ -34,7 +39,7 @@
         "--volumes",
         "--remove-orphans"
       ],
-      "startedAt": "2026-08-22T02:01:43.435Z",
+      "startedAt": "2026-08-22T03:08:52.946Z",
       "result": "PASS"
     },
     {
@@ -46,7 +51,7 @@
         "build",
         "api"
       ],
-      "startedAt": "2026-08-22T02:01:43.643Z",
+      "startedAt": "2026-08-22T03:08:53.180Z",
       "result": "PASS"
     },
     {
@@ -59,7 +64,7 @@
         "--no-build",
         "--detach"
       ],
-      "startedAt": "2026-08-22T02:02:41.224Z",
+      "startedAt": "2026-08-22T03:09:53.277Z",
       "result": "PASS"
     },
     {
@@ -72,7 +77,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:02:56.729Z",
+      "startedAt": "2026-08-22T03:10:07.802Z",
       "result": "PASS"
     },
     {
@@ -85,7 +90,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:02:58.440Z",
+      "startedAt": "2026-08-22T03:10:09.529Z",
       "result": "PASS"
     },
     {
@@ -98,7 +103,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:03:00.151Z",
+      "startedAt": "2026-08-22T03:10:11.247Z",
       "result": "PASS"
     },
     {
@@ -111,7 +116,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:03:01.836Z",
+      "startedAt": "2026-08-22T03:10:12.958Z",
       "result": "PASS"
     },
     {
@@ -134,7 +139,7 @@
         "-c",
         "select count(*) from pgmigrations where name='000012_persistent_goal_selected_platform_compiler'"
       ],
-      "startedAt": "2026-08-22T02:03:01.924Z",
+      "startedAt": "2026-08-22T03:10:13.070Z",
       "result": "PASS"
     },
     {
@@ -157,7 +162,7 @@
         "-c",
         "create database lumiclaw_sdd009_empty_down"
       ],
-      "startedAt": "2026-08-22T02:03:01.998Z",
+      "startedAt": "2026-08-22T03:10:13.143Z",
       "result": "PASS"
     },
     {
@@ -177,7 +182,7 @@
         "run",
         "migrate:up"
       ],
-      "startedAt": "2026-08-22T02:03:02.128Z",
+      "startedAt": "2026-08-22T03:10:13.288Z",
       "result": "PASS"
     },
     {
@@ -197,7 +202,7 @@
         "run",
         "migrate:down"
       ],
-      "startedAt": "2026-08-22T02:03:02.626Z",
+      "startedAt": "2026-08-22T03:10:13.779Z",
       "result": "PASS"
     },
     {
@@ -220,7 +225,95 @@
         "-c",
         "select to_regclass('public.operating_goal_revisions') is null"
       ],
-      "startedAt": "2026-08-22T02:03:02.915Z",
+      "startedAt": "2026-08-22T03:10:14.072Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd009-verify",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "create database lumiclaw_sdd009_regression"
+      ],
+      "startedAt": "2026-08-22T03:10:14.146Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd009-verify",
+        "exec",
+        "-T",
+        "-e",
+        "DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd009_regression",
+        "api",
+        "npm",
+        "--workspace",
+        "@lumiclaw/db",
+        "run",
+        "migrate:up"
+      ],
+      "startedAt": "2026-08-22T03:10:14.270Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd009-verify",
+        "exec",
+        "-T",
+        "-e",
+        "SDD009_POSTGRES_URL=postgres://postgres@postgres:5432/lumiclaw_sdd009_regression",
+        "-e",
+        "SDD009_BLOB_ROOT=/tmp/lumiclaw-sdd009-postgres-regression-blobs",
+        "api",
+        "npx",
+        "vitest",
+        "run",
+        "apps/api/src/goal-plan-postgres-regression.test.ts",
+        "--configLoader=runner"
+      ],
+      "startedAt": "2026-08-22T03:10:14.599Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd009-verify",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw_sdd009_regression",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select json_build_object('goal_revisions',(select count(*) from operating_goal_revisions),'plan_revisions',(select count(*) from content_plan_revisions_v2),'bundles',(select count(*) from mission_bundle_generations_v2),'invalidations',(select count(*) from mission_bundle_status_events_v2),'supersession_outbox',(select count(*) from knowledge_snapshot_supersession_outbox_v2),'supersession_receipts',(select count(*) from knowledge_snapshot_supersession_receipts_v2),'pending_supersessions',(select count(*) from knowledge_snapshot_supersession_outbox_v2 o where not exists(select 1 from knowledge_snapshot_supersession_receipts_v2 r where r.owner_profile_id=o.owner_profile_id and r.event_id=o.event_id)))::text"
+      ],
+      "startedAt": "2026-08-22T03:10:16.173Z",
       "result": "PASS"
     },
     {
@@ -243,7 +336,7 @@
         "-c",
         "select json_build_object('goal_revisions',(select count(*) from operating_goal_revisions),'plan_revisions',(select count(*) from content_plan_revisions_v2),'bundles',(select count(*) from mission_bundle_generations_v2),'invalidations',(select count(*) from mission_bundle_status_events_v2),'idempotency',(select count(*) from goal_plan_idempotency_records_v2))::text"
       ],
-      "startedAt": "2026-08-22T02:03:10.455Z",
+      "startedAt": "2026-08-22T03:10:24.851Z",
       "result": "PASS"
     },
     {
@@ -263,9 +356,9 @@
         "-v",
         "ON_ERROR_STOP=1",
         "-c",
-        "update operating_goal_revisions set state='PAUSED' where goal_id='goal_a3c7843e8a8ccce6653acb10' and revision=1"
+        "update operating_goal_revisions set state='PAUSED' where goal_id='goal_778305a6c2e20089470e9be1' and revision=1"
       ],
-      "startedAt": "2026-08-22T02:03:10.637Z",
+      "startedAt": "2026-08-22T03:10:25.056Z",
       "result": "EXPECTED_FAIL"
     },
     {
@@ -285,7 +378,7 @@
         "run",
         "migrate:down"
       ],
-      "startedAt": "2026-08-22T02:03:10.924Z",
+      "startedAt": "2026-08-22T03:10:25.319Z",
       "result": "EXPECTED_FAIL"
     },
     {
@@ -308,7 +401,7 @@
         "-c",
         "select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('operating_goal_revisions','operating_goal_account_bindings','content_plan_revisions_v2','mission_bundle_generations_v2','mission_bundle_status_events_v2')"
       ],
-      "startedAt": "2026-08-22T02:03:10.924Z",
+      "startedAt": "2026-08-22T03:10:25.319Z",
       "result": "PASS"
     },
     {
@@ -320,7 +413,7 @@
         "restart",
         "api"
       ],
-      "startedAt": "2026-08-22T02:03:11.005Z",
+      "startedAt": "2026-08-22T03:10:25.402Z",
       "result": "PASS"
     },
     {
@@ -333,7 +426,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:03:11.331Z",
+      "startedAt": "2026-08-22T03:10:25.778Z",
       "result": "PASS"
     },
     {
@@ -346,7 +439,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:03:13.021Z",
+      "startedAt": "2026-08-22T03:10:27.501Z",
       "result": "PASS"
     },
     {
@@ -359,7 +452,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:03:14.724Z",
+      "startedAt": "2026-08-22T03:10:29.231Z",
       "result": "PASS"
     },
     {
@@ -372,7 +465,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:03:16.407Z",
+      "startedAt": "2026-08-22T03:10:30.906Z",
       "result": "PASS"
     },
     {
@@ -385,7 +478,7 @@
         "postgres",
         "api"
       ],
-      "startedAt": "2026-08-22T02:03:16.539Z",
+      "startedAt": "2026-08-22T03:10:30.973Z",
       "result": "PASS"
     },
     {
@@ -398,7 +491,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:03:18.129Z",
+      "startedAt": "2026-08-22T03:10:32.183Z",
       "result": "PASS"
     },
     {
@@ -411,7 +504,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:03:19.865Z",
+      "startedAt": "2026-08-22T03:10:33.862Z",
       "result": "PASS"
     },
     {
@@ -424,7 +517,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:03:21.554Z",
+      "startedAt": "2026-08-22T03:10:35.560Z",
       "result": "PASS"
     },
     {
@@ -437,7 +530,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T02:03:23.243Z",
+      "startedAt": "2026-08-22T03:10:37.226Z",
       "result": "PASS"
     },
     {
@@ -460,7 +553,7 @@
         "-c",
         "select json_build_object('goal_revisions',(select count(*) from operating_goal_revisions),'plan_revisions',(select count(*) from content_plan_revisions_v2),'bundles',(select count(*) from mission_bundle_generations_v2),'invalidations',(select count(*) from mission_bundle_status_events_v2),'idempotency',(select count(*) from goal_plan_idempotency_records_v2))::text"
       ],
-      "startedAt": "2026-08-22T02:03:23.333Z",
+      "startedAt": "2026-08-22T03:10:37.460Z",
       "result": "PASS"
     }
   ],

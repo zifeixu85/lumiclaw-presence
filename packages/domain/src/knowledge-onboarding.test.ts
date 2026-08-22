@@ -35,6 +35,7 @@ describe('SDD-008 knowledge onboarding contracts',()=>{
     expect(profileKnowledgeItems(revision)).toMatchObject([{kind:'PERSONA',profileRevisionIds:['r1']}]);
     const base={id:'s1',ownerId:'o1',version:1,sessionRowVersion:2,sourceRevisionDigests:[],profileRevisionDigests:[{revisionId:'r1',digest:'a'.repeat(64)}],itemBindings:[],conflictDecisions:[],gaps:[]};
     expect(snapshotDigest(base)).toBe(snapshotDigest(structuredClone(base)));
+    expect(snapshotDigest(base)).toBe('31eae2f34fe21b2aa6ea604988c23950318bc5db55edf4ab500aeeb365204c10');
     expect(snapshotDigest({...base,sessionRowVersion:3})).not.toBe(snapshotDigest(base));
   });
 

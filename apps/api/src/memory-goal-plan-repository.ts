@@ -3,6 +3,7 @@ import {
   sha256Digest,
   stableContractId,
   type AccountProfileBinding,
+  type BundleInvalidationRequest,
   type ContentPlanRevision,
   type GoalKnowledgeGuard,
   type GoalPlanRepository,
@@ -47,7 +48,7 @@ export class MemoryGoalPlanRepository implements GoalPlanRepository {
         if (expectedHeadDigest !== null || goal.revision !== 1 || goal.parentDigest !== null) throw new GoalPlanContractError('GOAL_VERSION_CONFLICT');
       } else if (expectedHeadDigest !== current.canonicalDigest || goal.parentDigest !== current.canonicalDigest || goal.revision !== current.revision + 1) throw new GoalPlanContractError('GOAL_VERSION_CONFLICT');
       this.#goals.push(clone(goal));
-      if (current !== undefined && current.canonicalDigest !== goal.canonicalDigest) this.invalidateSync(ownerId,'GOAL_REVISION_CHANGED',goal.canonicalDigest,now);
+      if (current !== undefined && current.canonicalDigest !== goal.canonicalDigest) this.invalidateSync(ownerId,{reasonCode:'GOAL_REVISION_CHANGED',currentDigest:goal.canonicalDigest,goalId:goal.goalId},now);
       return {goal:clone(goal),replayed:false};
     });
   }
@@ -76,7 +77,7 @@ export class MemoryGoalPlanRepository implements GoalPlanRepository {
         if (expectedHeadDigest !== null || plan.revision !== 1 || plan.parentDigest !== null) throw new GoalPlanContractError('PLAN_VERSION_CONFLICT');
       } else if (expectedHeadDigest !== current.canonicalDigest || plan.parentDigest !== current.canonicalDigest || plan.revision !== current.revision + 1) throw new GoalPlanContractError('PLAN_VERSION_CONFLICT');
       this.#plans.push(clone(plan));
-      if (current !== undefined && current.canonicalDigest !== plan.canonicalDigest) this.invalidateSync(ownerId,'PLAN_REVISION_CHANGED',plan.canonicalDigest,now);
+      if (current !== undefined && current.canonicalDigest !== plan.canonicalDigest) this.invalidateSync(ownerId,{reasonCode:'PLAN_REVISION_CHANGED',currentDigest:plan.canonicalDigest,planId:plan.planId,missionIntentId:plan.missionIntentId},now);
       return {plan:clone(plan),replayed:false};
     });
   }
@@ -88,21 +89,21 @@ export class MemoryGoalPlanRepository implements GoalPlanRepository {
       if (approvedPlan.ownerId !== ownerId || bundle.ownerId !== ownerId || approvedPlan.state !== 'APPROVED' || bundle.approvedPlanDigest !== approvedPlan.canonicalDigest) throw new GoalPlanContractError('OWNER_BOUNDARY_VIOLATION');
       if (this.#bundles.some((item) => item.ownerId === ownerId && item.bundleId === bundle.bundleId)) throw new GoalPlanContractError('MISSION_GENERATION_CONFLICT');
       this.#plans.push(clone(approvedPlan)); this.#bundles.push(clone(bundle));
-      this.invalidateSync(ownerId,'PLAN_REVISION_CHANGED',approvedPlan.canonicalDigest,now,bundle.bundleId);
+      this.invalidateSync(ownerId,{reasonCode:'PLAN_REVISION_CHANGED',currentDigest:approvedPlan.canonicalDigest,planId:approvedPlan.planId,missionIntentId:approvedPlan.missionIntentId},now,bundle.bundleId);
       return {plan:clone(approvedPlan),bundle:clone(bundle),replayed:false};
     });
   }
 
-  public async invalidateBundles(ownerId: string, reasonCode: InvalidationEvent['reasonCode'], currentDigest: string, now: Date): Promise<InvalidationEvent[]> { return clone(this.invalidateSync(ownerId,reasonCode,currentDigest,now)); }
+  public async invalidateBundles(ownerId: string, request: BundleInvalidationRequest, now: Date): Promise<InvalidationEvent[]> { return clone(this.invalidateSync(ownerId,request,now)); }
   public async close(): Promise<void> {}
 
-  private invalidateSync(ownerId: string, reasonCode: InvalidationEvent['reasonCode'], currentDigest: string, now: Date, exceptBundleId?: string): InvalidationEvent[] {
+  private invalidateSync(ownerId: string, request: BundleInvalidationRequest, now: Date, exceptBundleId?: string): InvalidationEvent[] {
     const events: InvalidationEvent[] = [];
-    for (const bundle of this.#bundles.filter((item) => item.ownerId === ownerId && item.bundleId !== exceptBundleId && (reasonCode !== 'PLAN_REVISION_CHANGED' || item.kind === 'MISSION_EXECUTION'))) {
+    for (const bundle of this.#bundles.filter((item) => item.ownerId === ownerId && item.bundleId !== exceptBundleId && matchesInvalidation(item,request))) {
       if (this.#invalidations.some((event) => event.bundleId === bundle.bundleId)) continue;
-      const previousDigest = reasonCode === 'KNOWLEDGE_SNAPSHOT_CHANGED' ? bundle.inputBindings.knowledgeSnapshot.digest : reasonCode === 'GOAL_REVISION_CHANGED' ? bundle.inputBindings.operatingGoal.digest : bundle.kind === 'MISSION_EXECUTION' ? bundle.approvedPlanDigest : bundle.canonicalDigest;
-      if (previousDigest === currentDigest) continue;
-      const event: InvalidationEvent = {eventId:stableContractId('invalidation',{bundleId:bundle.bundleId,reasonCode,previousDigest,currentDigest}),ownerId,bundleId:bundle.bundleId,reasonCode,previousDigest,currentDigest,recoveryAction:'REVIEW_AND_COMPILE_NEW_GENERATION',createdAt:now.toISOString()};
+      const previousDigest = previousBindingDigest(bundle,request);
+      if (previousDigest === request.currentDigest) continue;
+      const event: InvalidationEvent = {eventId:stableContractId('invalidation',{bundleId:bundle.bundleId,reasonCode:request.reasonCode,previousDigest,currentDigest:request.currentDigest}),ownerId,bundleId:bundle.bundleId,reasonCode:request.reasonCode,previousDigest,currentDigest:request.currentDigest,recoveryAction:'REVIEW_AND_COMPILE_NEW_GENERATION',createdAt:now.toISOString()};
       this.#invalidations.push(event); events.push(event);
     }
     return events;
@@ -114,6 +115,22 @@ export class MemoryGoalPlanRepository implements GoalPlanRepository {
     if (existing !== undefined) { if (existing.digest !== digest) throw new GoalPlanContractError('IDEMPOTENCY_KEY_REUSED'); const replay = clone(existing.response) as T & {replayed?:boolean}; if ('replayed' in (replay as object)) replay.replayed = true; return replay; }
     const response = operation(); this.#idempotency.set(id,{digest,response:clone(response)}); return response;
   }
+}
+
+function matchesInvalidation(bundle: MissionBundle, request: BundleInvalidationRequest): boolean {
+  if (request.reasonCode === 'GOAL_REVISION_CHANGED') return bundle.inputBindings.operatingGoal.id === request.goalId;
+  if (request.reasonCode === 'PLAN_REVISION_CHANGED') return bundle.kind === 'MISSION_EXECUTION' && bundle.approvedPlanId === request.planId && bundle.missionIntentId === request.missionIntentId;
+  if (request.reasonCode === 'KNOWLEDGE_SNAPSHOT_CHANGED') return bundle.inputBindings.knowledgeSnapshot.id === request.supersededSnapshotId && bundle.inputBindings.knowledgeSnapshot.digest === request.supersededSnapshotDigest;
+  if (request.reasonCode === 'ACCOUNT_PROFILE_CHANGED') return bundle.inputBindings.accountProfiles.some((profile) => request.supersededAccountProfileRevisionIds.includes(profile.accountProfileRevisionId));
+  return bundle.missionIntentId === request.missionIntentId;
+}
+
+function previousBindingDigest(bundle: MissionBundle, request: BundleInvalidationRequest): string {
+  if (request.reasonCode === 'KNOWLEDGE_SNAPSHOT_CHANGED') return bundle.inputBindings.knowledgeSnapshot.digest;
+  if (request.reasonCode === 'GOAL_REVISION_CHANGED') return bundle.inputBindings.operatingGoal.digest;
+  if (request.reasonCode === 'PLAN_REVISION_CHANGED') return bundle.kind === 'MISSION_EXECUTION' ? bundle.approvedPlanDigest : bundle.canonicalDigest;
+  if (request.reasonCode === 'ACCOUNT_PROFILE_CHANGED') return sha256Digest(bundle.inputBindings.accountProfiles.filter((profile) => request.supersededAccountProfileRevisionIds.includes(profile.accountProfileRevisionId)).map((profile) => ({id:profile.accountProfileRevisionId,digest:profile.digest})));
+  return bundle.canonicalDigest;
 }
 
 function latest<T extends {revision:number}>(items: T[]): T | undefined { return [...items].sort((left,right)=>right.revision-left.revision)[0]; }
