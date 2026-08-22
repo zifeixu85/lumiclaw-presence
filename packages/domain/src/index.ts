@@ -1,4 +1,5 @@
 export * from './activation.js';
+export * from './artifact-publish.js';
 export * from './campaign-envelope.js';
 export * from './campaign-fixture.js';
 export * from './campaign-repository.js';
