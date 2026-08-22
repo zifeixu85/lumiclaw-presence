@@ -1,6 +1,7 @@
 import {execFileSync, spawnSync} from 'node:child_process';
 import {mkdir, readdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
+import {assertMissionWorkerHealthContract} from './mission-worker-health-contract.mjs';
 
 const root = process.cwd();
 const project = 'lumiclaw-sdd002-verify';
@@ -136,8 +137,8 @@ try {
   if (apiHealth.live !== false || apiHealth.mode !== 'DEMO_SEED') throw new Error('API health claim boundary failed.');
   checks.apiHealthClaimBoundary = true;
   const workerHealth = JSON.parse(docker(['exec', '-T', 'mission-worker', 'node', '-e', "fetch('http://127.0.0.1:4001/health').then(r=>r.json()).then(v=>console.log(JSON.stringify(v)))"]));
-  if (workerHealth.controlPlane !== 'POSTGRESQL' || workerHealth.executionMode !== 'SHADOW_PREP_ONLY' || workerHealth.externalActionAllowed !== false) throw new Error('Mission worker did not bind the shared PostgreSQL SHADOW control plane.');
-  checks.missionWorkerSharedControlPlane = workerHealth;
+  const workerHealthContract = assertMissionWorkerHealthContract(workerHealth);
+  checks.missionWorkerSharedControlPlane = {contract: workerHealthContract, health: workerHealth};
   const operatorHealth = JSON.parse(docker(['exec', '-T', 'action-operator', 'node', '-e', "fetch('http://127.0.0.1:4002/health').then(r=>r.json()).then(v=>console.log(JSON.stringify(v)))"]));
   if (operatorHealth.state !== 'DORMANT_NO_GRANTS' || operatorHealth.actionGrantRoutes !== 0 || operatorHealth.connectorRoutes !== 0 || operatorHealth.externalActionAllowed !== false) throw new Error('Action operator must remain dormant with no grant or connector route.');
   checks.actionOperatorDormantNoGrants = operatorHealth;

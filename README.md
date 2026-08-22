@@ -206,6 +206,7 @@ Use only public-safe inputs. For a controlled-fake provider (CI/engineering only
 npm run runtime:secret:prepare-fake
 npm run build
 npm run runtime:compose:fake
+npm run runtime:compose:status
 # In another terminal, after the exact six-member AgentTeams topology is running:
 npm run runtime:supervisor
 ~~~
@@ -226,12 +227,12 @@ Expected readiness is `READY` only when PostgreSQL, Model Gateway, a fresh missi
 Stop in this order: press Ctrl-C in the supervisor terminal, then remove only the exact Compose project:
 
 ~~~bash
-docker compose -f compose.yml -f compose.persistent-runtime.yml --profile persistent-runtime --project-name lumiclaw-sdd007 down
+npm run runtime:compose:stop
 # If the DeepSeek overlay was used:
-docker compose -f compose.yml -f compose.persistent-runtime.yml -f compose.persistent-runtime-deepseek.yml --profile persistent-runtime --project-name lumiclaw-sdd007 down
+npm run runtime:compose:stop:deepseek
 ~~~
 
-The base local PostgreSQL configuration uses trust authentication but is published only on loopback. This is a single-user local competition boundary, not protection from another malicious process or user on the same host. The supervisor creates an isolated `0700` `.runtime/sdd007/supervisor-home` and Docker config, does not inherit the real host `HOME`, shell, cloud credentials, or provider-key environment variables, and can only inspect/execute the fixed AgentTeams container set. See the [SDD-007 Chinese acceptance report](docs/reports/acceptance/SDD-007-ACCEPTANCE.md) for failure signs, evidence, rollback, and Owner UAT.
+The Node Compose launcher resolves the current non-root host UID/GID and runs only Model Gateway under that exact numeric identity, so Linux bind-mounted `0600` Compose Secret files remain readable without weakening their mode or running the service as root. Root or non-POSIX launcher identities fail closed. The base local PostgreSQL configuration uses trust authentication but is published only on loopback. This is a single-user local competition boundary, not protection from another malicious process or user on the same host. The supervisor creates an isolated `0700` `.runtime/sdd007/supervisor-home` and Docker config, does not inherit the real host `HOME`, shell, cloud credentials, or provider-key environment variables, and can only inspect/execute the fixed AgentTeams container set. See the [SDD-007 Chinese acceptance report](docs/reports/acceptance/SDD-007-ACCEPTANCE.md) for failure signs, evidence, rollback, and Owner UAT.
 
 The controlled-fake Compose lifecycle can be verified independently:
 
@@ -239,7 +240,7 @@ The controlled-fake Compose lifecycle can be verified independently:
 npm run verify:sdd007:compose
 ~~~
 
-It creates a separate `lumiclaw-sdd007-compose-verify` project, checks startup, Web/API/CLI parity, controlled-fake non-READY behavior, Gateway/API/PostgreSQL restart, Secret/Docker scope, zero external actions, and removes that exact project, its volumes, and temporary Secret root in `finally`. The real six-member evidence command `npm run verify:sdd007:agentteams-real` additionally requires a completely clean committed source tree and self-cleans its exact temporary AgentTeams runtime; do not run it while editing tracked or untracked files.
+It creates a separate `lumiclaw-sdd007-compose-verify` project, checks startup, Web/API/CLI parity, controlled-fake non-READY behavior, Gateway/API/PostgreSQL restart, exact UID/GID Secret readability, Linux wrong-UID denial, Secret/Docker scope, zero external actions, and removes that exact project, its volumes, and temporary Secret root in `finally`. A failure writes bounded redacted Model Gateway/migrate/API diagnostics rather than losing the inner container cause. The real six-member evidence command `npm run verify:sdd007:agentteams-real` additionally requires a completely clean committed source tree and self-cleans its exact temporary AgentTeams runtime; do not run it while editing tracked or untracked files.
 
 ### Preliminary-round SHADOW demo
 

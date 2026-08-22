@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "result": "PASS",
-  "generatedAt": "2026-08-21T21:02:42.139Z",
+  "generatedAt": "2026-08-22T14:40:22.734Z",
   "baseUrl": "http://127.0.0.1:3188",
   "locales": [
     "zh-CN",
@@ -60,7 +60,7 @@
     },
     {
       "name": "04-approved-snapshot.png",
-      "sha256": "3c93c447e6db64654ed75a7532bc72c2e598a7352f50272783f9aaa5ed17d9d2",
+      "sha256": "885527ddcb7e8c3ec06d8d14f814781465c51736ab142e8d6589fe393be5cb03",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -68,7 +68,7 @@
     },
     {
       "name": "05-approved-snapshot-en.png",
-      "sha256": "d879ff1ea5d0bccedbf8b34d5fc94259c28ee874f6603584dccd0d9fa573c2c2",
+      "sha256": "3a46f98ebf60e058c7ff8fbeb16a652e70156913a509dfee3c23f43ce4ee7579",
       "viewport": {
         "width": 1440,
         "height": 1000

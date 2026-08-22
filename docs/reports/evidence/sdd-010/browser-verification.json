@@ -3,7 +3,7 @@
   "sdd": "SDD-010",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-22T07:48:11.620Z",
+  "generatedAt": "2026-08-22T14:39:03.613Z",
   "locales": [
     "zh-CN",
     "en"
@@ -36,7 +36,7 @@
   "screenshots": [
     {
       "name": "01-x-thread-review-zh.png",
-      "sha256": "64791396b8a8891ff7a8b2758b855d07e82bdf43bcd67d673e8f8275ac6910e1",
+      "sha256": "86ca4c0b0a2cf3d5e0c44ef2b961c48bb9aced21829acb06612fee630df9e52e",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -44,7 +44,7 @@
     },
     {
       "name": "02-owner-edit-diff-zh.png",
-      "sha256": "a9d0e722832b13a477677d3e927fbf95f39961fd0eedfe23b95d71f965edd956",
+      "sha256": "8f9d065a92108f8950e27eae2e6061b804da5aa03bb88b5fb82b655b0682c6a0",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -52,7 +52,7 @@
     },
     {
       "name": "03-x-package-ready-zh.png",
-      "sha256": "b275f4d693cb94cb91b3370fdcda9c78a51fc498547030fa40b0c90df5915c20",
+      "sha256": "331b3393093f8941d3a277910c5602f90e1f0f593edec6f55f759634a79373ac",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -68,7 +68,7 @@
     },
     {
       "name": "05-xhs-package-ready-zh.png",
-      "sha256": "fea764a812d79224c0cf9c40fddb7812b5069e1c90391804fbf0a33945957ea9",
+      "sha256": "9bc0b5793c67f292dc2bb8651b3a8851f1a2ce096b917cc15454177de7725bea",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -76,7 +76,7 @@
     },
     {
       "name": "06-regenerate-reject-zh.png",
-      "sha256": "dc00ee8541a0c2cc628a9c260bbb1007c8f7f1f4f5ac145349e4abb4d6e5eb5b",
+      "sha256": "0dd15aba124310d380218708ea6d80e5e427819bd755274b65095c8b05a2bfd9",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -84,7 +84,7 @@
     },
     {
       "name": "06-package-en.png",
-      "sha256": "30068c568c1c6b6c72637ecddd62fae7fa2ea62578a90f0da040b9f79b2f8aae",
+      "sha256": "9fa4d32c7d4a666546be8e0c7e19233d67ed7bae2eba94e512e8639495e56e3a",
       "viewport": {
         "width": 1440,
         "height": 1000

@@ -3,52 +3,52 @@
   "sdd": "SDD-008",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "snapshot": {
-    "id": "01a02622-0601-7409-8f82-635116b558c1",
+    "id": "01a029ea-5ab8-7c7a-9430-06f6ec52f379",
     "version": 18,
     "state": "APPROVED",
-    "canonicalDigest": "b81819f68d045dde7990a124d163849e9fdb53f9297441bc2d17d5db96e57fb5",
+    "canonicalDigest": "1407e7521faa775d01443dd1c98be9ce8dc8fcdbb98c765f354b41528286daa5",
     "sourceRevisionDigests": [
       {
         "digest": "d9ce60341bdae3bc9151fb8e84e4535025142dd602ea1fbac83f2362d5220c52",
-        "revisionId": "01a02621-fe09-74d1-a378-376c772dd38b"
+        "revisionId": "01a029ea-523b-75c7-8d27-7d6a53d91515"
       },
       {
         "digest": "a5c5f44b3041f866761308bbadfdbba0b69ac9e45fab9065bd9276e44865e7e3",
-        "revisionId": "01a02621-fe19-764d-839a-5776b9375757"
+        "revisionId": "01a029ea-524f-7602-a8d7-e0c6a6aed7fb"
       },
       {
         "digest": "65554dd13c7860b8e2bde119135030d5fa22e8c8c8680f1bec99af1414dd349c",
-        "revisionId": "01a02621-fe26-7f01-b251-211495a05388"
+        "revisionId": "01a029ea-5264-71d9-9415-f6731a1e8465"
       },
       {
         "digest": "3af5fa005774c275fbb05825a15ce07c6369ca0551a6869b9282be108c479dd9",
-        "revisionId": "01a02621-fe68-7783-8caf-27cdfd0af8c4"
+        "revisionId": "01a029ea-5305-7cbb-98ba-57a8f1b30d15"
       },
       {
         "digest": "079d1e6ad800cfd7dae30f03e9f2aa01e0c7eae07397adb920350d65b2ada4a4",
-        "revisionId": "01a02621-fec8-7b73-8a9a-3f30e15d4e10"
+        "revisionId": "01a029ea-5368-763b-b6e4-e54c4c43ee31"
       }
     ],
     "profileRevisionDigests": [
       {
         "digest": "ff21790e353ebbaf3199f0f164577f17c307b4596354378e1b7e7e28e2d6aecd",
-        "revisionId": "01a02621-fd3c-7ba0-8ac4-b20ad11da73c"
+        "revisionId": "01a029ea-5169-7846-b2a9-8d7b4c655c3c"
       },
       {
         "digest": "8f77fea0fe77e451d9e05195f08a40bb97d705c7eabfa1d1dc0617fac9c3e28c",
-        "revisionId": "01a02621-fdab-7836-aa29-3ac324edf2a9"
+        "revisionId": "01a029ea-51de-7920-8e41-1e6641ca6830"
       },
       {
         "digest": "ec7e86da91b0c8e3687ef5a80bcdae56de1325138fe3ab81fd50ddca2ef4927e",
-        "revisionId": "01a02621-fdc5-7172-800a-f5ac08c4daee"
+        "revisionId": "01a029ea-51fe-76fd-8409-28909225964c"
       },
       {
         "digest": "46ee623af2f4127706fa58195092316b4a1942630ed471f7ffdc336ae816bc35",
-        "revisionId": "01a02622-0310-77e5-8dc6-7f5f149cd459"
+        "revisionId": "01a029ea-57ac-7b7c-bde7-5e9040f5ab03"
       },
       {
         "digest": "096b11eb3359c0a3bfef37de11e2493f3329144f765b5f5fae96329fe832c9e3",
-        "revisionId": "01a02622-0395-7c2b-9172-78393562faa1"
+        "revisionId": "01a029ea-5831-7f09-b805-1d20d1ac1ed7"
       }
     ],
     "itemBindingCount": 13,
@@ -56,8 +56,8 @@
   },
   "sources": [
     {
-      "documentId": "01a02621-fe08-7116-9378-c69a7cf5f7c9",
-      "revisionId": "01a02621-fe09-74d1-a378-376c772dd38b",
+      "documentId": "01a029ea-523a-7fb7-8180-968003839ff6",
+      "revisionId": "01a029ea-523b-75c7-8d27-7d6a53d91515",
       "label": "founder-voice.md",
       "fileName": "founder-voice.md",
       "sourceKind": "UPLOADED_FILE",
@@ -68,8 +68,8 @@
       "status": "READY"
     },
     {
-      "documentId": "01a02621-fe18-7baf-89af-2e44d80548d0",
-      "revisionId": "01a02621-fe19-764d-839a-5776b9375757",
+      "documentId": "01a029ea-524e-7dcd-86d2-4116987f65e5",
+      "revisionId": "01a029ea-524f-7602-a8d7-e0c6a6aed7fb",
       "label": "product-facts.md",
       "fileName": "product-facts.md",
       "sourceKind": "UPLOADED_FILE",
@@ -80,8 +80,8 @@
       "status": "READY"
     },
     {
-      "documentId": "01a02621-fe25-7142-b11d-49aa6e08f29e",
-      "revisionId": "01a02621-fe26-7f01-b251-211495a05388",
+      "documentId": "01a029ea-5263-7331-b904-94ee426c8299",
+      "revisionId": "01a029ea-5264-71d9-9415-f6731a1e8465",
       "label": "brand-boundaries.txt",
       "fileName": "brand-boundaries.txt",
       "sourceKind": "UPLOADED_FILE",
@@ -92,8 +92,8 @@
       "status": "READY"
     },
     {
-      "documentId": "01a02621-fe67-7090-be09-b01c05270f77",
-      "revisionId": "01a02621-fe68-7783-8caf-27cdfd0af8c4",
+      "documentId": "01a029ea-5304-7139-aad0-4ba7b9b95088",
+      "revisionId": "01a029ea-5305-7cbb-98ba-57a8f1b30d15",
       "label": "创始人补充边界",
       "fileName": null,
       "sourceKind": "OWNER_AUTHORED_TEXT",
@@ -104,8 +104,8 @@
       "status": "READY"
     },
     {
-      "documentId": "01a02621-fec7-7ed2-8b1a-9293b030ee9f",
-      "revisionId": "01a02621-fec8-7b73-8a9a-3f30e15d4e10",
+      "documentId": "01a029ea-5367-7220-b82d-477ad00e0d7c",
+      "revisionId": "01a029ea-5368-763b-b6e4-e54c4c43ee31",
       "label": "产品范围补充",
       "fileName": null,
       "sourceKind": "OWNER_AUTHORED_TEXT",
@@ -117,31 +117,31 @@
     }
   ],
   "roleContext": {
-    "snapshotId": "01a02622-0601-7409-8f82-635116b558c1",
-    "snapshotDigest": "b81819f68d045dde7990a124d163849e9fdb53f9297441bc2d17d5db96e57fb5",
+    "snapshotId": "01a029ea-5ab8-7c7a-9430-06f6ec52f379",
+    "snapshotDigest": "1407e7521faa775d01443dd1c98be9ce8dc8fcdbb98c765f354b41528286daa5",
     "targetMarket": "SG",
     "contentLocale": "en-US",
     "timeZone": "Asia/Singapore",
     "sourceDigests": [
       {
         "digest": "d9ce60341bdae3bc9151fb8e84e4535025142dd602ea1fbac83f2362d5220c52",
-        "revisionId": "01a02621-fe09-74d1-a378-376c772dd38b"
+        "revisionId": "01a029ea-523b-75c7-8d27-7d6a53d91515"
       },
       {
         "digest": "a5c5f44b3041f866761308bbadfdbba0b69ac9e45fab9065bd9276e44865e7e3",
-        "revisionId": "01a02621-fe19-764d-839a-5776b9375757"
+        "revisionId": "01a029ea-524f-7602-a8d7-e0c6a6aed7fb"
       },
       {
         "digest": "65554dd13c7860b8e2bde119135030d5fa22e8c8c8680f1bec99af1414dd349c",
-        "revisionId": "01a02621-fe26-7f01-b251-211495a05388"
+        "revisionId": "01a029ea-5264-71d9-9415-f6731a1e8465"
       },
       {
         "digest": "3af5fa005774c275fbb05825a15ce07c6369ca0551a6869b9282be108c479dd9",
-        "revisionId": "01a02621-fe68-7783-8caf-27cdfd0af8c4"
+        "revisionId": "01a029ea-5305-7cbb-98ba-57a8f1b30d15"
       },
       {
         "digest": "079d1e6ad800cfd7dae30f03e9f2aa01e0c7eae07397adb920350d65b2ada4a4",
-        "revisionId": "01a02621-fec8-7b73-8a9a-3f30e15d4e10"
+        "revisionId": "01a029ea-5368-763b-b6e4-e54c4c43ee31"
       }
     ],
     "itemCount": 13,

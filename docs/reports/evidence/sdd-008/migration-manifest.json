@@ -13,7 +13,10 @@
     "000008_local_private_campaign",
     "000009_onboarding_multi_context",
     "000010_onboarding_completion_reservation",
-    "000011_guided_knowledge_onboarding"
+    "000011_guided_knowledge_onboarding",
+    "000012_persistent_goal_selected_platform_compiler",
+    "000013_x_xhs_artifact_audit_manual_publish_package",
+    "000014_persistent_agentteams_runtime"
   ],
   "sdd008Migration": "000011_guided_knowledge_onboarding",
   "freshEmptyDown": {

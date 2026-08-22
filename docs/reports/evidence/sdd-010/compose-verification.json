@@ -3,7 +3,7 @@
   "sdd": "SDD-010",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-22T07:48:40.011Z",
+  "generatedAt": "2026-08-22T14:39:31.544Z",
   "checks": {
     "freshComposeHealthy": true,
     "migration13Applied": true,
@@ -34,7 +34,19 @@
         "--volumes",
         "--remove-orphans"
       ],
-      "startedAt": "2026-08-22T07:47:39.749Z",
+      "startedAt": "2026-08-22T14:37:33.188Z",
+      "result": "PASS"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd010-verify",
+        "build",
+        "api"
+      ],
+      "startedAt": "2026-08-22T14:37:33.305Z",
       "result": "PASS"
     },
     {
@@ -47,7 +59,7 @@
         "--no-build",
         "--detach"
       ],
-      "startedAt": "2026-08-22T07:47:40.038Z",
+      "startedAt": "2026-08-22T14:38:30.748Z",
       "result": "PASS"
     },
     {
@@ -60,7 +72,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:47:53.168Z",
+      "startedAt": "2026-08-22T14:38:44.712Z",
       "result": "PASS"
     },
     {
@@ -73,7 +85,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:47:54.801Z",
+      "startedAt": "2026-08-22T14:38:46.397Z",
       "result": "PASS"
     },
     {
@@ -86,7 +98,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:47:56.396Z",
+      "startedAt": "2026-08-22T14:38:47.975Z",
       "result": "PASS"
     },
     {
@@ -99,7 +111,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:47:57.987Z",
+      "startedAt": "2026-08-22T14:38:49.559Z",
       "result": "PASS"
     },
     {
@@ -112,7 +124,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:47:59.576Z",
+      "startedAt": "2026-08-22T14:38:51.195Z",
       "result": "PASS"
     },
     {
@@ -135,7 +147,7 @@
         "-c",
         "select count(*) from pgmigrations where name='000013_x_xhs_artifact_audit_manual_publish_package'"
       ],
-      "startedAt": "2026-08-22T07:47:59.700Z",
+      "startedAt": "2026-08-22T14:38:51.297Z",
       "result": "PASS"
     },
     {
@@ -158,7 +170,7 @@
         "-c",
         "create database lumiclaw_sdd010_empty_down"
       ],
-      "startedAt": "2026-08-22T07:47:59.792Z",
+      "startedAt": "2026-08-22T14:38:51.381Z",
       "result": "PASS"
     },
     {
@@ -178,7 +190,7 @@
         "run",
         "migrate:up"
       ],
-      "startedAt": "2026-08-22T07:47:59.913Z",
+      "startedAt": "2026-08-22T14:38:51.487Z",
       "result": "PASS"
     },
     {
@@ -196,9 +208,11 @@
         "--workspace",
         "@lumiclaw/db",
         "run",
-        "migrate:down"
+        "migrate:down",
+        "--",
+        "2"
       ],
-      "startedAt": "2026-08-22T07:48:00.438Z",
+      "startedAt": "2026-08-22T14:38:51.935Z",
       "result": "PASS"
     },
     {
@@ -221,7 +235,7 @@
         "-c",
         "select to_regclass('public.artifact_revisions_v3') is null"
       ],
-      "startedAt": "2026-08-22T07:48:00.763Z",
+      "startedAt": "2026-08-22T14:38:52.249Z",
       "result": "PASS"
     },
     {
@@ -244,7 +258,7 @@
         "-c",
         "create database lumiclaw_sdd010_authority"
       ],
-      "startedAt": "2026-08-22T07:48:00.841Z",
+      "startedAt": "2026-08-22T14:38:52.336Z",
       "result": "PASS"
     },
     {
@@ -264,7 +278,7 @@
         "run",
         "migrate:up"
       ],
-      "startedAt": "2026-08-22T07:48:00.995Z",
+      "startedAt": "2026-08-22T14:38:52.436Z",
       "result": "PASS"
     },
     {
@@ -284,7 +298,7 @@
         "apps/api/src/artifact-publish-postgres-authority.test.ts",
         "--configLoader=runner"
       ],
-      "startedAt": "2026-08-22T07:48:01.410Z",
+      "startedAt": "2026-08-22T14:38:52.849Z",
       "result": "PASS"
     },
     {
@@ -307,7 +321,7 @@
         "-c",
         "select json_build_object('revisions',(select count(*) from artifact_revisions_v3),'audits',(select count(*) from artifact_audit_decisions_v3),'decisions',(select count(*) from artifact_owner_decisions_v3),'packages',(select count(*) from manual_publish_packages_v3),'files',(select count(*) from manual_publish_package_files_v3),'idempotency',(select count(*) from artifact_publish_idempotency_v3),'lineage_foreign_keys',(select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('artifact_audit_decisions_v3','artifact_owner_decisions_v3','manual_publish_packages_v3')))::text"
       ],
-      "startedAt": "2026-08-22T07:48:02.665Z",
+      "startedAt": "2026-08-22T14:38:54.382Z",
       "result": "PASS"
     },
     {
@@ -330,7 +344,7 @@
         "-c",
         "select json_build_object('revisions',(select count(*) from artifact_revisions_v3),'quarantines',(select count(*) from artifact_submission_quarantines_v3),'audits',(select count(*) from artifact_audit_decisions_v3),'decisions',(select count(*) from artifact_owner_decisions_v3),'regeneration_requests',(select count(*) from artifact_regeneration_requests_v3),'packages',(select count(*) from manual_publish_packages_v3),'files',(select count(*) from manual_publish_package_files_v3),'helper_events',(select count(*) from manual_publish_helper_events_v3),'invalidations',(select count(*) from artifact_invalidation_events_v3))::text"
       ],
-      "startedAt": "2026-08-22T07:48:11.689Z",
+      "startedAt": "2026-08-22T14:39:03.673Z",
       "result": "PASS"
     },
     {
@@ -369,7 +383,9 @@
         "--workspace",
         "@lumiclaw/db",
         "run",
-        "migrate:down"
+        "migrate:down",
+        "--",
+        "2"
       ],
       "result": "EXPECTED_FAIL"
     },
@@ -393,7 +409,7 @@
         "-c",
         "select json_build_object('revisions',(select count(*) from artifact_revisions_v3),'packages',(select count(*) from manual_publish_packages_v3),'events',(select count(*) from manual_publish_helper_events_v3))::text"
       ],
-      "startedAt": "2026-08-22T07:48:12.258Z",
+      "startedAt": "2026-08-22T14:39:04.224Z",
       "result": "PASS"
     },
     {
@@ -405,7 +421,7 @@
         "restart",
         "api"
       ],
-      "startedAt": "2026-08-22T07:48:12.341Z",
+      "startedAt": "2026-08-22T14:39:04.314Z",
       "result": "PASS"
     },
     {
@@ -418,7 +434,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:12.762Z",
+      "startedAt": "2026-08-22T14:39:04.716Z",
       "result": "PASS"
     },
     {
@@ -431,7 +447,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:14.353Z",
+      "startedAt": "2026-08-22T14:39:06.318Z",
       "result": "PASS"
     },
     {
@@ -444,7 +460,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:15.935Z",
+      "startedAt": "2026-08-22T14:39:07.901Z",
       "result": "PASS"
     },
     {
@@ -457,7 +473,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:17.523Z",
+      "startedAt": "2026-08-22T14:39:09.486Z",
       "result": "PASS"
     },
     {
@@ -470,7 +486,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:19.113Z",
+      "startedAt": "2026-08-22T14:39:11.068Z",
       "result": "PASS"
     },
     {
@@ -483,7 +499,7 @@
         "postgres",
         "api"
       ],
-      "startedAt": "2026-08-22T07:48:19.246Z",
+      "startedAt": "2026-08-22T14:39:11.141Z",
       "result": "PASS"
     },
     {
@@ -496,7 +512,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:21.640Z",
+      "startedAt": "2026-08-22T14:39:12.866Z",
       "result": "PASS"
     },
     {
@@ -509,7 +525,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:23.230Z",
+      "startedAt": "2026-08-22T14:39:14.471Z",
       "result": "PASS"
     },
     {
@@ -522,7 +538,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:24.805Z",
+      "startedAt": "2026-08-22T14:39:16.061Z",
       "result": "PASS"
     },
     {
@@ -535,7 +551,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:26.394Z",
+      "startedAt": "2026-08-22T14:39:17.639Z",
       "result": "PASS"
     },
     {
@@ -548,7 +564,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:28.000Z",
+      "startedAt": "2026-08-22T14:39:19.248Z",
       "result": "PASS"
     },
     {
@@ -571,7 +587,7 @@
         "-c",
         "select json_build_object('revisions',(select count(*) from artifact_revisions_v3),'packages',(select count(*) from manual_publish_packages_v3),'events',(select count(*) from manual_publish_helper_events_v3))::text"
       ],
-      "startedAt": "2026-08-22T07:48:28.112Z",
+      "startedAt": "2026-08-22T14:39:19.564Z",
       "result": "PASS"
     },
     {
@@ -583,7 +599,7 @@
         "stop",
         "postgres"
       ],
-      "startedAt": "2026-08-22T07:48:28.201Z",
+      "startedAt": "2026-08-22T14:39:19.796Z",
       "result": "PASS"
     },
     {
@@ -595,7 +611,7 @@
         "start",
         "postgres"
       ],
-      "startedAt": "2026-08-22T07:48:32.874Z",
+      "startedAt": "2026-08-22T14:39:24.508Z",
       "result": "PASS"
     },
     {
@@ -607,7 +623,7 @@
         "restart",
         "api"
       ],
-      "startedAt": "2026-08-22T07:48:33.108Z",
+      "startedAt": "2026-08-22T14:39:24.712Z",
       "result": "PASS"
     },
     {
@@ -620,7 +636,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:33.508Z",
+      "startedAt": "2026-08-22T14:39:25.153Z",
       "result": "PASS"
     },
     {
@@ -633,7 +649,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:35.097Z",
+      "startedAt": "2026-08-22T14:39:26.747Z",
       "result": "PASS"
     },
     {
@@ -646,7 +662,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:36.697Z",
+      "startedAt": "2026-08-22T14:39:28.319Z",
       "result": "PASS"
     },
     {
@@ -659,7 +675,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:38.293Z",
+      "startedAt": "2026-08-22T14:39:29.887Z",
       "result": "PASS"
     },
     {
@@ -672,7 +688,7 @@
         "--format",
         "json"
       ],
-      "startedAt": "2026-08-22T07:48:39.882Z",
+      "startedAt": "2026-08-22T14:39:31.467Z",
       "result": "PASS"
     }
   ],

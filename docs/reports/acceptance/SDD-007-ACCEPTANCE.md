@@ -44,7 +44,7 @@
 | Output authority | 版本化 closed schemas 与 domain parser 共用；未知/额外字段在 provider/authority 前 fail closed；staged candidate 在 finalize 前对产品域不可见。 |
 | Recovery | 普通 acquire 排除 `SUBMITTED`；`STAGED` 仅走专用 recovery。finalize 将产品写、batch `COMMITTED`、attempt/job `ACCEPTED` 放在同一事务，恢复同一 batch，不重跑 provider/driver、不新建 revision。 |
 | API/UI | create/read/team/events/readiness；cancel/retry 需要 Idempotency-Key 和 ETag/If-Match；AI Team 六成员、job/attempt/event/heartbeat、runtime/profile/bundle digest 与脱敏 Trace 来自 PG。Token 未观测时为 `null / NO_RUNTIME_OBSERVATION`。 |
-| Secret/launcher | terminal-only secret CLI；strict file safety；Compose secret；固定 loopback control gateway；隔离 supervisor HOME/DOCKER_CONFIG；固定容器和命令面。 |
+| Secret/launcher | terminal-only secret CLI；strict file safety；Compose secret；non-root host UID/GID launcher；固定 loopback control gateway；隔离 supervisor HOME/DOCKER_CONFIG；固定容器和命令面。 |
 | 不在范围 | OAuth、账号连接、图片生成、自动发布、ActionGrant/Action Operator、recurring external action、云 Secret 管理、生产级本地主机隔离。 |
 
 ## 三、实现证据
@@ -73,8 +73,9 @@
 - `scripts/persistent-runtime-secret-cli.mjs`：TTY no-echo、fingerprint-only、root `0700`、file `0600`、`lstat`/realpath containment/`O_NOFOLLOW`、regular-file/dev+ino 检查；拒绝末级 root/file symlink 和 unsafe mode；macOS `/tmp -> /private/tmp` 的祖先规范化不会误报。
 - `atomicSecret` 的 write/assert/rename 在 `try/finally` 中仅 unlink 本次精确 temp path；forced rename failure 测试确认无含 Secret 的 temp residue。
 - `scripts/run-persistent-runtime-supervisor.mjs` 只继承 `PATH/LANG/LC_ALL/TMPDIR`，不继承 `HOME/SHELL/DOCKER_CONFIG/OPENAI_API_KEY/ANTHROPIC_API_KEY/DEEPSEEK_API_KEY/AWS_*`。它创建 repo 内 `.runtime/sdd007/supervisor-home` 与 `docker-config`，两者 `0700`。
+- `scripts/run-persistent-runtime-compose.mjs` 从 Node `process.getuid/getgid` 解析 exact non-root host identity，只允许固定 fake/deepseek 的 up/status/down 命令面；Model Gateway 以该 numeric UID/GID 运行，从而在 Linux 读取 host-owned `0600` Compose Secret，不放宽到 `0644`、不以 root 运行。root/缺失 POSIX identity/wrong UID 均 fail closed；provider Key 环境变量会在启动 Docker 前被拒绝，ambient AWS credentials 不传入子进程。
 - control gateway 只允许 `http://127.0.0.1:<允许的高位端口>`；Worker 使用固定同端口 `host.docker.internal`。恶意 URL 在 fetch 前被拒绝，bootstrap header 不外发。
-- Compose 的 Web/API/Model Gateway 都不挂 `docker.sock`；只有宿主 supervisor 具有本地 Docker 权限，命令和 exact container names 固定，无用户可控任意 `docker exec`。
+- Compose 的 Web/API/Model Gateway 都不挂 `docker.sock`；只有宿主 supervisor 具有本地 Docker 权限，命令和 exact container names 固定，无用户可控任意 `docker exec`。Compose verifier 的失败 evidence 收集经 Secret 值与 credential-shaped pattern 双重脱敏的 Gateway/migrate/API 日志，避免 Linux 启动失败只剩外层 `compose exit 1`。
 
 ### 3.4 UI、可访问性与回归
 
@@ -87,7 +88,7 @@
 | Evidence | 内容 | SHA-256 |
 |---|---|---|
 | `.evidence/sdd-007/postgres.json` | fresh PG、migration、lease、ticket fencing、staged atomic recovery、ETag/idempotency | `d9ef8a5e530f831146dd8bbe217ea2a104e731365ecffdd726edec0310d45941` |
-| `.evidence/sdd-007/compose.json` | controlled-fake startup、Web/API/CLI parity、Gateway/API/PostgreSQL restart、Secret/Docker scope、exact cleanup | `3fbcfda0d5f766ad4ca47a057d490c298999e6fa2e56490832d3dbf9c7fdd08a` |
+| `.evidence/sdd-007/compose.json` | controlled-fake startup、Web/API/CLI parity、Gateway/API/PostgreSQL restart、host UID/GID Secret read、Secret/Docker scope、exact cleanup | `ee23a471b5bbe83b80765df20a41f6d02fe0ecba88286c2b633c5ad7a8bebb5f` |
 | `.evidence/sdd-007/browser/browser-verification.json` | Chromium zh-CN/en、axe、keyboard、1024 desktop/800 desktop gate、无 console error | `d2ac224d2bcbe9d9d7db31fc2fef84858e33195764ed5c60e9a3e940580ecdcc` |
 | `.evidence/sdd-007/agentteams-persistent-driver.json` | authorized base `2b5673d0…`、source HEAD `a576947b…`、actual vs expected identity、six-member ACK/Submit/check、five worker-origin calls、Leader 0 call | `b154da036c3bd3a3184dc98ac3e8dfec477c9991e5c1400b76cb4b64f60d7e21` |
 | `.evidence/sdd-002/agentteams-real-runtime.json` | source HEAD `a576947b…`、upstream official installer、source/license/image identity、真实 runtime lifecycle 与 exact cleanup | `d63619d37f48b6f2eb94d42a554d3df7c69339e04b9c3011d82a5f86494632ab` |
@@ -101,18 +102,21 @@
 |---|---|
 | `npm run lint` | `PASS`，0 error / 0 warning。 |
 | `npm run typecheck` | `PASS`，全部 workspace。 |
-| `npx vitest run scripts/persistent-runtime-secret-cli.test.ts scripts/run-persistent-runtime-supervisor.test.ts --configLoader=runner` | `PASS`；symlink/mode/temp cleanup、isolated HOME/DOCKER_CONFIG、credential env/恶意 URL 负测。 |
+| `npx vitest run scripts/persistent-runtime-secret-cli.test.ts scripts/run-persistent-runtime-supervisor.test.ts scripts/run-persistent-runtime-compose.test.ts scripts/mission-worker-health-contract.test.ts apps/web/src/components/production-workspace.test.ts apps/api/src/knowledge-onboarding-api.test.ts apps/api/src/goal-plan-api.test.ts --configLoader=runner` | `PASS`，7 files / 24 tests；symlink/mode/temp cleanup、isolated HOME/DOCKER_CONFIG、credential env/恶意 URL、host UID/GID/wrong UID、legacy/new health、首开 team projection、source-delete stale 负测。 |
 | `npx vitest run scripts/persistent-runtime-cli.test.ts --configLoader=runner` | `PASS`，1 file / 3 tests；只读 exact loopback API、PG run/task/digests、无 Secret/Token 伪造。 |
 | `npx vitest run apps/api/src/persistent-runtime-postgres.test.ts apps/api/src/runtime-mutation-api.test.ts apps/model-gateway/src/server.test.ts apps/mission-worker/src/worker.test.ts packages/mission-compiler/src/persistent-runtime.test.ts scripts/persistent-runtime-secret-cli.test.ts scripts/run-persistent-runtime-supervisor.test.ts --configLoader=runner` | `PASS`（无 PG env 时 PG suite 按合同 skip；fresh PG 由下一项强制执行）。 |
 | `SDD007_POSTGRES_ADMIN_URL=postgres://postgres@127.0.0.1:56432/postgres npm run verify:sdd007:postgres` | `PASS`；随机 fresh authority/gateway/rollback DB，结束强制 drop；PostgreSQL 17.10。 |
-| `npm run verify:sdd007:compose` | `PASS`；独立 project fresh startup，controlled fake `STARTING` 而非 READY，Web/API/CLI 同 PG，Gateway/API/PostgreSQL stop/restart，Secret 不进 API/log/PG dump，Docker socket=false，external action=0，project/volume/temp Secret cleanup PASS。 |
+| `SDD007_COMPOSE_NO_BUILD=1 npm run verify:sdd007:compose` | `PASS`；独立 project fresh startup，controlled fake `STARTING` 而非 READY，Web/API/CLI 同 PG，Gateway/API/PostgreSQL stop/restart，host UID/GID `0600` Secret read、Secret 不进 API/log/PG dump，Docker socket=false，external action=0，project/volume/temp Secret cleanup PASS。 |
 | `npm run storybook:build && npm run verify:sdd007:browser` | `PASS`；Chromium zh-CN/en、14 项 runtime/blocked/Token/Trace/keyboard/desktop 断言、axe serious/critical 0、console error 0、3 张截图。 |
 | `npm run verify:sdd007:agentteams-real` | `PASS`；clean committed source HEAD `a576947b8294ec7545363c25866f022b1ea57100`（authorized base ancestor verified）；official source/installer、actual controller+manager+six Workers identity、六 ACK/Submit/check、五次 exact-role Worker-origin Gateway call、Leader 0 call、Producer/Auditor 分离；exact containers/volume/provider/temp credentials cleanup PASS。 |
+| `SDD008_SKIP_BUILD=1 npm run verify:sdd008:compose` | `PASS`；23 browser checks / 6 screenshots，18 Compose checks；fresh/legacy migration、restart、concurrency、Blob/source-delete/history/rollback，zh-CN/en 与 axe。 |
+| `SDD009_SKIP_BUILD=1 npm run verify:sdd009:compose` | `PASS`；30 browser checks / 8 screenshots，22 Compose checks；fresh PG regression、S1/S2 draft/supersession outbox、same-Mission replan、append-only、业务 read recovery、idempotency/concurrency。 |
+| `SDD010_SKIP_BUILD=1 npm run verify:sdd010:compose` | `PASS`；22 browser checks / 8 screenshots，17 Compose checks；Artifact/Audit/OwnerDecision/Package authority、restart、append-only、no published success，重新生成明确要求新 MissionRun。 |
 | `npm run check:messages` | `PASS`，zh-CN/en 980 keys。 |
-| `npm test` | `PASS`，57 passed / 4 skipped files；470 passed / 4 skipped tests。 |
+| `npm test` | `PASS`，59 passed / 4 skipped files；481 passed / 4 skipped tests。 |
 | `npm run check:secrets && npm run check:compose && npm run check:sdd007-runtime-manifest` | `PASS`；Secret、Docker socket/port/secret scope、pinned manifests。 |
 | `npm run check:report:sdd007` | `PASS`，18 条 AC 与必需章节/术语。 |
-| `npm run verify` | `PASS`，从头执行 static、57 passed / 4 skipped files、470 passed / 4 skipped tests、980 i18n keys、47 status modules、18 条 SDD-007 AC、Secret/Compose/runtime manifests、711-component SBOM、production build 与 Storybook safety；未从失败步骤续跑。真实 AgentTeams 证据仍单独受 clean committed source 门禁。 |
+| `npm run verify` | `PASS`，从头执行 static、59 passed / 4 skipped files、481 passed / 4 skipped tests、980 i18n keys、47 status modules、18 条 SDD-007 AC、553-file Secret scan、Compose/runtime manifests、711-component SBOM、production build 与 Storybook safety；未从失败步骤续跑。真实 AgentTeams 证据仍单独受 clean committed source 门禁。 |
 
 ## 五、验收标准结果
 
@@ -150,7 +154,7 @@ Owner UAT 为 `PENDING`，因此 Coordinator 最多可决定 `EVIDENCE_READY`。
 
 1. 在 Worktree 执行 `npm ci && npm run verify`。预期全部门禁绿色；任何 lint/typecheck/test/report/secret/compose/build 失败即停止。
 2. controlled-fake 工程预检执行 `npm run runtime:secret:prepare-fake`；真实 DeepSeek UAT 改执行 `npm run runtime:secret:configure`。预期不回显值，只显示 configured/fingerprint；发现完整 key 即失败并立即 rotate。
-3. 执行 `npm run build`，再按 provider 选择 `npm run runtime:compose:fake` 或 `npm run runtime:compose:deepseek`。预期 PostgreSQL/migrate/Gateway/API/Web healthy。仅 Compose 后若有人声称 AgentTeams/mission-worker 已运行即失败。
+3. 执行 `npm run build`，再按 provider 选择 `npm run runtime:compose:fake` 或 `npm run runtime:compose:deepseek`，并执行 `npm run runtime:compose:status`（DeepSeek 使用 `runtime:compose:status:deepseek`）。预期 PostgreSQL/migrate/Gateway/API/Web healthy；Gateway container user 等于 launcher 解析的非 root host UID/GID。仅 Compose 后若有人声称 AgentTeams/mission-worker 已运行即失败。
 4. 确认 exact six upstream Worker + controller + manager 已运行，然后在独立前台终端执行 `npm run runtime:supervisor`。它必须使用 repo 内 isolated HOME/DOCKER_CONFIG，不能读取宿主登录态。
 5. 在第三个终端执行 `npm run runtime:secret:status`、`npm run runtime:status`、`curl --fail http://127.0.0.1:4100/api/v1/runtime/readiness` 和 `curl --fail http://127.0.0.1:4401/health`。读取 CLI 只允许 exact loopback API origin，输出 PG 权威 run/task/digests 且无 Secret。controlled fake 预期 `DEGRADED`；real provider 只有四路全部通过才可 `READY`。错误 digest/profile、missing heartbeat、`INCOMPATIBLE/UNREACHABLE` 都是失败。
 6. 打开 <http://127.0.0.1:3100> 和 `/en`，进入 AI Team；用键盘 Tab 与方向/Home/End 切换页签。预期六角色、run/task/attempt/heartbeat/digest、渐进 Trace 来自 PG；中英文完整，无 serious/critical axe 问题；小于 1024px 出现 desktop gate。
@@ -162,8 +166,8 @@ Owner UAT 为 `PENDING`，因此 Coordinator 最多可决定 `EVIDENCE_READY`。
 停止/cleanup：
 
 1. 先在 supervisor 终端按 Ctrl-C，阻止新 dispatch；
-2. controlled fake 执行 `docker compose -f compose.yml -f compose.persistent-runtime.yml --profile persistent-runtime --project-name lumiclaw-sdd007 down`；
-3. DeepSeek overlay 执行 `docker compose -f compose.yml -f compose.persistent-runtime.yml -f compose.persistent-runtime-deepseek.yml --profile persistent-runtime --project-name lumiclaw-sdd007 down`；
+2. controlled fake 执行 `npm run runtime:compose:stop`；
+3. DeepSeek overlay 执行 `npm run runtime:compose:stop:deepseek`；
 4. 保留 PostgreSQL/Blob append-only evidence 和 sanitized manifest；Secret 删除/rotate 只由 Owner 在备份证据后执行。验证器的临时 AgentTeams 容器只能由其 exact-name cleanup 删除。
 
 ## 七、ChatGPT Pro 双代理记录

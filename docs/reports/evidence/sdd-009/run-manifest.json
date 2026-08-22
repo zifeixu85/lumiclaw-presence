@@ -3,11 +3,11 @@
   "sdd": "SDD-009",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-22T03:10:37.630Z",
+  "generatedAt": "2026-08-22T14:37:15.739Z",
   "source": {
     "base": "99376d48c5c97462865293a5d287e4e697547b29",
-    "headAtRun": "284b210dec33141e42c479389ca81b0642703cdf",
-    "branch": "codex/sdd-009-persistent-goal-selected-platform-compiler",
+    "headAtRun": "4898f96f9fb002e1aa768d4a8b2f97c0699d09f4",
+    "branch": "codex/sdd-007-persistent-agentteams-runtime",
     "workingTreeDirty": true
   },
   "runtime": {
@@ -28,13 +28,13 @@
   "evidenceFiles": [
     {
       "path": "docs/reports/evidence/sdd-009/compose-verification.json",
-      "bytes": 13805,
-      "sha256": "3734a99021d2360407ffbfeb1ced8e8c3e7bd187ee19eca7e6990914c7e4525a"
+      "bytes": 13859,
+      "sha256": "674e50a1268e2dc20ecbfb3fc7d0a35ca48d4dc48349442072ac2b2b4e402dc8"
     },
     {
       "path": "docs/reports/evidence/sdd-009/browser-verification.json",
       "bytes": 3124,
-      "sha256": "d2c885d608d6d5c0085a8a91cfb66f1f60734ee790fcbe48676981b367fba35c"
+      "sha256": "45f9952391c8307aafb15dcb90932237409bac2e73fa095d4804fb330dd1e36a"
     },
     {
       "path": "docs/reports/evidence/sdd-009/migration-manifest.json",
@@ -44,17 +44,17 @@
     {
       "path": "docs/reports/evidence/sdd-009/api-contract-results.json",
       "bytes": 1578,
-      "sha256": "b0d54b649bd39569b81892e9af31a7039c72c85b549f3facec1a29cdaacdea0b"
+      "sha256": "690c4307a99d8f41f81162abe4d943d93b401e7cafef6ec88877b10dc66a577f"
     },
     {
       "path": "docs/reports/evidence/sdd-009/restart-transcript.json",
       "bytes": 1777,
-      "sha256": "9b8596ee5eed73dcd14d883f0885a62fa9acd1a60b65cc0000558f751d5f37dc"
+      "sha256": "755ee31cd7c7b7073e9a4d2f6e04bd82d9829d37f2f9a90780d2f8d4653f4e11"
     },
     {
       "path": "docs/reports/evidence/sdd-009/postgres-regression.json",
       "bytes": 1864,
-      "sha256": "2fffb92aab0eaa54c5be9b5e7ad5c7960d88a036b12b75dd706ab33a79d6ec0f"
+      "sha256": "0c6e2cf7d3212a6d1098d15ae9f10dd09a626822e7e8ae76be885dedd94c357b"
     },
     {
       "path": "docs/reports/evidence/sdd-009/golden-digests.json",
@@ -73,33 +73,33 @@
     },
     {
       "path": "docs/reports/evidence/sdd-009/02-mission-intent-zh.png",
-      "bytes": 250136,
-      "sha256": "1a56047708b731fb561ac3e0c5cd927bbd23dbd44390d565665a65fa1ba86f78"
+      "bytes": 250443,
+      "sha256": "a79c941b7a42f8016d2c8daf22eff6f23dc49863a749b7e091e3e3b11e57e1fb"
     },
     {
       "path": "docs/reports/evidence/sdd-009/03-plan-review-revision-zh.png",
-      "bytes": 196367,
-      "sha256": "ee766c88b65295657a829dfac8a5f1ecadc408167aff111cbe1520face7a9b39"
+      "bytes": 207640,
+      "sha256": "d030c953d44d12818626576e40bb4374a93a3bc4743405b88b2507e3398782fb"
     },
     {
       "path": "docs/reports/evidence/sdd-009/04-mission-execution-zh.png",
-      "bytes": 192723,
-      "sha256": "9119fad6be4318635219c082617574e2b80fc06e090de5541befdf36bdc89892"
+      "bytes": 193227,
+      "sha256": "539857e94de8a4281aea3a09e60a8ea877cc4d307599799ffaf12e65aec48228"
     },
     {
       "path": "docs/reports/evidence/sdd-009/05-invalidation-recovery-zh.png",
-      "bytes": 170776,
-      "sha256": "c234b0afab5a5b3d22739a9e9e933bf07bfd429003eb6566485cb7f5bae2eab9"
+      "bytes": 170705,
+      "sha256": "d0b8693eb3dbb3538979d28c0c801e6d4c1c77b5defe296bebd1ab2bda166405"
     },
     {
       "path": "docs/reports/evidence/sdd-009/05b-recompiled-execution-zh.png",
-      "bytes": 177197,
-      "sha256": "c75c6171c1946d0675a5016d8c2cb85e886ae5436e742502c62b6a0f016229ee"
+      "bytes": 177169,
+      "sha256": "cd80cb0959a52517857f648cf1f5845bb62c62295392341a77ec6132a845759d"
     },
     {
       "path": "docs/reports/evidence/sdd-009/06-goal-execution-en.png",
-      "bytes": 235072,
-      "sha256": "9d160aada468a81c0c4cd68adb941b224e032c12e517c20a2c6d363cd46def99"
+      "bytes": 234091,
+      "sha256": "ab2de421abb1a1a8bced3a0aab8839e0984f2ee6d180fe9e6bc8e945627c05fe"
     },
     {
       "path": "docs/reports/evidence/sdd-009/07-desktop-gate.png",

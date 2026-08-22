@@ -25,7 +25,12 @@ export function ProductionWorkspace({locale, initialSection = 'today', initialSn
   const [error, setError] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
-    const [nextSnapshot, nextReadiness, nextTeam, nextSkills] = await Promise.all([loadWorkspace(), loadReadiness(), loadTeam(), loadSkills()]);
+    const nextSnapshot = await loadWorkspace();
+    const [nextReadiness, nextTeam, nextSkills] = await Promise.all([
+      loadReadiness(),
+      nextSnapshot.profile === null ? Promise.resolve(null) : loadTeam(),
+      loadSkills()
+    ]);
     const webItem = nextReadiness.items.find((item) => item.service === 'WEB');
     if (webItem !== undefined) Object.assign(webItem, {state: 'AVAILABLE', source: 'CLIENT_OBSERVATION', reasonCode: 'CLIENT_RENDERED_READINESS'});
     setSnapshot(nextSnapshot); setReadiness(nextReadiness); setTeam(nextTeam); setSkills(nextSkills);
@@ -45,11 +50,16 @@ export function ProductionWorkspace({locale, initialSection = 'today', initialSn
     return version;
   };
 
-  if (snapshot === null || readiness === null || team === null || skills === null) return <><DesktopGate /><div className="lc-desktop-app grid min-h-screen place-items-center bg-[var(--lc-canvas)]"><div className="max-w-md text-center">{error === null ? <><LoaderCircle className="mx-auto animate-spin text-[var(--lc-accent)]" size={26} aria-hidden /><p className="mt-4 text-sm text-[var(--lc-ink-muted)]">{t('loading')}</p></> : <><AlertTriangle className="mx-auto text-[var(--lc-danger)]" size={28} aria-hidden /><h1 className="mt-4 font-[var(--lc-font-serif)] text-2xl font-semibold">{t('errorTitle')}</h1><code className="mt-3 block text-xs text-[var(--lc-danger)]">{error}</code><Button className="mt-5" variant="primary" onClick={() => run(async () => {})}>{t('retry')}</Button></>}</div></div></>;
+  if (snapshot === null || readiness === null || skills === null || (snapshot.profile !== null && team === null)) return <><DesktopGate /><div className="lc-desktop-app grid min-h-screen place-items-center bg-[var(--lc-canvas)]"><div className="max-w-md text-center">{error === null ? <><LoaderCircle className="mx-auto animate-spin text-[var(--lc-accent)]" size={26} aria-hidden /><p className="mt-4 text-sm text-[var(--lc-ink-muted)]">{t('loading')}</p></> : <><AlertTriangle className="mx-auto text-[var(--lc-danger)]" size={28} aria-hidden /><h1 className="mt-4 font-[var(--lc-font-serif)] text-2xl font-semibold">{t('errorTitle')}</h1><code className="mt-3 block text-xs text-[var(--lc-danger)]">{error}</code><Button className="mt-5" variant="primary" onClick={() => run(async () => {})}>{t('retry')}</Button></>}</div></div></>;
 
   const publicExampleReady = snapshot.session?.path === 'PUBLIC_SAFE_EXAMPLE' && snapshot.session.state === 'COMPLETED';
   const approvedKnowledgeReady = snapshot.knowledge?.session.state === 'KNOWLEDGE_APPROVED_NEEDS_GOAL';
-  if (!publicExampleReady && !approvedKnowledgeReady) return <><DesktopGate /><OnboardingFlow
+  const approvedRuntimeSectionReady = approvedKnowledgeReady && (
+    initialSection === 'goals' ||
+    initialSection === 'ai-team' ||
+    (initialSection === 'publish' && snapshot.goals?.bundles.some((bundle) => bundle.kind === 'MISSION_EXECUTION') === true)
+  );
+  if (!publicExampleReady && !approvedRuntimeSectionReady) return <><DesktopGate /><OnboardingFlow
     locale={locale}
     snapshot={snapshot}
     busy={busy}
@@ -72,6 +82,8 @@ export function ProductionWorkspace({locale, initialSection = 'today', initialSn
     onResolve={(conflictId, itemId) => run(() => resolveKnowledgeConflict(conflictId, itemId, 'Owner confirmed this value in the guided review.', knowledgeVersion()))}
     onApprove={(snapshotId, digest) => run(() => approveKnowledgeSnapshot(snapshotId, digest, knowledgeVersion()))}
   /></>;
+
+  if (team === null) throw new Error('AI_TEAM_PROJECTION_REQUIRED');
 
   return <><DesktopGate /><WorkspaceShell locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness}><WorkspaceFeature locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness} team={team} skills={skills} onReload={reload} /></WorkspaceShell></>;
 }

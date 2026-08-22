@@ -19,6 +19,7 @@ services:
       context: .
       dockerfile: infra/compose/Dockerfile
     command: [node, apps/model-gateway/dist/server.js]
+    user: "${LUMICLAW_RUNTIME_UID:?runtime Compose must be launched by the Node wrapper}:${LUMICLAW_RUNTIME_GID:?runtime Compose must be launched by the Node wrapper}"
     profiles: [persistent-runtime]
     init: true
     read_only: true
