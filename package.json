@@ -81,6 +81,7 @@
     "runtime:secret:configure": "node scripts/persistent-runtime-secret-cli.mjs configure",
     "runtime:secret:prepare-fake": "node scripts/persistent-runtime-secret-cli.mjs prepare-controlled-fake",
     "runtime:secret:status": "node scripts/persistent-runtime-secret-cli.mjs status",
+    "runtime:status": "node scripts/persistent-runtime-cli.mjs status",
     "runtime:compose:fake": "docker compose -f compose.yml -f compose.persistent-runtime.yml --profile persistent-runtime --project-name lumiclaw-sdd007 up -d --build postgres migrate model-gateway api web",
     "runtime:compose:deepseek": "docker compose -f compose.yml -f compose.persistent-runtime.yml -f compose.persistent-runtime-deepseek.yml --profile persistent-runtime --project-name lumiclaw-sdd007 up -d --build postgres migrate model-gateway api web",
     "runtime:supervisor": "node scripts/run-persistent-runtime-supervisor.mjs",

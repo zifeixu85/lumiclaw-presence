@@ -216,6 +216,7 @@ Check status from another terminal:
 
 ~~~bash
 npm run runtime:secret:status
+npm run runtime:status
 curl --fail http://127.0.0.1:4100/api/v1/runtime/readiness
 curl --fail http://127.0.0.1:4401/health
 ~~~
