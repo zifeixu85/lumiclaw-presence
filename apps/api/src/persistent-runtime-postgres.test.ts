@@ -381,8 +381,30 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
           new Date(claimAt.getTime() + 30),
         ),
       ).toMatchObject({ accepted: true, duplicate: false });
+      expect((await runtimeA.getRun(authority.ownerId,run.id))?.state).toBe('RUNNING');
+      const [prematurePlan,failedCompletionA,failedCompletionB]=await Promise.all([
+        runtimeA.acquireJob('worker-premature-plan',60_000,new Date(claimAt.getTime()+31)),
+        runtimeA.acquirePendingCompletion('worker-complete-fails-a',1_000,new Date(claimAt.getTime()+31)),
+        runtimeRestarted.acquirePendingCompletion('worker-complete-fails-b',1_000,new Date(claimAt.getTime()+31)),
+      ]);
+      expect(prematurePlan).toBeUndefined();
+      const failedCompletion=failedCompletionA??failedCompletionB;
+      expect([failedCompletionA,failedCompletionB].filter(Boolean)).toHaveLength(1);
+      expect(failedCompletion?.batch.id).toBe(claimBatch.id);
+      const completionRetryAt=new Date(claimAt.getTime()+1_032);
+      const [stillPrematurePlan,completionRetryA,completionRetryB]=await Promise.all([
+        runtimeA.acquireJob('worker-still-premature-plan',60_000,completionRetryAt),
+        runtimeA.acquirePendingCompletion('worker-complete-retry-a',60_000,completionRetryAt),
+        runtimeRestarted.acquirePendingCompletion('worker-complete-retry-b',60_000,completionRetryAt),
+      ]);
+      expect(stillPrematurePlan).toBeUndefined();
+      const completionRetry=completionRetryA??completionRetryB;
+      expect([completionRetryA,completionRetryB].filter(Boolean)).toHaveLength(1);
+      if(completionRetry===undefined)throw new Error('CLAIM_COMPLETION_RETRY_REQUIRED');
+      await runtimeA.confirmRuntimeCompletion(completionRetry.lease.job.leaseOwner!,completionRetry.lease.job.id,completionRetry.lease.attempt.id,completionRetry.lease.leaseToken,completionRetry.batch.id,new Date(completionRetryAt.getTime()+1));
+      expect(Number((await pool.query<{count:string}>("select count(*)::text count from runtime_events_v1 where run_id=$1 and job_id=$2 and type='RUNTIME_COMPLETION_CONFIRMED'",[run.id,claim.job.id])).rows[0]!.count)).toBe(1);
 
-      const planAt = new Date(claimAt.getTime() + 40);
+      const planAt = new Date(completionRetryAt.getTime() + 10);
       const planLease = await runtimeA.acquireJob(
         "worker-plan",
         60_000,
@@ -669,6 +691,14 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
           ).rows[0]!.count,
         ),
       ).toBe(1);
+      expect((await runtimeA.getRun(authority.ownerId,run.id))?.state).toBe('RUNNING');
+      expect(Number((await pool.query<{count:string}>("select count(*)::text count from runtime_events_v1 where run_id=$1 and type='RUNTIME_GENERATION_AT_HUMAN_GATE'",[run.id])).rows[0]!.count)).toBe(0);
+      const planCompletion=await runtimeA.acquirePendingCompletion('worker-plan-completion',60_000,new Date(finalizeAt.getTime()+2));
+      expect(planCompletion?.batch.id).toBe(planBatch.id);
+      if(planCompletion===undefined)throw new Error('PLAN_COMPLETION_REQUIRED');
+      await runtimeA.confirmRuntimeCompletion('worker-plan-completion',planCompletion.lease.job.id,planCompletion.lease.attempt.id,planCompletion.lease.leaseToken,planCompletion.batch.id,new Date(finalizeAt.getTime()+3));
+      expect((await runtimeA.getRun(authority.ownerId,run.id))?.state).toBe('HUMAN_GATE');
+      expect(Number((await pool.query<{count:string}>("select count(*)::text count from runtime_events_v1 where run_id=$1 and type='RUNTIME_GENERATION_AT_HUMAN_GATE'",[run.id])).rows[0]!.count)).toBe(1);
 
       const second = await runtimeA.createRun(
         authority.ownerId,
@@ -719,27 +749,22 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
         staleDigest,
         new Date(t0.getTime() + 730),
       );
-      const replacementDigest = runtimeLeaseTokenDigest(
-        "replacement-lease-token",
-      );
-      await pool.query(
-        "with replaced as (update mission_jobs_v1 set lease_owner='worker-reclaimer',lease_token_hash=$2 where id=$1 returning id) update agent_task_attempts_v1 set lease_token_hash=$2 where id=$3 and exists(select 1 from replaced)",
-        [stale.job.id, replacementDigest, stale.attempt.id],
-      );
-      expect(
-        await ticketRepository.consume(
-          staleClaims,
-          staleDigest,
-          new Date(t0.getTime() + 800),
-        ),
-      ).toBe("REJECTED");
-      expect(
-        await runtimeRestarted.acquireJob(
-          "worker-reclaimer",
-          60_000,
-          new Date(t0.getTime() + 2_000),
-        ),
-      ).toBeUndefined();
+      const replacementDigest=runtimeLeaseTokenDigest('replacement-lease-token');
+      await pool.query("with replaced as (update mission_jobs_v1 set lease_owner='worker-reclaimer',lease_token_hash=$2 where id=$1 returning id) update agent_task_attempts_v1 set lease_token_hash=$2 where id=$3 and exists(select 1 from replaced)",[stale.job.id,replacementDigest,stale.attempt.id]);
+      expect(await ticketRepository.consume(staleClaims,staleDigest,new Date(t0.getTime()+800))).toBe('REJECTED');
+      expect(Number((await pool.query<{count:string}>("select count(*)::text count from runtime_idempotency_v1 where owner_profile_id=$1 and route='RUNTIME_SUBMISSION_INTENT' and idempotency_key=$2",[authority.ownerId,stale.attempt.id])).rows[0]!.count)).toBe(0);
+      const [ordinaryAckRecovery,ackRecoveryA,ackRecoveryB]=await Promise.all([
+        runtimeRestarted.acquireJob('worker-ordinary-ack-recovery',60_000,new Date(t0.getTime()+2_000)),
+        runtimeA.acquireSubmissionRecovery('worker-ack-recovery-a',60_000,new Date(t0.getTime()+2_000)),
+        runtimeRestarted.acquireSubmissionRecovery('worker-ack-recovery-b',60_000,new Date(t0.getTime()+2_000)),
+      ]);
+      expect(ordinaryAckRecovery).toBeUndefined();
+      const ackRecovery=ackRecoveryA??ackRecoveryB;
+      expect([ackRecoveryA,ackRecoveryB].filter(Boolean)).toHaveLength(1);
+      expect(ackRecovery?.envelope).toBeNull();
+      expect(ackRecovery?.lease.attempt.id).toBe(stale.attempt.id);
+      expect(ackRecovery?.lease.attempt.attemptNumber).toBe(1);
+      await expect(runtimeA.heartbeatLease('worker-stale',stale.job.id,stale.attempt.id,stale.leaseToken,60_000,new Date(t0.getTime()+2_001))).rejects.toMatchObject({code:'JOB_LEASE_LOST'});
       expect(
         await ticketRepository.consume(
           staleClaims,

@@ -21,9 +21,14 @@ describe('SDD-007 real AgentTeams production-path verifier', () => {
     expect(source).toContain("graph.jobs.find((job)=>job.roleId==='presence-mission-leader')");
     expect(source).toContain('runtimeTaskId===leaderJob.taskContractId');
     expect(source).not.toContain('graph.jobs[0]');
+    expect(source).toContain('async function verify()');
+    expect(source.indexOf('class ProductionPathRuntime')).toBeLessThan(source.indexOf('await verify();'));
     expect(source).toContain('worker=makeWorker();workerRestartCount+=1');
     expect(source).toContain('submitStageRecovered:runtime.submissionRecoveryCount===1');
     expect(source).toContain('completionOutboxRecovered:runtime.completionRecoveryCount===1');
+    expect(source).toContain("dependency?.state==='ACCEPTED'&&pending!==undefined&&this.confirmed.has(pending.batch.id)");
+    expect(source).toMatch(/async finalizeMaterialization[^]*?this\.pending\.push[^]*?return \{accepted:true,duplicate:false/);
+    expect(source).toMatch(/async confirmRuntimeCompletion[^]*?this\.confirmed\.add[^]*?state==='WAITING_DEPENDENCY'/);
     expect(source).not.toMatch(/roleId\s*===\s*['"]presence-mission-leader['"]\s*\?\s*driver\./);
   });
 
