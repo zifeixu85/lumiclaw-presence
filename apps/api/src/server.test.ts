@@ -343,6 +343,13 @@ describe('M1 Campaign API contract', () => {
     expect(openapi.json().paths['/api/v1/knowledge/sources/text'].post.requestBody.content['application/json'].schema.$ref).toBe('#/components/schemas/KnowledgeTextSourceInput');
     expect(openapi.json().paths['/api/v1/knowledge/snapshots/approve']).toBeDefined();
     expect(openapi.json().paths['/api/v1/knowledge/snapshots/{snapshotId}/role-context']).toBeDefined();
+    expect(openapi.json().paths['/api/v1/goals'].post.requestBody.content['application/json'].schema.$ref).toBe('#/components/schemas/OperatingGoalInput');
+    expect(openapi.json().paths['/api/v1/content-plans'].post.requestBody.content['application/json'].schema.$ref).toBe('#/components/schemas/PlannerSubmissionV2');
+    expect(openapi.json().paths['/api/v1/content-plans/{planId}/approve'].post).toBeDefined();
+    expect(openapi.json().paths['/api/v1/mission-bundles/{bundleId}'].get).toBeDefined();
+    expect(openapi.json().components.schemas.OperatingGoalInput.additionalProperties).toBe(false);
+    expect(openapi.json().components.schemas.PlannerSubmissionV2.additionalProperties).toBe(false);
+    expect(openapi.json().components.schemas.PlannerSubmissionV2.properties.apiKey).toBeUndefined();
     expect(openapi.json().components.schemas.KnowledgeTextSourceInput.properties.candidates).toBeUndefined();
     expect(openapi.json().components.schemas.AccountOperatingProfileInput.properties.apiKey).toBeUndefined();
     expect(openapi.json().paths['/api/v1/local-materials'].post.requestBody.content['application/pdf']).toBeUndefined();
