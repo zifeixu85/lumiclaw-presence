@@ -1,4 +1,4 @@
-import type {AccountOperatingProfileInput, KnowledgeOverview, KnowledgePlatform, KnowledgeStep, LocalCampaignIdentityInput, LocalOnboardingContext, OrganizationProfileInput, PersonaProfileInput, ProductProfileInput, ProfileKind} from '@lumiclaw/domain';
+import type {AccountOperatingProfileInput, ContentBrief, ContentPlanRevision, ContentPlanSlot, KnowledgeOverview, KnowledgePlatform, KnowledgeStep, LocalCampaignIdentityInput, LocalOnboardingContext, MissionExecutionBundle, MissionIntentBundle, OperatingGoalInput, OperatingGoalRevision, OrganizationProfileInput, PersonaProfileInput, PlanSourceBinding, PlannerSubmission, ProductProfileInput, ProfileKind} from '@lumiclaw/domain';
 import type {EnvironmentReadiness, SkillListResponse, TeamResponse, WorkspaceSnapshot} from './production-types';
 
 export class ProductApiError extends Error {
@@ -32,6 +32,40 @@ export async function confirmLegacySource(sourceId:string,version:number):Promis
 export async function resolveKnowledgeConflict(conflictId:string,selectedItemId:string,note:string,version:number):Promise<KnowledgeOverview>{const response=await requestJson<KnowledgeMutationResponse>('/api/v1/knowledge/snapshots/resolve-conflict',{method:'POST',headers:knowledgeHeaders(version,mutationKey('conflict')),body:JSON.stringify({conflictId,selectedItemId,note})});return response.overview;}
 export async function approveKnowledgeSnapshot(snapshotId:string,canonicalDigest:string,version:number):Promise<KnowledgeOverview>{const response=await requestJson<KnowledgeMutationResponse>('/api/v1/knowledge/snapshots/approve',{method:'POST',headers:knowledgeHeaders(version,mutationKey('snapshot-approve')),body:JSON.stringify({snapshotId,canonicalDigest})});return response.overview;}
 export async function loadSkill(skillId: string): Promise<{skill: {content: string; files: string[]; license: string}}> { return requestJson(`/api/v1/skills/${skillId}`); }
+
+type GoalMutationResponse = {goal: OperatingGoalRevision};
+type IntentMutationResponse = {bundle: MissionIntentBundle; plannerExecution: {status: 'NOT_RUN'; fixtureAllowedForEngineering: true; agentTeamsExecuted: false}};
+type PlanMutationResponse = {plan: ContentPlanRevision; agentTeamsExecuted: boolean; evidenceMaturity: string};
+type ApprovalMutationResponse = {plan: ContentPlanRevision; bundle: MissionExecutionBundle; agentTeamsExecuted: false; externalActionAllowed: false};
+
+export async function createOperatingGoal(value: OperatingGoalInput, knowledgeVersion: number): Promise<OperatingGoalRevision> {
+  const response = await requestJson<GoalMutationResponse>('/api/v1/goals', {method: 'POST', headers: knowledgeHeaders(knowledgeVersion, mutationKey('goal-create')), body: JSON.stringify(value)});
+  return response.goal;
+}
+export async function activateOperatingGoal(goal: OperatingGoalRevision): Promise<OperatingGoalRevision> {
+  const response = await requestJson<GoalMutationResponse>(`/api/v1/goals/${goal.goalId}/activate`, {method: 'POST', headers: exactHeaders(goalEtagValue(goal), mutationKey('goal-activate')), body: JSON.stringify({canonicalDigest: goal.canonicalDigest})});
+  return response.goal;
+}
+export async function compileMissionIntent(goal: OperatingGoalRevision): Promise<MissionIntentBundle> {
+  const response = await requestJson<IntentMutationResponse>('/api/v1/missions/compile', {method: 'POST', headers: exactHeaders(goalEtagValue(goal), mutationKey('mission-intent')), body: JSON.stringify({goalId: goal.goalId, goalDigest: goal.canonicalDigest})});
+  return response.bundle;
+}
+export async function importControlledPlannerSubmission(intent: MissionIntentBundle, submission: PlannerSubmission): Promise<ContentPlanRevision> {
+  const response = await requestJson<PlanMutationResponse>('/api/v1/content-plans', {method: 'POST', headers: exactHeaders(bundleEtagValue(intent), mutationKey('plan-import')), body: JSON.stringify(submission)});
+  return response.plan;
+}
+export async function reviseContentPlan(plan: ContentPlanRevision, slots: ContentPlanSlot[], currentBrief: ContentBrief, sourceBindings: PlanSourceBinding[]): Promise<ContentPlanRevision> {
+  const response = await requestJson<PlanMutationResponse>(`/api/v1/content-plans/${plan.planId}`, {method: 'PATCH', headers: exactHeaders(planEtagValue(plan), mutationKey('plan-revise')), body: JSON.stringify({canonicalDigest: plan.canonicalDigest, slots, currentBrief, sourceBindings})});
+  return response.plan;
+}
+export async function approveContentPlan(plan: ContentPlanRevision): Promise<ApprovalMutationResponse> {
+  return requestJson(`/api/v1/content-plans/${plan.planId}/approve`, {method: 'POST', headers: exactHeaders(planEtagValue(plan), mutationKey('plan-approve')), body: JSON.stringify({canonicalDigest: plan.canonicalDigest})});
+}
+
+function exactHeaders(etag: string, key: string): HeadersInit { return {'content-type': 'application/json', 'if-match': etag, 'idempotency-key': key}; }
+function goalEtagValue(goal: OperatingGoalRevision): string { return `"goal-${goal.goalId}-r${goal.revision}-${goal.canonicalDigest}"`; }
+function planEtagValue(plan: ContentPlanRevision): string { return `"plan-${plan.planId}-r${plan.revision}-${plan.canonicalDigest}"`; }
+function bundleEtagValue(bundle: MissionIntentBundle): string { return `"bundle-${bundle.bundleId}-g${bundle.generation}-${bundle.canonicalDigest}"`; }
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {...init, cache: 'no-store'});
   const payload = await response.json() as {code?: string};

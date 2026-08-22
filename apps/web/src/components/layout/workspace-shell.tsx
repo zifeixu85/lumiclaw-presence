@@ -1,17 +1,18 @@
 'use client';
 
 import type {AppLocale} from '@lumiclaw/i18n';
-import {CalendarDays, ChevronDown, CircleGauge, Library, Link2, Megaphone, MessageSquareText, Search, Send, Settings, ShieldCheck, Users} from 'lucide-react';
+import {CalendarDays, ChevronDown, CircleGauge, Crosshair, Library, Link2, Megaphone, MessageSquareText, Search, Send, Settings, ShieldCheck, Users} from 'lucide-react';
 import {useTranslations} from 'next-intl';
 import type {ReactNode} from 'react';
 import {Link} from '@/i18n/navigation';
 import type {EnvironmentReadiness, WorkspaceSection, WorkspaceSnapshot} from '@/lib/production-types';
 
 type WorkspaceShellProps = {locale: AppLocale; section: WorkspaceSection; snapshot: WorkspaceSnapshot; readiness: EnvironmentReadiness; children: ReactNode};
-type NavKey = 'today' | 'campaigns' | 'aiTeam' | 'calendar' | 'publish' | 'feedback' | 'knowledge' | 'accounts' | 'settings';
+type NavKey = 'today' | 'goals' | 'campaigns' | 'aiTeam' | 'calendar' | 'publish' | 'feedback' | 'knowledge' | 'accounts' | 'settings';
 
 const operations = [
   {id: 'today', href: '/', key: 'today', icon: CircleGauge},
+  {id: 'goals', href: '/goals', key: 'goals', icon: Crosshair},
   {id: 'ai-team', href: '/ai-team', key: 'aiTeam', icon: Users},
   {id: 'campaigns', href: '/campaigns', key: 'campaigns', icon: Megaphone},
   {id: 'calendar', href: '/calendar', key: 'calendar', icon: CalendarDays},

@@ -48,7 +48,8 @@ export function ProductionWorkspace({locale, initialSection = 'today', initialSn
   if (snapshot === null || readiness === null || team === null || skills === null) return <><DesktopGate /><div className="lc-desktop-app grid min-h-screen place-items-center bg-[var(--lc-canvas)]"><div className="max-w-md text-center">{error === null ? <><LoaderCircle className="mx-auto animate-spin text-[var(--lc-accent)]" size={26} aria-hidden /><p className="mt-4 text-sm text-[var(--lc-ink-muted)]">{t('loading')}</p></> : <><AlertTriangle className="mx-auto text-[var(--lc-danger)]" size={28} aria-hidden /><h1 className="mt-4 font-[var(--lc-font-serif)] text-2xl font-semibold">{t('errorTitle')}</h1><code className="mt-3 block text-xs text-[var(--lc-danger)]">{error}</code><Button className="mt-5" variant="primary" onClick={() => run(async () => {})}>{t('retry')}</Button></>}</div></div></>;
 
   const publicExampleReady = snapshot.session?.path === 'PUBLIC_SAFE_EXAMPLE' && snapshot.session.state === 'COMPLETED';
-  if (!publicExampleReady) return <><DesktopGate /><OnboardingFlow
+  const approvedKnowledgeReady = snapshot.knowledge?.session.state === 'KNOWLEDGE_APPROVED_NEEDS_GOAL';
+  if (!publicExampleReady && (!approvedKnowledgeReady || initialSection !== 'goals')) return <><DesktopGate /><OnboardingFlow
     locale={locale}
     snapshot={snapshot}
     busy={busy}
@@ -72,7 +73,7 @@ export function ProductionWorkspace({locale, initialSection = 'today', initialSn
     onApprove={(snapshotId, digest) => run(() => approveKnowledgeSnapshot(snapshotId, digest, knowledgeVersion()))}
   /></>;
 
-  return <><DesktopGate /><WorkspaceShell locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness}><WorkspaceFeature locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness} team={team} skills={skills} /></WorkspaceShell></>;
+  return <><DesktopGate /><WorkspaceShell locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness}><WorkspaceFeature locale={locale} section={initialSection} snapshot={snapshot} readiness={readiness} team={team} skills={skills} onReload={reload} /></WorkspaceShell></>;
 }
 
 function errorCode(error: unknown): string { return error instanceof ProductApiError ? error.code : error instanceof Error ? error.message : 'CONTROL_PLANE_UNAVAILABLE'; }
