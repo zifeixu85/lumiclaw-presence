@@ -233,6 +233,14 @@ docker compose -f compose.yml -f compose.persistent-runtime.yml -f compose.persi
 
 The base local PostgreSQL configuration uses trust authentication but is published only on loopback. This is a single-user local competition boundary, not protection from another malicious process or user on the same host. The supervisor creates an isolated `0700` `.runtime/sdd007/supervisor-home` and Docker config, does not inherit the real host `HOME`, shell, cloud credentials, or provider-key environment variables, and can only inspect/execute the fixed AgentTeams container set. See the [SDD-007 Chinese acceptance report](docs/reports/acceptance/SDD-007-ACCEPTANCE.md) for failure signs, evidence, rollback, and Owner UAT.
 
+The controlled-fake Compose lifecycle can be verified independently:
+
+~~~bash
+npm run verify:sdd007:compose
+~~~
+
+It creates a separate `lumiclaw-sdd007-compose-verify` project, checks startup, Web/API/CLI parity, controlled-fake non-READY behavior, Gateway/API/PostgreSQL restart, Secret/Docker scope, zero external actions, and removes that exact project, its volumes, and temporary Secret root in `finally`. The real six-member evidence command `npm run verify:sdd007:agentteams-real` additionally requires a completely clean committed source tree and self-cleans its exact temporary AgentTeams runtime; do not run it while editing tracked or untracked files.
+
 ### Preliminary-round SHADOW demo
 
 The bounded preliminary-round demo uses only deterministic synthetic data and the existing `PUBLIC_SAFE_MOCK / MOCK_CONFORMANCE` path. It does not run real AgentTeams or a live model, and it cannot publish.

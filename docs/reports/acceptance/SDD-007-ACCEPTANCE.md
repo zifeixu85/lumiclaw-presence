@@ -85,6 +85,8 @@
 | Evidence | 内容 | SHA-256 |
 |---|---|---|
 | `.evidence/sdd-007/postgres.json` | fresh PG、migration、lease、ticket fencing、staged atomic recovery、ETag/idempotency | 在最终 `STATUS_HANDOFF` 固定 |
+| `.evidence/sdd-007/compose.json` | controlled-fake startup、Web/API/CLI parity、Gateway/API/PostgreSQL restart、Secret/Docker scope、exact cleanup | `3fbcfda0d5f766ad4ca47a057d490c298999e6fa2e56490832d3dbf9c7fdd08a` |
+| `.evidence/sdd-007/browser/browser-verification.json` | Chromium zh-CN/en、axe、keyboard、1024 desktop/800 desktop gate、无 console error | `d2ac224d2bcbe9d9d7db31fc2fef84858e33195764ed5c60e9a3e940580ecdcc` |
 | `.evidence/sdd-007/agentteams-persistent-driver.json` | actual vs expected identity、six-member ACK/Submit/check、five worker-origin calls、Leader 0 call | 在最终 `STATUS_HANDOFF` 固定 |
 | `.evidence/sdd-002/agentteams-real-runtime.json` | upstream official installer、source/license/image identity、真实 runtime lifecycle 与清理 | 在最终 `STATUS_HANDOFF` 固定 |
 | 本报告 | 18 条二元 AC、Owner UAT、限制、Rollback | 在最终 `STATUS_HANDOFF` 固定 |
@@ -98,14 +100,17 @@
 | `npm run lint` | `PASS`，0 error / 0 warning。 |
 | `npm run typecheck` | `PASS`，全部 workspace。 |
 | `npx vitest run scripts/persistent-runtime-secret-cli.test.ts scripts/run-persistent-runtime-supervisor.test.ts --configLoader=runner` | `PASS`；symlink/mode/temp cleanup、isolated HOME/DOCKER_CONFIG、credential env/恶意 URL 负测。 |
+| `npx vitest run scripts/persistent-runtime-cli.test.ts --configLoader=runner` | `PASS`，1 file / 3 tests；只读 exact loopback API、PG run/task/digests、无 Secret/Token 伪造。 |
 | `npx vitest run apps/api/src/persistent-runtime-postgres.test.ts apps/api/src/runtime-mutation-api.test.ts apps/model-gateway/src/server.test.ts apps/mission-worker/src/worker.test.ts packages/mission-compiler/src/persistent-runtime.test.ts scripts/persistent-runtime-secret-cli.test.ts scripts/run-persistent-runtime-supervisor.test.ts --configLoader=runner` | `PASS`（无 PG env 时 PG suite 按合同 skip；fresh PG 由下一项强制执行）。 |
 | `SDD007_POSTGRES_ADMIN_URL=postgres://postgres@127.0.0.1:56432/postgres npm run verify:sdd007:postgres` | `PASS`；随机 fresh authority/gateway/rollback DB，结束强制 drop；PostgreSQL 17.10。 |
+| `npm run verify:sdd007:compose` | `PASS`；独立 project fresh startup，controlled fake `STARTING` 而非 READY，Web/API/CLI 同 PG，Gateway/API/PostgreSQL stop/restart，Secret 不进 API/log/PG dump，Docker socket=false，external action=0，project/volume/temp Secret cleanup PASS。 |
+| `npm run storybook:build && npm run verify:sdd007:browser` | `PASS`；Chromium zh-CN/en、14 项 runtime/blocked/Token/Trace/keyboard/desktop 断言、axe serious/critical 0、console error 0、3 张截图。 |
 | `npm run verify:sdd007:agentteams-real` | 预提交运行已完成 official source/installer、exact controller+manager+six Workers、六 ACK/Submit/check 与 cleanup，但 clean-source 证据门禁按预期拒绝未提交 Worktree；implementation commit 后将从 clean HEAD 重跑并只在 exit 0 后改为 `PASS`。 |
 | `npm run check:messages` | `PASS`，zh-CN/en 980 keys。 |
-| `npm test` | `PASS`，56 passed / 4 skipped files；467 passed / 4 skipped tests。 |
+| `npm test` | `PASS`，57 passed / 4 skipped files；470 passed / 4 skipped tests。 |
 | `npm run check:secrets && npm run check:compose && npm run check:sdd007-runtime-manifest` | `PASS`；Secret、Docker socket/port/secret scope、pinned manifests。 |
 | `npm run check:report:sdd007` | `PASS`，18 条 AC 与必需章节/术语。 |
-| `npm run verify` | 报告写入后必须从头执行；最终结果由本报告同提交的 `STATUS_HANDOFF` 固定，不从先前失败步骤续跑。 |
+| `npm run verify` | `PASS`，从头执行 static、57 passed / 4 skipped files、470 passed / 4 skipped tests、980 i18n keys、47 status modules、18 条 SDD-007 AC、Secret/Compose/runtime manifests、711-component SBOM、production build 与 Storybook safety；未从失败步骤续跑。真实 AgentTeams 证据仍单独受 clean committed source 门禁。 |
 
 ## 五、验收标准结果
 

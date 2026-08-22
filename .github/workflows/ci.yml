@@ -244,6 +244,28 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  sdd007-persistent-runtime-compose:
+    name: SDD-007 controlled Compose lifecycle and fail-closed readiness
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - run: npm ci
+      - name: Verify fresh Compose, four-way readiness, restarts and Secret scope
+        run: npm run verify:sdd007:compose
+      - name: Upload public-safe SDD-007 Compose evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdd-007-compose-evidence
+          path: .evidence/sdd-007/compose.json
+          if-no-files-found: error
+          retention-days: 7
+
   real-agentteams-arm64:
     name: Self-provisioned real AgentTeams v1.2.0 (manual ARM64 evidence runner)
     if: github.event_name == 'workflow_dispatch'
