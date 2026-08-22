@@ -113,8 +113,8 @@
 | M5-03 | 完整 UI 状态矩阵、i18n 与可访问性 | `NOT_STARTED` | M1–M4 | 中英文一致、视觉回归、键盘导航与 axe 检查 |
 | M5-04 | Provider 与 Connector Conformance | `NOT_STARTED` | M3、M4-04 | Success/Failure/Timeout/Unknown/Duplicate/Capability 的公开安全 Fixture |
 | M5-05 | Agent 消融、Evidence Export 与稳定 Hero Demo | `NOT_STARTED` | M5-01–M5-04 | 同条件比较、Allowlist Export 与可重复 Demo Runbook |
-| M5-06 | 分步人设、知识与账号档案 Onboarding | `IN_PROGRESS` | M5-00、M2-07；SDD-008 | 版本化创始人人设、企业/产品事实、X/小红书账号运营档案、多来源 MD/TXT/自由文字接入、显式冲突决定与已批准 KnowledgeSnapshot |
-| M5-07 | 持久 Goal、Agent 生成计划与已选平台编译器 | `NOT_STARTED` | M5-06；SDD-009 | 持久 7/30 日 Goal、真实 Planner 草案与 Owner 批准，并只为已选 X/小红书账号确定性编译 Mission Bundle |
+| M5-06 | 分步人设、知识与账号档案 Onboarding | `EVIDENCE_READY` | M5-00、M2-07；SDD-008 | 版本化创始人人设、企业/产品事实、X/小红书账号运营档案、多来源 MD/TXT/自由文字接入、显式冲突决定与已批准 KnowledgeSnapshot；工程验证已完成，Owner UAT 待完成 |
+| M5-07 | 持久 Goal、Agent 生成计划与已选平台编译器 | `IN_PROGRESS` | M5-06；SDD-009 | 持久 7/30 日 Goal、真实 Planner 草案与 Owner 批准，并只为已选 X/小红书账号确定性编译 Mission Bundle |
 | M5-08 | 常驻本地 AgentTeams Runtime 与 Secret Broker | `NOT_STARTED` | M5-07、M5-09；SDD-007 | 固定版本六成员 Runtime、仅终端 Secret Broker、PostgreSQL Job/Lease、Dispatch、重启与恢复，且无隐藏 Mock 成功 |
 | M5-09 | X/小红书产物、独立审校与人工 PublishPackage | `NOT_STARTED` | M5-07、M3-00；SDD-010 | 版本化 X 单帖/线程与小红书图文产物、独立审校、精确 OwnerDecision 失效及安全复制/下载/打开发布包 |
 | M5-10 | 完整 Dogfood 安装、恢复与录屏门禁 | `NOT_STARTED` | M5-06–M5-09；SDD-011 | Fresh Install/升级/回滚、public-safe Owner Dogfood 正常与失败关闭闭环、重启恢复及可复现带讲解 Demo 证据 |
