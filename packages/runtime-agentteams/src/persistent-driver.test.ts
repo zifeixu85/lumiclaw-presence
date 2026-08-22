@@ -1,4 +1,5 @@
 import { AGENTTEAMS_IMAGE_DIGESTS, GOAL_ROLE_IDS } from "@lumiclaw/domain";
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   runBoundedProcess,
@@ -80,6 +81,14 @@ describe("SDD-007 runtime identity probe", () => {
         "TEAM_PROFILE_DIGEST_MISMATCH",
       ]),
     });
+  });
+
+  it("observes each persisted task result from its exact assigned worker store", () => {
+    const source = readFileSync(new URL("./persistent-driver.ts", import.meta.url), "utf8");
+    expect(source).toContain('"assignedTo":t.assigned_to');
+    expect(source).toContain("this.readTaskResult(row.assignedTo, row.taskId)");
+    expect(source).toContain("AGENTTEAMS_OBSERVED_TASK_ACTOR_MISMATCH");
+    expect(source).not.toContain("s.read_task_result(t.task_id)");
   });
 });
 

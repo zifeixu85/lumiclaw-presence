@@ -425,7 +425,7 @@ export class DockerAgentTeamsV120Driver implements PersistentAgentTeamsDriver {
   }
   public async observe(binding: RuntimeBinding) {
     const code =
-      'import json,sys; from dataclasses import asdict; from copaw_worker.task import FileSystemTaskStore,parse_dag_tasks,TaskflowError; s=FileSystemTaskStore(); p=s.read_project_plan(sys.argv[1]); rows=[]\nfor t in parse_dag_tasks(p):\n r=None\n try:r=asdict(s.read_task_result(t.task_id))\n except TaskflowError:pass\n rows.append({"taskId":t.task_id,"status":t.status,"result":r})\nprint(json.dumps(rows))';
+      'import json,sys; from copaw_worker.task import FileSystemTaskStore,parse_dag_tasks; s=FileSystemTaskStore(); p=s.read_project_plan(sys.argv[1]); print(json.dumps([{"taskId":t.task_id,"status":t.status,"assignedTo":t.assigned_to} for t in parse_dag_tasks(p)]))';
     const rows = JSON.parse(
       await this.exec([
         "exec",
@@ -440,11 +440,26 @@ export class DockerAgentTeamsV120Driver implements PersistentAgentTeamsDriver {
     ) as Array<{
       taskId: string;
       status: string;
-      result?: { summary?: string } | null;
+      assignedTo: string;
     }>;
+    const allowedRoles = new Set(
+      binding.memberBindings.map((item) => item.roleId),
+    );
+    if (
+      rows.some(
+        (row) =>
+          !allowedRoles.has(row.assignedTo as (typeof GOAL_ROLE_IDS)[number]),
+      )
+    )
+      throw new PersistentRuntimeError(
+        "RUNTIME_VERSION_INCOMPATIBLE",
+        "AGENTTEAMS_OBSERVED_TASK_ACTOR_MISMATCH",
+      );
+    const persistedResults = await Promise.all(
+      rows.map((row) => this.readTaskResult(row.assignedTo, row.taskId)),
+    );
     const submittedOutputDigests: string[] = [];
-    for (const row of rows) {
-      const parsed = parseSummary(row.result?.summary);
+    for (const parsed of persistedResults) {
       if (parsed !== undefined)
         submittedOutputDigests.push(parsed.outputDigest);
     }

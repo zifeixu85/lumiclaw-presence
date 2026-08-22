@@ -25,7 +25,7 @@
 工程证据达到以下边界：
 
 - 固定官方 AgentTeams v1.2.0 tag 对应 commit `793db242257a569d911b1aa59c1cd554af78511f`、source tar SHA-256 `a4a9d66fabc49e1d08246d9b8b65d2b67742b71b2b43d3dfc0d27e8861f0770c`、Apache-2.0，以及 controller/manager/worker 的 immutable image ID / RepoDigest。readiness 读取实际 `docker inspect` 结果并输出 expected vs actual；常量不能自证 READY。
-- controlled-real verifier 已改为只走 production `PersistentMissionWorker.tick`；五个领域成员必须各自从 exact-role Worker 容器发出 Gateway HTTP，Leader provider call 为 0。门禁会在 submit→stage 与 finalize→completion confirmation 之间各注入一次 crash，创建新 worker、等待旧 lease 过期，再通过 exact submission observation / completion outbox 收敛。旧 source evidence 不作为最终背书。
+- controlled-real verifier 已改为只走 production `PersistentMissionWorker.tick`；五个领域成员必须各自从 exact-role Worker 容器发出 Gateway HTTP，Leader provider call 为 0。最终 observation 按 DAG `assigned_to` 并受 binding role allowlist 约束，从各自 exact Worker store 聚合 6 个 submitted digest，不以 Leader store 代替成员结果。门禁会在 submit→stage 与 finalize→completion confirmation 之间各注入一次 crash，创建新 worker、等待旧 lease 过期，再通过 exact submission observation / completion outbox 收敛。旧 source evidence 不作为最终背书。
 - migration `000014` 建立 run/job/attempt/binding/event、heartbeat、ticket、staging batch/item 等权威表。fresh PostgreSQL 覆盖 acquire 后 fenced heartbeat、双 worker lease CAS、ACK/no-intent 单赢家恢复、过期/retry/stale lease ticket fencing、并发 one-use、durable submission intent、跨域 staging 原子提交、completion outbox，以及 confirmation 前不释放后继/终态的 crash recovery。
 - Secret 仅从 TTY 隐藏输入进入 `0700` secret root 下的 `0600` regular file/Compose Secret；symlink、unsafe mode 和失败后临时文件残留均被拒绝或补偿。supervisor 使用隔离 `HOME/DOCKER_CONFIG`，不继承宿主 HOME、Shell、云凭证或 provider-key 环境变量。
 - readiness 是 PostgreSQL、Model Gateway、mission-worker heartbeat、actual pinned AgentTeams identity/profile 四路合取。controlled fake 且 heartbeat/identity 齐全时最高为 `DEGRADED`；heartbeat 缺失/过期为 `UNREACHABLE`，AI Team projection 也不能以旧 run/binding 冒充 READY。
@@ -129,7 +129,7 @@
 | AC-01 | `PASS` | terminal-only configure 隐藏输入，只输出 configured/fingerprint；浏览器/API 无 Secret set/read 字段。 |
 | AC-02 | `PASS` | actual inspect 同时核对 controller、manager、exact six workers image ID/RepoDigest、source/profile/topology；任一错误为 `INCOMPATIBLE`。 |
 | AC-03 | `PENDING_FINAL_GATE` | verifier 已改为 production `PersistentMissionWorker.tick`；clean source 后必须由 exact six members 完成 ACK/Submit/check，Leader provider call=0，两个 Producer 与 Auditor actor 分离。 |
-| AC-04 | `PENDING_FINAL_GATE` | clean-source real gate 必须证明 provider HTTP 从 assigned exact-role Worker 容器固定 `docker exec` 发出，同一 Worker submit/check，mission-worker direct provider call=0。 |
+| AC-04 | `PENDING_FINAL_GATE` | clean-source real gate 必须证明 provider HTTP 从 assigned exact-role Worker 容器固定 `docker exec` 发出，同一 Worker submit/check，最终 6 个 digest 也从各自 binding-allowlisted Worker store 观测，mission-worker direct provider call=0。 |
 | AC-05 | `PASS` | AI Team Web/API/CLI 同读 PostgreSQL；六成员、job/attempt/event/readiness/digests 可见；Token 为 null + `NO_RUNTIME_OBSERVATION`。 |
 | AC-06 | `PASS` | acquire 后立即 fenced heartbeat；driver hard timeout TERM→KILL 并在 finally 停止 heartbeat；普通 acquire 排除已 dispatch/submitted 路径；fresh PG 双 worker与旧 lease不能重复 bind/provider/submit/accepted output。ACK/no-intent 只由 submission recovery 单赢家接管同一 attempt，worker 仅一次 provider call。 |
 | AC-07 | `PASS` | external submit 前持久 immutable output intent；submit→stage crash 通过 exact observe 恢复且 provider 不重跑。staged candidate 对产品 authority/head/idempotency 不可见，产品写与 runtime ACCEPTED 同事务；accepted 后 completion outbox 可跨 crash/timeout 幂等确认，confirmation 前不释放 downstream 或 run 成功终态。 |
