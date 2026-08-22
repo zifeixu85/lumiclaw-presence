@@ -2,34 +2,10 @@
   "schemaVersion": 1,
   "sdd": "SDD-008",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
-  "result": "PASS",
-  "sequence": [
-    "restart api",
-    "restart postgres and api",
-    "GET /api/v1/local-workspace"
-  ],
-  "beforeCounts": {
-    "sources": 5,
-    "profiles": 5,
-    "snapshots": 18,
-    "approved": 1,
-    "campaigns": 0,
-    "agent_runs": 0
-  },
-  "afterCounts": {
-    "sources": 5,
-    "profiles": 5,
-    "snapshots": 18,
-    "approved": 1,
-    "campaigns": 0,
-    "agent_runs": 0
-  },
-  "restored": {
-    "sessionState": "KNOWLEDGE_APPROVED_NEEDS_GOAL",
-    "currentSnapshotId": "01a02622-0601-7409-8f82-635116b558c1",
-    "snapshotVersion": 18,
-    "snapshotDigest": "b81819f68d045dde7990a124d163849e9fdb53f9297441bc2d17d5db96e57fb5",
-    "sourceCount": 5
-  },
-  "duplicateRevisionDetected": false
+  "result": "NOT_AVAILABLE",
+  "failure": {
+    "name": "Error",
+    "message": "Command failed: /Users/ameng/.nvm/versions/node/v24.16.0/bin/node scripts/verify-sdd008-browser.mjs",
+    "stack": "Error: Command failed: /Users/ameng/.nvm/versions/node/v24.16.0/bin/node scripts/verify-sdd008-browser.mjs\n    at genericNodeError (node:internal/errors:985:15)\n    at wrappedFn (node:internal/errors:539:14)\n    at checkExecSyncError (node:child_process:925:11)\n    at execFileSync (node:child_process:961:15)\n    at file:///Users/ameng/Documents/Projects/GOAI-hangzhou/worktrees/lumiclaw-presence/sdd-007-persistent-agentteams-runtime/scripts/verify-sdd008-compose.mjs:46:3"
+  }
 }

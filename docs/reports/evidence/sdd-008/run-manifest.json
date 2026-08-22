@@ -2,12 +2,12 @@
   "schemaVersion": 1,
   "sdd": "SDD-008",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
-  "result": "PASS",
-  "generatedAt": "2026-08-21T21:02:59.308Z",
+  "result": "FAIL",
+  "generatedAt": "2026-08-22T14:01:44.100Z",
   "source": {
     "base": "001ef2e5e8e10402d93f5f3dd02fff2a1a2315c0",
-    "headAtRun": "001ef2e5e8e10402d93f5f3dd02fff2a1a2315c0",
-    "branch": "codex/sdd-008-guided-persona-knowledge-account-onboarding",
+    "headAtRun": "4898f96f9fb002e1aa768d4a8b2f97c0699d09f4",
+    "branch": "codex/sdd-007-persistent-agentteams-runtime",
     "workingTreeDirty": true
   },
   "runtime": {
@@ -27,8 +27,8 @@
   "evidenceFiles": [
     {
       "path": "docs/reports/evidence/sdd-008/compose-verification.json",
-      "bytes": 21125,
-      "sha256": "7b6319361fb630bcd1650b57870bbf6fbaecfe112cf38301782b5754f18342f5"
+      "bytes": 10584,
+      "sha256": "2beb95424b14954455634e305b4200a8b3f7900cb8a7a3bc844f325448606c11"
     },
     {
       "path": "docs/reports/evidence/sdd-008/browser-verification.json",
@@ -37,23 +37,23 @@
     },
     {
       "path": "docs/reports/evidence/sdd-008/migration-manifest.json",
-      "bytes": 966,
-      "sha256": "d9b260fc2a9e0f59ce06676390345f4fcff498a7bc0ccbd24a6492f6c5525d03"
+      "bytes": 1125,
+      "sha256": "a420676ce44326302ade0ca25ce98257bf599513026e9de7437f3c7351c8d4ce"
     },
     {
       "path": "docs/reports/evidence/sdd-008/api-contract-results.json",
-      "bytes": 1653,
-      "sha256": "3233e75cf707ae03b1c78779aa594fb57ddcc1aaaf9ee23b529cef343c10f3d2"
+      "bytes": 773,
+      "sha256": "67007cef4e289e8ac477e9be4e601ef6ca3c19da9d61a1cd40a72534092c3184"
     },
     {
       "path": "docs/reports/evidence/sdd-008/source-snapshot-digest-manifest.json",
-      "bytes": 6343,
-      "sha256": "bc63c0faf11ea7dc66a567f3e999b0bc69cfd8223eaf73f2d42125e93a938767"
+      "bytes": 773,
+      "sha256": "67007cef4e289e8ac477e9be4e601ef6ca3c19da9d61a1cd40a72534092c3184"
     },
     {
       "path": "docs/reports/evidence/sdd-008/restart-transcript.json",
-      "bytes": 814,
-      "sha256": "25b2181b04d248b1137e0dc47fd6e9fd4865aa33d1b2301274c7c28fe4aeb57a"
+      "bytes": 773,
+      "sha256": "67007cef4e289e8ac477e9be4e601ef6ca3c19da9d61a1cd40a72534092c3184"
     },
     {
       "path": "docs/reports/evidence/sdd-008/DEPENDENCY-LICENSE-REVIEW.md",
