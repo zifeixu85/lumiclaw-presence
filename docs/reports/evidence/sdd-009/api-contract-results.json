@@ -7,7 +7,7 @@
     "idempotentRetry": {
       "firstStatus": 201,
       "replayStatus": 200,
-      "digest": "6664332e8add3ce2e440c74963d61865d419289aceea0b761bbb927ebbd582ca"
+      "digest": "e29942ab1b52bffb61618a6723752a717973c62e87249441430538a7a3ae5c59"
     },
     "idempotencyReuse": {
       "status": 409,
@@ -15,12 +15,12 @@
     },
     "concurrency": [
       {
-        "status": 200,
-        "code": "OPERATING_GOAL_REVISION_CREATED"
-      },
-      {
         "status": 412,
         "code": "GOAL_VERSION_CONFLICT"
+      },
+      {
+        "status": 200,
+        "code": "OPERATING_GOAL_REVISION_CREATED"
       }
     ],
     "tamper": {
@@ -36,16 +36,16 @@
     }
   },
   "authoritativeIds": {
-    "goalId": "goal_6694c44ad90146d5f98a8b5c",
+    "goalId": "goal_2037adbfb03456f274a4a860",
     "goalRevision": 4,
-    "goalDigest": "b810c140d20186568544b37055afcc1ddfa64c6e2a408fd345d75cfb2ae8d1b9",
-    "planId": "plan_4d08a7bf268c71f03c370824",
+    "goalDigest": "fe62a154e25f0e27d956bfa0f4289be7f04f288e24eae0b1513fd88237cf035d",
+    "planId": "plan_db4f78bdfd0df72f75f7ddd7",
     "planRevision": 5,
-    "planDigest": "3c3676d0a74e4711ee5c3be3343209b14c2d041622e6b50c8a67cc3dc833beb0",
-    "intentBundleId": "bundle_4f6fdf051ac9e3295e186e2f",
-    "intentDigest": "bf8526d6b4d3a39a26a906d4864435519cdba15f62265e6f121c6a4be7f0bfe6",
-    "executionBundleId": "bundle_7c235cec729b2396cd1d26ce",
-    "executionDigest": "bd874d77c2389c4ccac7b949e9c89d1882b586402d43220007fc6729c3d45358",
+    "planDigest": "7456ca3f84beaae39d5e8e80a0ba843eb1c988fa7a89b12e23212b2bbd448f34",
+    "intentBundleId": "bundle_8f7499b41a3ee04027fb3735",
+    "intentDigest": "58f894744efae1eb4357fe3fb78ded072db8048264ed284df68a5a72f9f1272f",
+    "executionBundleId": "bundle_79558900b3610fc3f919ab32",
+    "executionDigest": "cd8aa097cb58ba6398434834f82bb5d447f5c2c5126ccfd90be123ccb554487e",
     "rows": {
       "goal_revisions": 4,
       "plan_revisions": 5,

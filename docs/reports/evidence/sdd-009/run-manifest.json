@@ -3,10 +3,10 @@
   "sdd": "SDD-009",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-22T15:50:19.783Z",
+  "generatedAt": "2026-08-22T16:48:49.572Z",
   "source": {
     "base": "99376d48c5c97462865293a5d287e4e697547b29",
-    "headAtRun": "eeb9209ddd2f66be0b869e64881c439fe5517986",
+    "headAtRun": "0bc69f639ecfc3269622c3ff86379f70d4eef957",
     "branch": "codex/sdd-007-persistent-agentteams-runtime",
     "workingTreeDirty": true
   },
@@ -29,12 +29,12 @@
     {
       "path": "docs/reports/evidence/sdd-009/compose-verification.json",
       "bytes": 13859,
-      "sha256": "55d237f3430ea134a11898fabb8f3ce948a98d8d1d9a72551c305d3c8dc38079"
+      "sha256": "38a888d308501c233066cc76a225a2d61232c10cb5afcaefb9a8c40954e3b879"
     },
     {
       "path": "docs/reports/evidence/sdd-009/browser-verification.json",
       "bytes": 3124,
-      "sha256": "c9d5cc9c6eb2f828c7c8876843d9e31aa7ce814c615ceb2bb259fe4938ea6298"
+      "sha256": "b121f4c418221113925cf7363fa4dead1c7b4b928ca16a27b1fc91a1350f7e74"
     },
     {
       "path": "docs/reports/evidence/sdd-009/migration-manifest.json",
@@ -44,17 +44,17 @@
     {
       "path": "docs/reports/evidence/sdd-009/api-contract-results.json",
       "bytes": 1578,
-      "sha256": "392dd845438dfdff6847b5762185c87b9fa8502038eefed8c3a2729a327648e9"
+      "sha256": "e1b00bfb5ee5c8d2fb77ca7c3aaf37313d993b4bb74a09f8f67ca484d8cf23e7"
     },
     {
       "path": "docs/reports/evidence/sdd-009/restart-transcript.json",
       "bytes": 1777,
-      "sha256": "2e9648e645ede56ab856558489233763a44e4b2ce4fb21e025c2ed0d9507b702"
+      "sha256": "65e4d085d6e85105ca885bfd9fab865d9cfe5671485ba3200ff526d841f4abe8"
     },
     {
       "path": "docs/reports/evidence/sdd-009/postgres-regression.json",
       "bytes": 1864,
-      "sha256": "fa6b06c56bae443dee1ab1f206db9f70bfeab401726f1d078bd89a0df9f1b5f9"
+      "sha256": "5eb208c974f7a3a319465304b7e5552bc8b3483cfb9ed951f040afbc7d049fd2"
     },
     {
       "path": "docs/reports/evidence/sdd-009/golden-digests.json",
@@ -68,38 +68,38 @@
     },
     {
       "path": "docs/reports/evidence/sdd-009/01-goal-form-zh.png",
-      "bytes": 197130,
-      "sha256": "fc164b7f0108381608209206c741e8b3d4486dfa6545fb2fc1c39d7182d08ac1"
+      "bytes": 197058,
+      "sha256": "743cc8c7fb8cbb6aabd9afa45486c8e300032fa73e965bc1fdd510bed3a03337"
     },
     {
       "path": "docs/reports/evidence/sdd-009/02-mission-intent-zh.png",
-      "bytes": 250354,
-      "sha256": "4e1e04bc84d81df9732e9a43148a0a247fa73513fb85e9df0181a8ca3ca0373b"
+      "bytes": 250614,
+      "sha256": "7aad646439dbf52814ebbfce16ea8039aeebafdd440293e55948556e519e2c92"
     },
     {
       "path": "docs/reports/evidence/sdd-009/03-plan-review-revision-zh.png",
-      "bytes": 206897,
-      "sha256": "aaa147b134b10fdc52090635166ce73bef2eec25bb97358b0fb1c738b1c09f40"
+      "bytes": 196398,
+      "sha256": "3b0d52742201972fc5f24cbb3795d3b6ca61925f53607e3da769e86ad8ab1312"
     },
     {
       "path": "docs/reports/evidence/sdd-009/04-mission-execution-zh.png",
-      "bytes": 193010,
-      "sha256": "7db3d4f2b18086050475255dd1e87876d988ecea578cf212feb48e18b20e396b"
+      "bytes": 192374,
+      "sha256": "8b54bfcd32bfc6a9b01e16902928940348e2bc55992196b79f7977382f4e23ef"
     },
     {
       "path": "docs/reports/evidence/sdd-009/05-invalidation-recovery-zh.png",
-      "bytes": 170805,
-      "sha256": "7e59609514ae78d5534de25bdc9a9dfdbc6070f9a1791b73e836e353f177ff9d"
+      "bytes": 170701,
+      "sha256": "26a31708b4e9d2c15df7b82b3e7a8432e556e558fed234c3cb1d0acb072be9d4"
     },
     {
       "path": "docs/reports/evidence/sdd-009/05b-recompiled-execution-zh.png",
-      "bytes": 177286,
-      "sha256": "573d079c87663c12c165957dbd1e2b5e1e612f530e343e7806d723c8375dee6c"
+      "bytes": 176703,
+      "sha256": "7e0bc4ab550dfc41e98b8ff1ad16fec9cddee17af9e52496b48c3437677ad22a"
     },
     {
       "path": "docs/reports/evidence/sdd-009/06-goal-execution-en.png",
-      "bytes": 234787,
-      "sha256": "d1b124fdfc5f5a469e3201e313a0be9f42fd944a9fb6740bb1142cdccc1db390"
+      "bytes": 234750,
+      "sha256": "0024403659b4baa8017c27aa950bd7b7a502079030482f52423ce827451b6e71"
     },
     {
       "path": "docs/reports/evidence/sdd-009/07-desktop-gate.png",

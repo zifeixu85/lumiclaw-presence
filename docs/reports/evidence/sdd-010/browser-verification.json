@@ -3,7 +3,7 @@
   "sdd": "SDD-010",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-22T15:51:03.075Z",
+  "generatedAt": "2026-08-22T16:49:34.307Z",
   "locales": [
     "zh-CN",
     "en"
@@ -44,7 +44,7 @@
     },
     {
       "name": "02-owner-edit-diff-zh.png",
-      "sha256": "ba0a915eb9abedadc35a6140b5f2cf49d1a6b198de776fde1a84ef0343162f10",
+      "sha256": "0d3c5142f92d93e8eb4ce590d68c5f346c061327bb38d179f2de2d27f8cd1be5",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -52,7 +52,7 @@
     },
     {
       "name": "03-x-package-ready-zh.png",
-      "sha256": "ba7e225d35f57f4ec52f0e2fbe99c834e70124afe666e952c5154ada67658eca",
+      "sha256": "5c9b27d78b6011ba89728c838fd2be936cae1faf088bf2aa84d18d097308f00d",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -68,7 +68,7 @@
     },
     {
       "name": "05-xhs-package-ready-zh.png",
-      "sha256": "4fb28d1924ab6671eba3c2fe1837783dda1b9eda872b1c560aff092e6f2e8d76",
+      "sha256": "12420603bd92ab33b428d60ccff08774af1ecc9cad07c0de6204bfc8b9751f1d",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -76,7 +76,7 @@
     },
     {
       "name": "06-regenerate-reject-zh.png",
-      "sha256": "ac115107bb8460d336a9d8d80a258186ec5ccc1e6317ae2e0a66d4122b5102e3",
+      "sha256": "af132f938130f75cf6e1eef8c36bc7d89fa79e6fb14bb5c0423be0534275781b",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -84,7 +84,7 @@
     },
     {
       "name": "06-package-en.png",
-      "sha256": "64b3f4a45722092d6564a0bdb1a97eb5b57f91c45acdd084485db098a062634c",
+      "sha256": "443aee08fd8664fe967bfc9bc9acca7d1021e85ff7ba66f933955d5506fca94a",
       "viewport": {
         "width": 1440,
         "height": 1000
