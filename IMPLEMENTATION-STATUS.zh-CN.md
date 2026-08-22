@@ -4,8 +4,8 @@
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
 > **快照日期：** 2026-08-22
-> **当前阶段：** PR #5/#6/#7 收敛；M2 市场本地化与 M5 生产 UX 基础仍在进行中
-> **当前实现真相：** M0 与 M1 已验收。M2-01～M2-06 已实现并完成工程验证，包括锁定版本的六成员 AgentTeams Shadow 路径；Owner UAT 仍待完成。`SDD-004` 提供非执行桌面手工发布包基础，证据已就绪。`SDD-005` 只增加 public-safe 的 US/JP/DE 市场上下文合同；`SDD-006` 增加具备 PostgreSQL/Blob 持久化与发布 fail-closed 的生产 UX/本地 Onboarding 候选。Integration Executor 已完成 SDD-004/005/006 组合机器验证；Coordinator 独立复验与 Owner UAT 仍待完成。这些切片都不授权客户数据能力声明、AgentTeams 常驻安装、ActionGrant、Connector、凭据、合规保证、外部平台动作或 `PUBLISHED`。不声明 EvoLink 真实验证、外部用户校准或业务结果。
+> **当前阶段：** M5 本地 Dogfood 闭环；SDD-007 常驻 AgentTeams Runtime 是当前活动实现模块
+> **当前实现真相：** M0 与 M1 已验收。M2-01～M2-06 已实现并完成工程验证，包括锁定版本的六成员 AgentTeams Shadow 路径；Owner UAT 仍待完成。`SDD-004`～`SDD-010` 已提供工程验证过的非执行手工发布包、市场上下文、生产 UX/Onboarding、分步知识、持久 Goal/Plan/已选平台编译，以及受治理的 X/小红书产物、审校与发布包基础。`SDD-010` 经 Coordinator 独立复验后已在 PR #16 合并，状态仍为 `EVIDENCE_READY`，不是已验收。下一步为 `SDD-007`：接入真实常驻 AgentTeams、仅终端 Secret Broker、PostgreSQL Job/Lease 与重启恢复。在 SDD-007 和 Owner UAT 通过前，受控 Fixture 不得描述为真实 Agent 产物。当前不授权自动发布、浏览器内平台凭据、`PUBLISHED`、外部用户结果、业务结果或法律合规保证。
 
 ## 进度状态合同
 
@@ -25,12 +25,12 @@
 
 | 指标 | 当前值 |
 |---|---|
-| 已验收模块 | `13 / 42`（`31.0%`） |
-| 证据已就绪 | `7 / 42` |
-| 被阻塞 | `0 / 42` |
-| 当前实现 SDD | `SDD-005` / `M2-07` 与 `SDD-006` / `M5-00` 为收敛候选；`SDD-004` / `M3-00` 已证据就绪 |
-| 最早 Owner 阻塞项 | 在接受 M2 或启动任何受控外部动作前，记录 SDD-002 Owner UAT |
-| 下一个可执行模块 | Coordinator 独立复验组合基线后记录 Owner UAT；全部真实动作模块继续受 Gate 约束 |
+| 已验收模块 | `13 / 47`（`27.7%`） |
+| 证据已就绪 | `12 / 47` |
+| 被阻塞 | `0 / 47` |
+| 当前实现 SDD | `SDD-007` / `M5-08` 常驻本地 AgentTeams Runtime 与 Secret Broker |
+| 最早 Owner 阻塞项 | SDD-007 的真实 Canary 需要 Owner 通过仅终端 Secret Broker 提供 DeepSeek Key；模块验收仍需 Owner UAT |
+| 下一个可执行模块 | 基于已冻结的 SDD-009/010 Bundle、Skill、Artifact 与 Audit 合同实现 SDD-007；不得隐藏回退 Mock 成功 |
 
 ## 里程碑总进度
 
@@ -41,7 +41,7 @@
 | M2 — Governed shadow campaign | `IN_PROGRESS` | `0 / 7` | 6 个证据已就绪；1 个市场本地化基础进行中 | 六成员 AgentTeams、DeepSeek Gateway/Canary、Revision/Audit、故障拒绝、Trace 与带来源市场上下文；Owner UAT 待完成 |
 | M3 — Controlled live activation | `IN_PROGRESS` | `0 / 8` | 1 个非执行基础模块证据已就绪；7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 个未开始 | Interaction → Outcome → Scoped Learning → 下一 Mission，隔离 SignalProvider PoC |
-| M5 — Runnable candidate | `IN_PROGRESS` | `0 / 6` | 1 个开发中、5 个未开始 | 本地 Onboarding/生产 UX 基础，然后完成 Fresh Install、恢复演练、Conformance、可访问性、Evidence Export 与 Demo |
+| M5 — Runnable candidate | `IN_PROGRESS` | `0 / 11` | 4 个证据已就绪、1 个开发中、6 个未开始 | 知识、Goal 与受治理 X/小红书产物已证据就绪；当前开发常驻 AgentTeams，之后补齐可用媒体、Fresh Install、恢复和带讲解 Dogfood 证据 |
 | M6 — External calibration | `NOT_STARTED` | `0 / 4` | 4 个未开始 | 设计伙伴 Shadow、隔离、可靠性与外部验收报告 |
 
 ## 模块进度表
@@ -115,8 +115,8 @@
 | M5-05 | Agent 消融、Evidence Export 与稳定 Hero Demo | `NOT_STARTED` | M5-01–M5-04 | 同条件比较、Allowlist Export 与可重复 Demo Runbook |
 | M5-06 | 分步人设、知识与账号档案 Onboarding | `EVIDENCE_READY` | M5-00、M2-07；SDD-008 | 版本化创始人人设、企业/产品事实、X/小红书账号运营档案、多来源 MD/TXT/自由文字接入、显式冲突决定与已批准 KnowledgeSnapshot；工程验证已完成，Owner UAT 待完成 |
 | M5-07 | 持久 Goal、Agent 生成计划与已选平台编译器 | `EVIDENCE_READY` | M5-06；SDD-009 | 持久 7/30 日 Goal、版本化受控 Planner submission 与精确 Owner 批准、作用域失效及恢复，并只为已选 X/小红书账号确定性编译 Mission Bundle；Owner UAT 待完成 |
-| M5-08 | 常驻本地 AgentTeams Runtime 与 Secret Broker | `NOT_STARTED` | M5-07、M5-09；SDD-007 | 固定版本六成员 Runtime、仅终端 Secret Broker、PostgreSQL Job/Lease、Dispatch、重启与恢复，且无隐藏 Mock 成功 |
-| M5-09 | X/小红书产物、独立审校与人工 PublishPackage | `IN_PROGRESS` | M5-07、M3-00；SDD-010 | 版本化 X 单帖/线程与小红书图文产物、独立审校、精确 OwnerDecision 失效及安全复制/下载/打开发布包 |
+| M5-08 | 常驻本地 AgentTeams Runtime 与 Secret Broker | `IN_PROGRESS` | M5-07、M5-09；SDD-007 | 固定版本六成员 Runtime、仅终端 Secret Broker、PostgreSQL Job/Lease、Dispatch、重启与恢复，且无隐藏 Mock 成功 |
+| M5-09 | X/小红书产物、独立审校与人工 PublishPackage | `EVIDENCE_READY` | M5-07、M3-00；SDD-010 | 版本化 X 单帖/线程与小红书图文产物、独立审校、精确 OwnerDecision 失效及安全复制/下载/打开发布包；已独立复验并在 PR #16 合并，Owner UAT 待完成 |
 | M5-10 | 完整 Dogfood 安装、恢复与录屏门禁 | `NOT_STARTED` | M5-06–M5-09；SDD-011 | Fresh Install/升级/回滚、public-safe Owner Dogfood 正常与失败关闭闭环、重启恢复及可复现带讲解 Demo 证据 |
 
 ### M6 — External calibration
