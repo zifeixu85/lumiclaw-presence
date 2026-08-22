@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-009",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "generatedAt": "2026-08-22T02:03:10.387Z",
+  "webUrl": "http://127.0.0.1:3199",
+  "apiUrl": "http://127.0.0.1:4199",
+  "locales": [
+    "zh-CN",
+    "en"
+  ],
+  "checks": {
+    "defaultChinese": true,
+    "goalFormHasIndependentContext": true,
+    "ownerBoundaryVisible": true,
+    "successSignalsNotOutcomes": true,
+    "selectedApprovedAccounts": true,
+    "keyboardTraversal": true,
+    "goalCreatedAndActivated": true,
+    "goalRefreshRecovery": true,
+    "intentExactlySixRoles": true,
+    "intentSelectedPlatforms": true,
+    "intentHonestNoRun": true,
+    "fixtureClearlyMarked": true,
+    "sevenDayPlan": true,
+    "planEditAppendsRevision": true,
+    "executionExactlySixTasks": true,
+    "twoSubstantiveProducerTasks": true,
+    "producerTasksDiffer": true,
+    "onlySelectedPlatforms": true,
+    "noArtifactsOrActions": true,
+    "invalidationReasonVisible": true,
+    "recoveryActionVisible": true,
+    "englishParity": true,
+    "desktop1024NoHorizontalOverflow": true,
+    "desktopGate": true
+  },
+  "consoleErrors": [],
+  "screenshots": [
+    {
+      "name": "01-goal-form-zh.png",
+      "sha256": "2f16b988aa891ea2604bba2029adf0767c5dcb1004c2541f487e36582e70e58a",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "02-mission-intent-zh.png",
+      "sha256": "00f3a221c5f18f50aa8a9c5a5da496f8ae0549a69fd8e8f39cc546aa2bc30a29",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "03-plan-review-revision-zh.png",
+      "sha256": "93305cf922edacd3c7a7c7086f61f0d96b653e947462ec24909845c9a907cdb0",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "04-mission-execution-zh.png",
+      "sha256": "3961392b6e855e84bb5e95288b667ae15ffc3893db930d648c5303dfa63eae3d",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "05-invalidation-recovery-zh.png",
+      "sha256": "7502f8a7587839b18220be87675ec69c7ccfa41b3899c7cb7425d679e4929d49",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "06-goal-execution-en.png",
+      "sha256": "faabcff60090b851584dca5f361588fbf5b93d4edbcc608982ea63b7b9e1b238",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "07-desktop-gate.png",
+      "sha256": "8bbe5694ad491364b1352fe3e99b0517e0e0807ec5d9ba8eda38f8225d0c4f47",
+      "viewport": {
+        "width": 800,
+        "height": 900
+      }
+    }
+  ]
+}

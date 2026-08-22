@@ -121,6 +121,36 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  sdd009-goal-compiler:
+    name: SDD-009 persistent Goal, selected-platform compiler and Chromium
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - run: npm ci
+      - name: Install exact Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Regenerate deterministic compiler goldens
+        run: npm run evidence:sdd009:golden
+      - name: Golden digests are current
+        run: git diff --exit-code -- docs/reports/evidence/sdd-009/golden-digests.json
+      - name: Fresh PostgreSQL, API restart, rollback and real Chromium contract
+        run: npm run verify:sdd009:compose
+      - name: Upload public-safe SDD-009 evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdd-009-goal-compiler-evidence
+          path: |
+            docs/reports/evidence/sdd-009/*.json
+            docs/reports/evidence/sdd-009/*.png
+          if-no-files-found: error
+          retention-days: 7
+
   real-agentteams-arm64:
     name: Self-provisioned real AgentTeams v1.2.0 (manual ARM64 evidence runner)
     if: github.event_name == 'workflow_dispatch'

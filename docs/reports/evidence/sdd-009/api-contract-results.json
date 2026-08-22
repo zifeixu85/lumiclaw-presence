@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-009",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "tests": {
+    "idempotentRetry": {
+      "firstStatus": 201,
+      "replayStatus": 200,
+      "digest": "eceb0c913dd0d5aecfb708c7603f270994a59d6d3508253350d0ea7422a296e1"
+    },
+    "idempotencyReuse": {
+      "status": 409,
+      "code": "IDEMPOTENCY_KEY_REUSED"
+    },
+    "concurrency": [
+      {
+        "status": 200,
+        "code": "OPERATING_GOAL_REVISION_CREATED"
+      },
+      {
+        "status": 412,
+        "code": "GOAL_VERSION_CONFLICT"
+      }
+    ],
+    "tamper": {
+      "status": 412,
+      "code": "MISSION_INPUT_CHANGED"
+    },
+    "selectedPlatformNegative": {
+      "forbidden": [
+        "BLUESKY",
+        "LINKEDIN"
+      ],
+      "absent": true
+    }
+  },
+  "authoritativeIds": {
+    "goalId": "goal_a3c7843e8a8ccce6653acb10",
+    "goalRevision": 3,
+    "goalDigest": "d2353a2e3ca0ce8e4b4469b0d5d19228aae3c6efd835e2515507e7e758493253",
+    "planId": "plan_cae4ced841a28c93f4ffb708",
+    "planRevision": 3,
+    "planDigest": "82e7e102520f27f605ebdc09917894dbd7455b13a904bb571d9c1b217ea2a2e6",
+    "intentBundleId": "bundle_98110bcc91dfa2e6a337b74a",
+    "intentDigest": "5babb3295b209c96e4f866aa84bdfe12f662f42182ea8405841c3fb95a73915f",
+    "executionBundleId": "bundle_a97d0d06eb9a270cb6bb436a",
+    "executionDigest": "589f0bcd8ee4216b6b194599611af928c3ddf472776bbd29db36d612332e8b36",
+    "rows": {
+      "goal_revisions": 3,
+      "plan_revisions": 3,
+      "bundles": 2,
+      "invalidations": 2,
+      "idempotency": 7
+    }
+  }
+}
