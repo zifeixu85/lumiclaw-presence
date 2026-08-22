@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-010",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "database": "fresh isolated lumiclaw_sdd010_authority",
+  "checks": {
+    "malformedAndDuplicateAuditFindingsRejected": true,
+    "auditorPolicyCanonicalAndResultRevalidated": true,
+    "failedAuditCannotApprove": true,
+    "repositoryCrossRevisionDecisionAndPackageRejected": true,
+    "databaseCrossRevisionDecisionAndPackageRejectedByCompositeForeignKey": true,
+    "sameKeyConcurrentAuditOneCreatedOneReplayed": true,
+    "sameKeyRetryAfterRepositoryRestartReplayed": true,
+    "distinctIdempotencyKeysExactPackageOneCreatedOneReplayed": true,
+    "noRawUniqueViolation": true
+  },
+  "rows": {
+    "revisions": 3,
+    "audits": 3,
+    "decisions": 2,
+    "packages": 1,
+    "files": 4,
+    "idempotency": 10,
+    "lineage_foreign_keys": 6
+  },
+  "runnerTranscript": "\u001b[1m\u001b[30m\u001b[46m RUN \u001b[49m\u001b[39m\u001b[22m \u001b[36mv4.1.10 \u001b[39m\u001b[90m/app\u001b[39m\n\n \u001b[32m✓\u001b[39m apps/api/src/artifact-publish-postgres-authority.test.ts \u001b[2m(\u001b[22m\u001b[2m1 test\u001b[22m\u001b[2m)\u001b[22m\u001b[32m 130\u001b[2mms\u001b[22m\u001b[39m\n\n\u001b[2m Test Files \u001b[22m \u001b[1m\u001b[32m1 passed\u001b[39m\u001b[22m\u001b[90m (1)\u001b[39m\n\u001b[2m      Tests \u001b[22m \u001b[1m\u001b[32m1 passed\u001b[39m\u001b[22m\u001b[90m (1)\u001b[39m\n\u001b[2m   Start at \u001b[22m 07:48:01\n\u001b[2m   Duration \u001b[22m 757ms\u001b[2m (transform 350ms, setup 0ms, import 528ms, tests 130ms, environment 0ms)\u001b[22m"
+}

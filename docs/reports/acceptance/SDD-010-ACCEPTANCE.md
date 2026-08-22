@@ -26,8 +26,8 @@ Producer 与 `independent-auditor` 是不同身份。Audit 必须为每个必需
 |---|---|---|
 | Domain | `lumiclaw.artifact-publish.v3`、X/XHS payload、Artifact/Profile/Skill/Audit/OwnerDecision/Package 合同、validators、stable errors、deterministic digests | Runtime 类型为后续预留；当前 API 只接受显著标注的 controlled fixture |
 | Skills | `x-content-expression@1.0.0`、`xiaohongshu-content-expression@1.0.0`、`artifact-independent-audit@1.0.0`，文件 SHA-256 进入 Skill ref | Apache-2.0，本仓原创；Producer/Auditor 权限分离，无浏览器/发布能力 |
-| PostgreSQL | migration 13，11 个 owner-scoped authority/head/idempotency/invalidation/package/file/event 表，append-only trigger，安全 down | accepted history 不可 UPDATE/DELETE；有数据 down 要求 export 与 Owner destructive decision |
-| Repository | Memory 与 PostgreSQL parity、owner composite scope、If-Match/exact digest、idempotency、row lock、并发 one-winner、restart restore | stale revision/audit/decision/package 和 tamper 全部 fail closed |
+| PostgreSQL | migration 13，11 个 owner-scoped authority/head/idempotency/invalidation/package/file/event 表，audit/decision/package 的 6 个 exact-lineage 复合外键，append-only trigger，安全 down | accepted history 不可 UPDATE/DELETE；数据库层阻断 cross-revision 拼接；有数据 down 要求 export 与 Owner destructive decision |
+| Repository | Memory 与 PostgreSQL parity，并在 authority 边界重算 Audit/OwnerDecision/Package 合同、canonical digest 与完整 lineage；If-Match/exact digest、idempotency、same-key 与 exact-package advisory lock、restart replay | 上层 typed object 不被信任；stale revision/audit/decision/package、重复 finding、tamper 与并发 unique collision 全部 fail closed |
 | API/OpenAPI | Artifact create/import/read/edit/regenerate/audit/decision；package create/read/download/helper；OpenAPI `0.6.0-sdd010` | 不提供发布成功 mutation；invalidated package 可查历史但不能下载、复制或打开 |
 | Web | 真实 Publish Center：完整预览、Revision diff、exact input trace、findings、edit/regenerate/approve/reject、package 文件与 helpers | `zh-CN` 默认、`en` parity；SaaS Shell/tokens/primitives；1024 desktop gate |
 | Evidence/CI | deterministic golden、fresh Compose/PostgreSQL、Chromium/keyboard/axe、restart/down、dependency/license/SBOM、public-safe screenshots；专项 CI job | 不使用真实账号、Secret、Cookie、客户资料、模型或外部 publish action |
@@ -40,7 +40,8 @@ Producer 与 `independent-auditor` 是不同身份。Audit 必须为每个必需
 
 - `golden-contracts.json`：X SINGLE、X THREAD、小红书 IMAGE_NOTE 三个 deterministic 场景；revision/audit/decision/exact-input/manifest/Skill/Profile digests 与 ordered files。X SINGLE manifest digest 为 `d0ce48791a0da014e6d7b95d28289436721f36c56a62a34233fd594ca750c3ea`，THREAD 为 `4e265bb6a64396cf7460c2f70c9a99a4be258b7e0e0a3f89969699b610f45ffc`，XHS 为 `8fbacc73b38e4d227f5fa2c6ed5d46a9885cb2b3d20fbf1016e3d735b79ea59d`。
 - `browser-verification.json`：22 个 Chromium 检查全为 true，覆盖 selected units、X Thread、XHS 完整规格、diff、trace、七项 findings、FAIL 阻断、PASS/APPROVE/package、regenerate/reject、copy/download/open、zh-CN/en、键盘、1024 无溢出、800 desktop gate；console error 0，serious/critical axe violation 0。
-- `compose-verification.json`：13 个检查全为 true，覆盖 fresh stack、migration 13、empty/populated down、append-only、并发、stale audit、restart、owner boundary、OpenAPI 无发布成功 mutation、PostgreSQL down 503。
+- `compose-verification.json`：17 个检查全为 true，覆盖 fresh stack、migration 13、empty/populated down、append-only、repository authority negative matrix、same-key 与 exact-package 并发、复合血缘外键、stale audit、restart、owner boundary、OpenAPI 无发布成功 mutation、PostgreSQL down 503。
+- `repository-authority-results.json`：fresh isolated PostgreSQL 中 1 个真实 repository regression test 通过；3 revisions、3 audits、2 decisions、1 package、4 files、10 idempotency rows、6 个 lineage foreign keys。覆盖 malformed/重复 Audit finding、policy/canonical/result 重算、FAIL 不可批准、repository 与数据库双层 cross-revision 阻断、same-key 并发/重启 replay，以及不同 Idempotency-Key 的同一 exact package one-created/one-replayed，无裸 unique violation。
 - `migration-manifest.json`：专项 journey 形成 5 revisions、4 audits、3 decisions、1 regeneration request、2 packages、11 files、3 helper events、2 invalidations；随后并发测试再追加 1 个胜出的 revision。
 - `api-contract-results.json`：并发 `201 / 412` one-winner、stale audit `412`、owner header override ignored、无发布成功 mutation。
 - `restart-transcript.json`：API restart 与 PostgreSQL+API restart 前后最后 Revision digest、两个 package manifest digests 和行数完全一致。
@@ -56,15 +57,15 @@ Package builder 使用 deterministic JSON/directory-file response，没有引入
 | 命令 | 结果 |
 |---|---|
 | `npm run evidence:sdd010:golden` | PASS：3 个 deterministic Artifact/Package golden 场景 |
-| `npm test -- --run packages/domain/src/artifact-publish.test.ts apps/api/src/artifact-publish-api.test.ts` | PASS：2 files / 32 tests；含 exact binding negative matrix、false runtime authority、old package invalidation |
-| `npm run verify:sdd010:compose` | PASS：13 Compose/PostgreSQL checks、22 Chromium checks、8 screenshots |
-| `SDD009_EVIDENCE_ROOT=.evidence/sdd-009-compat SDD009_SKIP_BUILD=1 npm run verify:sdd009:compose` | PASS：22 Compose checks、30 Chromium checks、8 screenshots；migration 13 后的 SDD-009 rollback compatibility 已复验 |
+| `npx vitest run packages/domain/src/artifact-publish.test.ts apps/api/src/artifact-publish-api.test.ts apps/api/src/artifact-publish-memory-authority.test.ts apps/api/src/artifact-publish-postgres-authority.test.ts --configLoader=runner` | PASS：3 files passed / 1 PostgreSQL-connected file skipped，36 passed / 1 skipped；含 exact binding、closed JSON、重复 finding、Memory repository authority 与 same-key replay |
+| `npm run verify:sdd010:compose` | PASS：17 Compose/PostgreSQL checks、22 Chromium checks、8 screenshots；fresh isolated PostgreSQL 中 connected repository test 1/1 PASS |
+| `SDD009_SKIP_BUILD=1 SDD009_EVIDENCE_ROOT=.evidence/sdd-009-p1-final npm run verify:sdd009:compose` | PASS：22 Compose checks、30 Chromium checks、8 screenshots；migration 13 后的 SDD-009 rollback compatibility 已复验 |
 | `npm run verify:sdd010:dependencies` | PASS：1,020 packages、710 CycloneDX components、disallowed licenses 0 |
 | `npm audit --omit=dev --audit-level=high --json` | PASS：0 total/high/critical |
 | `npm audit --audit-level=high --json` | REVIEWED：3 个既有 Storybook dev-only high entries，`fixAvailable=false`；production 0 |
 | `npm run lint` | PASS：0 errors、0 warnings |
 | `npm run typecheck` | PASS：13 个 workspace 的 TypeScript 检查通过 |
-| `npm test` | PASS：47 passed / 1 skipped test files；440 passed / 1 skipped tests |
+| `npm test` | PASS：48 passed / 2 skipped test files；444 passed / 2 skipped tests；两个 skipped 均为需要专项 fresh PostgreSQL URL 的 connected regression，并已在对应 Compose gate 中真实通过 |
 | `npm run check:messages` | PASS：`zh-CN` / `en` 共 967 keys 完全一致 |
 | `npm run check:status` | PASS：47 modules；canonical progress 未修改 |
 | `npm run check:secrets` | PASS：扫描 510 个受版本控制或待提交文件，无 Secret 命中 |
@@ -81,13 +82,13 @@ Package builder 使用 deterministic JSON/directory-file response，没有引入
 | AC-01 | PASS | X SINGLE/THREAD schema、连续 position、逐帖完整正文、CTA/link、媒体/alt 合同与 deterministic package golden 均覆盖。 |
 | AC-02 | PASS | XHS title/body/topics/CTA/cover/连续 image specs 完整预览与导出；界面和 JSON 都标记 `generatedMedia=false`/无媒体文件。 |
 | AC-03 | PASS | 只接受 SDD-009 selected platform/account/unit；platform/account/Producer/source/source digest/Bundle/Goal/Plan/Knowledge/Skill/Profile negative matrix 被 quarantine/fail closed。 |
-| AC-04 | PASS | Producer/Auditor identity 不同，七项 finding 必须完整；PASS/FAIL/ESCALATE 派生一致，FAIL/ESCALATE 不能 approve/package。 |
+| AC-04 | PASS | Producer/Auditor identity 不同；权威 audit 必须恰好七项且 `checkCode` 唯一，七个 required code 各一次；“七项完整再重复一项”的八项输入在 Domain/API/Memory/PostgreSQL 全部拒绝。PASS/FAIL/ESCALATE 派生一致，FAIL/ESCALATE 不能 approve/package。 |
 | AC-05 | PASS | Owner edit 追加 parent-linked Revision 并触发旧链 invalidation；regenerate 追加 immutable request；reject 阻断 package。 |
 | AC-06 | PASS | exact PASS + exact APPROVE 是 package 必要条件；stale audit/decision、digest/file tamper、invalidated package 下载/helper 全部拒绝。 |
 | AC-07 | PASS | X/XHS 文件名、position、file digest、manifest digest deterministic；Secret/private path 排除；无 archive dependency。 |
 | AC-08 | PASS | Official helper 只返回 query/hash stripped、platform-specific HTTPS allowlist；source/version/checkedAt/expiry 有记录，过期稳定返回 `PLATFORM_CONSTRAINT_STALE`。 |
 | AC-09 | PASS | COPY/DOWNLOAD/OPEN/restart 都保持 `EXPORTED / UNVERIFIED_EXTERNAL_STATE`；OpenAPI 无 mark-published/reported-complete/PUBLISHED mutation。 |
-| AC-10 | PASS | fresh PostgreSQL migration、append-only、owner isolation、If-Match、idempotency、concurrency、restart、down、tamper 与 PG unavailable 全部有重复门禁。 |
+| AC-10 | PASS | fresh PostgreSQL migration、6 个 composite lineage FKs、append-only、owner isolation、If-Match、idempotency、same-key concurrency/restart replay、不同 key exact-package concurrency、down、tamper 与 PG unavailable 全部有重复门禁；无裸 unique violation。 |
 | AC-11 | PASS | zh-CN/en production UI 覆盖完整内容/diff/trace/audit/edit/regenerate/approve/reject/package/blocked states、keyboard/focus、axe 与 desktop gate。 |
 | AC-12 | PENDING | Owner 参与 UAT 尚未执行；工程证据只支持 `EVIDENCE_READY`，Coordinator/Owner 决定前不得标为 `ACCEPTED`。 |
 
@@ -95,7 +96,7 @@ Package builder 使用 deterministic JSON/directory-file response，没有引入
 
 状态：`PENDING`。以下步骤必须由 Owner 使用 public-safe SDD-009 approved X+XHS Execution 执行并返回明确 PASS/FAIL；不需要 provider key、OAuth、Cookie 或真实平台登录。
 
-1. 执行 `npm ci`、`npm run evidence:sdd010:golden`、`npm run verify:sdd010:compose`。预期输出 13 Compose/22 browser checks 全部 PASS、8 张截图；任一 false、migration/axe/console/health 失败即停止。
+1. 执行 `npm ci`、`npm run evidence:sdd010:golden`、`npm run verify:sdd010:compose`。预期输出 17 Compose/22 browser checks 全部 PASS、8 张截图，并看到 fresh PostgreSQL repository regression 1/1 PASS；任一 false、migration/lineage/concurrency/axe/console/health 失败即停止。
 2. 在默认 zh-CN 的「发布中心」逐一打开三个 selected ActivationUnit。预期只显示 X/小红书与绑定账号；未选 Bluesky/LinkedIn 不出现。
 3. 打开 X THREAD，逐帖核对正文、position、CTA、source/account/Bundle/Goal/Plan/Knowledge/Skill/Profile trace。切换 SINGLE 建立另一个 public-safe scenario，确认只有一帖。
 4. 编辑第一帖并保存。预期产生新 Revision、显示 previous/current diff，旧 Audit/Decision/Package 保留历史但失效；旧 package 可读 `INVALIDATED`，不能下载/复制/打开。
@@ -126,7 +127,7 @@ Known limitations：
 - full npm audit 的 3 个 high advisory 位于既有 Storybook dev-only 图片解析链，production audit 为 0，当前无可用升级修复；上游兼容修复发布后应独立升级。
 - Owner UAT、真实外部用户校准和业务结果均为 `PENDING`；无 `EXTERNAL_CALIBRATED`、`BUSINESS_VERIFIED`、production-ready 或法律合规保证。
 
-实现与门禁过程中发现并关闭：migration constraint 名冲突、approved Knowledge 无 legacy Campaign 时发布中心误阻断、fixture stamp 与 XHS image position 对比度、异步 UI 检查竞态、旧 invalidated package 直接下载缺口、未授权 runtime 成熟度伪报风险、OpenAPI gate 错路径导致的专项脚本假阳性，以及 migration 13 加入后 SDD-009 rollback gate 仍只回滚单条 migration 的兼容缺口。最终 SDD-010 machine evidence 的全部布尔检查均为 true，SDD-009 完整兼容门禁也重新通过。
+实现与门禁过程中发现并关闭：migration constraint 名冲突、approved Knowledge 无 legacy Campaign 时发布中心误阻断、fixture stamp 与 XHS image position 对比度、异步 UI 检查竞态、旧 invalidated package 直接下载缺口、未授权 runtime 成熟度伪报风险、OpenAPI gate 错路径导致的专项脚本假阳性，以及 migration 13 加入后 SDD-009 rollback gate 仍只回滚单条 migration 的兼容缺口。Coordinator 合并前 P1 复验进一步关闭了 repository 信任上层 typed object、migration 独立外键可 cross-revision 拼接、嵌套 JSON 可能触发 500、七项 finding 外再重复一项仍被接受、same-key 并发裸 unique violation，以及不同 Idempotency-Key 并发 exact package 撞 unique 的边界。最终 SDD-010 machine evidence 的全部布尔检查均为 true，SDD-009 完整兼容门禁也重新通过。
 
 ## 九、回滚与恢复
 
