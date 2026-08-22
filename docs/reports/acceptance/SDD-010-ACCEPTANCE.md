@@ -58,6 +58,7 @@ Package builder 使用 deterministic JSON/directory-file response，没有引入
 | `npm run evidence:sdd010:golden` | PASS：3 个 deterministic Artifact/Package golden 场景 |
 | `npm test -- --run packages/domain/src/artifact-publish.test.ts apps/api/src/artifact-publish-api.test.ts` | PASS：2 files / 32 tests；含 exact binding negative matrix、false runtime authority、old package invalidation |
 | `npm run verify:sdd010:compose` | PASS：13 Compose/PostgreSQL checks、22 Chromium checks、8 screenshots |
+| `SDD009_EVIDENCE_ROOT=.evidence/sdd-009-compat SDD009_SKIP_BUILD=1 npm run verify:sdd009:compose` | PASS：22 Compose checks、30 Chromium checks、8 screenshots；migration 13 后的 SDD-009 rollback compatibility 已复验 |
 | `npm run verify:sdd010:dependencies` | PASS：1,020 packages、710 CycloneDX components、disallowed licenses 0 |
 | `npm audit --omit=dev --audit-level=high --json` | PASS：0 total/high/critical |
 | `npm audit --audit-level=high --json` | REVIEWED：3 个既有 Storybook dev-only high entries，`fixAvailable=false`；production 0 |
@@ -125,7 +126,7 @@ Known limitations：
 - full npm audit 的 3 个 high advisory 位于既有 Storybook dev-only 图片解析链，production audit 为 0，当前无可用升级修复；上游兼容修复发布后应独立升级。
 - Owner UAT、真实外部用户校准和业务结果均为 `PENDING`；无 `EXTERNAL_CALIBRATED`、`BUSINESS_VERIFIED`、production-ready 或法律合规保证。
 
-实现与门禁过程中发现并关闭：migration constraint 名冲突、approved Knowledge 无 legacy Campaign 时发布中心误阻断、fixture stamp 与 XHS image position 对比度、异步 UI 检查竞态、旧 invalidated package 直接下载缺口、未授权 runtime 成熟度伪报风险，以及 OpenAPI gate 错路径导致的专项脚本假阳性。最终 machine evidence 的全部布尔检查均为 true。
+实现与门禁过程中发现并关闭：migration constraint 名冲突、approved Knowledge 无 legacy Campaign 时发布中心误阻断、fixture stamp 与 XHS image position 对比度、异步 UI 检查竞态、旧 invalidated package 直接下载缺口、未授权 runtime 成熟度伪报风险、OpenAPI gate 错路径导致的专项脚本假阳性，以及 migration 13 加入后 SDD-009 rollback gate 仍只回滚单条 migration 的兼容缺口。最终 SDD-010 machine evidence 的全部布尔检查均为 true，SDD-009 完整兼容门禁也重新通过。
 
 ## 九、回滚与恢复
 

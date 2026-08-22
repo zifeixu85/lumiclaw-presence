@@ -6,7 +6,7 @@ import {chromium} from 'playwright';
 
 const webUrl=process.env.SDD009_WEB_URL??'http://127.0.0.1:3199';
 const apiUrl=process.env.SDD009_API_URL??'http://127.0.0.1:4199';
-const evidenceDirectory=path.resolve('docs/reports/evidence/sdd-009');
+const evidenceDirectory=path.resolve(process.env.SDD009_EVIDENCE_ROOT??'docs/reports/evidence/sdd-009');
 const diagnosticDirectory=path.resolve('.evidence/sdd-009/diagnostics');
 const checks={};const screenshots=[];const consoleErrors=[];
 await Promise.all([mkdir(evidenceDirectory,{recursive:true}),mkdir(diagnosticDirectory,{recursive:true})]);

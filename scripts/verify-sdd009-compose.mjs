@@ -5,7 +5,7 @@ import path from 'node:path';
 
 const project='lumiclaw-sdd009-verify';const webPort='3199';const apiPort='4199';
 const apiUrl=`http://127.0.0.1:${apiPort}`;const webUrl=`http://127.0.0.1:${webPort}`;
-const evidenceDirectory=path.resolve('docs/reports/evidence/sdd-009');const evidencePath=path.join(evidenceDirectory,'compose-verification.json');
+const evidenceDirectory=path.resolve(process.env.SDD009_EVIDENCE_ROOT??'docs/reports/evidence/sdd-009');const evidencePath=path.join(evidenceDirectory,'compose-verification.json');
 const checks={};const events=[];let result='FAIL';let failure=null;let migrationManifest=null;let apiManifest=null;let restartTranscript=null;let postgresRegressionManifest=null;
 function docker(args,inherit=false){const command=['compose','--project-name',project,...args];const startedAt=new Date().toISOString();try{const output=execFileSync('docker',command,{cwd:process.cwd(),encoding:'utf8',stdio:inherit?'inherit':['ignore','pipe','pipe'],env:{...process.env,LUMICLAW_WEB_PORT:webPort,LUMICLAW_API_PORT:apiPort},timeout:900_000});events.push({command:['docker',...command],startedAt,result:'PASS'});return output??'';}catch(error){events.push({command:['docker',...command],startedAt,result:'FAIL'});throw error;}}
 function dockerExpectedFailure(args){const command=['compose','--project-name',project,...args];const run=spawnSync('docker',command,{cwd:process.cwd(),encoding:'utf8',env:{...process.env,LUMICLAW_WEB_PORT:webPort,LUMICLAW_API_PORT:apiPort},timeout:180_000});events.push({command:['docker',...command],startedAt:new Date().toISOString(),result:run.status===0?'UNEXPECTED_PASS':'EXPECTED_FAIL'});return {status:run.status,output:`${run.stdout??''}\n${run.stderr??''}`};}
@@ -22,7 +22,7 @@ try{
 
   pg('create database lumiclaw_sdd009_empty_down');
   docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd009_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:up']);
-  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd009_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:down']);
+  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd009_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','2']);
   if(pg("select to_regclass('public.operating_goal_revisions') is null",'lumiclaw_sdd009_empty_down')!=='t')throw new Error('SDD009_EMPTY_DOWN_DID_NOT_REMOVE_SCHEMA');checks.emptyDownPass=true;
 
   pg('create database lumiclaw_sdd009_regression');
@@ -43,7 +43,7 @@ try{
 
   const immutable=dockerExpectedFailure(['exec','-T','postgres','psql','-U','postgres','-d','lumiclaw','-v','ON_ERROR_STOP=1','-c',`update operating_goal_revisions set state='PAUSED' where goal_id='${goal.goalId}' and revision=1`]);
   if(immutable.status===0||!immutable.output.includes('SDD009_APPEND_ONLY_AUTHORITY'))throw new Error('SDD009_AUTHORITY_MUTATION_NOT_BLOCKED');checks.authorityRowsImmutable=true;
-  const populatedDown=dockerExpectedFailure(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw','api','npm','--workspace','@lumiclaw/db','run','migrate:down']);
+  const populatedDown=dockerExpectedFailure(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','2']);
   if(populatedDown.status===0||!populatedDown.output.includes('SDD009_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED'))throw new Error('SDD009_POPULATED_DOWN_NOT_BLOCKED');checks.populatedDownRequiresExportAndOwnerDecision=true;
   checks.compositeOwnerForeignKeys=Number(pg("select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('operating_goal_revisions','operating_goal_account_bindings','content_plan_revisions_v2','mission_bundle_generations_v2','mission_bundle_status_events_v2')"))>=5;
 
