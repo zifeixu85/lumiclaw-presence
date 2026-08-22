@@ -8,7 +8,7 @@
 >
 > Branch / Authorized base：`codex/sdd-007-persistent-agentteams-runtime` / `2b5673d0c408060034297328cd2522f4d9578ad1`
 >
-> Runtime evidence source HEAD：`a576947b8294ec7545363c25866f022b1ea57100`
+> Runtime evidence source HEAD：`129501744bd8f5e6c023fc49613d6221143d9d43`
 >
 > Final evidence-report commit / Draft PR：由最终 `STATUS_HANDOFF` 固定
 >
@@ -90,8 +90,8 @@
 | `.evidence/sdd-007/postgres.json` | fresh PG、migration、lease、ticket fencing、staged atomic recovery、ETag/idempotency | `d9ef8a5e530f831146dd8bbe217ea2a104e731365ecffdd726edec0310d45941` |
 | `.evidence/sdd-007/compose.json` | controlled-fake startup、Web/API/CLI parity、Gateway/API/PostgreSQL restart、host UID/GID Secret read、Secret/Docker scope、exact cleanup | `ee23a471b5bbe83b80765df20a41f6d02fe0ecba88286c2b633c5ad7a8bebb5f` |
 | `.evidence/sdd-007/browser/browser-verification.json` | Chromium zh-CN/en、axe、keyboard、1024 desktop/800 desktop gate、无 console error | `d2ac224d2bcbe9d9d7db31fc2fef84858e33195764ed5c60e9a3e940580ecdcc` |
-| `.evidence/sdd-007/agentteams-persistent-driver.json` | authorized base `2b5673d0…`、source HEAD `a576947b…`、actual vs expected identity、six-member ACK/Submit/check、five worker-origin calls、Leader 0 call | `b154da036c3bd3a3184dc98ac3e8dfec477c9991e5c1400b76cb4b64f60d7e21` |
-| `.evidence/sdd-002/agentteams-real-runtime.json` | source HEAD `a576947b…`、upstream official installer、source/license/image identity、真实 runtime lifecycle 与 exact cleanup | `d63619d37f48b6f2eb94d42a554d3df7c69339e04b9c3011d82a5f86494632ab` |
+| `.evidence/sdd-007/agentteams-persistent-driver.json` | authorized base `2b5673d0…`、source HEAD `12950174…`、actual vs expected identity、six-member ACK/Submit/check、five worker-origin calls、Leader 0 call | `624f8c52afdc749606697e41d2820e33abad558b39f1cba09b7f5a5e158b2d94` |
+| `.evidence/sdd-002/agentteams-real-runtime.json` | source HEAD `12950174…`、upstream official installer、source/license/image identity、真实 runtime lifecycle 与 exact cleanup | `324229faea1ed82b30938204802ae5986126e5dd15556095bd0750ed33a3ee2d` |
 | 本报告 | 18 条二元 AC、Owner UAT、限制、Rollback | 在最终 `STATUS_HANDOFF` 固定 |
 
 这些 `.evidence/` 文件是 ignored local/public-safe 机器证据，由 CI artifact 或 handoff digest 引用，不把私有 transcript 或 Secret 提交到 Git。
@@ -108,7 +108,7 @@
 | `SDD007_POSTGRES_ADMIN_URL=postgres://postgres@127.0.0.1:56432/postgres npm run verify:sdd007:postgres` | `PASS`；随机 fresh authority/gateway/rollback DB，结束强制 drop；PostgreSQL 17.10。 |
 | `SDD007_COMPOSE_NO_BUILD=1 npm run verify:sdd007:compose` | `PASS`；独立 project fresh startup，controlled fake `STARTING` 而非 READY，Web/API/CLI 同 PG，Gateway/API/PostgreSQL stop/restart，host UID/GID `0600` Secret read、Secret 不进 API/log/PG dump，Docker socket=false，external action=0，project/volume/temp Secret cleanup PASS。 |
 | `npm run storybook:build && npm run verify:sdd007:browser` | `PASS`；Chromium zh-CN/en、14 项 runtime/blocked/Token/Trace/keyboard/desktop 断言、axe serious/critical 0、console error 0、3 张截图。 |
-| `npm run verify:sdd007:agentteams-real` | `PASS`；clean committed source HEAD `a576947b8294ec7545363c25866f022b1ea57100`（authorized base ancestor verified）；official source/installer、actual controller+manager+six Workers identity、六 ACK/Submit/check、五次 exact-role Worker-origin Gateway call、Leader 0 call、Producer/Auditor 分离；exact containers/volume/provider/temp credentials cleanup PASS。 |
+| `npm run verify:sdd007:agentteams-real` | `PASS`；clean committed source HEAD `129501744bd8f5e6c023fc49613d6221143d9d43`（authorized base ancestor verified）；official source/installer、actual controller+manager+six Workers identity、六 ACK/Submit/check、五次 exact-role Worker-origin Gateway call、Leader 0 call、Producer/Auditor 分离；exact containers/volume/provider/temp credentials cleanup PASS。 |
 | `SDD008_SKIP_BUILD=1 npm run verify:sdd008:compose` | `PASS`；23 browser checks / 6 screenshots，18 Compose checks；fresh/legacy migration、restart、concurrency、Blob/source-delete/history/rollback，zh-CN/en 与 axe。 |
 | `SDD009_SKIP_BUILD=1 npm run verify:sdd009:compose` | `PASS`；30 browser checks / 8 screenshots，22 Compose checks；fresh PG regression、S1/S2 draft/supersession outbox、same-Mission replan、append-only、业务 read recovery、idempotency/concurrency。 |
 | `SDD010_SKIP_BUILD=1 npm run verify:sdd010:compose` | `PASS`；22 browser checks / 8 screenshots，17 Compose checks；Artifact/Audit/OwnerDecision/Package authority、restart、append-only、no published success，重新生成明确要求新 MissionRun。 |
@@ -207,7 +207,7 @@ Rollback 原则是停止写入、保留证据、forward-fix：
 | Branch | `codex/sdd-007-persistent-agentteams-runtime` |
 | Authorized base | `2b5673d0c408060034297328cd2522f4d9578ad1` |
 | Full HEAD / Draft PR | 最终提交、push、Draft PR 后由结构化 `STATUS_HANDOFF` 填报 |
-| Runtime evidence source HEAD | `a576947b8294ec7545363c25866f022b1ea57100` |
+| Runtime evidence source HEAD | `129501744bd8f5e6c023fc49613d6221143d9d43` |
 | Migration | `000014_persistent_agentteams_runtime.cjs` |
 | Runtime/source/license | AgentTeams v1.2.0 / `793db242257a569d911b1aa59c1cd554af78511f` / source tar SHA-256 `a4a9…0770c` / Apache-2.0 |
 | Provider evidence | controlled fake `ENGINEERING_VERIFIED`；real DeepSeek `PENDING` |
