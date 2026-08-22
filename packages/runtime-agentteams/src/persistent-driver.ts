@@ -317,7 +317,7 @@ export class DockerAgentTeamsV120Driver implements PersistentAgentTeamsDriver {
     )
       throw new PersistentRuntimeError("SUBMISSION_INPUT_MISMATCH");
     const code =
-      'import json,sys,urllib.request; x=json.load(sys.stdin); data=json.dumps(x["body"],separators=(",",":"),ensure_ascii=False).encode(); req=urllib.request.Request(x["url"]+"/internal/v1/generate",data=data,headers={"content-type":"application/json","x-lumiclaw-model-ticket":x["ticket"]}); response=urllib.request.urlopen(req,timeout=90); print(response.read().decode())';
+      'import json,os,socket,sys,urllib.request; x=json.load(sys.stdin); data=json.dumps(x["body"],separators=(",",":"),ensure_ascii=False).encode(); req=urllib.request.Request(x["url"]+"/internal/v1/generate",data=data,headers={"content-type":"application/json","x-lumiclaw-model-ticket":x["ticket"],"x-lumiclaw-runtime-container":socket.gethostname(),"x-lumiclaw-runtime-actor-id":os.environ["AGENTTEAMS_MATRIX_USER_ID"]}); response=urllib.request.urlopen(req,timeout=90); print(response.read().decode())';
     const raw = await this.exec(
       [
         "exec",

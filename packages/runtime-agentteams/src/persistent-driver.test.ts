@@ -90,6 +90,13 @@ describe("SDD-007 runtime identity probe", () => {
     expect(source).toContain("AGENTTEAMS_OBSERVED_TASK_ACTOR_MISMATCH");
     expect(source).not.toContain("s.read_task_result(t.task_id)");
   });
+
+  it("binds each gateway request to the executing worker container and actor", () => {
+    const source = readFileSync(new URL("./persistent-driver.ts", import.meta.url), "utf8");
+    expect(source).toContain('"x-lumiclaw-runtime-container":socket.gethostname()');
+    expect(source).toContain('"x-lumiclaw-runtime-actor-id":os.environ["AGENTTEAMS_MATRIX_USER_ID"]');
+    expect(source).toContain('`agentteams-worker-${contract.roleId}`');
+  });
 });
 
 function fixture() {

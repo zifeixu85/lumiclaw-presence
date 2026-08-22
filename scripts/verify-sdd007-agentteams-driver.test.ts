@@ -14,6 +14,9 @@ describe('SDD-007 real AgentTeams production-path verifier', () => {
     expect(source).toContain("new PersistentMissionWorker('sdd007-real-production-worker'");
     expect(source).toContain("productionWorkerPath:'PersistentMissionWorker.tick'");
     expect(source).toContain('leaderGatewayCalls:0');
+    expect(source).toContain("docker',['inspect','--format','{{.Config.Hostname}}'");
+    expect(source).toContain('workerContainerHostnameMatchedInspect:true');
+    expect(source).not.toContain('remoteWorkerCalls.length!==5');
     expect(source).toContain('durableSubmissionIntentCount:runtime.intentCount');
     expect(source).toContain('durableCompletionConfirmedCount:runtime.confirmedCount');
     expect(source).toContain("this.crashBarrier='SUBMIT_STAGE'");
