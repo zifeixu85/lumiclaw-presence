@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-010",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "generatedAt": "2026-08-22T06:59:51.620Z",
+  "source": {
+    "base": "903c92290ffc496dd067f44f53139c43f747b2fb",
+    "headAtRun": "6f14e21ebe816ade86042375e4263de7e4ea2c9b",
+    "branch": "codex/sdd-010-x-xhs-artifact-audit-manual-publish-package",
+    "workingTreeDirty": true
+  },
+  "claims": {
+    "maturity": "EVIDENCE_READY",
+    "ownerUat": "PENDING",
+    "customerEvidence": false,
+    "businessOutcome": false,
+    "agentTeamsRun": false,
+    "modelCall": false,
+    "externalAction": false
+  },
+  "evidenceFiles": [
+    {
+      "path": "docs/reports/evidence/sdd-010/golden-contracts.json",
+      "bytes": 11191,
+      "sha256": "c8ef625b83c8940b2b1b108b0dc02846f77b1e81f8fffebae5a646e5fd4ae5fa"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/platform-source-review.json",
+      "bytes": 1816,
+      "sha256": "f67305549c4d60b4b955f1d244cace8e132259480153d8ba9287e965314ec92d"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/DEPENDENCY-LICENSE-REVIEW.md",
+      "bytes": 1557,
+      "sha256": "8b962574f7b287e02dd0732206e996ce805f1ccac98c59e8efa823b419a332f6"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/compose-verification.json",
+      "bytes": 13137,
+      "sha256": "9036a42f21bab64ad2aa8674c61cf16953648213801286f8154bad34ac7ac2d2"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/browser-verification.json",
+      "bytes": 2686,
+      "sha256": "0a6d38b9a1ed118943a39d893550912be88383bb6c41933025efc5f3f90a9929"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/migration-manifest.json",
+      "bytes": 923,
+      "sha256": "01d70e443e4008df2716b169b8cfe57e4cdd7697270f27a26a7a7c8dbe6f11f8"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/api-contract-results.json",
+      "bytes": 698,
+      "sha256": "e49129d84deceb39b496cba542f6d344dfc99274f405da1dba602541233c34a7"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/restart-transcript.json",
+      "bytes": 940,
+      "sha256": "d4472ff6651d5452a036f974b4a273d757ea023a637c22fc38221e8e56d26f60"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/01-x-thread-review-zh.png",
+      "bytes": 196891,
+      "sha256": "86ca4c0b0a2cf3d5e0c44ef2b961c48bb9aced21829acb06612fee630df9e52e"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/02-owner-edit-diff-zh.png",
+      "bytes": 161566,
+      "sha256": "1c79c4d32a1edc2ab5d6bcd4814c5d8309e8b9005fda58fdde5d2ba4b37ad634"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/03-x-package-ready-zh.png",
+      "bytes": 202004,
+      "sha256": "22787b0cda22b27181c0972bad079075f0ab7c558bd2b1ec430d586fcdab59d9"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/04-xhs-fail-blocked-zh.png",
+      "bytes": 208286,
+      "sha256": "35b54379cf86833f34e4e98195bf4763b7748fcc47c35b47953d90c53cc86a51"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/05-xhs-package-ready-zh.png",
+      "bytes": 195870,
+      "sha256": "a308c5aa95126dcc5bbf513b45b6a521d38cbb09275c4c8408b743508a278376"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/06-regenerate-reject-zh.png",
+      "bytes": 183466,
+      "sha256": "dc40681f931a547b4c3d3a64cfe22f4760a18dbbde93ce2fcc031bf4701c8503"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/06-package-en.png",
+      "bytes": 197861,
+      "sha256": "556045a185bcfffbdc622e8df0da9040b55ded16082a6f8e8761e85d4a737422"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-010/07-desktop-gate.png",
+      "bytes": 33572,
+      "sha256": "d71c5c0e25413be33a16c212c977671de56600839ad6973d3367b663de7deeb1"
+    }
+  ]
+}

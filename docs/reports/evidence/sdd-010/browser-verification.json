@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-010",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "generatedAt": "2026-08-22T06:59:23.717Z",
+  "locales": [
+    "zh-CN",
+    "en"
+  ],
+  "checks": {
+    "fixtureBoundaryVisible": true,
+    "onlySelectedActivationUnits": true,
+    "xThreadComplete": true,
+    "traceComplete": true,
+    "keyboardTraversal": true,
+    "ownerEditNewRevision": true,
+    "auditFindingsComplete": true,
+    "exactPassApprovePackage": true,
+    "downloadFile": true,
+    "officialXAllowlist": true,
+    "xhsComplete": true,
+    "xhsNoFakeMedia": true,
+    "failBlocksApproval": true,
+    "xhsPackageFiles": true,
+    "regenerationRequestVisible": true,
+    "rejectBlocksPackage": true,
+    "regenerationRequestPersisted": true,
+    "externalStateNeverPublished": true,
+    "packageDeterministicFiles": true,
+    "englishParity": true,
+    "desktop1024NoOverflow": true,
+    "desktopGate": true
+  },
+  "consoleErrors": [],
+  "screenshots": [
+    {
+      "name": "01-x-thread-review-zh.png",
+      "sha256": "86ca4c0b0a2cf3d5e0c44ef2b961c48bb9aced21829acb06612fee630df9e52e",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "02-owner-edit-diff-zh.png",
+      "sha256": "1c79c4d32a1edc2ab5d6bcd4814c5d8309e8b9005fda58fdde5d2ba4b37ad634",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "03-x-package-ready-zh.png",
+      "sha256": "22787b0cda22b27181c0972bad079075f0ab7c558bd2b1ec430d586fcdab59d9",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "04-xhs-fail-blocked-zh.png",
+      "sha256": "35b54379cf86833f34e4e98195bf4763b7748fcc47c35b47953d90c53cc86a51",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "05-xhs-package-ready-zh.png",
+      "sha256": "a308c5aa95126dcc5bbf513b45b6a521d38cbb09275c4c8408b743508a278376",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "06-regenerate-reject-zh.png",
+      "sha256": "dc40681f931a547b4c3d3a64cfe22f4760a18dbbde93ce2fcc031bf4701c8503",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "06-package-en.png",
+      "sha256": "556045a185bcfffbdc622e8df0da9040b55ded16082a6f8e8761e85d4a737422",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "07-desktop-gate.png",
+      "sha256": "d71c5c0e25413be33a16c212c977671de56600839ad6973d3367b663de7deeb1",
+      "viewport": {
+        "width": 800,
+        "height": 900
+      }
+    }
+  ]
+}

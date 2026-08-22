@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-010",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "sequence": [
+    "restart api",
+    "restart PostgreSQL and api",
+    "reopen local workspace"
+  ],
+  "before": {
+    "artifactDigest": "87138aaabbd18fccb9ee6ad51dbdad562b17f9070626a2892d008776d5b6b4d5",
+    "packages": [
+      "ae9756072c20ceb5073421d699106f7a4da59986fb1ba20d23f5e98a9d669bbf",
+      "27bc3b0759c49720e6f2082cfadd1657f4ce6b9eb689b81f0558d67d84f5af20"
+    ],
+    "counts": {
+      "revisions": 6,
+      "packages": 2,
+      "events": 3
+    }
+  },
+  "after": {
+    "artifactDigest": "87138aaabbd18fccb9ee6ad51dbdad562b17f9070626a2892d008776d5b6b4d5",
+    "packages": [
+      "ae9756072c20ceb5073421d699106f7a4da59986fb1ba20d23f5e98a9d669bbf",
+      "27bc3b0759c49720e6f2082cfadd1657f4ce6b9eb689b81f0558d67d84f5af20"
+    ],
+    "counts": {
+      "revisions": 6,
+      "packages": 2,
+      "events": 3
+    }
+  }
+}

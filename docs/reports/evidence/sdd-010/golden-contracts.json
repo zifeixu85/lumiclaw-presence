@@ -1,0 +1,271 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-010",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "contractVersion": "lumiclaw.artifact-publish.v3",
+  "generatedAt": "2026-08-22T08:00:00.000Z",
+  "deterministic": true,
+  "agentTeamsExecuted": false,
+  "modelExecuted": false,
+  "scenarios": [
+    {
+      "name": "x-single",
+      "platformCode": "X",
+      "mode": "SINGLE",
+      "selectedPlatforms": [
+        "X"
+      ],
+      "activationUnitId": "unit_1ad069c9e455fd488f9b5ee9",
+      "executionDigest": "c5b932f2c6f5f3049262aaedbc00dd598f617a69fd0877963a45e5de635e0cb0",
+      "artifactRevisionId": "artifact-revision_8674fac1e8f7efcb78b592ff",
+      "artifactRevisionDigest": "3649b66e58c1f58840457252d69b5620234379c150d0728136400c04ce1fa881",
+      "auditDecisionDigest": "f0dbbb2454afedfdf184b03990226e5a0ed3ac7c6ab5c764b23209667d119b8f",
+      "ownerDecisionDigest": "a9669877500438133ba5412834e1a83ab388127f34ccb0f777714f665ea7a6f1",
+      "exactInputDigest": "d0f0391ed6d46dc86e53bb16d10da37fa98dd9eebc237269f1153e785ad6f7b6",
+      "manifestDigest": "d0ce48791a0da014e6d7b95d28289436721f36c56a62a34233fd594ca750c3ea",
+      "profileDigest": "ab28ecb5c3003f18c0d6536908dde8ad0360bdb86edc264da8cf03527af8ca9b",
+      "producerSkillDigest": "74ba525ce6bbd28ac7d8499dc7e8966a7de2584caf666c3f0986eb1ab5174eb8",
+      "sourceSkillDigest": "3e28bffa2d91b2dc848e7a3cff74e081920ab7288e176cbee85b84a38d50aeef",
+      "orderedFiles": [
+        {
+          "position": 1,
+          "fileName": "manifest.json",
+          "digest": "d0ce48791a0da014e6d7b95d28289436721f36c56a62a34233fd594ca750c3ea"
+        },
+        {
+          "position": 2,
+          "fileName": "content.md",
+          "digest": "ae717b82c1ea98ea66f49cad3c022220cccf08448aa04226e1bba4672d4ec571"
+        },
+        {
+          "position": 3,
+          "fileName": "post-01.txt",
+          "digest": "00701d5815fa0f8b6ac16f44a207647bdd9620d7bd2e5a9b1c0ce2eedc007cbf"
+        },
+        {
+          "position": 4,
+          "fileName": "media-alt-manifest.json",
+          "digest": "f41cadc8dd6ddbae488e09e3c7bbaf360f011cee7012ff7b439af4cfab5aeeed"
+        }
+      ],
+      "payload": {
+        "kind": "X",
+        "mode": "SINGLE",
+        "posts": [
+          {
+            "position": 1,
+            "text": "用创始人第一人称解释一个公开构建判断。 Every claim stays bound to approved evidence before the Owner decides.",
+            "mediaRefs": [],
+            "altText": null
+          }
+        ],
+        "link": null,
+        "cta": "Review the evidence-bound mission package.",
+        "language": "en-US",
+        "accountProfileRevisionId": "0199a000-0000-7000-8000-000000000011",
+        "sourceBindings": [
+          {
+            "sourceItemId": "item-approved-claim",
+            "bindingDigest": "2ce010b8c1efc0d8e5cf6723a7b9451f1f410f0dee15125e11240fd525ccc347"
+          },
+          {
+            "sourceItemId": "item-approved-evidence",
+            "bindingDigest": "f739243ea17c023f69980a1c49b078b922de84387656b5b5c69c1a90475b550e"
+          }
+        ]
+      }
+    },
+    {
+      "name": "x-thread",
+      "platformCode": "X",
+      "mode": "THREAD",
+      "selectedPlatforms": [
+        "X"
+      ],
+      "activationUnitId": "unit_1ad069c9e455fd488f9b5ee9",
+      "executionDigest": "c5b932f2c6f5f3049262aaedbc00dd598f617a69fd0877963a45e5de635e0cb0",
+      "artifactRevisionId": "artifact-revision_c8d19564549639ad217dd19f",
+      "artifactRevisionDigest": "afcd585f0fd6735007dcd961ecb9a80531cbc0e99c71eeaa8ec6f7fc30586d48",
+      "auditDecisionDigest": "afe7e35183a6aa1d822241a5c6632bab8aacf2c04adc46fcef7d945d3b774b33",
+      "ownerDecisionDigest": "561954428f75dfbedc2803ec14302027c59ad1189fc751ac62ddea9f45fb9298",
+      "exactInputDigest": "eafe7fb5199fe0605f324d35416cd39e4e7e74e0f6ae250ddfda440787de9223",
+      "manifestDigest": "4e265bb6a64396cf7460c2f70c9a99a4be258b7e0e0a3f89969699b610f45ffc",
+      "profileDigest": "ab28ecb5c3003f18c0d6536908dde8ad0360bdb86edc264da8cf03527af8ca9b",
+      "producerSkillDigest": "74ba525ce6bbd28ac7d8499dc7e8966a7de2584caf666c3f0986eb1ab5174eb8",
+      "sourceSkillDigest": "3e28bffa2d91b2dc848e7a3cff74e081920ab7288e176cbee85b84a38d50aeef",
+      "orderedFiles": [
+        {
+          "position": 1,
+          "fileName": "manifest.json",
+          "digest": "4e265bb6a64396cf7460c2f70c9a99a4be258b7e0e0a3f89969699b610f45ffc"
+        },
+        {
+          "position": 2,
+          "fileName": "content.md",
+          "digest": "5dc77c53a1e18769983ab96d83f4614282dc2d2ee0e0b568588c1ed2adb9776d"
+        },
+        {
+          "position": 3,
+          "fileName": "post-01.txt",
+          "digest": "abbca760021c41231002cfafd109b5ec0d744251c8c081d1490bf5cd6bea17b1"
+        },
+        {
+          "position": 4,
+          "fileName": "post-02.txt",
+          "digest": "207779090ce067ff602d4742b7108b320821649e961decf8883b239389fea928"
+        },
+        {
+          "position": 5,
+          "fileName": "post-03.txt",
+          "digest": "dd37b513b8473362581b4359208a2ab373b7a3c77b3d1440a05bfe1742e7f327"
+        },
+        {
+          "position": 6,
+          "fileName": "media-alt-manifest.json",
+          "digest": "f41cadc8dd6ddbae488e09e3c7bbaf360f011cee7012ff7b439af4cfab5aeeed"
+        }
+      ],
+      "payload": {
+        "kind": "X",
+        "mode": "THREAD",
+        "posts": [
+          {
+            "position": 1,
+            "text": "用创始人第一人称解释一个公开构建判断。 A public presence mission starts with an exact goal and approved knowledge.",
+            "mediaRefs": [],
+            "altText": null
+          },
+          {
+            "position": 2,
+            "text": "The Producer and independent Auditor have separate responsibilities. Every finding remains visible.",
+            "mediaRefs": [],
+            "altText": null
+          },
+          {
+            "position": 3,
+            "text": "The Owner approves an exact revision. Copy, download, or opening X never means PUBLISHED.",
+            "mediaRefs": [],
+            "altText": null
+          }
+        ],
+        "link": null,
+        "cta": "Review the evidence-bound mission package.",
+        "language": "en-US",
+        "accountProfileRevisionId": "0199a000-0000-7000-8000-000000000011",
+        "sourceBindings": [
+          {
+            "sourceItemId": "item-approved-claim",
+            "bindingDigest": "2ce010b8c1efc0d8e5cf6723a7b9451f1f410f0dee15125e11240fd525ccc347"
+          },
+          {
+            "sourceItemId": "item-approved-evidence",
+            "bindingDigest": "f739243ea17c023f69980a1c49b078b922de84387656b5b5c69c1a90475b550e"
+          }
+        ]
+      }
+    },
+    {
+      "name": "xiaohongshu-image-note",
+      "platformCode": "XIAOHONGSHU",
+      "mode": "IMAGE_NOTE",
+      "selectedPlatforms": [
+        "XIAOHONGSHU"
+      ],
+      "activationUnitId": "unit_7e82f09bb3629bc3d55ac0b6",
+      "executionDigest": "e06a183c306eabf7cbf59b42295382fc646d677ce22219e74c2ee47abd77f45c",
+      "artifactRevisionId": "artifact-revision_c1370a3b3d86066ed580921f",
+      "artifactRevisionDigest": "fd5e9ccb1f1802837b7d100b80307b60c60e7caefc3a41e15b28fa6b22ecbde2",
+      "auditDecisionDigest": "64339adcca8a4c3bd2ab1e610c3bd44230134640919ce91959548c15c24c3353",
+      "ownerDecisionDigest": "94ae0a688de2a0e91ae9495d8a9634548aa839d17f4758884f80132aea4a3bea",
+      "exactInputDigest": "529c4ac92337f984116d28a84b2ae5b6b9ec3cb8751589eb334ffdc14eacc9ce",
+      "manifestDigest": "8fbacc73b38e4d227f5fa2c6ed5d46a9885cb2b3d20fbf1016e3d735b79ea59d",
+      "profileDigest": "1d3b7b7715f878850097feb85cc590c94b0e9807f03e2becd66db3c197dc5579",
+      "producerSkillDigest": "9f07f33e6f18fa4232209fce681a3e9a39d1247d314c5ef245cda950c02411f0",
+      "sourceSkillDigest": "669a6788ba2e6e88ec19f33fa553b2942ec6b6dcc6faab931ba9bcd938760c14",
+      "orderedFiles": [
+        {
+          "position": 1,
+          "fileName": "manifest.json",
+          "digest": "8fbacc73b38e4d227f5fa2c6ed5d46a9885cb2b3d20fbf1016e3d735b79ea59d"
+        },
+        {
+          "position": 2,
+          "fileName": "title.txt",
+          "digest": "4feae51f80236b7a634f8e60eab25e2f769bfb17616229ae5ad587e2a2d98a7c"
+        },
+        {
+          "position": 3,
+          "fileName": "body.md",
+          "digest": "56252659b3b2e7467a7bfada8a023fde819a25d2098f05cff174748014d4b73c"
+        },
+        {
+          "position": 4,
+          "fileName": "topics.txt",
+          "digest": "63d0c55af9e873ad75d2fb789e2063217f5bff32fbab5609ba22c60ebaca0ea7"
+        },
+        {
+          "position": 5,
+          "fileName": "image-specs.json",
+          "digest": "5872487affe8c7e8e4ef18552b26bd5387a6d88ee082c01509ebdbd915973e55"
+        }
+      ],
+      "payload": {
+        "kind": "XIAOHONGSHU",
+        "title": "一份真正可审阅的内容交付",
+        "body": "本次内容目标：用创始人第一人称解释一个公开构建判断。。\n\nProducer、独立审校和 Owner 决策各自留下精确摘要。当前仅输出配图规格，没有生成图片，也没有自动发布。",
+        "topics": [
+          "AI原生品牌运营",
+          "内容治理"
+        ],
+        "cta": "查看完整证据链",
+        "coverSpec": {
+          "purpose": "让普通用户一眼理解“先审校，再批准”",
+          "aspectRatio": "3:4",
+          "visualBrief": "米白纸张质感，深墨绿信息层级，珊瑚色标记 Owner gate。",
+          "overlayCopy": "完整内容，精确批准"
+        },
+        "imageSpecs": [
+          {
+            "position": 1,
+            "purpose": "封面",
+            "aspectRatio": "3:4",
+            "visualBrief": "展示 Goal → Artifact → Audit → Owner 四段式证据链。",
+            "overlayCopy": "从目标到可发布包",
+            "altDescription": "四段式内容治理证据链",
+            "authorizedMediaRef": null
+          },
+          {
+            "position": 2,
+            "purpose": "审校发现",
+            "aspectRatio": "3:4",
+            "visualBrief": "逐项列出来源、账号、平台约束和风险 findings。",
+            "overlayCopy": "每一项都可追踪",
+            "altDescription": "独立审校逐项 findings 示例",
+            "authorizedMediaRef": null
+          },
+          {
+            "position": 3,
+            "purpose": "人工发布边界",
+            "aspectRatio": "3:4",
+            "visualBrief": "显示复制、下载、打开官方页均保持外部状态未确认。",
+            "overlayCopy": "打开页面 ≠ 已发布",
+            "altDescription": "人工发布包的未确认外部状态",
+            "authorizedMediaRef": null
+          }
+        ],
+        "language": "zh-CN",
+        "accountProfileRevisionId": "0199a000-0000-7000-8000-000000000012",
+        "sourceBindings": [
+          {
+            "sourceItemId": "item-approved-claim",
+            "bindingDigest": "2ce010b8c1efc0d8e5cf6723a7b9451f1f410f0dee15125e11240fd525ccc347"
+          },
+          {
+            "sourceItemId": "item-approved-evidence",
+            "bindingDigest": "f739243ea17c023f69980a1c49b078b922de84387656b5b5c69c1a90475b550e"
+          }
+        ]
+      }
+    }
+  ]
+}

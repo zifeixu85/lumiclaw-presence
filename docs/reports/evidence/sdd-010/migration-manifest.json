@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-010",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "migration": "000013_x_xhs_artifact_audit_manual_publish_package",
+  "tables": [
+    "artifact_submission_quarantines_v3",
+    "artifact_revisions_v3",
+    "artifact_heads_v3",
+    "artifact_audit_decisions_v3",
+    "artifact_owner_decisions_v3",
+    "artifact_regeneration_requests_v3",
+    "manual_publish_packages_v3",
+    "manual_publish_package_files_v3",
+    "manual_publish_helper_events_v3",
+    "artifact_invalidation_events_v3",
+    "artifact_publish_idempotency_v3"
+  ],
+  "emptyRollback": "PASS",
+  "populatedRollback": "BLOCKED_OWNER_DECISION_REQUIRED",
+  "appendOnlyTrigger": "PASS",
+  "counts": {
+    "revisions": 5,
+    "quarantines": 0,
+    "audits": 4,
+    "decisions": 3,
+    "regeneration_requests": 1,
+    "packages": 2,
+    "files": 11,
+    "helper_events": 3,
+    "invalidations": 2
+  }
+}
