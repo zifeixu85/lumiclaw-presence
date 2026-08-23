@@ -93,9 +93,12 @@ Exit: Mission 1 → response → learning decision → Mission 2 is reproducible
 - Integrate the complete five-screen Web journey.
 - Cover empty, blocked, expired, revoked, unknown, recovery, and success states across the four platform previews and action modes.
 - Compare single-agent, minimum-team, and full-team runs under the same conditions.
+- Before the final dogfood gate, turn Xiaohongshu image specs into actual 1080×1440 PNG/JPEG/WebP delivery assets: persist provider raw images, deterministically composite exact Chinese overlay copy with approved brand/knowledge snapshots, independently audit the exact final digests, and include those files in the manual package.
 - Provide fresh Docker installation, backup/restore rehearsal, CI, provider and connector conformance tests, evidence export, accessibility/visual checks, and a public-safe example.
 
 Exit: a new machine can run one normal loop and one fail-closed loop from the documented Compose setup without hidden services on the developer's machine.
+
+Planned dependency order inside M5 is `M5-08/SDD-007 EVIDENCE_READY + M5-09/SDD-010 EVIDENCE_READY → proposed M5-11/SDD-012 implementation and Owner real-media UAT → M5-10/SDD-011 fresh-install dogfood and recording`. Module numbers are identifiers, not execution order. The real DeepSeek path and real media-provider path use separate terminal-only Secret Gates; evidence from one cannot satisfy the other. This paragraph is planning only and does not change module implementation status.
 
 ### M6 — External calibration and hardening
 
@@ -120,7 +123,7 @@ The later horizons are direction, not implementation claims.
 
 LumiClaw owns the business semantics and evidence chain: Brand Graph, Campaign Mission, Claim/Evidence, role context, artifact revisions, independent audit, owner decisions, grants, receipts, outcomes, scoped learning, and Flight conformance.
 
-We integrate replaceable infrastructure where appropriate: AgentTeams as an external execution domain; DeepSeek behind `ModelProvider`; EvoLink behind `MediaGenerationProvider`; public sources behind `SignalProvider`; official actions behind `PublishConnector`; and user-driven completion behind `NativeHandoffAdapter`. Web and database frameworks, storage, secret managers, and observability backends remain infrastructure choices. Postiz remains a separately deployed, proof-of-concept adapter candidate; it is not part of the critical path and its source is not copied into this repository.
+We integrate replaceable infrastructure where appropriate: AgentTeams as an external execution domain; DeepSeek behind `ModelProvider`; replaceable media-provider adapters behind `MediaGenerationProvider`; public sources behind `SignalProvider`; official actions behind `PublishConnector`; and user-driven completion behind `NativeHandoffAdapter`. Web and database frameworks, storage, secret managers, and observability backends remain infrastructure choices. Postiz remains a separately deployed, proof-of-concept adapter candidate; it is not part of the critical path and its source is not copied into this repository.
 
 ## Specification-driven delivery
 

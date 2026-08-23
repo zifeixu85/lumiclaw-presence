@@ -1,10 +1,10 @@
 # Dogfood Content Operations Closed Loop Epic｜可自用内容运营闭环总计划
 
 > 状态：`SPEC_READY`
-> 日期：2026-08-22
+> 日期：2026-08-24
 > Owner：LumiClaw Presence 产品/设计 Owner
-> 用户结果：本地知识/人设 → 持续目标与计划 → 真实六成员 AgentTeams → X/小红书内容 → 独立审校 → 人工发布助手
-> 实现成熟度：本文仅冻结规格；全部新增能力仍为 `PLANNED`
+> 用户结果：本地知识/人设 → 持续目标与计划 → 真实六成员 AgentTeams → X/小红书内容与小红书实际图片 → 独立审校 → 人工发布助手
+> 实现成熟度：本文只冻结规划顺序；实际模块状态以 canonical implementation register 为准；新增 SDD-012 仍为 `PLANNED`
 > 进度纪律：本 docs-only Epic 不修改 `IMPLEMENTATION-STATUS.md` 或中文镜像，不授权任何模块进入 `IN_PROGRESS`
 
 ## 一、Epic Contract
@@ -24,6 +24,7 @@
 → 只为已选 X/小红书账号编译计划与 MissionExecutionBundle
 → 常驻 mission-worker 驱动固定版本六成员 AgentTeams
 → 生成内容计划和本次 X / 小红书完整产物
+→ 将小红书 ordered image specs 经独立 Media Secret Gate 生成 raw 背景，并由本地 compositor 组合 exact 中文 overlayCopy 为 final 图片
 → Independent Auditor 独立 PASS / FAIL / ESCALATE
 → Owner 修改、要求重生成或批准精确 Revision
 → 复制/下载精确 PublishPackage 并打开官方发布页
@@ -43,13 +44,14 @@
 - 平台选择只编译启用的 X/小红书账号，不再生成 Bluesky/LinkedIn 等无关必选单元；
 - 固定版本六成员 AgentTeams 通过常驻产品 Runtime 真实运行，Leader 只编排，Producer 与 Auditor 分离；
 - Agent 输入来自已批准 KnowledgeSnapshot、Goal、AccountOperatingProfile 和确定性编译结果，不是内置文案 fixture；
-- X 产物是单帖或 Thread 包；小红书产物包含标题、正文、话题与有顺序的配图规格；
+- X 产物是单帖或 Thread 包；小红书产物包含标题、正文、话题、有顺序的配图规格与实际可下载的 1080×1440 PNG/JPEG/WebP content-addressed assets；provider 临时 URL 不是资产真源；
 - Owner 能查看完整正文、来源绑定、版本差异、Audit 和渐进展开 Trace，能修改、重生成、批准或驳回；
-- 任何编辑或重生成都会生成新 Revision，并使旧 Audit、OwnerDecision 和 PublishPackage 失效；
+- 任何文案或图片 raw/final bytes、order、alt、overlay、Brand/Knowledge snapshot、template/font/logo、prompt/policy/profile/rights/cost binding 的编辑、recompose 或 regenerate 都会生成新 Revision，并使旧 Audit、OwnerDecision 和 PublishPackage 失效；
 - 当前发布只有复制、下载、打开 allowlisted 官方页；不自动上传、点击、发布，不接收“我已发布”作为 `PUBLISHED` 证据；
+- 小红书 PublishPackage 包含实际图片文件和 exact media/manifest digest，不再以 `generatedMedia=false` 的 specs-only 包完成 dogfood；
 - PostgreSQL 是唯一业务真源；浏览器、AgentTeams 内部状态和生成文件均不是第二真源；
 - API、数据库、mission-worker 或 AgentTeams 重启后能恢复，不重复任务、不丢失已接受输出、不盲目生成第二份内容；
-- Provider Secret 只经终端隐藏输入和 Secret Broker/Compose Secret 注入，不进入浏览器 API、Git、日志、Prompt、Trace 或公开 Evidence；
+- Model 与 Media Provider 使用两个 purpose-separated terminal-only Secret Gate；Secret 只经终端隐藏输入和 Secret Broker/Compose Secret 注入，不进入浏览器 API、Git、日志、Prompt、Trace、PG dump、package 或公开 Evidence；一个 Gate 不能冒充另一个；
 - public-safe A梦 fixture 能在 fresh install 上完成一次真实 AgentTeams E2E、一次 fail-closed 路径和一段可公开录屏。
 
 ### 3. 明确不在本 Epic 内
@@ -74,8 +76,8 @@
 | 持续目标 | PostgreSQL `operating_goals` / revisions | UI form draft | Campaign brief、组件状态 |
 | 计划与编译 | immutable `content_plan_revisions`、`mission_intent_bundles`、`mission_execution_bundles` | Agent task projection | AgentTeams DAG 文件 |
 | Mission/Task 状态 | PostgreSQL MissionRun/TaskAttempt/Event | SSE/read model | AgentTeams 内部 task state 单独判定成功 |
-| 产物/审校/批准 | immutable Revision/AuditDecision/OwnerDecision | Preview render model | UI draft、Agent 自报 |
-| PublishPackage | exact approved digest + ordered export refs | 下载目录 | 剪贴板、打开的官方页面 |
+| 产物/审校/批准 | immutable Revision/AuditDecision/OwnerDecision；XHS final composited media digest | Preview render model、受控 raw provider 图 lineage | UI draft、Agent 自报、provider 临时 URL |
+| PublishPackage | exact approved digest + ordered actual final image refs | 下载目录 | 剪贴板、打开的官方页面、provider CDN URL |
 
 浏览器只提交 Draft mutation 并读取 Control Plane；AgentTeams 只执行已编译的任务；`mission-worker` 只领取 PostgreSQL Job/Lease；任何接受的 Agent 输出必须先校验角色、输入、Skill、Schema 和 digest，再进入 PostgreSQL。
 
@@ -100,6 +102,8 @@
 | PR #7 / SDD-006 | 本地显示名称、无远端注册、MD/TXT ingest、Blob/PG 持久化、LOCAL_PRIVATE Campaign、双语生产 Shell、AI Team/Publish/Knowledge 页面和 fail-closed 发布 UI | Onboarding 把人设/企业/产品/账号档案压成 8 个通用字段；没有 AuthoritativeKnowledgeSnapshot、来源冲突决定或独立 Goal；平台选择仍创建固定四平台；AI Team 只有静态 roster；内容是初始化模板，不是 Agent 结果 | SDD-008 吸收本地资料与 UX 基础；SDD-009/010 替换固定四平台/模板；SDD-007 接真实运行 |
 | PR #6 / SDD-005 | US/JP/DE public-safe Market Pack、deterministic resolver、来源/冲突/角色投影、Skill contract | 只有 public-safe fixture；无 PostgreSQL/API/真实企业资料/真实 AgentTeams binding | SDD-008 可把 resolver 作为可选来源；本 Epic 不把它当用户权威知识 |
 | PR #5 / SDD-004 CR1 | 六平台注册表、exact digest、ordered media、allowlisted official-page、manual package 和无 `PUBLISHED` 状态合同 | 纯函数/隔离 Story；没有 X/小红书完整 ArtifactProfile、数据库/API、Audit/OwnerDecision 集成；六平台 current path 超出本轮选定范围 | SDD-010 复用安全合同，只实例化已选 X/小红书产品路径 |
+| SDD-010 / M5-09 actual-media gap | X/XHS v3 Artifact、independent Audit、exact OwnerDecision、manual package 已有工程合同 | XHS 仍为 `imageSpecs` + `authorizedMediaRef=null`，包明确 `generatedMedia=false`；没有 async provider job、实际 PNG/JPEG/WebP、raw/final Blob lineage、deterministic 中文 overlay compositor、visual audit 或 binary package | SDD-012；它是 SDD-011 硬前置，不允许用 Story/fixture 冒充 |
+| M2 media boundary | `MediaGenerationProvider` port、SVG mock、content digest、synthetic rights/cost、no-auto-approval | real EvoLink adapter 未实现/live 未跑；mock 是 1200×630 SVG；无 PG job/poll/restart/ArtifactRevision/package binding | SDD-012 复用 port 思路并 version contracts；provider brand 不进入 core domain |
 | PR #3/#4 / SDD-003 | PostgreSQL ActionGrant、Outbox、无模型 Operator、UNKNOWN/append-only/restart controlled-fake 证据 | 尚未合入 `main`，且当前 Epic 不执行自动外部动作；引入会扩大授权面 | 不作为本 Epic 依赖；未来 Direct/受控外部动作时再吸收 |
 | Web | 生产 Shell、Campaign、AI Team、Publish、Knowledge 页面结构可复用 | 页面状态没有贯通真实 Goal→Mission→Agent→Audit→Package；复制/下载仅审阅导出 | 每个 SDD 只接自己的权威状态；SDD-011 做最终连续 E2E |
 
@@ -113,7 +117,8 @@
 | 2 | [SDD-009 Persistent Goal and Selected-platform Compiler](SDD-009-PERSISTENT-GOAL-SELECTED-PLATFORM-COMPILER.md) | `M5-07` | 2–3 天 | SDD-008 | 7/30 日 Goal/Plan，且只编译 X/小红书 |
 | 3 | [SDD-010 X/XHS Artifact, Audit and Manual PublishPackage](SDD-010-X-XHS-ARTIFACT-AUDIT-MANUAL-PUBLISH-PACKAGE.md) | `M5-09` | 2–3 天 | SDD-009；吸收 PR #5 | X Thread / 小红书完整产物、审校、修改/重生成/批准和安全包 |
 | 4 | [SDD-007 Persistent AgentTeams Runtime](SDD-007-PERSISTENT-AGENTTEAMS-RUNTIME.md) | `M5-08` | 2–3 天 | SDD-009、SDD-010 的冻结 contracts | 常驻六成员 Runtime、终端 Secret Broker、dispatch/restart/recovery |
-| 5 | [SDD-011 Full Dogfood E2E Gate](SDD-011-DOGFOOD-E2E-INSTALL-RECORDING-GATE.md) | `M5-10` | 2–3 天 | SDD-007～010 | fresh install、升级/回滚、正常+失败闭环、Owner UAT 和录屏 |
+| 5 | [SDD-012 XHS Media Artifact Integration](SDD-012-XHS-MEDIA-ARTIFACT-INTEGRATION.md) | proposed `M5-11` | 2–3 天 | M5-08/SDD-007 与 M5-09/SDD-010 均 `EVIDENCE_READY` | 小红书 raw provider 图持久化 + exact 中文 overlay 的 deterministic final 图、审校/精确批准/binary package、独立 Media Secret Gate 与真实 Provider UAT |
+| 6 | [SDD-011 Full Dogfood E2E Gate](SDD-011-DOGFOOD-E2E-INSTALL-RECORDING-GATE.md) | `M5-10` | 2–3 天 | SDD-008～010、SDD-007、SDD-012 | fresh install、升级/回滚、实际小红书图片正常+失败闭环、Owner UAT 和录屏 |
 
 编号不代表实现先后。`SDD-007` 保留为纯 Runtime 规格，刻意在产品合同冻结后实施，防止它吸收 Onboarding、Goal、平台产物或发布语义。
 
@@ -131,6 +136,8 @@ SDD-009 OperatingGoal + Plan + selected-platform compiler v2
 SDD-010 X/XHS ArtifactProfile + Audit + OwnerDecision + PublishPackage
               ↓
 SDD-007 opaque MissionExecutionBundle runtime + terminal broker + recovery
+              ↓
+SDD-012 provider-neutral raw media + deterministic exact-overlay compositor + approved Brand/Knowledge snapshots + separate Media Secret Gate + final Blob/combined Revision/package
               ↓
 SDD-011 fresh install / upgrade / rollback / real AgentTeams dogfood / recording
 ```
@@ -151,6 +158,11 @@ PR #6 的市场 resolver 可在 SDD-008 中作为“公共建议来源”接入�
 10. Provider Key 不通过 Web、API body、数据库业务表、环境变量、Issue、日志或 Trace 传递。
 11. public-safe fixture 和真实 Agent run 分别标记；真实 Agent run 不等于客户或业务验证。
 12. 计划生成不存在循环依赖：Goal 先编译 Intent generation，真实 Planner 输出成为 Plan Draft；Owner 批准 exact Plan 后再确定性 materialize Execution generation。两个 generation 共享 Mission identity，Runtime 只执行 opaque contracts。
+13. DeepSeek Model Secret 与 Media Provider Secret 是两个独立 purpose Gate、ticket 和 Canary；任一 Gate 的 PASS/fake/no-Secret evidence 不能替代另一个。
+14. Provider result URL 是临时下载能力，不是 `MediaAsset`；实际 bytes 必须立即校验、hash、写入 Blob，并绑定 exact XHS combined ArtifactRevision。
+15. 图片变化与文案变化同样创建新 immutable Revision 并使旧 Audit/OwnerDecision/Package 失效；Auditor 只审校，不改图、不批准。
+16. Provider 首期只生成无关键中文标题的背景/插画；exact `overlayCopy` 由 pinned deterministic local compositor 渲染，raw/final 分别留 lineage，只有 final digest 能被审校、批准和打包。
+17. 模板、品牌色和 Logo 必须绑定 exact approved Brand/Knowledge snapshot；snapshot、overlay、字体/compositor profile 任一变化使 media revision 与下游 Audit/Decision/Package 失效。
 
 ## 七、GitHub 去重与吸收关系
 
@@ -170,7 +182,7 @@ PR #6 的市场 resolver 可在 SDD-008 中作为“公共建议来源”接入�
 ### 正常路径
 
 - fresh install → 显示名称 → 多份 MD/TXT/自由文字 → 分步档案 → KnowledgeSnapshot APPROVED；
-- 7 日 Goal → selected X/XHS plan → 六成员 AgentTeams → Audit → Owner edit/regenerate/approve → 两个平台 PublishPackage；
+- 7 日 Goal → selected X/XHS plan → 六成员 AgentTeams → 小红书 raw 背景生成/Blob 持久化 → exact 中文 overlay 本地组合/final Blob → combined Audit → Owner edit/recompose/regenerate/approve → 两个平台 PublishPackage；
 - 重启 Web/API/PostgreSQL/mission-worker/AgentTeams 后恢复到同一业务状态；
 - 包可复制/下载/打开官方页，外部结果仍 `UNVERIFIED_EXTERNAL_STATE`。
 
@@ -183,6 +195,9 @@ PR #6 的市场 resolver 可在 SDD-008 中作为“公共建议来源”接入�
 - Auditor FAIL 时没有 Owner approve/package；
 - Owner 编辑或重生成后旧 Audit/Decision/Package 全部失效；
 - runtime/model timeout、worker crash、lease expiry、API restart 不产生重复 accepted output；
+- media provider submit unknown 不自动重提/重复计费；已有 task ID 的 restart 只轮询/恢复同一 task；临时 URL 过期和 bytes/MIME/dimension/digest tamper 均 fail closed；
+- overlay 文字溢出、缺字/fallback、emoji、safe area、Logo/品牌 snapshot、对比度或 compositor digest 不合格均 fail closed；Brand/Knowledge snapshot 变化使旧 media revision 失效；
+- 实际图片任一变化使旧 XHS Audit/OwnerDecision/Package 失效；package 必须包含可打开的 image files 与 exact manifest，而非仅 specs；
 - Runtime 不可达进入可恢复 blocked/unknown，不切到隐藏 Mock 成功；
 - Browser Secret 字段、环境变量泄漏、日志/Trace Secret-shaped 值全部失败；
 - 打开官方页、自报完成或刷新页面均不能生成 `PUBLISHED`；
@@ -192,7 +207,7 @@ PR #6 的市场 resolver 可在 SDD-008 中作为“公共建议来源”接入�
 
 本 docs-only PR 的唯一有效声明是：`SPEC_READY`。实现后允许的最高工程声明为：
 
-> LumiClaw Presence 可以在本地使用 Owner 批准的知识和账号档案，把一个 7/30 日内容运营目标编译为 selected X/小红书六成员 AgentTeams Mission，生成并独立审校内容，再输出精确的人工发布包；fresh install、restart 和 fail-closed 路径已工程验证。
+> LumiClaw Presence 可以在本地使用 Owner 批准的知识和账号档案，把一个 7/30 日内容运营目标编译为 selected X/小红书六成员 AgentTeams Mission，生成内容与小红书实际图片、独立审校 combined revision，再输出含真实图片的精确人工发布包；fresh install、restart 和 fail-closed 路径已工程验证。
 
 在真实外部用户完成协议前不得写 `EXTERNAL_CALIBRATED`；在原生平台有可复核证据前不得写 `PUBLISHED`；不得声称自动发布、增长、线索、收入、合规或生产就绪。
 
@@ -229,4 +244,5 @@ PR #6 的市场 resolver 可在 SDD-008 中作为“公共建议来源”接入�
 3. 在中英文进度表同一提交登记 `M5-06`～`M5-10`，只把 SDD-008 置为 `IN_PROGRESS`；
 4. 为每个 SDD 创建独立 worktree、Codex Executor task 和 Goal；
 5. 每个 SDD 完成后独立复验、中文验收报告、Owner UAT 决策和 status parity，再启动依赖项；
-6. SDD-011 前冻结 public-safe A梦 fixture、DeepSeek terminal secret prerequisite、录屏脚本和不得外发的 Evidence 字段。
+6. 以独立 task 完成 SDD-012 implementation、real media Provider Canary 与 Owner visual/package UAT；未完成前 SDD-011 不可执行；
+7. SDD-011 前冻结 public-safe A梦 fixture、purpose-separated DeepSeek/Media terminal secret prerequisites、录屏脚本和不得外发的 Evidence 字段。
