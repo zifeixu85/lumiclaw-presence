@@ -21,7 +21,7 @@
     "preinstall": "node scripts/check-runtime.mjs",
     "clean": "node scripts/clean.mjs",
     "lint": "eslint .",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run build:packages && npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "npm run build:runtime",
