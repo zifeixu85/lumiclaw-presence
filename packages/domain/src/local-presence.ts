@@ -9,7 +9,7 @@ export type OnboardingPath = 'UNSELECTED' | 'PUBLIC_SAFE_EXAMPLE' | 'LOCAL_MATER
 export type OnboardingState = 'MATERIAL_CHOICE' | 'MATERIALS_READY' | 'CONTEXT_READY' | 'COMPLETION_PENDING' | 'COMPLETED';
 export type LocalDataMode = 'LOCAL_PRIVATE' | 'PUBLIC_SAFE_EXAMPLE';
 export type MaterialState = 'READY' | 'UNSUPPORTED' | 'REJECTED' | 'FAILED';
-export type ReadinessState = 'AVAILABLE' | 'UNAVAILABLE' | 'NOT_CONFIGURED' | 'UNKNOWN';
+export type ReadinessState = 'AVAILABLE' | 'UNAVAILABLE' | 'UNKNOWN' | 'NOT_CONFIGURED' | 'STARTING' | 'READY' | 'DEGRADED' | 'INCOMPATIBLE' | 'UNREACHABLE' | 'RECOVERING' | 'BLOCKED';
 export type ManualPublishState = 'AWAITING_RECONCILIATION';
 
 export type ManualPublishAuthorization = {
@@ -74,9 +74,9 @@ export type LocalOnboardingContext = {
 };
 
 export type EnvironmentReadinessItem = {
-  service: 'WEB' | 'API' | 'POSTGRESQL' | 'AGENTTEAMS_ADAPTER' | 'AGENTTEAMS_RUNTIME';
+  service: 'WEB' | 'API' | 'POSTGRESQL' | 'AGENTTEAMS_ADAPTER' | 'MODEL_GATEWAY' | 'MISSION_WORKER' | 'AGENTTEAMS_RUNTIME' | 'PERSISTENT_RUNTIME';
   state: ReadinessState;
-  source: 'CLIENT_OBSERVATION' | 'API_SELF_CHECK' | 'POSTGRESQL_PROBE' | 'BUILD_CONTRACT' | 'RUNTIME_CONFIGURATION';
+  source: 'CLIENT_OBSERVATION' | 'API_SELF_CHECK' | 'POSTGRESQL_PROBE' | 'BUILD_CONTRACT' | 'RUNTIME_CONFIGURATION' | 'MODEL_GATEWAY_HEALTH' | 'MISSION_WORKER_HEARTBEAT' | 'PINNED_AGENTTEAMS_CONTROLLER' | 'FOUR_WAY_AUTHORITY_CONJUNCTION';
   checkedAt: string;
   reasonCode: string;
   remediation: string | null;

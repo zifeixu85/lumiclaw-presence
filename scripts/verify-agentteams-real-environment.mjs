@@ -24,6 +24,7 @@ const diagnosticProviderOutcomeConformance = process.argv.find((value) => value.
 const diagnosticTaskProtocolOutcomeConformance = process.argv.find((value) => value.startsWith('--live-task-protocol-outcome-diagnostic-conformance='))?.split('=', 2)[1];
 const diagnosticSubmissionImportOutcomeConformance = process.argv.find((value) => value.startsWith('--live-submission-import-outcome-diagnostic-conformance='))?.split('=', 2)[1];
 const runtimeModel = liveUat ? 'lumiclaw-deepseek-broker-v1' : 'mock-agentteams-conformance';
+const acceptancePorts={gateway:'28080',console:'28001',element:'28088',manager:'28888',provider:'28333',persistentGateway:'28334'};
 let temporaryRoot;
 let provider;
 let completed = false;
@@ -175,7 +176,7 @@ if (transportConformance) {
   const preexisting = ownedContainers();
   if (preexisting.length > 0) throw new Error(`AGENTTEAMS_GLOBAL_CONTAINER_NAMES_IN_USE:${preexisting.join(',')}`);
   if (volumeExists()) throw new Error(`AGENTTEAMS_EPHEMERAL_VOLUME_ALREADY_EXISTS:${dataVolume}`);
-  for (const port of [18080, 18001, 18088, 18888, 28333]) if (portInUse(port)) throw new Error(`AGENTTEAMS_ACCEPTANCE_PORT_IN_USE:${port}`);
+  for (const port of Object.values(acceptancePorts).map(Number)) if (portInUse(port)) throw new Error(`AGENTTEAMS_ACCEPTANCE_PORT_IN_USE:${port}`);
   lifecycle.push({step: 'preflight-exclusive-runtime-names-ports-volume', startedAt: new Date().toISOString(), status: 'PASS'});
   runtimeOwnershipStarted = true;
 
@@ -185,6 +186,7 @@ if (transportConformance) {
   const sourceDigest = createHash('sha256').update(await readFile(archive)).digest('hex');
   if (sourceDigest !== expectedSourceDigest) throw new Error('AGENTTEAMS_SOURCE_TARBALL_DIGEST_MISMATCH');
   run('tar', ['-xzf', archive, '-C', temporaryRoot], {label: 'extract-verified-agentteams-source'});
+  const upstreamLicense=await readFile(path.join(temporaryRoot,'AgentTeams-1.2.0/LICENSE'),'utf8');if(!upstreamLicense.includes('Apache License')||!upstreamLicense.includes('Version 2.0'))throw new Error('AGENTTEAMS_APACHE_2_LICENSE_MISMATCH');lifecycle.push({step:'verify-upstream-apache-2-license',startedAt:new Date().toISOString(),status:'PASS'});
   const workspace = path.join(temporaryRoot, 'manager-workspace'); const hostShare = path.join(temporaryRoot, 'host-share');
   await Promise.all([mkdir(workspace, {recursive: true}), mkdir(hostShare, {recursive: true})]);
 
@@ -202,8 +204,8 @@ if (transportConformance) {
     AGENTTEAMS_LLM_PROVIDER: 'openai-compat', AGENTTEAMS_DEFAULT_MODEL: runtimeModel,
     AGENTTEAMS_OPENAI_BASE_URL: 'http://host.docker.internal:28333/v1', AGENTTEAMS_LLM_API_KEY: 'public-safe-mock-not-a-secret', AGENTTEAMS_EMBEDDING_MODEL: '',
     AGENTTEAMS_ADMIN_USER: 'public-safe-admin', AGENTTEAMS_ADMIN_PASSWORD: 'public-safe-local-admin-v1',
-    AGENTTEAMS_LOCAL_ONLY: '1', AGENTTEAMS_PORT_GATEWAY: '18080', AGENTTEAMS_PORT_CONSOLE: '18001', AGENTTEAMS_PORT_ELEMENT_WEB: '18088', AGENTTEAMS_PORT_MANAGER_CONSOLE: '18888',
-    AGENTTEAMS_MATRIX_DOMAIN: 'matrix-local.agentteams.io:18080', AGENTTEAMS_MANAGER_RUNTIME: 'copaw', AGENTTEAMS_DEFAULT_WORKER_RUNTIME: 'copaw',
+    AGENTTEAMS_LOCAL_ONLY: '1', AGENTTEAMS_PORT_GATEWAY: acceptancePorts.gateway, AGENTTEAMS_PORT_CONSOLE: acceptancePorts.console, AGENTTEAMS_PORT_ELEMENT_WEB: acceptancePorts.element, AGENTTEAMS_PORT_MANAGER_CONSOLE: acceptancePorts.manager,
+    AGENTTEAMS_MATRIX_DOMAIN: `matrix-local.agentteams.io:${acceptancePorts.gateway}`, AGENTTEAMS_MANAGER_RUNTIME: 'copaw', AGENTTEAMS_DEFAULT_WORKER_RUNTIME: 'copaw',
     AGENTTEAMS_MATRIX_E2EE: '0', AGENTTEAMS_DASHBOARD: '0', AGENTTEAMS_MOUNT_SOCKET: '1', AGENTTEAMS_DOCKER_PROXY: '0', AGENTTEAMS_WORKER_IDLE_TIMEOUT: '60',
     AGENTTEAMS_DATA_DIR: dataVolume, AGENTTEAMS_WORKSPACE_DIR: workspace, AGENTTEAMS_HOST_SHARE_DIR: hostShare,
     AGENTTEAMS_ENV_FILE: path.join(temporaryRoot, 'agentteams-manager.env')
@@ -218,7 +220,7 @@ if (transportConformance) {
     if (liveRunnerInput === undefined) throw stableError('LIVE_UAT_TRANSPORT_INVALID');
     liveRunnerReceipt = await spawnLiveRunner(liveRunnerInput.serialized, liveRunnerInput.parsed);
     lifecycle.push({step: 'run-live-deepseek-exact-mission', startedAt: new Date().toISOString(), status: 'PASS'});
-  } else run(process.execPath, ['scripts/verify-agentteams-real-runtime.mjs'], {label: 'verify-real-agentteams-causal-runtime', timeout: 900_000});
+  } else {run(process.execPath, ['scripts/verify-agentteams-real-runtime.mjs'], {label: 'verify-real-agentteams-causal-runtime', timeout: 900_000});run(process.execPath,['scripts/verify-sdd007-agentteams-driver.mjs'],{label:'verify-sdd007-persistent-agentteams-driver',timeout:300_000});}
   cleanupRuntime();
   runtimeOwnershipStarted = false;
   provider.kill('SIGTERM'); provider = undefined;
@@ -243,7 +245,8 @@ if (transportConformance) {
       externalActionCount: liveRunnerReceipt.externalActionCount
     } : {}),
     cleanup: 'PASS',
-    evidence: liveUat ? '.evidence/sdd-002/deepseek-live-canary.json' : '.evidence/sdd-002/agentteams-real-runtime.json'
+    evidence: liveUat ? '.evidence/sdd-002/deepseek-live-canary.json' : '.evidence/sdd-002/agentteams-real-runtime.json',
+    ...(liveUat?{}:{sdd007Evidence:'.evidence/sdd-007/agentteams-persistent-driver.json'})
   }));
 } catch (error) {
   if (liveUat) {

@@ -12,6 +12,7 @@ function dockerExpectedFailure(args){const command=['compose','--project-name',p
 async function waitHealthy(timeoutMs=300_000){const deadline=Date.now()+timeoutMs;while(Date.now()<deadline){const raw=docker(['ps','--format','json']).trim();const rows=raw===''?[]:raw.startsWith('[')?JSON.parse(raw):raw.split('\n').map((line)=>JSON.parse(line));const states=new Map(rows.map((row)=>[row.Service,row.Health||row.State]));if(['postgres','api','mission-worker','action-operator','web'].every((service)=>states.get(service)==='healthy'))return;await new Promise((resolve)=>setTimeout(resolve,1600));}throw new Error('SDD009_COMPOSE_HEALTH_TIMEOUT');}
 function pg(sql,database='lumiclaw'){return docker(['exec','-T','postgres','psql','-U','postgres','-d',database,'-v','ON_ERROR_STOP=1','-At','-c',sql]).trim();}
 async function api(route,init={}){const response=await fetch(`${apiUrl}${route}`,init);let body={};try{body=await response.json();}catch{}return {status:response.status,headers:response.headers,body};}
+async function waitApi(route,predicate,timeoutMs=60_000){const deadline=Date.now()+timeoutMs;let last='NOT_CALLED';while(Date.now()<deadline){try{const response=await api(route);last=`${response.status}:${JSON.stringify(response.body)}`;if(response.status===200&&predicate(response.body))return response.body;}catch(error){last=error instanceof Error?error.message:String(error);}await new Promise((resolve)=>setTimeout(resolve,500));}throw new Error(`SDD009_API_RECOVERY_TIMEOUT:${last.slice(0,1000)}`);}
 
 await mkdir(evidenceDirectory,{recursive:true});
 try{
@@ -22,7 +23,7 @@ try{
 
   pg('create database lumiclaw_sdd009_empty_down');
   docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd009_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:up']);
-  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd009_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','2']);
+  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd009_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','3']);
   if(pg("select to_regclass('public.operating_goal_revisions') is null",'lumiclaw_sdd009_empty_down')!=='t')throw new Error('SDD009_EMPTY_DOWN_DID_NOT_REMOVE_SCHEMA');checks.emptyDownPass=true;
 
   pg('create database lumiclaw_sdd009_regression');
@@ -43,12 +44,12 @@ try{
 
   const immutable=dockerExpectedFailure(['exec','-T','postgres','psql','-U','postgres','-d','lumiclaw','-v','ON_ERROR_STOP=1','-c',`update operating_goal_revisions set state='PAUSED' where goal_id='${goal.goalId}' and revision=1`]);
   if(immutable.status===0||!immutable.output.includes('SDD009_APPEND_ONLY_AUTHORITY'))throw new Error('SDD009_AUTHORITY_MUTATION_NOT_BLOCKED');checks.authorityRowsImmutable=true;
-  const populatedDown=dockerExpectedFailure(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','2']);
+  const populatedDown=dockerExpectedFailure(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','3']);
   if(populatedDown.status===0||!populatedDown.output.includes('SDD009_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED'))throw new Error('SDD009_POPULATED_DOWN_NOT_BLOCKED');checks.populatedDownRequiresExportAndOwnerDecision=true;
   checks.compositeOwnerForeignKeys=Number(pg("select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('operating_goal_revisions','operating_goal_account_bindings','content_plan_revisions_v2','mission_bundle_generations_v2','mission_bundle_status_events_v2')"))>=5;
 
   const before={goalId:goal.goalId,goalRevision:goal.revision,goalDigest:goal.canonicalDigest,planId:plan.planId,planRevision:plan.revision,planDigest:plan.canonicalDigest,intentBundleId:intent.bundleId,intentDigest:intent.canonicalDigest,executionBundleId:execution.bundleId,executionDigest:execution.canonicalDigest,rows};
-  docker(['restart','api']);await waitHealthy();docker(['restart','postgres','api']);await waitHealthy();const reopened=(await api('/api/v1/local-workspace')).body.goals;const reopenedGoal=latest(reopened.goals);const reopenedPlan=latest(reopened.plans);const reopenedIntent=latestGeneration(reopened.bundles.filter((bundle)=>bundle.kind==='MISSION_INTENT'));const reopenedExecution=latestGeneration(reopened.bundles.filter((bundle)=>bundle.kind==='MISSION_EXECUTION'));
+  docker(['restart','api']);await waitHealthy();docker(['restart','postgres','api']);await waitHealthy();const reopenedWorkspace=await waitApi('/api/v1/local-workspace',(body)=>body!==null&&typeof body==='object'&&body.goals!==null&&typeof body.goals==='object');const reopened=reopenedWorkspace.goals;const reopenedGoal=latest(reopened.goals);const reopenedPlan=latest(reopened.plans);const reopenedIntent=latestGeneration(reopened.bundles.filter((bundle)=>bundle.kind==='MISSION_INTENT'));const reopenedExecution=latestGeneration(reopened.bundles.filter((bundle)=>bundle.kind==='MISSION_EXECUTION'));
   const after={goalId:reopenedGoal.goalId,goalRevision:reopenedGoal.revision,goalDigest:reopenedGoal.canonicalDigest,planId:reopenedPlan.planId,planRevision:reopenedPlan.revision,planDigest:reopenedPlan.canonicalDigest,intentBundleId:reopenedIntent.bundleId,intentDigest:reopenedIntent.canonicalDigest,executionBundleId:reopenedExecution.bundleId,executionDigest:reopenedExecution.canonicalDigest,rows:JSON.parse(pg("select json_build_object('goal_revisions',(select count(*) from operating_goal_revisions),'plan_revisions',(select count(*) from content_plan_revisions_v2),'bundles',(select count(*) from mission_bundle_generations_v2),'invalidations',(select count(*) from mission_bundle_status_events_v2),'idempotency',(select count(*) from goal_plan_idempotency_records_v2))::text"))};
   if(JSON.stringify(after)!==JSON.stringify(before))throw new Error('SDD009_RESTART_CHANGED_IDS_DIGESTS_OR_COUNTS');checks.apiAndPostgresRestartStable=true;
 

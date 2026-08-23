@@ -15,7 +15,8 @@ export default defineConfig({
       '@lumiclaw/domain': fileURLToPath(new URL('./packages/domain/src/index.ts', import.meta.url)),
       '@lumiclaw/db': fileURLToPath(new URL('./packages/db/src/index.ts', import.meta.url)),
       '@lumiclaw/mission-compiler': fileURLToPath(new URL('./packages/mission-compiler/src/index.ts', import.meta.url)),
-      '@lumiclaw/governed-shadow': fileURLToPath(new URL('./packages/governed-shadow/src/index.ts', import.meta.url))
+      '@lumiclaw/governed-shadow': fileURLToPath(new URL('./packages/governed-shadow/src/index.ts', import.meta.url)),
+      '@lumiclaw/runtime-agentteams': fileURLToPath(new URL('./packages/runtime-agentteams/src/index.ts', import.meta.url))
     }
   },
   test: {

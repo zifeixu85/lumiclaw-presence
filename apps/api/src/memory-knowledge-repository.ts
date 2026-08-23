@@ -157,7 +157,7 @@ export class MemoryKnowledgeRepository implements KnowledgeRepository {
     this.requireSession(ownerId);
     const snapshot = this.#snapshots.find((item) => item.ownerId === ownerId && item.id === snapshotId && item.state === 'APPROVED');
     if (snapshot === undefined || snapshot.canonicalDigest !== canonicalDigest) throw new KnowledgeContractError('SNAPSHOT_APPROVAL_DIGEST_MISMATCH');
-    for(const binding of snapshot.sourceRevisionDigests){const source=[...this.#sources.values()].find((item)=>item.ownerId===ownerId&&item.id===binding.revisionId&&item.blobDigest===binding.digest);if(source===undefined||!this.#sourceBytes.has(binding.digest))throw new KnowledgeContractError('SOURCE_BLOB_MISSING');}
+    for(const binding of snapshot.sourceRevisionDigests){const source=[...this.#sources.values()].find((item)=>item.ownerId===ownerId&&item.id===binding.revisionId&&item.blobDigest===binding.digest);if(source!==undefined&&source.deletedAt!==null)throw new KnowledgeContractError('SNAPSHOT_STALE');if(source===undefined||!this.#sourceBytes.has(binding.digest))throw new KnowledgeContractError('SOURCE_BLOB_MISSING');}
     const context=this.#snapshotContexts.get(snapshotId);if(context===undefined)throw new KnowledgeContractError('SNAPSHOT_CONTEXT_BINDING_UNAVAILABLE');
     return {snapshotId, snapshotDigest: canonicalDigest, ownerId, targetMarket: context.targetMarket, contentLocale: context.contentLocale, timeZone: context.timeZone, items: snapshot.itemBindings.map(({id, kind, normalizedValue, sourceRevisionIds, profileRevisionIds, ownerAuthority}) => ({id, kind, normalizedValue, sourceRevisionIds, profileRevisionIds, ownerAuthority})), sourceDigests: snapshot.sourceRevisionDigests, profileDigests: snapshot.profileRevisionDigests};
   }
@@ -168,7 +168,8 @@ export class MemoryKnowledgeRepository implements KnowledgeRepository {
   public async close(): Promise<void> {}
   public async recordSecurityRejection(ownerId:string,eventCode:string,now:Date):Promise<void>{this.#auditEvents.push({ownerId,eventCode,at:now.toISOString()});}
   public auditEventsForTest():ReadonlyArray<{ownerId:string;eventCode:string;at:string}>{return this.#auditEvents;}
-  public removeBlobForTest(digest: string): void { this.#sourceBytes.delete(digest); }
+  public removeBlobForTest(digest: string): Uint8Array | undefined { const bytes=this.#sourceBytes.get(digest);this.#sourceBytes.delete(digest);return bytes; }
+  public restoreBlobForTest(digest: string, bytes: Uint8Array): void { this.#sourceBytes.set(digest,bytes); }
 
   private async ingest(ownerId: string, input: KnowledgeSourceInput | KnowledgeTextSourceInput, sourceKind: 'UPLOADED_FILE' | 'OWNER_AUTHORED_TEXT', expectedVersion: number, idempotencyKey: string, now: Date): Promise<KnowledgeOverview> {
     const request = 'bytes' in input ? {label: input.label, fileName: input.fileName, declaredMediaType: input.declaredMediaType, digest: sha256Digest([...input.bytes]), candidates: input.candidates ?? [], expectedVersion} : {...input, expectedVersion};

@@ -1,5 +1,5 @@
 import {createUuidV7, sha256Digest} from '@lumiclaw/domain';
-import {Ajv} from 'ajv';
+import {Ajv2020} from 'ajv/dist/2020.js';
 import type {ModelCallSnapshot} from './types.js';
 
 export const DEEPSEEK_MODELS = ['deepseek-v4-flash', 'deepseek-v4-pro'] as const;
@@ -85,7 +85,7 @@ export class DeepSeekModelProvider implements ModelProvider {
         if (typeof raw !== 'string') return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'PROVIDER_RESPONSE_INVALID', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
         let value: unknown;
         try { value = JSON.parse(raw); } catch { return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_JSON_MALFORMED', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)}; }
-        const validate = new Ajv({allErrors: true, strict: false}).compile(request.outputSchema);
+        const validate = new Ajv2020({allErrors: true, strict: false}).compile(request.outputSchema);
         if (!validate(value)) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, payload.usage, responseIdentity, Date.now() - started, attempts, {code: 'MODEL_SCHEMA_INVALID', retryable: false}, this.#now(), 'DEEPSEEK', this.#executionClass)};
         return {ok: true, value: value as T, snapshot: snapshot(request, config, inputDigest, sha256Digest(value), payload.usage, responseIdentity, Date.now() - started, attempts, null, this.#now(), 'DEEPSEEK', this.#executionClass)};
       } catch (error) {
@@ -101,7 +101,7 @@ export class PublicSafeMockModelProvider implements ModelProvider {
   constructor(private readonly fixture: unknown, private readonly now: () => Date = () => new Date()) {}
   async generateStructured<T>(request: ModelGenerateRequest<T>): Promise<ModelGenerateResult<T>> {
     const config = normalizedConfig(request); const inputDigest = sha256Digest({system: request.system, input: request.input, outputSchema: request.outputSchema, config});
-    const validate = new Ajv({allErrors: true, strict: false}).compile(request.outputSchema);
+    const validate = new Ajv2020({allErrors: true, strict: false}).compile(request.outputSchema);
     const mockResponse = {id: `public-safe-${request.taskId}`, actualModel: request.model, systemFingerprint: null, finishReason: 'stop'};
     if (!validate(this.fixture)) return {ok: false, snapshot: snapshot(request, config, inputDigest, null, {prompt_tokens: 0, completion_tokens: 0}, mockResponse, 0, 1, {code: 'MOCK_SCHEMA_INVALID', retryable: false}, this.now(), 'PUBLIC_SAFE_MOCK', 'MOCK_CONFORMANCE')};
     return {ok: true, value: structuredClone(this.fixture) as T, snapshot: snapshot(request, config, inputDigest, sha256Digest(this.fixture), {prompt_tokens: 0, completion_tokens: 0}, mockResponse, 0, 1, null, this.now(), 'PUBLIC_SAFE_MOCK', 'MOCK_CONFORMANCE')};

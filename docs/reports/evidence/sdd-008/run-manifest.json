@@ -3,11 +3,11 @@
   "sdd": "SDD-008",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-21T21:02:59.308Z",
+  "generatedAt": "2026-08-23T17:59:37.451Z",
   "source": {
     "base": "001ef2e5e8e10402d93f5f3dd02fff2a1a2315c0",
-    "headAtRun": "001ef2e5e8e10402d93f5f3dd02fff2a1a2315c0",
-    "branch": "codex/sdd-008-guided-persona-knowledge-account-onboarding",
+    "headAtRun": "93537af65b78a0ad76b13d9c832e782c1ca0bb76",
+    "branch": "codex/sdd-007-persistent-agentteams-runtime",
     "workingTreeDirty": true
   },
   "runtime": {
@@ -27,18 +27,18 @@
   "evidenceFiles": [
     {
       "path": "docs/reports/evidence/sdd-008/compose-verification.json",
-      "bytes": 21125,
-      "sha256": "7b6319361fb630bcd1650b57870bbf6fbaecfe112cf38301782b5754f18342f5"
+      "bytes": 22629,
+      "sha256": "a62c03991205c67679d7cb8d4f983e2254f1a0aa447a6f046bf4fb28044c6616"
     },
     {
       "path": "docs/reports/evidence/sdd-008/browser-verification.json",
       "bytes": 2398,
-      "sha256": "3d3eb89ab47184c522b22d455195c7af77bad726b548295e6391c1811bc59ac4"
+      "sha256": "b68a91786992c0a7863a13bef34677564bacfb40f521b6b82ebab0056498c196"
     },
     {
       "path": "docs/reports/evidence/sdd-008/migration-manifest.json",
-      "bytes": 966,
-      "sha256": "d9b260fc2a9e0f59ce06676390345f4fcff498a7bc0ccbd24a6492f6c5525d03"
+      "bytes": 1125,
+      "sha256": "a420676ce44326302ade0ca25ce98257bf599513026e9de7437f3c7351c8d4ce"
     },
     {
       "path": "docs/reports/evidence/sdd-008/api-contract-results.json",
@@ -48,12 +48,12 @@
     {
       "path": "docs/reports/evidence/sdd-008/source-snapshot-digest-manifest.json",
       "bytes": 6343,
-      "sha256": "bc63c0faf11ea7dc66a567f3e999b0bc69cfd8223eaf73f2d42125e93a938767"
+      "sha256": "003f463eea0c23ed2029b1b08d044f62d5cc67a388f6095d768bf9acbda0b5be"
     },
     {
       "path": "docs/reports/evidence/sdd-008/restart-transcript.json",
       "bytes": 814,
-      "sha256": "25b2181b04d248b1137e0dc47fd6e9fd4865aa33d1b2301274c7c28fe4aeb57a"
+      "sha256": "7be9a77275f7152b1e4b5a36bd5f73082059ff7ef654313ff9e10d314e33fdc3"
     },
     {
       "path": "docs/reports/evidence/sdd-008/DEPENDENCY-LICENSE-REVIEW.md",
@@ -77,13 +77,13 @@
     },
     {
       "path": "docs/reports/evidence/sdd-008/04-approved-snapshot.png",
-      "bytes": 108144,
-      "sha256": "3c93c447e6db64654ed75a7532bc72c2e598a7352f50272783f9aaa5ed17d9d2"
+      "bytes": 110666,
+      "sha256": "b3bebf65f1f2166140f00d8b1ffde8c7dd54bbc46a42cd73f2b1957878887edb"
     },
     {
       "path": "docs/reports/evidence/sdd-008/05-approved-snapshot-en.png",
-      "bytes": 111323,
-      "sha256": "d879ff1ea5d0bccedbf8b34d5fc94259c28ee874f6603584dccd0d9fa573c2c2"
+      "bytes": 113934,
+      "sha256": "a0780d6fc5046132f749291327ff1fb025f29d6332743cca2fc42cfaf13ffffb"
     },
     {
       "path": "docs/reports/evidence/sdd-008/06-desktop-gate.png",

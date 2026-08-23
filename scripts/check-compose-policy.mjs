@@ -6,6 +6,8 @@ const root = process.cwd();
 const composePath = path.join(root, 'compose.yml');
 const liveComposePath = path.join(root, 'compose.live-deepseek-uat.yml');
 const runtimeAcceptanceComposePath = path.join(root, 'compose.runtime-acceptance.yml');
+const persistentRuntimeComposePath = path.join(root, 'compose.persistent-runtime.yml');
+const persistentDeepSeekComposePath = path.join(root, 'compose.persistent-runtime-deepseek.yml');
 const runtimePath = path.join(root, 'infra/agentteams/compose.agentteams-profile.yml');
 
 function serviceMap(document) {
@@ -73,4 +75,11 @@ for (const [name, service] of Object.entries(serviceMap(runtime))) {
   }
 }
 
-console.info(JSON.stringify({status: 'PASS', composeServices: Object.keys(services).length, runtimeServices: Object.keys(runtime.services).length, liveSecretFiles: ['/run/secrets/deepseek_api_key', '/run/secrets/lumiclaw_runtime_broker_bootstrap'], runtimeAcceptanceSecretFile: '/run/secrets/lumiclaw_runtime_import_token', ingress: 'INTERACTIVE_TO_0600_TEMP_FILE_TO_COMPOSE_SECRET', dockerSocketMounted: false, secretAsServiceEnvironment: false}));
+const persistentText=await readFile(persistentRuntimeComposePath,'utf8');const deepSeekText=await readFile(persistentDeepSeekComposePath,'utf8');assertNoUnsafeRuntimeText(persistentText);assertNoUnsafeRuntimeText(deepSeekText);const persistent=YAML.parse(persistentText,{merge:true});const deepSeek=YAML.parse(deepSeekText,{merge:true});const gateway=serviceMap(persistent)['model-gateway'];
+if(persistentText.includes('DEEPSEEK_API_KEY')||persistentText.includes('docker.sock')||deepSeekText.includes('DEEPSEEK_API_KEY')||deepSeekText.includes('docker.sock'))throw new Error('PERSISTENT_RUNTIME_SECRET_OR_DOCKER_SOCKET_ENV_FORBIDDEN');
+if(gateway?.profiles?.join(',')!=='persistent-runtime'||gateway?.secrets?.join(',')!=='lumiclaw_runtime_gateway_bootstrap,lumiclaw_model_ticket_signing'||gateway?.ports?.some((port)=>port.host_ip!=='127.0.0.1'))throw new Error('PERSISTENT_MODEL_GATEWAY_SCOPE_INVALID');
+if(gateway?.user!=='${LUMICLAW_RUNTIME_UID:?runtime Compose must be launched by the Node wrapper}:${LUMICLAW_RUNTIME_GID:?runtime Compose must be launched by the Node wrapper}')throw new Error('PERSISTENT_MODEL_GATEWAY_HOST_IDENTITY_REQUIRED');
+if(serviceMap(deepSeek)['model-gateway']?.secrets?.join(',')!=='deepseek_api_key'||Object.keys(serviceMap(deepSeek)).some((name)=>name!=='model-gateway'))throw new Error('DEEPSEEK_SECRET_MUST_BE_GATEWAY_ONLY');
+if(!persistent.services.postgres?.ports?.every((port)=>port.host_ip==='127.0.0.1'))throw new Error('HOST_SUPERVISOR_POSTGRES_MUST_BE_LOOPBACK');
+
+console.info(JSON.stringify({status: 'PASS', composeServices: Object.keys(services).length, runtimeServices: Object.keys(runtime.services).length, persistentRuntimeProfile:'persistent-runtime',persistentGatewaySecrets:gateway.secrets,persistentGatewayUser:'HOST_UID_GID_REQUIRED',deepSeekSecretScope:'model-gateway-only',hostSupervisor:'local-fixed-command-surface',liveSecretFiles: ['/run/secrets/deepseek_api_key', '/run/secrets/lumiclaw_runtime_broker_bootstrap'], runtimeAcceptanceSecretFile: '/run/secrets/lumiclaw_runtime_import_token', ingress: 'INTERACTIVE_TO_0600_TEMP_FILE_TO_COMPOSE_SECRET', dockerSocketMounted: false, secretAsServiceEnvironment: false}));

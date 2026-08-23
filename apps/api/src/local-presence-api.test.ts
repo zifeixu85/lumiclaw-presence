@@ -131,7 +131,7 @@ describe('SDD-006 local onboarding API', () => {
     const list = await app.inject({method: 'GET', url: '/api/v1/manual-publish-handoffs'});
     expect(list.json()).toMatchObject({authorization: {reasonCode: 'MANUAL_PUBLISH_AUDIT_OWNER_DECISION_REQUIRED'}, handoffs: []});
     const team = (await app.inject({method: 'GET', url: '/api/v1/ai-team'})).json();
-    expect(team).toMatchObject({metricSource: 'NO_RUNTIME_OBSERVATION'}); expect(team.agents).toHaveLength(6); expect(team.agents.every((agent: {metrics: {tokens: number; dailyCompleted: number; source: string}}) => agent.metrics.tokens === 0 && agent.metrics.dailyCompleted === 0 && agent.metrics.source === 'NO_RUNTIME_OBSERVATION')).toBe(true);
+    expect(team).toMatchObject({metricSource: 'NO_RUNTIME_OBSERVATION'}); expect(team.agents).toHaveLength(6); expect(team.agents.every((agent: {metrics: {tokens: null; tokenSource: string; dailyCompleted: null; completionSource: string}}) => agent.metrics.tokens === null && agent.metrics.dailyCompleted === null && agent.metrics.tokenSource === 'NO_RUNTIME_OBSERVATION' && agent.metrics.completionSource === 'NO_RUNTIME_OBSERVATION')).toBe(true);
     const skill = await app.inject({method: 'GET', url: '/api/v1/skills/independent-action-audit'});
     expect(skill.statusCode).toBe(200); expect(skill.json()).toMatchObject({source: 'REPOSITORY_OWNED', skill: {license: 'Apache-2.0', files: ['SKILL.md']}}); expect(skill.json().skill.content).toContain('# Independent action audit');
   });
@@ -140,6 +140,6 @@ describe('SDD-006 local onboarding API', () => {
     const readiness = (await makeApp().inject({method: 'GET', url: '/api/v1/environment-readiness'})).json();
     expect(readiness.secretCollectionAllowed).toBe(false);
     expect(readiness.items).toContainEqual(expect.objectContaining({service: 'POSTGRESQL', state: 'AVAILABLE', source: 'POSTGRESQL_PROBE'}));
-    expect(readiness.items).toContainEqual(expect.objectContaining({service: 'AGENTTEAMS_RUNTIME', state: 'NOT_CONFIGURED', reasonCode: 'SDD_007_REQUIRED'}));
+    expect(readiness.items).toContainEqual(expect.objectContaining({service: 'AGENTTEAMS_RUNTIME', state: 'NOT_CONFIGURED', reasonCode: 'RUNTIME_NOT_CONFIGURED'}));
   });
 });

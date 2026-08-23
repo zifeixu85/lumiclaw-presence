@@ -1,5 +1,7 @@
 import {Ajv} from 'ajv';
 export * from './shadow-adapter.js';
+export * from './model-ticket.js';
+export * from './persistent-driver.js';
 
 export type ImageIdentity = {
   component: 'manager' | 'worker';
@@ -249,3 +251,4 @@ function report(
     limitations
   };
 }
+export * from './model-ticket.js';

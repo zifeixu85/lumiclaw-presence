@@ -3,7 +3,7 @@
   "sdd": "SDD-009",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-22T03:10:24.789Z",
+  "generatedAt": "2026-08-23T18:00:32.655Z",
   "webUrl": "http://127.0.0.1:3199",
   "apiUrl": "http://127.0.0.1:4199",
   "locales": [
@@ -46,7 +46,7 @@
   "screenshots": [
     {
       "name": "01-goal-form-zh.png",
-      "sha256": "fc164b7f0108381608209206c741e8b3d4486dfa6545fb2fc1c39d7182d08ac1",
+      "sha256": "fe60feb5cae5b9ae8e11fb02a01ef729d8da0aa3bf79030d265545c11982c45d",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -54,7 +54,7 @@
     },
     {
       "name": "02-mission-intent-zh.png",
-      "sha256": "1a56047708b731fb561ac3e0c5cd927bbd23dbd44390d565665a65fa1ba86f78",
+      "sha256": "9d9bf047f54414558c897224c21d40a1d074ac32d77479aca8dac8bb45bbb180",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -62,7 +62,7 @@
     },
     {
       "name": "03-plan-review-revision-zh.png",
-      "sha256": "ee766c88b65295657a829dfac8a5f1ecadc408167aff111cbe1520face7a9b39",
+      "sha256": "2143f218223e9d982e883db8275ef0c9dd863eb3c7b77d932d5339c29d24815a",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -70,7 +70,7 @@
     },
     {
       "name": "04-mission-execution-zh.png",
-      "sha256": "9119fad6be4318635219c082617574e2b80fc06e090de5541befdf36bdc89892",
+      "sha256": "9ca348762110f31f086b4fbba524f78ffea181fa6263fa41398198a8f7d30ab1",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -78,7 +78,7 @@
     },
     {
       "name": "05-invalidation-recovery-zh.png",
-      "sha256": "c234b0afab5a5b3d22739a9e9e933bf07bfd429003eb6566485cb7f5bae2eab9",
+      "sha256": "e13493145e31731ce8eec5801dccdad2b52fe5fd0c17c93dd42bf6facfc05cd7",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -86,7 +86,7 @@
     },
     {
       "name": "05b-recompiled-execution-zh.png",
-      "sha256": "c75c6171c1946d0675a5016d8c2cb85e886ae5436e742502c62b6a0f016229ee",
+      "sha256": "eec4d395bfcdc4e4a1b8fe1104644c4fbeae35c1cf290936ea6b3278453442b9",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -94,7 +94,7 @@
     },
     {
       "name": "06-goal-execution-en.png",
-      "sha256": "9d160aada468a81c0c4cd68adb941b224e032c12e517c20a2c6d363cd46def99",
+      "sha256": "9dddc5c8058c90e4326e53a04b5ec9f7a3f5116b8ee1925379bb25fbb68bcadd",
       "viewport": {
         "width": 1440,
         "height": 1000

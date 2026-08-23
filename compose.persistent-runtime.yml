@@ -1,0 +1,62 @@
+services:
+  postgres:
+    ports:
+      - target: 5432
+        published: "${LUMICLAW_RUNTIME_POSTGRES_PORT:-54329}"
+        host_ip: 127.0.0.1
+        protocol: tcp
+
+  api:
+    environment:
+      MODEL_GATEWAY_URL: http://model-gateway:4003
+    depends_on:
+      model-gateway:
+        condition: service_healthy
+
+  model-gateway:
+    image: lumiclaw/presence:m5-sdd007-runtime
+    build:
+      context: .
+      dockerfile: infra/compose/Dockerfile
+    command: [node, apps/model-gateway/dist/server.js]
+    user: "${LUMICLAW_RUNTIME_UID:?runtime Compose must be launched by the Node wrapper}:${LUMICLAW_RUNTIME_GID:?runtime Compose must be launched by the Node wrapper}"
+    profiles: [persistent-runtime]
+    init: true
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    pids_limit: 128
+    mem_limit: 512m
+    cpus: 1.0
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,nodev,size=64m
+    environment:
+      PORT: "4003"
+      DATABASE_URL: postgres://postgres@postgres:5432/lumiclaw
+      MODEL_GATEWAY_MODE: CONTROLLED_FAKE
+      RUNTIME_GATEWAY_BOOTSTRAP_FILE: /run/secrets/lumiclaw_runtime_gateway_bootstrap
+      MODEL_TICKET_SIGNING_SECRET_FILE: /run/secrets/lumiclaw_model_ticket_signing
+    secrets:
+      - lumiclaw_runtime_gateway_bootstrap
+      - lumiclaw_model_ticket_signing
+    ports:
+      - target: 4003
+        published: "${LUMICLAW_MODEL_GATEWAY_PORT:-4303}"
+        host_ip: 127.0.0.1
+        protocol: tcp
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [edge, data]
+    healthcheck:
+      interval: 3s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:4003/health').then(r=>{if(!r.ok)process.exit(1)})"]
+
+secrets:
+  lumiclaw_runtime_gateway_bootstrap:
+    file: ${LUMICLAW_RUNTIME_GATEWAY_BOOTSTRAP_FILE:-.runtime/sdd007/secrets/runtime-gateway-bootstrap}
+  lumiclaw_model_ticket_signing:
+    file: ${LUMICLAW_MODEL_TICKET_SIGNING_FILE:-.runtime/sdd007/secrets/model-ticket-signing}

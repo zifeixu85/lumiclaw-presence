@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0.0",
-  "sourceLockSha256": "d726259c80efa7c1cd0295afd0ae2611e9b60dbbda8556ad963d93049c713746",
+  "sourceLockSha256": "c34bb001f240c75f3b98e35c5c819c41c04a4a37406110a7c9ca1d8fef9491b6",
   "runtime": {
     "node": "24.16.0",
     "npm": "11.13.0",
@@ -317,6 +317,6 @@
   },
   "lockfile": {
     "format": 3,
-    "packages": 1046
+    "packages": 1048
   }
 }

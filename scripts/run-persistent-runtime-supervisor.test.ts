@@ -1,0 +1,13 @@
+import {mkdtemp,stat} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import path from 'node:path';
+import {describe,expect,it} from 'vitest';
+import {buildSupervisorEnvironment,prepareSupervisorDirectories,resolveSupervisorOrigins} from './run-persistent-runtime-supervisor.mjs';
+
+describe('persistent runtime host supervisor boundary',()=>{
+  it('passes only a minimal allowlist plus isolated HOME/DOCKER_CONFIG and fixed runtime values to the child',()=>{const source={HOME:'/host/home-that-must-not-leak',DOCKER_CONFIG:'/host/docker-login-that-must-not-leak',PATH:'/usr/bin:/bin',SHELL:'/bin/zsh-that-must-not-leak',LANG:'en_US.UTF-8',OPENAI_API_KEY:'must-not-leak-openai',ANTHROPIC_API_KEY:'must-not-leak-anthropic',DEEPSEEK_API_KEY:'must-not-leak-deepseek',AWS_SECRET_ACCESS_KEY:'must-not-leak-aws',MODEL_GATEWAY_URL:'http://127.0.0.1:4303',MODEL_GATEWAY_WORKER_ORIGIN:'http://host.docker.internal:4303'};const environment=buildSupervisorEnvironment(source,'/public-safe/repository');expect(environment).toMatchObject({HOME:'/public-safe/repository/.runtime/sdd007/supervisor-home',DOCKER_CONFIG:'/public-safe/repository/.runtime/sdd007/supervisor-home/docker-config',PATH:'/usr/bin:/bin',LANG:'en_US.UTF-8',MODEL_GATEWAY_URL:'http://127.0.0.1:4303',MODEL_GATEWAY_WORKER_ORIGIN:'http://host.docker.internal:4303',DATABASE_URL:'postgres://postgres@127.0.0.1:54329/lumiclaw',AGENTTEAMS_DRIVER:'DOCKER_HOST_SUPERVISOR'});const serialized=JSON.stringify(environment);for(const forbidden of ['SHELL','OPENAI_API_KEY','ANTHROPIC_API_KEY','DEEPSEEK_API_KEY','AWS_SECRET_ACCESS_KEY','must-not-leak','/host/home','/host/docker'])expect(serialized).not.toContain(forbidden);});
+
+  it('rejects malicious or mismatched gateway overrides before a child can start',()=>{expect(resolveSupervisorOrigins({LUMICLAW_MODEL_GATEWAY_PORT:'4303'})).toEqual({gatewayPort:4303,control:'http://127.0.0.1:4303',worker:'http://host.docker.internal:4303'});for(const source of [{MODEL_GATEWAY_URL:'https://attacker.invalid'},{MODEL_GATEWAY_URL:'http://127.0.0.1:4304'},{MODEL_GATEWAY_WORKER_ORIGIN:'http://attacker.invalid:4303'},{LUMICLAW_MODEL_GATEWAY_PORT:'80'}])expect(()=>buildSupervisorEnvironment(source,'/public-safe/repository')).toThrow();});
+
+  it('creates the isolated HOME and Docker config directories with mode 0700',async()=>{const root=await mkdtemp(path.join(tmpdir(),'lumiclaw-sdd007-supervisor-'));const environment=buildSupervisorEnvironment({PATH:'/usr/bin:/bin'},root);await prepareSupervisorDirectories(environment);expect((await stat(environment.HOME)).mode&0o777).toBe(0o700);expect((await stat(environment.DOCKER_CONFIG)).mode&0o777).toBe(0o700);});
+});

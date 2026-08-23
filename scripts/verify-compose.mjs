@@ -1,6 +1,7 @@
 import {execFileSync, spawnSync} from 'node:child_process';
 import {mkdir, readdir, writeFile} from 'node:fs/promises';
 import path from 'node:path';
+import {assertMissionWorkerHealthContract} from './mission-worker-health-contract.mjs';
 
 const root = process.cwd();
 const project = 'lumiclaw-sdd002-verify';
@@ -136,8 +137,14 @@ try {
   if (apiHealth.live !== false || apiHealth.mode !== 'DEMO_SEED') throw new Error('API health claim boundary failed.');
   checks.apiHealthClaimBoundary = true;
   const workerHealth = JSON.parse(docker(['exec', '-T', 'mission-worker', 'node', '-e', "fetch('http://127.0.0.1:4001/health').then(r=>r.json()).then(v=>console.log(JSON.stringify(v)))"]));
-  if (workerHealth.controlPlane !== 'POSTGRESQL' || workerHealth.executionMode !== 'SHADOW_PREP_ONLY' || workerHealth.externalActionAllowed !== false) throw new Error('Mission worker did not bind the shared PostgreSQL SHADOW control plane.');
-  checks.missionWorkerSharedControlPlane = workerHealth;
+  const workerHealthContract = assertMissionWorkerHealthContract(workerHealth);
+  checks.missionWorkerSharedControlPlane = {contract: workerHealthContract, health: workerHealth};
+  docker(['stop', 'postgres']);
+  const unavailableWorkerHealth = JSON.parse(docker(['exec', '-T', 'mission-worker', 'node', '-e', "fetch('http://127.0.0.1:4001/health',{signal:AbortSignal.timeout(15000)}).then(async r=>console.log(JSON.stringify({status:r.status,body:await r.json()})))"]));
+  docker(['start', 'postgres']);
+  await waitForHealthy(['postgres', 'api', 'mission-worker', 'action-operator', 'web']);
+  if (unavailableWorkerHealth.status !== 503 || unavailableWorkerHealth.body?.state !== 'UNREACHABLE' || unavailableWorkerHealth.body?.reasonCode !== 'RUNTIME_UNREACHABLE' || unavailableWorkerHealth.body?.controlPlane?.state !== 'UNREACHABLE') throw new Error('MISSION_WORKER_DATABASE_DOWN_DID_NOT_FAIL_CLOSED');
+  checks.missionWorkerDatabaseDownFailsClosed = unavailableWorkerHealth;
   const operatorHealth = JSON.parse(docker(['exec', '-T', 'action-operator', 'node', '-e', "fetch('http://127.0.0.1:4002/health').then(r=>r.json()).then(v=>console.log(JSON.stringify(v)))"]));
   if (operatorHealth.state !== 'DORMANT_NO_GRANTS' || operatorHealth.actionGrantRoutes !== 0 || operatorHealth.connectorRoutes !== 0 || operatorHealth.externalActionAllowed !== false) throw new Error('Action operator must remain dormant with no grant or connector route.');
   checks.actionOperatorDormantNoGrants = operatorHealth;

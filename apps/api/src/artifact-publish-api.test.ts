@@ -31,7 +31,7 @@ describe('SDD-010 artifact API',()=>{
     const workspace=(await app.inject({method:'GET',url:'/api/v1/artifacts'})).json().workspace;expect(workspace.quarantines).toHaveLength(1);expect(workspace.invalidations.some((item:{artifactRevisionId:string})=>item.artifactRevisionId===x.id)).toBe(true);expect(JSON.stringify(workspace.helperEvents)).not.toContain('PUBLISHED');
   });
 
-  it('does not advertise a self-reported completion or publish-success mutation',()=>{const value=JSON.stringify(openApiDocument);expect(value).not.toMatch(/mark-published|reported-complete|OWNER_REPORTED_COMPLETE|"PUBLISHED"/iu);expect(openApiDocument.info.version).toBe('0.6.0-sdd010');});
+  it('does not advertise a self-reported completion or publish-success mutation',()=>{const value=JSON.stringify(openApiDocument);expect(value).not.toMatch(/mark-published|reported-complete|OWNER_REPORTED_COMPLETE|"PUBLISHED"/iu);expect(openApiDocument.info.version).toBe('0.7.0-sdd007');});
 
   it('returns stable 422 contract errors for malformed submission payloads and audit findings',async()=>{
     const goals=new FixtureExecutionRepository();const artifacts=new MemoryArtifactPublishRepository();const app=buildApi({goalPlanRepository:goals,artifactPublishRepository:artifacts,now:at});apps.push(app);const owner=(await app.inject({method:'POST',url:'/api/v1/local-owner-profile',payload:{displayName:'Malformed Input Owner'}})).json().profile.id as string;const execution=fixtureExecution(owner);goals.setExecution(execution);const unit=execution.activationUnits[0]!;const valid=createControlledProducerSubmission(execution,unit,{xMode:'SINGLE',submittedAt:at().toISOString()});
