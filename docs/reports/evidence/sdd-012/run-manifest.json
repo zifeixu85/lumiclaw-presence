@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-012",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS_WITH_OWNER_UAT_PENDING",
+  "generatedAt": "2026-08-23T20:52:55.248Z",
+  "source": {
+    "base": "d3f48331629a3a1e567b0ae4347c16d4bc90f16b",
+    "headAtRun": "d3f48331629a3a1e567b0ae4347c16d4bc90f16b",
+    "branch": "codex/sdd-012-xhs-media-artifact-integration",
+    "workingTreeDirty": true
+  },
+  "claims": {
+    "maturity": "EVIDENCE_READY",
+    "ownerUat": "PENDING",
+    "realProviderCanary": "NOT_RUN_NO_KEY",
+    "controlledFakeEngineering": true,
+    "providerEvidence": false,
+    "customerEvidence": false,
+    "businessOutcome": false,
+    "productionReady": false,
+    "platformCompliance": false,
+    "externalActionCount": 0
+  },
+  "evidenceFiles": [
+    {
+      "path": "docs/reports/evidence/sdd-012/media-golden-package.json",
+      "bytes": 5120,
+      "sha256": "e9772aade9441cb44cd82e9550df675da1f7dfc04f98938bed1941afc2ed76d8"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/postgres-verification.json",
+      "bytes": 27137,
+      "sha256": "5653cf83c4366322e0a30f7b55ac44444fe74e2c889f243975915e8b91ca111e"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/fault-security-compositor-matrix.json",
+      "bytes": 4788,
+      "sha256": "6b718cd19f8c85032cb032d69b9c247cced95c22b6c39c61fef6508003ea31e4"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/browser-verification.json",
+      "bytes": 1974,
+      "sha256": "3098b851f1cac22e0cf3e444270c1ad7223c0d4e31bcf5ac26ed6a86bcd47602"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/compose-verification.json",
+      "bytes": 110538,
+      "sha256": "498ea6e5213b1baa83762b2ceb2cf172c411956823360a415978fe8a66e6510f"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/real-provider-canary.json",
+      "bytes": 422,
+      "sha256": "57039d399723b79ed0615b6ebd230251bdd92a935e505a3541bd26528b7dc3ce"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/DEPENDENCY-LICENSE-REVIEW.md",
+      "bytes": 2824,
+      "sha256": "9ad36cc2ce41b9b2a48617082e2d59259a2c67f3247a7f01437aca4cd7e9f19a"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/01-governed-final-preview-zh.png",
+      "bytes": 198825,
+      "sha256": "d20f682fc769d9ae146f52cadd90513e3b81215a60d6af2cc12517545aa40c5a"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/02-pass-approve-package-zh.png",
+      "bytes": 157494,
+      "sha256": "3cd577c4accd2243cdde5ab57f86a9ccfe1869127f5017870d1bfdfa9b4b0952"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/03-governed-package-en.png",
+      "bytes": 206943,
+      "sha256": "2b043dd4000d1827c3e79b21f4a8d82ba0e30444100b9e40d9f5a388b75d5768"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/04-desktop-gate.png",
+      "bytes": 33572,
+      "sha256": "d71c5c0e25413be33a16c212c977671de56600839ad6973d3367b663de7deeb1"
+    }
+  ],
+  "assetFiles": [
+    {
+      "path": "assets/media/ASSET-MANIFEST.json",
+      "bytes": 1304,
+      "sha256": "e36adbdaa10223e5010b3e06aa49fa13a10ebc3b4372a4caf0416e1c8afe1384"
+    },
+    {
+      "path": "assets/media/fonts/NotoSansSC-Regular.otf",
+      "bytes": 8331336,
+      "sha256": "faa6c9df652116dde789d351359f3d7e5d2285a2b2a1f04a2d7244df706d5ea9"
+    },
+    {
+      "path": "assets/media/fonts/OFL-NotoSansCJK.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "path": "assets/media/templates/editorial-panel-v1.json",
+      "bytes": 423,
+      "sha256": "933763ac0008ba01254c44a2f8b73fa654ac3e36a872b02b47fa30ab79e6e5ea"
+    },
+    {
+      "path": "assets/media/logo/lumiclaw-mark-v1.svg",
+      "bytes": 400,
+      "sha256": "377c131af75bc8f108f6ef369f5e957f32f5d77a78238518e0ab178d1ac63c5f"
+    }
+  ],
+  "ephemeralCiEvidence": [
+    {
+      "path": ".evidence/sdd-012/license-inventory.json",
+      "bytes": 341828,
+      "sha256": "dd49d3b6b93b1a9dfde515c37c3e36a25c350777a4b6f617e9f5802f519b46d8"
+    },
+    {
+      "path": ".evidence/sdd-012/sbom.cdx.json",
+      "bytes": 1451601,
+      "sha256": "2e78deeabf3e938830a98a81882e5d0dc245e19df168aca877921bc943af8ebf"
+    }
+  ]
+}

@@ -1,0 +1,27 @@
+services:
+  api:
+    environment:
+      MEDIA_GATE_STATUS_FILE: /run/lumiclaw-media-status/media-gate-status.json
+      MEDIA_BRAND_SNAPSHOT_ID: ${LUMICLAW_MEDIA_BRAND_SNAPSHOT_ID:?Set the exact approved BrandSnapshot id}
+      MEDIA_BRAND_SNAPSHOT_DIGEST: ${LUMICLAW_MEDIA_BRAND_SNAPSHOT_DIGEST:?Set the exact approved BrandSnapshot digest}
+      MEDIA_KNOWLEDGE_SNAPSHOT_ID: ${LUMICLAW_MEDIA_KNOWLEDGE_SNAPSHOT_ID:?Set the exact approved KnowledgeSnapshot id}
+      MEDIA_KNOWLEDGE_SNAPSHOT_DIGEST: ${LUMICLAW_MEDIA_KNOWLEDGE_SNAPSHOT_DIGEST:?Set the exact approved KnowledgeSnapshot digest}
+    volumes:
+      - type: bind
+        source: ${LUMICLAW_MEDIA_STATUS_ROOT:-.runtime/sdd012/status}
+        target: /run/lumiclaw-media-status
+        read_only: true
+  mission-worker:
+    environment:
+      MEDIA_WORKER_MODE: REAL_PROVIDER
+      MEDIA_PROVIDER_SECRET_FILE: /run/secrets/lumiclaw_media_provider_key
+      MEDIA_BRAND_SNAPSHOT_ID: ${LUMICLAW_MEDIA_BRAND_SNAPSHOT_ID:?Set the exact approved BrandSnapshot id}
+      MEDIA_BRAND_SNAPSHOT_DIGEST: ${LUMICLAW_MEDIA_BRAND_SNAPSHOT_DIGEST:?Set the exact approved BrandSnapshot digest}
+      MEDIA_KNOWLEDGE_SNAPSHOT_ID: ${LUMICLAW_MEDIA_KNOWLEDGE_SNAPSHOT_ID:?Set the exact approved KnowledgeSnapshot id}
+      MEDIA_KNOWLEDGE_SNAPSHOT_DIGEST: ${LUMICLAW_MEDIA_KNOWLEDGE_SNAPSHOT_DIGEST:?Set the exact approved KnowledgeSnapshot digest}
+    secrets:
+      - lumiclaw_media_provider_key
+
+secrets:
+  lumiclaw_media_provider_key:
+    file: ${LUMICLAW_MEDIA_SECRET_ROOT:-.runtime/sdd012/secrets}/media-provider-key

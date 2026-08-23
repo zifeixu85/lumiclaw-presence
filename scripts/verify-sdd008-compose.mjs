@@ -26,19 +26,19 @@ try{
 
   pg('create database lumiclaw_sdd008_empty_down');
   docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:up']);
-  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','4']);
+  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','5']);
   if(pg("select to_regclass('public.knowledge_snapshots') is null",'lumiclaw_sdd008_empty_down')!=='t')throw new Error('SDD008_EMPTY_DOWN_DID_NOT_REMOVE_SCHEMA');
   checks.freshEmptyDownPass=true;
 
   pg('create database lumiclaw_sdd008_legacy');
   docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:up']);
-  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','4']);
+  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','5']);
   const legacyText='# Legacy public-safe fixture\\nOwner review is required.';const legacyDigest=createHash('sha256').update(legacyText).digest('hex');const ownerId='018f0000-0000-7000-8000-000000000001';const materialId='018f0000-0000-7000-8000-000000000002';
   pg(`insert into local_owner_profiles(id,singleton_key,schema_version,display_name,state,created_at,updated_at) values('${ownerId}',true,1,'Legacy fixture Owner','PROFILE_READY',now(),now());insert into local_onboarding_sessions(owner_profile_id,schema_version,path,state,data_mode,organization_id,campaign_id,market_code,content_locale,platform,time_zone,material_ids,created_at,updated_at,market_codes,content_locales,platforms,default_time_zone,completion_digest) values('${ownerId}',1,'LOCAL_MATERIALS','MATERIALS_READY','LOCAL_PRIVATE',null,null,null,null,null,null,'["${materialId}"]'::jsonb,now(),now(),'[]'::jsonb,'[]'::jsonb,'[]'::jsonb,null,null);insert into local_material_manifests(owner_profile_id,id,schema_version,file_name,media_type,byte_size,digest,state,extracted_text,failure_code,blob_ref,created_at,updated_at) values('${ownerId}','${materialId}',1,'legacy.md','text/markdown',${Buffer.byteLength(legacyText)},'${legacyDigest}','READY',${sqlLiteral(legacyText)},null,'{"algorithm":"sha256","digest":"${legacyDigest}","size":${Buffer.byteLength(legacyText)}}'::jsonb,now(),now());`,'lumiclaw_sdd008_legacy');
   docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:up']);
   const legacy=pg("select status||'|'||trim(blob_digest)||'|'||source_kind from source_document_revisions",'lumiclaw_sdd008_legacy');
   if(legacy!==`LEGACY_NEEDS_REVIEW|${legacyDigest}|LEGACY_LOCAL_MATERIAL`)throw new Error('SDD008_LEGACY_MIGRATION_LOST_DIGEST_OR_AUTO_APPROVED');
-  const legacyDown=dockerExpectedFailure(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','4']);
+  const legacyDown=dockerExpectedFailure(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','5']);
   if(legacyDown.status===0||!legacyDown.output.includes('SDD008_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED'))throw new Error('SDD008_LEGACY_POPULATED_DOWN_NOT_BLOCKED');
   checks.legacyUpgradePreservesDigestAndRequiresReview=true;checks.populatedDownBlocksDestructiveRollback=true;
   migrationManifest={schemaVersion:1,sdd:'SDD-008',classification:'PUBLIC_SAFE_SYNTHETIC',migrations:JSON.parse(pg("select json_agg(name order by run_on)::text from pgmigrations")),sdd008Migration:'000011_guided_knowledge_onboarding',freshEmptyDown:{result:'PASS',schemaRemoved:true},populatedDown:{result:'BLOCKED',stableCode:'SDD008_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED',schemaAndDataPreserved:true},legacyUpgrade:{result:'PASS',status:'LEGACY_NEEDS_REVIEW',sourceKind:'LEGACY_LOCAL_MATERIAL',digestPreserved:true}};
@@ -92,7 +92,7 @@ try{
 
   if(Number(pg('select count(*) from campaigns'))!==0||Number(pg('select count(*) from agent_runs'))!==0)throw new Error('SDD008_CREATED_CAMPAIGN_OR_AGENT_RUN');checks.noGoalCampaignAgentRunOrPlatformAction=true;
   const mainDataBeforeDown=pg("select json_build_object('documents',(select count(*) from source_documents),'revisions',(select count(*) from source_document_revisions),'snapshots',(select count(*) from knowledge_snapshots),'source_bindings',(select count(*) from knowledge_snapshot_source_bindings))::text");
-  const mainDown=dockerExpectedFailure(['exec','-T','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','4']);
+  const mainDown=dockerExpectedFailure(['exec','-T','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','5']);
   const mainSchemaPreserved=pg("select to_regclass('public.knowledge_snapshots') is not null");
   const mainDataAfterDown=pg("select json_build_object('documents',(select count(*) from source_documents),'revisions',(select count(*) from source_document_revisions),'snapshots',(select count(*) from knowledge_snapshots),'source_bindings',(select count(*) from knowledge_snapshot_source_bindings))::text");
   const mainDownBlocked=mainDown.output.includes('SDD008_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED')||mainDown.output.includes('SDD009_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED');

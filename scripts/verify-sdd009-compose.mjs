@@ -23,7 +23,7 @@ try{
 
   pg('create database lumiclaw_sdd009_empty_down');
   docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd009_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:up']);
-  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd009_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','3']);
+  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd009_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','4']);
   if(pg("select to_regclass('public.operating_goal_revisions') is null",'lumiclaw_sdd009_empty_down')!=='t')throw new Error('SDD009_EMPTY_DOWN_DID_NOT_REMOVE_SCHEMA');checks.emptyDownPass=true;
 
   pg('create database lumiclaw_sdd009_regression');
@@ -44,7 +44,7 @@ try{
 
   const immutable=dockerExpectedFailure(['exec','-T','postgres','psql','-U','postgres','-d','lumiclaw','-v','ON_ERROR_STOP=1','-c',`update operating_goal_revisions set state='PAUSED' where goal_id='${goal.goalId}' and revision=1`]);
   if(immutable.status===0||!immutable.output.includes('SDD009_APPEND_ONLY_AUTHORITY'))throw new Error('SDD009_AUTHORITY_MUTATION_NOT_BLOCKED');checks.authorityRowsImmutable=true;
-  const populatedDown=dockerExpectedFailure(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','3']);
+  const populatedDown=dockerExpectedFailure(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','4']);
   if(populatedDown.status===0||!populatedDown.output.includes('SDD009_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED'))throw new Error('SDD009_POPULATED_DOWN_NOT_BLOCKED');checks.populatedDownRequiresExportAndOwnerDecision=true;
   checks.compositeOwnerForeignKeys=Number(pg("select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('operating_goal_revisions','operating_goal_account_bindings','content_plan_revisions_v2','mission_bundle_generations_v2','mission_bundle_status_events_v2')"))>=5;
 

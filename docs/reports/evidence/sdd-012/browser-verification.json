@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-012",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "generatedAt": "2026-08-23T20:52:23.667Z",
+  "locales": [
+    "zh-CN",
+    "en"
+  ],
+  "checks": {
+    "controlledFakeExplicit": true,
+    "exactImages": true,
+    "rawFinalLineage": true,
+    "rawCannotPreview": true,
+    "independentNoSecretGate": true,
+    "finalPreviewOnly": true,
+    "noBrowserSecretField": true,
+    "realProviderDisabled": true,
+    "keyboardFocus": true,
+    "v4BindingVisible": true,
+    "independentAuditVisible": true,
+    "ownerExactApprovalVisible": true,
+    "packageGateVisible": true,
+    "binaryPackageDownloaded": true,
+    "englishParity": true,
+    "desktop1024NoOverflow": true,
+    "desktopGate": true,
+    "postgresGovernancePersisted": true,
+    "neverPublished": true
+  },
+  "consoleErrors": [],
+  "screenshots": [
+    {
+      "name": "01-governed-final-preview-zh.png",
+      "sha256": "d20f682fc769d9ae146f52cadd90513e3b81215a60d6af2cc12517545aa40c5a",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "02-pass-approve-package-zh.png",
+      "sha256": "3cd577c4accd2243cdde5ab57f86a9ccfe1869127f5017870d1bfdfa9b4b0952",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "03-governed-package-en.png",
+      "sha256": "2b043dd4000d1827c3e79b21f4a8d82ba0e30444100b9e40d9f5a388b75d5768",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "04-desktop-gate.png",
+      "sha256": "d71c5c0e25413be33a16c212c977671de56600839ad6973d3367b663de7deeb1",
+      "viewport": {
+        "width": 800,
+        "height": 900
+      }
+    }
+  ],
+  "package": {
+    "path": ".evidence/sdd-012/sdd012-media-package.zip",
+    "bytes": 123105,
+    "sha256": "fb04f969eeca1da6229040dfd8bcf29253e750322cacc3d1b95e6382a4edbeec"
+  },
+  "externalActionCount": 0,
+  "ownerVisualUat": "PENDING"
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "profileId": "lumiclaw-xhs-editorial-media-v1",
+  "font": {
+    "file": "assets/media/fonts/NotoSansSC-Regular.otf",
+    "family": "Noto Sans SC",
+    "version": "2.004",
+    "sha256": "faa6c9df652116dde789d351359f3d7e5d2285a2b2a1f04a2d7244df706d5ea9",
+    "license": "OFL-1.1",
+    "licenseFile": "assets/media/fonts/OFL-NotoSansCJK.txt",
+    "source": "https://github.com/notofonts/noto-cjk/tree/Sans2.004",
+    "sourceCommit": "523d033d6cb47f4a80c58a35753646f5c3608a78",
+    "fallbackOrder": ["Noto Sans SC Regular 2.004"],
+    "systemFontFallback": false,
+    "remoteFontFallback": false
+  },
+  "template": {
+    "file": "assets/media/templates/editorial-panel-v1.json",
+    "sha256": "933763ac0008ba01254c44a2f8b73fa654ac3e36a872b02b47fa30ab79e6e5ea",
+    "license": "Apache-2.0",
+    "source": "LumiClaw original",
+    "safeArea": {"left": 96, "right": 96, "top": 120, "bottom": 120},
+    "typography": {"startFontSizePx": 72, "minimumFontSizePx": 48, "stepPx": 4, "lineHeight": 1.2, "maxLines": 3, "minimumContrastRatio": 4.5}
+  },
+  "logo": {
+    "file": "assets/media/logo/lumiclaw-mark-v1.svg",
+    "sha256": "377c131af75bc8f108f6ef369f5e957f32f5d77a78238518e0ab178d1ac63c5f",
+    "license": "Apache-2.0",
+    "source": "LumiClaw original",
+    "optional": true
+  }
+}

@@ -266,6 +266,44 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
+  sdd012-governed-xhs-media:
+    name: SDD-012 governed Xiaohongshu media, PostgreSQL, browser and package
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24.16.0
+          cache: npm
+      - run: npm ci
+      - name: Install exact Chromium runtime
+        run: npx playwright install --with-deps chromium
+      - name: Verify deterministic media, Secret isolation and compatibility
+        run: |
+          npm run evidence:sdd012:media
+          npm run verify:sdd012:matrices
+          npm run verify:sdd012:compatibility
+      - name: Verify fresh PostgreSQL, frozen crash stages and backup restore
+        run: npm run verify:sdd012:postgres
+      - name: Verify fresh double-worker Compose, production browser and binary package
+        run: npm run verify:sdd012:compose
+      - name: Verify dependency licenses and SBOM
+        run: |
+          npm run verify:sdd012:dependencies
+          npm run evidence:sdd012:manifest
+      - name: Upload public-safe SDD-012 evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sdd-012-governed-media-evidence
+          path: |
+            docs/reports/evidence/sdd-012/
+            .evidence/sdd-012/license-inventory.json
+            .evidence/sdd-012/sbom.cdx.json
+          if-no-files-found: error
+          retention-days: 7
+
   real-agentteams-arm64:
     name: Self-provisioned real AgentTeams v1.2.0 (manual ARM64 evidence runner)
     if: github.event_name == 'workflow_dispatch'

@@ -84,7 +84,7 @@ try {
 
   const blockedDown = run(
     "npm",
-    ["run", "migrate:down", "--workspace", "@lumiclaw/db"],
+    ["run", "migrate:down", "--workspace", "@lumiclaw/db", "--", "2"],
     { DATABASE_URL: authorityUrl },
     1,
   );
@@ -107,7 +107,7 @@ try {
   run("npm", ["run", "migrate:up", "--workspace", "@lumiclaw/db"], {
     DATABASE_URL: rollbackUrl,
   });
-  run("npm", ["run", "migrate:down", "--workspace", "@lumiclaw/db"], {
+  run("npm", ["run", "migrate:down", "--workspace", "@lumiclaw/db", "--", "2"], {
     DATABASE_URL: rollbackUrl,
   });
   if (await tableExists(rollbackUrl, "mission_runs_v1")) {

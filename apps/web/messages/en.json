@@ -1026,5 +1026,32 @@
     "technicalDetails": "Stable codes and digests",
     "errorCode": "The request failed closed: {code}",
     "unexpectedError": "The control plane could not complete the request. Refresh and retry."
+  },
+  "GovernedMedia": {
+    "eyebrow": "Governed media assets",
+    "title": "Xiaohongshu image production and evidence",
+    "body": "The provider produces text-free backgrounds and the pinned local compositor creates final images. Only final assets may enter audit, approval, and packaging.",
+    "ready": "Real media gate configured",
+    "notConfigured": "Real media gate not configured",
+    "gate": "Independent MEDIA_PROVIDER gate",
+    "terminalOnly": "Configure only in a no-echo terminal; the browser cannot read or write the key",
+    "fake": "Run controlled fake",
+    "real": "Run real provider",
+    "empty": "No actual image has been generated",
+    "impact": "Generate, regenerate, and recompose create new digests and invalidate prior audits, approvals, and packages.",
+    "noTask": "No provider task yet",
+    "composition": "Composition digest",
+    "snapshots": "Brand / Knowledge snapshots",
+    "cost": "Cost receipt",
+    "rights": "Rights status",
+    "downloadFinal": "Download final",
+    "viewRaw": "View raw lineage",
+    "governance": "Final audit and package gates",
+    "bindPending": "Every position must complete before the exact final set can become an immutable v4 revision.",
+    "bindFinal": "Bind exact final set",
+    "approveFinal": "Owner approve final",
+    "packageFinal": "Create v4 package",
+    "downloadPackage": "Download ZIP with real images",
+    "boundary": "Copy, download, restart, and opening the official page remain UNVERIFIED_EXTERNAL_STATE. The system never uploads, clicks publish, or writes PUBLISHED."
   }
 }

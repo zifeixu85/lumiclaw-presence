@@ -10,10 +10,12 @@
     "start": "node dist/server.js"
   },
   "dependencies": {
+    "@lumiclaw/blob-store": "*",
     "@lumiclaw/db": "*",
     "@lumiclaw/domain": "*",
     "@lumiclaw/governed-shadow": "*",
     "@lumiclaw/mission-compiler": "*",
+    "@lumiclaw/providers": "*",
     "@lumiclaw/process-health": "*",
     "@lumiclaw/runtime-agentteams": "*"
   }

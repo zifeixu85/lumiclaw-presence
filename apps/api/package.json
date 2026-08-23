@@ -15,6 +15,7 @@
     "@lumiclaw/domain": "*",
     "@lumiclaw/governed-shadow": "*",
     "@lumiclaw/mission-compiler": "*",
+    "@lumiclaw/providers": "*",
     "fastify": "5.11.0"
   }
 }
