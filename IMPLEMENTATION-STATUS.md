@@ -3,9 +3,9 @@
 [English](IMPLEMENTATION-STATUS.md) | [简体中文](IMPLEMENTATION-STATUS.zh-CN.md) | [Architecture](ARCHITECTURE.md) | [Roadmap](ROADMAP.md)
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
-> **Snapshot:** 2026-08-22
-> **Current phase:** M5 local dogfood chain; SDD-007 persistent AgentTeams runtime is the active implementation module
-> **Current implementation truth:** M0 and M1 are accepted. M2-01 through M2-06 are implemented and engineering-verified, including the pinned six-member AgentTeams shadow path; their Owner UAT is pending. `SDD-004` through `SDD-010` now provide engineering-verified non-executing manual-package, market-context, production UX/onboarding, guided knowledge, persistent Goal/Plan/selected-platform compilation, and governed X/Xiaohongshu artifact/audit/package foundations. `SDD-010` was independently reverified and merged at PR #16; it remains `EVIDENCE_READY`, not accepted. The next active step is `SDD-007`: a persistent real AgentTeams runtime, terminal-only Secret broker, PostgreSQL jobs/leases and restart recovery. Until SDD-007 and Owner UAT pass, fixtures must not be described as real Agent output. No current slice authorizes automated publication, platform credentials in the browser, `PUBLISHED`, external-user results, business outcomes or legal-compliance guarantees.
+> **Snapshot:** 2026-08-24
+> **Current phase:** M5 local dogfood chain; SDD-007 persistent AgentTeams runtime is merged and engineering-verified, and SDD-011 full dogfood/recovery/recording is the next executable module
+> **Current implementation truth:** M0 and M1 are accepted. M2-01 through M2-06 are implemented and engineering-verified, including the pinned six-member AgentTeams shadow path; their Owner UAT is pending. `SDD-004` through `SDD-010` now provide engineering-verified non-executing manual-package, market-context, production UX/onboarding, guided knowledge, persistent Goal/Plan/selected-platform compilation, governed X/Xiaohongshu artifact/audit/package foundations, and a persistent local AgentTeams control plane. `SDD-007` was independently reverified and merged at PR #18; its fixed-version six-member runtime, terminal-only Secret broker, PostgreSQL jobs/leases, dispatch and recovery are `EVIDENCE_READY`, not accepted. Real DeepSeek canary and Owner browser/fault-recovery UAT remain pending. No current slice authorizes automated publication, platform credentials in the browser, `PUBLISHED`, external-user results, business outcomes or legal-compliance guarantees.
 
 ## Progress contract
 
@@ -26,11 +26,11 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | Metric | Current value |
 |---|---|
 | Accepted modules | `13 / 47` (`27.7%`) |
-| Evidence ready | `12 / 47` |
+| Evidence ready | `13 / 47` |
 | Blocked | `0 / 47` |
-| Active implementation SDD | `SDD-007` / `M5-08` persistent local AgentTeams runtime and Secret broker |
+| Active implementation SDD | None; `SDD-011` / `M5-10` is the next bounded implementation task |
 | Earliest owner blocker | SDD-007 needs an Owner-provided DeepSeek key through the terminal-only broker for its real canary; module acceptance still requires Owner UAT |
-| Next executable module | Implement SDD-007 against the frozen SDD-009/010 bundle, Skill, artifact and audit contracts; no mock success fallback |
+| Next executable module | `SDD-011` / `M5-10`: full local dogfood, recovery and narrated-demo convergence on the frozen SDD-007/009/010 contracts |
 
 ## Milestone progress
 
@@ -115,7 +115,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | M5-05 | Agent ablation, evidence export and stable Hero demo | `NOT_STARTED` | M5-01–M5-04 | Same-condition comparison, allowlist export and repeatable demo runbook |
 | M5-06 | Guided persona, knowledge and account onboarding | `EVIDENCE_READY` | M5-00, M2-07; SDD-008 | Versioned founder persona, organization/product facts, X/XHS account operating profiles, multi-source MD/TXT/free-text intake, explicit conflict resolution and approved KnowledgeSnapshot; engineering verification complete, Owner UAT pending |
 | M5-07 | Persistent Goal, Agent-generated plan and selected-platform compiler | `EVIDENCE_READY` | M5-06; SDD-009 | Persistent 7/30-day Goal, versioned controlled Planner submission plus exact Owner approval, scoped invalidation/recovery, and deterministic Mission bundles only for selected X/XHS accounts; Owner UAT pending |
-| M5-08 | Persistent local AgentTeams runtime and Secret broker | `IN_PROGRESS` | M5-07, M5-09; SDD-007 | Fixed-version six-member runtime, terminal-only Secret broker, PostgreSQL jobs/leases, dispatch, restart and recovery without hidden Mock success |
+| M5-08 | Persistent local AgentTeams runtime and Secret broker | `EVIDENCE_READY` | M5-07, M5-09; SDD-007 | Fixed-version six-member runtime, terminal-only Secret broker, PostgreSQL jobs/leases, dispatch, restart and recovery are independently engineering-verified and merged in PR #18; real DeepSeek and Owner UAT pending |
 | M5-09 | X/XHS artifacts, independent audit and manual PublishPackage | `EVIDENCE_READY` | M5-07, M3-00; SDD-010 | Versioned X post/thread and Xiaohongshu image-note artifacts, independent audit, exact OwnerDecision invalidation and safe copy/download/open package; independently verified and merged in PR #16, Owner UAT pending |
 | M5-10 | Full dogfood install, recovery and recording gate | `NOT_STARTED` | M5-06–M5-09; SDD-011 | Fresh install/upgrade/rollback, public-safe Owner dogfood normal and fail-closed loops, restart recovery and reproducible narrated demo evidence |
 
