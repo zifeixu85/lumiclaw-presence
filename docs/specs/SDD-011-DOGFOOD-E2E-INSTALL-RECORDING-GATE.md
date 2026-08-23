@@ -7,7 +7,7 @@
 > Goal objective: 用 public-safe A梦 fixture 完成可复现 fresh install 到人工发布包的真实 AgentTeams 狗粮验收与录屏
 > Target evidence maturity: `ENGINEERING_VERIFIED`；Owner Dogfood 不等于 `EXTERNAL_CALIBRATED`
 > Acceptance report: `docs/reports/acceptance/SDD-011-ACCEPTANCE.md`
-> Last updated: `2026-08-22`
+> Last updated: `2026-08-24`（SDD-012 hard-prerequisite planning amendment；不声称实施）
 
 ## 1. User problem and outcome
 
@@ -19,7 +19,7 @@
 
 - `main` 有 Docker/local developer baseline 和 M0/M1 verification；M2 有真实 AgentTeams/DeepSeek 一次性 UAT evidence。
 - PR #7 提供生产 UX、本地显示名称、MD/TXT 和 local-private 基础，但仍是 fixture-bound 页面闭环。
-- SDD-008～010 与 SDD-007 分别冻结知识、Goal/compiler、artifact/audit/package 和 runtime；只有它们在同一 convergence base 实施后，才有本 SDD 的可执行对象。
+- SDD-008～010、SDD-007 与 SDD-012 分别冻结知识、Goal/compiler、artifact/audit/package、runtime 与实际 XHS media；只有它们在同一 convergence base 实施并满足各自 gate 后，才有本 SDD 的可执行对象。尤其 SDD-012 implementation + real media Provider Canary + Owner visual/package UAT 是本 SDD 的硬前置。
 - 当前没有一条从 fresh volume 到 manual package 的真实 AgentTeams E2E；没有覆盖旧本地资料升级、应用版本回退/数据恢复和 public-safe recording gate。
 
 ## 3. Scope
@@ -28,7 +28,7 @@
 
 - 可复现本地安装、启动、停止、readiness、terminal Secret 配置与清理 runbook。
 - public-safe A梦 fixture：多份 MD/TXT/自由文字、Persona、企业/产品、X Founder、小红书 Product、Market/Locale/Time Zone、7/30 日 Goal 输入；所有内容去标识且有 license/source/digest manifest。
-- 完整正常 E2E、Auditor FAIL→revision→PASS 路径、runtime restart/recovery 路径。
+- 完整正常 E2E、XHS raw provider 图→deterministic exact-overlay final 图、Auditor FAIL→revision→PASS 路径、runtime/media restart/recovery 路径。
 - 从 Coordinator 冻结的 PR #7/convergence schema 及 seed data 升级到本 Epic；迁移前备份、失败恢复、应用版本 rollback/forward-fix。
 - Owner 可执行的逐步 UAT、failure signs、evidence return、cleanup。
 - public-safe 录屏脚本/shot list、固定 viewport、脱敏检查、evidence manifest 与 claim gate。
@@ -53,13 +53,14 @@
 ### Fresh install happy path
 
 1. 按 README/runbook 检查 Docker/Node/ports/disk，启动 fresh named volume；所有服务 readiness 可见。
-2. 终端隐藏输入 DeepSeek key；浏览器首次进入只填显示名称。
+2. 分别在终端隐藏输入 DeepSeek Model key 与 media-provider key；两个 purpose-separated Gate 独立显示 readiness，浏览器首次进入只填显示名称，不输入任何 Secret。
 3. 导入 public-safe A梦 fixture，完成 Persona/企业产品/X/XHS/Market/Locale/Time Zone，解决冲突并批准 KnowledgeSnapshot。
 4. 建立 7 日 Goal，启动 Intent generation，让真实 Claim Steward/Planner 生成候选计划；审阅并批准计划，确认下一代只 materialize X+XHS，六角色和两个 Producer 均有工作。
 5. 继续同一真实 AgentTeams Mission；查看 bundle generation lineage、渐进 Trace 和完整 X Thread/小红书产物。
-6. 故意触发 Auditor FAIL，修订或要求重生成，再由独立 Auditor PASS；Owner 批准 exact revision。
-7. 复制/下载两个 package、打开官方页，确认无自动发布且状态未升级。
-8. 运行中重启 worker/runtime/API，再次确认同一 run/revisions/digests 恢复。
+6. 为小红书生成无关键标题的 raw 背景/插画并立即 Blob 持久化；用 exact overlayCopy 与 approved Brand/Knowledge snapshot 确定性组合 final 图，核对 raw/final lineage、费用/权利与 visual result。
+7. 故意触发 Auditor FAIL，修订、recompose 或要求 regenerate，再由独立 Auditor PASS；Owner 批准含 final media digest 的 exact revision。
+8. 复制/下载两个 package，核对 XHS actual final image files 与 manifest digest；打开官方页，确认无自动发布且状态未升级。
+9. 运行中重启 worker/runtime/API/media job，再次确认同一 run/tasks/raw+final revisions/digests 恢复且不重复计费。
 
 ### Required visible states
 
@@ -72,7 +73,7 @@
 - `DogfoodFixtureManifest { fixtureVersion, files[], digests[], source/license, publicSafeReview, expectedProfiles, expectedSelectedPlatforms }`。
 - `InstallManifest { appCommit, imageDigests, migrationHead, runtime/team/skill/compiler/artifactProfile versions, platform, prerequisites }`。
 - `BackupManifest { createdAt, schemaVersion, databaseDigest/ref, blobInventoryDigest, appCommit, restoreCommandRef }`；不得提交真实备份。
-- `DogfoodRunManifest { fixtureDigest, input object IDs/digests, mission/run/task/revision/audit/decision/package refs/digests, realProviderMarker, restartEvents, tests, recordingRef }`。
+- `DogfoodRunManifest { fixtureDigest, input object IDs/digests, mission/run/task/revision/audit/decision/package refs/digests, modelProviderMarker, mediaProviderMarker, raw/final/composition/snapshot digests, restartEvents, tests, recordingRef }`。
 - `RecordingManifest { fileDigest, duration, viewport, shotListVersion, redactionReview, publicSafeFixtureDigest, claimsShown[] }`。
 
 CLI/scripts 需要稳定 exit codes 和 machine JSON mode：preflight、install/start/readiness、backup、migrate、restore rehearsal、dogfood seed、E2E verify、secret scan、recording verify、cleanup。脚本不得使用 destructive volume deletion 作为正常 cleanup；删除测试 volume 必须 explicit exact target + Owner authorization。
@@ -82,7 +83,7 @@ CLI/scripts 需要稳定 exit codes 和 machine JSON mode：preflight、install/
 ## 6. AgentTeams and Skills
 
 - E2E 必须使用 SDD-007 锁定的真实 AgentTeams runtime/profile 和 exactly six members；controlled fake 只能用于 CI fault setup，不能作为 Owner happy-path evidence。
-- DeepSeek 通过 terminal broker/ModelGateway；RunManifest 标记 provider、model policy、sanitized request receipt，不含 Secret/prompt private text。
+- DeepSeek 与 media provider 分别通过 purpose-separated terminal broker gates；RunManifest 分别标记 model/media provider、policy 和 sanitized receipts，不含 Secret/private prompt/signed result URL。一个 Gate/evidence 不能冒充另一个。
 - 使用 SDD-009 Bundle 和 SDD-010 SkillLock/ArtifactProfile；E2E 不允许 bypass compiler 直接手写 Agent task。
 - public-safe fixture 的 X Founder 与 XHS Product 分别让两个 Producers 执行实质工作；Auditor 独立。
 - recording 必须显示“真实 AgentTeams / public-safe fixture / manual publish / external state unverified”，防止把演示误读为业务结果。
@@ -91,7 +92,7 @@ CLI/scripts 需要稳定 exit codes 和 machine JSON mode：preflight、install/
 
 | 组件 | 决定 | 版本/来源/许可证 | 边界 |
 |---|---|---|---|
-| SDD-008/009/010/007 | `INTEGRATE` | 各 accepted commit / Apache-2.0 | E2E 只编排和验证，不复制业务逻辑 |
+| SDD-008/009/010/007/012 | `INTEGRATE` | 各 accepted commit / Apache-2.0 | E2E 只编排和验证，不复制业务逻辑；SDD-012 Owner UAT 是硬前置 |
 | Docker Compose/local launcher | `INTEGRATE` | repository pinned versions | 本地单机；Secret 使用 Compose Secret，不 bake image |
 | public-safe A梦 fixture | `BUILD` | 本仓 Apache-2.0；source manifest | 合成/去标识；不是真实客户数据 |
 | Browser E2E framework | `INTEGRATE` | 复用 repo lock / license register | 测用户路径；不自动操作外部 X/XHS 页面 |
@@ -114,10 +115,11 @@ CLI/scripts 需要稳定 exit codes 和 machine JSON mode：preflight、install/
 
 - [ ] 一份全新 checkout/volume 可按单一路径安装，无远端注册，服务 readiness 全绿或明确 blocked。
 - [ ] public-safe A梦 fixture 有 source/license/digest/public-safe review，且不含 Secret、客户/联系人/原始 DM。
-- [ ] Owner 从显示名称走到 X/XHS manual packages，除 terminal key 外不需工程师手工复制 ID/改数据库。
-- [ ] happy path 使用真实固定版本六成员 AgentTeams/DeepSeek，不是 fixture/mock success。
-- [ ] Auditor FAIL→Owner edit/regenerate→new Audit PASS→exact approve→package 的 lineage 可复核。
-- [ ] 中途重启 worker/runtime/API 后继续同一 run，accepted outputs/packages 不重复。
+- [ ] Owner 从显示名称走到含实际 XHS final images 的 X/XHS manual packages，除两个 purpose-separated terminal Secret 外不需工程师手工复制 ID/改数据库。
+- [ ] happy path 使用真实固定版本六成员 AgentTeams/DeepSeek 与 real media Provider，不是 fixture/mock success；两条 conditional-live evidence 分开记录。
+- [ ] XHS raw/final/composition/Brand/Knowledge snapshot lineage 可复核；只有 final digest 进入 Audit/OwnerDecision/package，package 含可打开的 actual image files。
+- [ ] Auditor FAIL→Owner edit/recompose/regenerate→new Audit PASS→exact approve→package 的 lineage 可复核。
+- [ ] 中途重启 worker/runtime/API/media job 后继续同一 run/provider tasks，accepted outputs/packages 不重复、不重复计费。
 - [ ] copy/download/open official page 后没有 `PUBLISHED`，没有自动平台动作。
 - [ ] 从固定 legacy/convergence data 升级不丢 source/blob/campaign；失败可用已验证 backup 在独立 volume 恢复。
 - [ ] app rollback、data restore、cleanup 各有 exact 命令、target、expected result 和 failure signs。
@@ -127,22 +129,22 @@ CLI/scripts 需要稳定 exit codes 和 machine JSON mode：preflight、install/
 ## 10. Test plan
 
 - Fresh install：clean checkout/config、new named volume、migrate/seed/readiness、zh-CN default/en switch。
-- Full Web E2E：Onboarding、Snapshot、Goal/Plan、selected compile、real runtime、audit failure/revision/approval、package。
+- Full Web E2E：Onboarding、Snapshot、Goal/Plan、selected compile、real runtime、raw media ingest、exact-overlay composition、audit failure/revision/approval、actual-image package。
 - 30-day contract：验证 30 日计划/slots/compile；录屏可用较短 7 日路径。
 - Fault/restart：kill API、worker、AgentTeams、gateway at frozen stages；SSE reconnect、lease recovery、no duplicate。
 - Upgrade：固定 pre-Epic schema/PR #7 fixture → migration head；对象数、digests、Blob inventory、legacy v1 reader。
 - Rollback/restore：migration failure simulation、backup digest、independent restore volume、old/new app compatibility。
 - Negative/security：PDF planned、conflict unresolved、unselected platform、runtime/key failure、Auditor FAIL、package tamper、official URL allowlist、no PUBLISHED。
-- Real live gate：valid DeepSeek key + real AgentTeams；结果独立标为 `REAL_PROVIDER`，无 key 的 CI 只能 skip with explicit reason，不能 PASS 该 AC。
+- Real live gates：valid DeepSeek key + real AgentTeams 与 valid media key + real media Provider 是两个独立 terminal-only gates；结果分别标记，无任一 key 的 CI 只能 skip 对应 AC，不能用另一 Gate 或 controlled fake PASS。
 - Recording/privacy/license：1440×900（或 Owner 冻结的单一 viewport）、no notification、secret scan、fixture/source/NOTICE review、video digest。
 
 ## 11. Evidence and claims
 
-验收包应包含：acceptance report、Install/Backup/DogfoodRun/Recording manifests、exact commands/results、migration/fixture/runtime/team/skill/compiler/image digests、E2E screenshots/video、sanitized AgentTeams trace、audit/revision/package manifests、restart/restore evidence、secret/license scan 和 Owner signed PASS/FAIL。
+验收包应包含：acceptance report、Install/Backup/DogfoodRun/Recording manifests、exact commands/results、migration/fixture/runtime/team/skill/compiler/raw/final/composition/snapshot digests、E2E screenshots/video、sanitized AgentTeams/media receipts、audit/revision/package manifests、restart/restore evidence、secret/license scan 和 Owner signed PASS/FAIL。
 
 通过后允许的精确 claim：
 
-> `ENGINEERING_VERIFIED`：LumiClaw Presence 可在本地使用 public-safe Owner 资料，把 selected X/小红书 7/30 日内容目标通过真实六成员 AgentTeams 生成并独立审校，再输出安全人工发布包；fresh install、upgrade、restart 与 fail-closed 路径已验证。
+> `ENGINEERING_VERIFIED`：LumiClaw Presence 可在本地使用 public-safe Owner 资料，把 selected X/小红书 7/30 日内容目标通过真实六成员 AgentTeams 生成内容，并把 real-provider raw 图确定性组合为 exact-overlay final 图；combined revision 经独立审校与 Owner 精确批准后输出含实际图片的安全人工发布包，fresh install、upgrade、restart 与 fail-closed 路径已验证。
 
 仍为 `NOT_CLAIMED`：自动发布、原生平台 published receipt、外部用户校准、增长/线索/营收、法律合规、生产就绪。Owner Dogfood 不是 `EXTERNAL_CALIBRATED`。
 
@@ -153,7 +155,7 @@ CLI/scripts 需要稳定 exit codes 和 machine JSON mode：preflight、install/
 3. 1 天：full automated E2E、negative/restart/upgrade/rollback matrix。
 4. 0.5 天：real Provider/AgentTeams Owner UAT、录屏/redaction review、验收报告和 release handoff。
 
-Critical path：SDD-008→009→010→007 accepted → convergence install → full E2E/live UAT → recording/review。`M5-10` 不得因“视频录完”自动 ACCEPTED；二元 AC、机器证据和 Owner decision 都必须通过。
+Critical path：SDD-008→009→010→007，随后 `M5-08/M5-09 EVIDENCE_READY → SDD-012 implementation + Owner real-media UAT → convergence install → SDD-011 full E2E/two live gates → recording/review`。`M5-10` 不得因“视频录完”自动 ACCEPTED；二元 AC、机器证据和 Owner decision 都必须通过。
 
 ## 13. Alternatives and decision log
 
@@ -168,7 +170,7 @@ Critical path：SDD-008→009→010→007 accepted → convergence install → f
 ### Prerequisites
 
 - clean worktree/checkout、Docker/Node 和足够磁盘；exact supported versions见 InstallManifest；
-- public-safe A梦 fixture；有效 DeepSeek key，仅在终端录入；
+- public-safe A梦 fixture；有效 DeepSeek key 与 media-provider key，分别仅在终端无回显录入；
 - 不登录真实 X/小红书也可完成，官方页只验证入口；
 - 录屏前开启勿扰、隐藏终端历史/通知/私有路径，使用冻结 viewport。
 
@@ -177,13 +179,14 @@ Critical path：SDD-008→009→010→007 accepted → convergence install → f
 1. 跟随 fresh-install runbook 启动，确认无远端注册和 readiness。
 2. 完成分步 Onboarding，导入 fixture、处理冲突、批准 exact Snapshot。
 3. 建立/批准 7 日 Goal/Plan，确认只有 X/XHS 和六成员职责。
-4. 启动真实 AgentTeams；记录 run ID/digest 与两个 Producers、Auditor trace。
-5. 在冻结 stage 停止 mission-worker，重启后确认恢复且无 duplicate。
-6. 触发 Auditor FAIL，修改/重生成后再次审校 PASS，批准 exact revisions。
-7. 下载两个 packages、核 manifest；打开官方页并确认仍 external unverified。
-8. 执行 secret/privacy scan 和 automated manifest verifier。
-9. 另用固定 legacy volume 做 backup→upgrade；在独立 volume 演练 restore，并对比对象/blob/digest。
-10. 按 shot list 录制一次无 Secret 视频，review claims 后给出 `OWNER_UAT_PASS | OWNER_UAT_FAIL`。
+4. 启动真实 AgentTeams；记录 run ID/digest 与两个 Producers、Auditor trace；独立确认 Model/Media Gate readiness 不能互相替代。
+5. 生成 XHS raw backgrounds 并组合 exact overlayCopy final images；逐图核对 raw/final/composition/snapshot/cost/rights/visual evidence。
+6. 在冻结 stage 停止 mission-worker，重启后确认同一 model run/media tasks 恢复且无 duplicate/重复计费。
+7. 触发 Auditor FAIL，修改/recompose/regenerate 后再次审校 PASS，批准 exact revisions。
+8. 下载两个 packages、核 manifest 与每个 XHS actual final image digest；打开官方页并确认仍 external unverified。
+9. 执行 secret/privacy scan 和 automated manifest verifier。
+10. 另用固定 legacy volume 做 backup→upgrade；在独立 volume 演练 restore，并对比对象/raw+final blob/digest。
+11. 按 shot list 录制一次无 Secret 视频，review claims 后给出 `OWNER_UAT_PASS | OWNER_UAT_FAIL`。
 
 Expected：一条可重复、可恢复、没有隐藏 fixture 成功的完整路径。Failure signs：安装需远端账号、手工改 DB/复制 ID、未选平台出现、Leader代写、Auditor不独立、重启重复、FAIL仍可批准、外部状态变 PUBLISHED、Secret/客户数据入证据。Owner 返回 binary decision、Run/Recording manifests、截图/视频 digest、问题列表；cleanup 停止 stack并移除临时 Secret，保留 evidence volume。删除 volume/下载包前列 exact target 并另行确认。
 

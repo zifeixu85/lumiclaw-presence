@@ -93,9 +93,12 @@ M2-01～M2-06 已以真实固定版本 AgentTeams Runtime 与 Owner 控制的本
 - 集成完整五主屏 Web 旅程；
 - 覆盖四平台 Preview 与动作模式下的空、阻断、过期、撤销、未知、恢复和成功状态；
 - 在同条件下比较单 Agent、最小团队和完整团队；
+- 在最终 Dogfood Gate 前，把小红书 image specs 变成实际 1080×1440 PNG/JPEG/WebP 交付资产：分别持久化 provider 原始图，并用 approved Brand/Knowledge snapshot 确定性组合 exact 中文 overlayCopy；独立审校 final digest，再把实际文件纳入人工发布包；
 - 提供 Fresh Docker Install、备份恢复演练、CI、Provider/Connector Conformance、Evidence Export、视觉/可访问性检查和公开安全示例。
 
 完成：新机器无需依赖开发者机器上的隐藏服务，即可按 Compose 文档运行一个正常闭环和一个失败关闭闭环。
+
+M5 内计划依赖顺序为：`M5-08/SDD-007 EVIDENCE_READY + M5-09/SDD-010 EVIDENCE_READY → proposed M5-11/SDD-012 实施与 Owner real-media UAT → M5-10/SDD-011 fresh-install Dogfood 与录屏`。Module 编号只是标识，不代表执行顺序。真实 DeepSeek 与真实媒体 Provider 使用两个 terminal-only Secret Gate；一个路径的 Evidence 不能满足另一个。本段只更新计划，不改变任何模块实现状态。
 
 ### M6｜外部校准与加固
 
@@ -120,7 +123,7 @@ M2-01～M2-06 已以真实固定版本 AgentTeams Runtime 与 Owner 控制的本
 
 LumiClaw 拥有业务语义与证据链：Brand Graph、Campaign Mission、Claim/Evidence、Role Context、ArtifactRevision、独立 Audit、OwnerDecision、Grant、Receipt、Outcome、作用域 Learning 与 Flight Conformance。
 
-可替换的集成包括：作为外部执行域的 AgentTeams；位于 `ModelProvider` 后的 DeepSeek；位于 `MediaGenerationProvider` 后的 EvoLink；位于 `SignalProvider` 后的公开来源；位于 `PublishConnector` 后的官方动作；以及位于 `NativeHandoffAdapter` 后的用户驱动完成路径。Web/数据库框架、存储、Secret Manager 与 Observability Backend 仍是基础设施选择。Postiz 保持独立部署的 PoC Adapter 候选，不进入关键路径，也不复制其源码。
+可替换的集成包括：作为外部执行域的 AgentTeams；位于 `ModelProvider` 后的 DeepSeek；位于 `MediaGenerationProvider` 后的可替换媒体 Provider Adapter；位于 `SignalProvider` 后的公开来源；位于 `PublishConnector` 后的官方动作；以及位于 `NativeHandoffAdapter` 后的用户驱动完成路径。Web/数据库框架、存储、Secret Manager 与 Observability Backend 仍是基础设施选择。Postiz 保持独立部署的 PoC Adapter 候选，不进入关键路径，也不复制其源码。
 
 ## SDD 推进
 
