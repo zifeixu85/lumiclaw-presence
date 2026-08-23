@@ -3,7 +3,7 @@
   "sdd": "SDD-012",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-23T22:39:58.841Z",
+  "generatedAt": "2026-08-23T23:33:22.756Z",
   "command": [
     "npx",
     "vitest",
@@ -51,7 +51,7 @@
     ],
     "governanceAndTamper": [
       "SDD-012 exact composition, governance and binary package > requires an exact Owner NO_OVERLAY decision and still creates separate raw/final lineage",
-      "SDD-012 exact composition, governance and binary package > enforces Producer/Auditor separation and exact PASS + APPROVE before package creation",
+      "SDD-012 exact composition, governance and binary package > records only an explicit controlled A5 fixture and never promotes it to operational approval or packaging",
       "SDD-012 exact composition, governance and binary package > invalidates audit, decision and package lineage for MEDIA_BRAND_SNAPSHOT_CHANGED",
       "SDD-012 exact composition, governance and binary package > invalidates audit, decision and package lineage for MEDIA_KNOWLEDGE_SNAPSHOT_CHANGED",
       "SDD-012 exact composition, governance and binary package > invalidates audit, decision and package lineage for MEDIA_COMPOSITION_CHANGED",

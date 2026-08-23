@@ -10,7 +10,7 @@ export const mediaErrorCodes = [
   'MEDIA_MIME_INVALID','MEDIA_DIMENSIONS_INVALID','MEDIA_DIGEST_MISMATCH','MEDIA_METADATA_FORBIDDEN','MEDIA_TEXT_OVERFLOW',
   'MEDIA_GLYPH_MISSING','MEDIA_EMOJI_UNSUPPORTED','MEDIA_CONTRAST_INVALID','MEDIA_BRAND_BINDING_STALE',
   'MEDIA_KNOWLEDGE_BINDING_STALE','MEDIA_COMPOSITION_NONDETERMINISTIC','MEDIA_RIGHTS_REVIEW_REQUIRED','MEDIA_SET_INCOMPLETE',
-  'MEDIA_REVISION_STALE','MEDIA_AUDITOR_INDEPENDENCE_REQUIRED','MEDIA_AUDIT_PASS_REQUIRED','MEDIA_OWNER_APPROVAL_REQUIRED',
+  'MEDIA_REVISION_STALE','MEDIA_AUDITOR_INDEPENDENCE_REQUIRED','MEDIA_AUDIT_PASS_REQUIRED','MEDIA_AUDIT_RUNTIME_AUTHORITY_REQUIRED','MEDIA_OWNER_APPROVAL_REQUIRED',
   'MEDIA_PACKAGE_TAMPERED','MEDIA_PROMPT_SECRET_DETECTED','MEDIA_ALT_TEXT_REQUIRED','MEDIA_NO_OVERLAY_OWNER_DECISION_REQUIRED',
   'MEDIA_JOB_STATE_INVALID','MEDIA_LEASE_LOST','MEDIA_PROVIDER_TASK_MISMATCH','MEDIA_SNAPSHOT_NOT_APPROVED',
   'MEDIA_LOGO_BINDING_INVALID','MEDIA_SAFE_AREA_INVALID','SECRET_TICKET_PURPOSE_MISMATCH','SECRET_TICKET_SCOPE_MISMATCH',
@@ -105,11 +105,13 @@ export type MediaSetItem={position:number;assetId:string;finalAssetDigest:string
   rightsReceiptDigest:string;costReceiptDigest:string;fileName:string};
 export type MediaSetBinding={schemaVersion:1;profileRef:string;profileDigest:string;items:MediaSetItem[];canonicalDigest:string};
 
+export const CONTROLLED_MEDIA_AUDITOR_IDENTITY_ID='controlled-a5-media-auditor' as const;
+
 export type ArtifactRevisionV4={schemaVersion:4;id:string;ownerId:string;platformCode:'XIAOHONGSHU';revision:number;parentRevisionId:string;parentRevisionDigest:string;
   producerIdentityId:string;payloadDigest:string;mediaSetBinding:MediaSetBinding;brandSnapshot:BrandSnapshotBinding;knowledgeSnapshot:KnowledgeSnapshotBinding;
   state:'AWAITING_AUDIT';createdAt:string;canonicalDigest:string};
-export type MediaAuditDecisionV4={schemaVersion:4;id:string;ownerId:string;artifactRevisionId:string;artifactRevisionDigest:string;auditorIdentityId:string;result:'PASS'|'FAIL'|'ESCALATE';
-  actualMediaDigests:string[];provenanceDigest:string;rightsCostDigest:string;canonicalDigest:string;createdAt:string};
+export type MediaAuditDecisionV4={schemaVersion:4;id:string;ownerId:string;artifactRevisionId:string;artifactRevisionDigest:string;auditorRole:'A5_INDEPENDENT_AUDITOR';auditorIdentityId:typeof CONTROLLED_MEDIA_AUDITOR_IDENTITY_ID;
+  evidenceMaturity:'CONTROLLED_FIXTURE';agentTeamsExecuted:false;authoritativeForOperations:false;runtimeReceiptBinding:null;result:'PASS'|'FAIL'|'ESCALATE';actualMediaDigests:string[];provenanceDigest:string;rightsCostDigest:string;canonicalDigest:string;createdAt:string};
 export type MediaOwnerDecisionV4={schemaVersion:4;id:string;ownerId:string;artifactRevisionId:string;artifactRevisionDigest:string;auditDecisionId:string;auditDecisionDigest:string;result:'APPROVE'|'REJECT';ownerIdentityId:string;canonicalDigest:string;decidedAt:string};
 export type ManualPublishTextFileV4={position:number;fileName:string;mediaType:'application/json'|'text/plain'|'text/markdown';content:string;digest:string;bytes:number};
 export type ManualPublishBinaryFileV4={position:number;fileName:string;mediaType:MediaMime;blobRef:MediaBlobRef;digest:string;bytes:number;width:1080;height:1440};
@@ -274,21 +276,24 @@ export function materializeXhsMediaRevision(input:{ownerId:string;sourceRevision
     brandSnapshot:input.brandSnapshot,knowledgeSnapshot:input.knowledgeSnapshot,state:'AWAITING_AUDIT' as const,createdAt:input.createdAt};return {...base,canonicalDigest:sha256Digest(base)};
 }
 
-export function createMediaAuditDecision(input:{ownerId:string;revision:ArtifactRevisionV4;auditorIdentityId:string;result:'PASS'|'FAIL'|'ESCALATE';createdAt:string}):MediaAuditDecisionV4 {
-  if(input.auditorIdentityId===input.revision.producerIdentityId)throw new MediaContractError('MEDIA_AUDITOR_INDEPENDENCE_REQUIRED');
-  const base={schemaVersion:4 as const,id:stableId('media-audit',{revision:input.revision.canonicalDigest,auditor:input.auditorIdentityId,result:input.result}),ownerId:input.ownerId,artifactRevisionId:input.revision.id,artifactRevisionDigest:input.revision.canonicalDigest,
-    auditorIdentityId:input.auditorIdentityId,result:input.result,actualMediaDigests:input.revision.mediaSetBinding.items.map((item)=>item.contentDigest),provenanceDigest:sha256Digest(input.revision.mediaSetBinding.items.map((item)=>({raw:item.rawAssetDigest,composition:item.compositionSpecDigest}))),
+export function createMediaAuditDecision(input:{ownerId:string;revision:ArtifactRevisionV4;controlledFixture:true;result:'PASS'|'FAIL'|'ESCALATE';createdAt:string}):MediaAuditDecisionV4 {
+  if(input.controlledFixture!==true)throw new MediaContractError('MEDIA_AUDIT_RUNTIME_AUTHORITY_REQUIRED');
+  if(CONTROLLED_MEDIA_AUDITOR_IDENTITY_ID===input.revision.producerIdentityId)throw new MediaContractError('MEDIA_AUDITOR_INDEPENDENCE_REQUIRED');
+  const base={schemaVersion:4 as const,id:stableId('media-audit',{revision:input.revision.canonicalDigest,auditor:CONTROLLED_MEDIA_AUDITOR_IDENTITY_ID,evidenceMaturity:'CONTROLLED_FIXTURE',result:input.result}),ownerId:input.ownerId,artifactRevisionId:input.revision.id,artifactRevisionDigest:input.revision.canonicalDigest,
+    auditorRole:'A5_INDEPENDENT_AUDITOR' as const,auditorIdentityId:CONTROLLED_MEDIA_AUDITOR_IDENTITY_ID,evidenceMaturity:'CONTROLLED_FIXTURE' as const,agentTeamsExecuted:false as const,authoritativeForOperations:false as const,runtimeReceiptBinding:null,result:input.result,actualMediaDigests:input.revision.mediaSetBinding.items.map((item)=>item.contentDigest),provenanceDigest:sha256Digest(input.revision.mediaSetBinding.items.map((item)=>({raw:item.rawAssetDigest,composition:item.compositionSpecDigest}))),
     rightsCostDigest:sha256Digest(input.revision.mediaSetBinding.items.map((item)=>({rights:item.rightsReceiptDigest,cost:item.costReceiptDigest}))),createdAt:input.createdAt};return {...base,canonicalDigest:sha256Digest(base)};
 }
 
 export function createMediaOwnerDecision(input:{ownerId:string;revision:ArtifactRevisionV4;audit:MediaAuditDecisionV4;ownerIdentityId:string;result:'APPROVE'|'REJECT';createdAt:string}):MediaOwnerDecisionV4 {
   assertAuditBinding(input.revision,input.audit);if(input.result==='APPROVE'&&input.audit.result!=='PASS')throw new MediaContractError('MEDIA_AUDIT_PASS_REQUIRED');
+  if(input.result==='APPROVE')assertOperationalMediaAuditAuthority(input.audit);
   const base={schemaVersion:4 as const,id:stableId('media-owner-decision',{revision:input.revision.canonicalDigest,audit:input.audit.canonicalDigest,result:input.result}),ownerId:input.ownerId,artifactRevisionId:input.revision.id,artifactRevisionDigest:input.revision.canonicalDigest,
     auditDecisionId:input.audit.id,auditDecisionDigest:input.audit.canonicalDigest,result:input.result,ownerIdentityId:input.ownerIdentityId,decidedAt:input.createdAt};return {...base,canonicalDigest:sha256Digest(base)};
 }
 
 export function createManualPublishPackageV4(input:{ownerId:string;revision:ArtifactRevisionV4;audit:MediaAuditDecisionV4;decision:MediaOwnerDecisionV4;textFiles:Array<{fileName:string;mediaType:'application/json'|'text/plain'|'text/markdown';content:string}>;createdAt:string}):ManualPublishPackageV4 {
   assertAuditBinding(input.revision,input.audit);if(input.audit.result!=='PASS')throw new MediaContractError('MEDIA_AUDIT_PASS_REQUIRED');
+  assertOperationalMediaAuditAuthority(input.audit);
   if(input.decision.result!=='APPROVE'||input.decision.artifactRevisionDigest!==input.revision.canonicalDigest||input.decision.auditDecisionDigest!==input.audit.canonicalDigest)throw new MediaContractError('MEDIA_OWNER_APPROVAL_REQUIRED');
   const textFiles=input.textFiles.map((file,index)=>({position:index+1,fileName:file.fileName,mediaType:file.mediaType,content:file.content,digest:createHash('sha256').update(file.content,'utf8').digest('hex'),bytes:Buffer.byteLength(file.content)}));
   const binaryFiles=input.revision.mediaSetBinding.items.map((item,index)=>({position:textFiles.length+index+1,fileName:item.fileName,mediaType:item.mimeType,blobRef:item.blobRef,digest:item.contentDigest,bytes:item.bytes,width:1080 as const,height:1440 as const}));
@@ -322,6 +327,7 @@ function withoutJobDigest(job:MediaGenerationJob):Omit<MediaGenerationJob,'canon
 function validateImageShape(input:{contentDigest:string;blobRef:MediaBlobRef;bytes:number;mimeType:MediaMime;width:number;height:number}) {if(input.bytes<=0)throw new MediaContractError('MEDIA_RESULT_EMPTY');if(input.bytes>xhsDeliveryProfile.maxBytes)throw new MediaContractError('MEDIA_RESULT_TOO_LARGE');if(!xhsDeliveryProfile.allowedMimes.includes(input.mimeType))throw new MediaContractError('MEDIA_MIME_INVALID');if(input.width!==1080||input.height!==1440)throw new MediaContractError('MEDIA_DIMENSIONS_INVALID');if(input.blobRef.digest!==input.contentDigest||input.blobRef.size!==input.bytes)throw new MediaContractError('MEDIA_DIGEST_MISMATCH');}
 function assertSnapshot(snapshot:BrandSnapshotBinding|KnowledgeSnapshotBinding,code:'MEDIA_BRAND_BINDING_STALE'|'MEDIA_KNOWLEDGE_BINDING_STALE',now:string){if(snapshot.state!=='APPROVED'||snapshot.approvedAt===null||(snapshot.expiresAt!==null&&Date.parse(snapshot.expiresAt)<=Date.parse(now)))throw new MediaContractError(code);}
 function assertAuditBinding(revision:ArtifactRevisionV4,audit:MediaAuditDecisionV4){if(audit.artifactRevisionId!==revision.id||audit.artifactRevisionDigest!==revision.canonicalDigest)throw new MediaContractError('MEDIA_REVISION_STALE');}
+function assertOperationalMediaAuditAuthority(audit:MediaAuditDecisionV4):never {void audit;throw new MediaContractError('MEDIA_AUDIT_RUNTIME_AUTHORITY_REQUIRED');}
 function stableId(prefix:string,value:unknown){return `${prefix}-${sha256Digest(value).slice(0,32)}`;}
 function positive(value:number){return Number.isSafeInteger(value)&&value>0;}
 function nonEmpty(value:unknown):value is string{return typeof value==='string'&&value.trim().length>0;}

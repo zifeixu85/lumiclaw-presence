@@ -1030,7 +1030,7 @@
   "GovernedMedia": {
     "eyebrow": "Governed media assets",
     "title": "Xiaohongshu image production and evidence",
-    "body": "The provider produces text-free backgrounds and the pinned local compositor creates final images. Only final assets may enter audit, approval, and packaging.",
+    "body": "The provider produces text-free backgrounds and the pinned local compositor creates final images. Controlled audit is engineering evidence only; authoritative approval and packaging await a real A5 runtime receipt.",
     "configuredOnly": "Key configured · canary not passed",
     "canaryFailed": "Real provider canary failed",
     "canaryExpired": "Real provider canary expired",
@@ -1049,11 +1049,16 @@
     "rights": "Rights status",
     "downloadFinal": "Download final",
     "viewRaw": "View raw lineage",
-    "governance": "Final audit and package gates",
+    "governance": "Final audit evidence and authority gates",
     "bindPending": "Every position must complete before the exact final set can become an immutable v4 revision.",
     "bindFinal": "Bind exact final set",
-    "approveFinal": "Owner approve final",
-    "packageFinal": "Create v4 package",
+    "auditEvidenceTitle": "Audit evidence maturity",
+    "auditRuntimePending": "No accepted SDD-007 Auditor task/output receipt exists; this is not a real independent audit.",
+    "auditControlledBoundary": "CONTROLLED_FIXTURE · AgentTeams not executed · cannot unlock operational approval or packaging.",
+    "auditFixtureFail": "Record controlled audit FAIL",
+    "auditFixturePass": "Record controlled audit PASS",
+    "approveFinal": "Await authoritative Owner approval",
+    "packageFinal": "Await authoritative v4 package",
     "downloadPackage": "Download ZIP with real images",
     "boundary": "Copy, download, restart, and opening the official page remain UNVERIFIED_EXTERNAL_STATE. The system never uploads, clicks publish, or writes PUBLISHED."
   }

@@ -1030,7 +1030,7 @@
   "GovernedMedia": {
     "eyebrow": "受治理媒体资产",
     "title": "小红书图片生产与证据链",
-    "body": "Provider 只生成无字背景，本地固定排版器生成最终图片；只有 final 可进入审校、批准与发布包。",
+    "body": "Provider 只生成无字背景，本地固定排版器生成最终图片；受控审校仅用于工程演示，权威批准与发布包等待真实 A5 runtime receipt。",
     "configuredOnly": "Key 已配置 · Canary 未通过",
     "canaryFailed": "真实 Provider Canary 失败",
     "canaryExpired": "真实 Provider Canary 已过期",
@@ -1049,11 +1049,16 @@
     "rights": "权利状态",
     "downloadFinal": "下载 final",
     "viewRaw": "查看 raw lineage",
-    "governance": "Final 审校与发布包门禁",
+    "governance": "Final 审校证据与权威门禁",
     "bindPending": "所有位置完成后，才能把 exact final 集绑定为不可变 v4 Revision。",
     "bindFinal": "绑定 exact final 集",
-    "approveFinal": "Owner 批准 final",
-    "packageFinal": "创建 v4 发布包",
+    "auditEvidenceTitle": "审校证据成熟度",
+    "auditRuntimePending": "尚无 SDD-007 accepted Auditor task/output receipt；不能显示真实独立审校。",
+    "auditControlledBoundary": "CONTROLLED_FIXTURE · AgentTeams 未执行 · 不能解锁真实运营批准或发布包。",
+    "auditFixtureFail": "记录受控审校 FAIL",
+    "auditFixturePass": "记录受控审校 PASS",
+    "approveFinal": "等待权威 Owner 批准",
+    "packageFinal": "等待权威 v4 发布包",
     "downloadPackage": "下载含真实图片的 ZIP",
     "boundary": "复制、下载、重启或打开官方页面始终是 UNVERIFIED_EXTERNAL_STATE；系统不会上传、点击发布或写入 PUBLISHED。"
   }

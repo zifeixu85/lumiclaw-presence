@@ -8,7 +8,7 @@ const webPort = "3212";
 const apiPort = "4212";
 const apiUrl = `http://127.0.0.1:${apiPort}`;
 const evidenceDirectory = path.resolve("docs/reports/evidence/sdd-012");
-const packagePath = path.resolve(".evidence/sdd-012/sdd012-media-package.zip");
+const finalDownloadPath = path.resolve(".evidence/sdd-012/sdd012-final-image-01.png");
 const files = ["-f", "compose.yml", "-f", "compose.media-controlled-fake.yml"];
 const checks = {};
 const events = [];
@@ -103,8 +103,8 @@ function pg(sql) {
     sql,
   ]).stdout.trim();
 }
-async function api(route) {
-  const response = await fetch(`${apiUrl}${route}`);
+async function api(route, init = {}) {
+  const response = await fetch(`${apiUrl}${route}`, init);
   let body = {};
   try {
     body = await response.json();
@@ -153,9 +153,9 @@ try {
     counts.final === 3 &&
     counts.revisions === 1 &&
     counts.audits === 1 &&
-    counts.decisions === 1 &&
-    counts.packages === 1 &&
-    counts.files === 5;
+    counts.decisions === 0 &&
+    counts.packages === 0 &&
+    counts.files === 0;
   const workspace = (await api("/api/v1/media")).body.workspace;
   const before = {
     jobs: workspace.jobs.map((value) => [
@@ -167,10 +167,15 @@ try {
       value.id,
       value.contentDigest,
     ]),
-    packages: workspace.packages.map((value) => [
+    audits: workspace.audits.map((value) => [
       value.id,
-      value.manifestDigest,
+      value.canonicalDigest,
+      value.evidenceMaturity,
+      value.agentTeamsExecuted,
+      value.authoritativeForOperations,
     ]),
+    decisions: workspace.ownerDecisions.length,
+    packages: workspace.packages.length,
   };
   docker(["restart", "api", "mission-worker"]);
   await waitHealthy();
@@ -187,67 +192,31 @@ try {
       value.id,
       value.contentDigest,
     ]),
-    packages: afterWorkspace.packages.map((value) => [
+    audits: afterWorkspace.audits.map((value) => [
       value.id,
-      value.manifestDigest,
+      value.canonicalDigest,
+      value.evidenceMaturity,
+      value.agentTeamsExecuted,
+      value.authoritativeForOperations,
     ]),
+    decisions: afterWorkspace.ownerDecisions.length,
+    packages: afterWorkspace.packages.length,
   };
   checks.restartStable = JSON.stringify(before) === JSON.stringify(after);
-  const zipTest = spawnSync("unzip", ["-t", packagePath], {
-    encoding: "utf8",
-    timeout: 30_000,
-  });
-  checks.zipIntegrity = zipTest.status === 0;
-  const names = execFileSync("unzip", ["-Z1", packagePath], {
-    encoding: "utf8",
-  })
-    .trim()
-    .split("\n");
-  checks.zipExactFiles =
-    [
-      "image-specs.json",
-      "media-lineage.json",
-      "image-01.png",
-      "image-02.png",
-      "image-03.png",
-      "manifest.json",
-      "media-manifest.json",
-    ].every((name) => names.includes(name)) && names.length === 7;
-  const manifest = JSON.parse(
-    execFileSync("unzip", ["-p", packagePath, "manifest.json"], {
-      encoding: "utf8",
-    }),
-  );
-  checks.packageFileDigests =
-    manifest.files.every((file) => {
-      const bytes = execFileSync("unzip", ["-p", packagePath, file.fileName]);
-      return (
-        bytes.byteLength === file.bytes &&
-        createHash("sha256").update(bytes).digest("hex") === file.digest
-      );
-    }) && manifest.externalState === "UNVERIFIED_EXTERNAL_STATE";
-  checks.actualPngBytes = manifest.files
-    .filter((file) => /^image-\d{2}\.png$/u.test(file.fileName))
-    .every(
-      (file) =>
-        execFileSync("unzip", ["-p", packagePath, file.fileName])
-          .subarray(0, 8)
-          .toString("hex") === "89504e470d0a1a0a",
-    );
+  const finalDownload=await readFile(finalDownloadPath);checks.actualFinalDownload=finalDownload.byteLength>0&&finalDownload.subarray(0,8).toString("hex")==="89504e470d0a1a0a";checks.controlledAuditCannotUnlockAuthority=afterWorkspace.audits.length===1&&afterWorkspace.audits[0].evidenceMaturity==="CONTROLLED_FIXTURE"&&afterWorkspace.audits[0].agentTeamsExecuted===false&&afterWorkspace.audits[0].authoritativeForOperations===false&&afterWorkspace.ownerDecisions.length===0&&afterWorkspace.packages.length===0;
   const openapi = await api("/api/v1/openapi.json");
   checks.noExternalPublishMutation =
     openapi.status === 200 &&
     !/mark-published|reported-complete|"PUBLISHED"|upload-to-xiaohongshu|click-publish/iu.test(
       JSON.stringify(openapi.body),
   );
-  const packageId = afterWorkspace.packages[0].id;
   const nextSnapshotCanonical = JSON.parse(
     pg(`select json_build_object('ownerId',owner_profile_id,'version',version+1,'sessionRowVersion',session_row_version+1,'sourceRevisionDigests',source_revision_digests,'profileRevisionDigests',profile_revision_digests,'itemBindings',item_bindings,'conflictDecisions',conflict_decisions,'gaps',gaps)::text from knowledge_snapshots where state='APPROVED' limit 1`),
   );
   const nextSnapshotDigest = canonicalDigest(nextSnapshotCanonical);
   pg(`with old as (select * from knowledge_snapshots where state='APPROVED' limit 1), changed as (update knowledge_snapshots s set state='SUPERSEDED' from old where s.owner_profile_id=old.owner_profile_id and s.id=old.id returning s.owner_profile_id,s.id) insert into knowledge_snapshots(owner_profile_id,id,version,state,session_row_version,canonical_digest,source_revision_digests,profile_revision_digests,item_bindings,conflict_decisions,gaps,approved_by,approved_at,created_at) select old.owner_profile_id,'019f0000-0000-7000-8000-000000000012'::uuid,old.version+1,'APPROVED',old.session_row_version+1,'${nextSnapshotDigest}',old.source_revision_digests,old.profile_revision_digests,old.item_bindings,old.conflict_decisions,old.gaps,old.owner_profile_id,now(),now() from old; insert into knowledge_snapshot_source_bindings(owner_profile_id,snapshot_id,source_revision_id,source_digest) select b.owner_profile_id,'019f0000-0000-7000-8000-000000000012'::uuid,b.source_revision_id,b.source_digest from knowledge_snapshot_source_bindings b join knowledge_snapshots s on s.owner_profile_id=b.owner_profile_id and s.id=b.snapshot_id where s.state='SUPERSEDED' order by s.approved_at desc limit 1;`);
-  const staleDownload = await api(
-    `/api/v1/media-publish-packages/${packageId}/download`,
+  const revision=afterWorkspace.revisions[0];const audit=afterWorkspace.audits[0];const staleDownload = await api(
+    `/api/v1/media-revisions/${revision.id}/owner-decisions`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({revisionDigest:revision.canonicalDigest,auditDecisionId:audit.id,auditDecisionDigest:audit.canonicalDigest,result:"APPROVE"})}
   );
   checks.snapshotChangeInvalidates =
     staleDownload.status === 412 &&
@@ -259,7 +228,7 @@ try {
     ) === 1;
   checks.noSecretInEvidence =
     !/api[_-]?key|authorization\s*:\s*bearer|sk-[a-z0-9_-]{8,}/iu.test(
-      JSON.stringify({ counts, before, after, manifest }),
+      JSON.stringify({ counts, before, after }),
     );
   const failed = Object.entries(checks)
     .filter(([, value]) => value !== true)
@@ -283,13 +252,9 @@ try {
           status: staleDownload.status,
           code: staleDownload.body.code,
         },
-        package: {
-          names,
-          manifestDigest: manifest.manifestDigest,
-          zipSha256: createHash("sha256")
-            .update(await readFile(packagePath))
-            .digest("hex"),
-        },
+        auditAuthority: {evidenceMaturity:audit.evidenceMaturity,agentTeamsExecuted:audit.agentTeamsExecuted,authoritativeForOperations:audit.authoritativeForOperations,nextState:"WAITING_FOR_SDD_007_ACCEPTED_AUDITOR_RECEIPT"},
+        authoritativePackageGenerated: false,
+        finalDownload: {bytes:finalDownload.byteLength,sha256:createHash("sha256").update(finalDownload).digest("hex")},
         externalActionCount: 0,
         events,
       },

@@ -1,10 +1,15 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "sdd": "SDD-012",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "artifactKind": "PUBLIC_SAFE_MEDIA_ENGINEERING_EVIDENCE_ARCHIVE",
   "result": "PASS",
-  "generatedAt": "2026-08-23T21:51:47.850Z",
-  "maturity": "CONTROLLED_FAKE_ENGINEERING",
+  "generatedAt": "2026-08-23T23:33:25.303Z",
+  "maturity": "CONTROLLED_FIXTURE",
+  "agentTeamsExecuted": false,
+  "authoritativeForOperations": false,
+  "authoritativePackageGenerated": false,
+  "nextState": "WAITING_FOR_SDD_007_ACCEPTED_AUDITOR_RECEIPT",
   "providerEvidence": false,
   "externalActionCount": 0,
   "profile": {
@@ -38,15 +43,17 @@
     "rawFinalSeparated": true,
     "actualCostRightsBound": true,
     "snapshotAndCompositionBound": true,
+    "controlledA5FixtureExplicit": true,
     "producerAuditorSeparated": true,
-    "exactPassApprovePackage": true,
-    "binaryFilesPresent": true,
+    "operationalApprovalBlocked": true,
+    "authoritativePackageBlocked": true,
+    "engineeringArchiveBinaryFiles": true,
     "manifestDigestPresent": true,
     "privatePromptExcluded": true,
-    "rawExcludedFromPackage": true,
+    "rawExcludedFromArchive": true,
     "deterministicZip": true,
     "tamperBlocked": true,
-    "externalStateUnverified": true
+    "notOperationalPackage": true
   },
   "digests": {
     "specs": [
@@ -71,11 +78,11 @@
     ],
     "mediaSet": "ac11388c7563669854531a81c6e152a13479cbc4cdcddccf6a4af3ee794c04f9",
     "revision": "0865ec39920609f5321d64c353952df3c1a57c16f2f946d0bf6276c74b7a7e59",
-    "audit": "22f4ae588e17700e73ed7b6924975dbf036483349024ac7d384a7d6bd564aafb",
-    "decision": "9877aeccde39fea085871d6fb12ad29857ce8da666b76884386e6af2e9872bef",
-    "mediaManifest": "f2c91f4fdf00c63e4f449a76330d4d4d3202d28f122e485e80460d64281ee74d",
-    "manifest": "6a920bf910b05858b2d5a7e1d7c38abbf0e32420e6a9148e254a4a3c7e1fccc1",
-    "zip": "30c5c750e660ecd57680489f6ac4db4cae9ae2ca4e278ae21f70c94c202a8911"
+    "controlledAudit": "8c82e63612bee1cf6bfc65667a5627941e83601b6c3a652823e2fa69160c4c92",
+    "ownerDecision": null,
+    "mediaManifest": "423f6f53269f0734cd93ed9dfdb3a6ee0479cb380eaf6d1e80580bc7729256dd",
+    "engineeringManifest": "ab5f76e04b422d1424dcf3d23c7652d3bffa1efebc19335919c783924299cf02",
+    "engineeringArchiveZip": "784aa1c1be5d7067fed60a35f30cdb1a0c0274f99abc841fb3cbf1145360d9db"
   },
   "files": [
     {
@@ -85,8 +92,8 @@
     },
     {
       "fileName": "media-lineage.json",
-      "bytes": 5258,
-      "sha256": "0e6f82b8651af208d0e38144f5e450874d15bed7258e2aaa9859096bbba8ae9b"
+      "bytes": 5438,
+      "sha256": "e0e660150b1333ab23e9595d598418b9f2cf3b8c890012f6189362cab6acd97a"
     },
     {
       "fileName": "image-01.png",
@@ -105,13 +112,13 @@
     },
     {
       "fileName": "manifest.json",
-      "bytes": 1013,
-      "sha256": "72b23494aa9dfc04ae4f171a011910b0d70f07c744d20600f4b56b463d0203c0"
+      "bytes": 1293,
+      "sha256": "0369b7dbb7342a048dada7be62d6b68fc8d9a740e9abe5755171f85e592f56ec"
     },
     {
       "fileName": "media-manifest.json",
-      "bytes": 4443,
-      "sha256": "b1baf18e623c8e9f5f096336f9314614f129a16010627c34f3304047c3f40e3a"
+      "bytes": 4579,
+      "sha256": "c525deb15c5156c7226a0cd116c16b6ab4d3ca731d8a3f1e193f9ce04a8b6deb"
     }
   ],
   "layouts": [

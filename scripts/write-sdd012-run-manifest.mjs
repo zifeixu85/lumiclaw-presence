@@ -30,8 +30,8 @@ const publicNames=[
   'real-provider-canary.json',
   'DEPENDENCY-LICENSE-REVIEW.md',
   '01-governed-final-preview-zh.png',
-  '02-pass-approve-package-zh.png',
-  '03-governed-package-en.png',
+  '02-controlled-audit-blocked-zh.png',
+  '03-controlled-audit-blocked-en.png',
   '04-desktop-gate.png'
 ];
 const evidenceFiles=[];
@@ -52,7 +52,7 @@ const manifest={
   result:'PASS_WITH_OWNER_UAT_PENDING',
   generatedAt:new Date().toISOString(),
   source:{base:'d3f48331629a3a1e567b0ae4347c16d4bc90f16b',headAtRun:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),branch:execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim(),workingTreeDirty:true},
-  claims:{maturity:'EVIDENCE_READY',ownerUat:'PENDING',realProviderCanary:'NOT_RUN_NO_KEY',controlledFakeEngineering:true,providerEvidence:false,customerEvidence:false,businessOutcome:false,productionReady:false,platformCompliance:false,externalActionCount:0},
+  claims:{maturity:'ENGINEERING_BLOCKED_PENDING_RUNTIME_AUDIT',ownerUat:'PENDING',realProviderCanary:'NOT_RUN_NO_KEY',controlledFakeEngineering:true,controlledAuditEvidence:'CONTROLLED_FIXTURE',agentTeamsAuditExecuted:false,authoritativeAuditReceipt:false,authoritativePackageGenerated:false,nextState:'WAITING_FOR_SDD_007_ACCEPTED_AUDITOR_RECEIPT',providerEvidence:false,customerEvidence:false,businessOutcome:false,productionReady:false,platformCompliance:false,externalActionCount:0},
   evidenceFiles,
   assetFiles,
   ephemeralCiEvidence:ephemeralFiles

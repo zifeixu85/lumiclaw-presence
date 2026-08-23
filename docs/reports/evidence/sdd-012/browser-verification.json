@@ -1,9 +1,9 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "sdd": "SDD-012",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-23T22:39:26.929Z",
+  "generatedAt": "2026-08-23T23:44:49.524Z",
   "locales": [
     "zh-CN",
     "en"
@@ -19,11 +19,18 @@
     "realProviderDisabled": true,
     "keyboardFocus": true,
     "v4BindingVisible": true,
-    "independentAuditVisible": true,
-    "ownerExactApprovalVisible": true,
-    "packageGateVisible": true,
-    "binaryPackageDownloaded": true,
-    "englishParity": true,
+    "arbitraryAuditorRejected": true,
+    "missingControlledMarkerRejected": true,
+    "fakeRuntimeReceiptRejected": true,
+    "controlledAuditVisible": true,
+    "authoritativeActionsDisabled": true,
+    "auditMaturityPersisted": true,
+    "controlledApprovalBlocked": true,
+    "controlledPackageBlocked": true,
+    "actualFinalDownload": true,
+    "englishControlledBoundary": true,
+    "englishApprovalBlocked": true,
+    "englishPackageBlocked": true,
     "desktop1024NoOverflow": true,
     "desktopGate": true,
     "postgresGovernancePersisted": true,
@@ -40,16 +47,16 @@
       }
     },
     {
-      "name": "02-pass-approve-package-zh.png",
-      "sha256": "123603d35731cda14992afb27a05e70046eb06fa9b4a5350abf9bfe7cca7427d",
+      "name": "02-controlled-audit-blocked-zh.png",
+      "sha256": "924a2351374a0658a9324f2483f8b94a28101fd02107d06904ba56692b644d09",
       "viewport": {
         "width": 1440,
         "height": 1000
       }
     },
     {
-      "name": "03-governed-package-en.png",
-      "sha256": "2b043dd4000d1827c3e79b21f4a8d82ba0e30444100b9e40d9f5a388b75d5768",
+      "name": "03-controlled-audit-blocked-en.png",
+      "sha256": "591fc190056862ede90cd339bbc40e9cf7a8a641706bdfc4d6a91e0e3c0ae6df",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -64,10 +71,17 @@
       }
     }
   ],
-  "package": {
-    "path": ".evidence/sdd-012/sdd012-media-package.zip",
-    "bytes": 123126,
-    "sha256": "3a5cdb20e4f98d20ace77d8b9eca5e2aeb26977ddeac8e6371c9f3bfd0e66e1e"
+  "auditEvidence": {
+    "evidenceMaturity": "CONTROLLED_FIXTURE",
+    "agentTeamsExecuted": false,
+    "authoritativeForOperations": false,
+    "nextState": "WAITING_FOR_SDD_007_ACCEPTED_AUDITOR_RECEIPT"
+  },
+  "authoritativePackageGenerated": false,
+  "finalDownload": {
+    "path": ".evidence/sdd-012/sdd012-final-image-01.png",
+    "bytes": 37632,
+    "sha256": "98461ea3a622aaa3f6a73119ced708c8cb6f20dc03000e7bbf956e8e09561e12"
   },
   "externalActionCount": 0,
   "ownerVisualUat": "PENDING"
