@@ -25,7 +25,11 @@ describe('SDD-007 real AgentTeams production-path verifier', () => {
     expect(source).toContain('contract.taskId===leaderJob.taskContractId');
     expect(source).toContain('missing-upstream-noop');
     expect(source).toContain('AGENTTEAMS_COMPLETION_CONFIRMATION_MISMATCH');
+    expect(source).toContain('AGENTTEAMS_REASSIGNED_TASK_COMPLETION_NOT_REJECTED');
+    expect(source).toContain('roleId:mismatchedRoleId');
     expect(source).toContain('completionWriteReadNegativeRejected:runtime.completionVerificationFailureCount===1');
+    expect(source).toContain('completionMissingTaskNegativeRejected:true');
+    expect(source).toContain('completionReassignedTaskNegativeRejected:true');
     expect(source).toContain("this.crashBarrier='COMPLETION_WRITE_READ'");
     expect(source).not.toContain('graph.jobs[0]');
     expect(source).toContain('async function verify()');
