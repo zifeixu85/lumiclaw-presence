@@ -798,7 +798,22 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
         });
         expect(createCancel.statusCode, createCancel.body).toBe(201);
         const cancelRunId = createCancel.json().run.id as string;
-        const cancelEtag = createCancel.headers.etag!;
+        const cancelLease=await apiRuntime.acquireJob('worker-api-cancel',60_000,new Date(apiClock+10));
+        expect(cancelLease?.run.id).toBe(cancelRunId);
+        if(cancelLease===undefined)throw new Error('API_CANCEL_LEASE_REQUIRED');
+        const cancelActor=actorFor(cancelLease,authority.third);
+        await dispatchAndAck(apiRuntime,cancelLease,authority.third,cancelActor,new Date(apiClock+20));
+        const cancelPayload={schemaVersion:1,taskId:cancelLease.job.taskContractId,inputDigest:cancelLease.job.contract.inputDigest,agentTeamsExecuted:true,completed:true};
+        const cancelEnvelope=envelopeFor(cancelLease,authority.third,cancelActor,cancelPayload,new Date(apiClock+30));
+        await apiRuntime.recordSubmissionIntent('worker-api-cancel',cancelLease.job.id,cancelLease.attempt.id,cancelLease.leaseToken,cancelEnvelope,new Date(apiClock+30));
+        const cancelBatch=await apiRuntime.stageMaterialization('worker-api-cancel',cancelLease.job.id,cancelLease.attempt.id,cancelLease.leaseToken,cancelEnvelope,`urn:lumiclaw:cancel-outbox:${cancelEnvelope.outputDigest}`,[{kind:'PROTOCOL',authorityId:cancelLease.job.taskContractId,canonicalDigest:cancelEnvelope.outputDigest,payload:cancelPayload}],new Date(apiClock+40));
+        await apiRuntime.finalizeMaterialization('worker-api-cancel',cancelLease.job.id,cancelLease.attempt.id,cancelLease.leaseToken,cancelBatch.id,new Date(apiClock+50));
+        const pendingCancellation=await apiRuntime.acquirePendingCompletion('worker-api-cancel-completion',60_000,new Date(apiClock+60));
+        expect(pendingCancellation?.batch.id).toBe(cancelBatch.id);
+        if(pendingCancellation===undefined)throw new Error('API_CANCEL_COMPLETION_REQUIRED');
+        const beforeCancel=await runtimeApi.inject({method:'GET',url:`/api/v1/mission-runs/${cancelRunId}`});
+        expect(beforeCancel.statusCode,beforeCancel.body).toBe(200);
+        const cancelEtag=beforeCancel.headers.etag!;
         expect(
           (
             await runtimeApi.inject({
@@ -808,6 +823,7 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
             })
           ).statusCode,
         ).toBe(428);
+        apiClock+=100;
         const cancel = () =>
           runtimeApi.inject({
             method: "POST",
@@ -827,6 +843,23 @@ suite("SDD-007 fresh PostgreSQL persistent runtime authority", () => {
             .sort(),
         ).toEqual(["false", "true"]);
         expect(cancelResults[0]!.json().run.state).toBe("CANCELLED");
+        const [cancelledCompletionA,cancelledCompletionB]=await Promise.all([
+          apiRuntime.acquirePendingCompletion('worker-api-cancel-after-a',60_000,new Date(apiClock+1)),
+          runtimeRestarted.acquirePendingCompletion('worker-api-cancel-after-b',60_000,new Date(apiClock+1)),
+        ]);
+        expect(cancelledCompletionA).toBeUndefined();
+        expect(cancelledCompletionB).toBeUndefined();
+        await expect(apiRuntime.confirmRuntimeCompletion('worker-api-cancel-completion',pendingCancellation.lease.job.id,pendingCancellation.lease.attempt.id,pendingCancellation.lease.leaseToken,pendingCancellation.batch.id,new Date(apiClock+2))).rejects.toMatchObject({code:'JOB_LEASE_LOST'});
+        const cancelledBeforeReconcile=await apiRuntime.getRun(authority.ownerId,cancelRunId);
+        expect(cancelledBeforeReconcile?.state).toBe('CANCELLED');
+        const reconciledCancelled=await apiRuntime.reconcileRun(authority.ownerId,cancelRunId,{knownRuntimeTaskIds:[cancelLease.job.taskContractId],acceptedOutputDigests:[cancelEnvelope.outputDigest],runtimeReachable:false},new Date(apiClock+3));
+        expect(reconciledCancelled).toEqual(cancelledBeforeReconcile);
+        const cancelledRows=(await pool.query<{state:string;lease_owner:string|null}>("select state,lease_owner from mission_jobs_v1 where run_id=$1 order by id",[cancelRunId])).rows;
+        expect(cancelledRows.filter((row)=>row.state==='ACCEPTED')).toHaveLength(1);
+        expect(cancelledRows.filter((row)=>row.state==='CANCELLED')).toHaveLength(cancelledRows.length-1);
+        expect(cancelledRows.every((row)=>row.lease_owner===null)).toBe(true);
+        expect(Number((await pool.query<{count:string}>("select count(*)::text count from runtime_events_v1 where run_id=$1 and type='RUNTIME_COMPLETION_CONFIRMED'",[cancelRunId])).rows[0]!.count)).toBe(0);
+        expect(Number((await pool.query<{count:string}>("select count(*)::text count from runtime_events_v1 where run_id=$1 and type='RUNTIME_COMPLETION_ABANDONED_RUN_CANCELLED'",[cancelRunId])).rows[0]!.count)).toBe(1);
         expect(
           (
             await runtimeApi.inject({

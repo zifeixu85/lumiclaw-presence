@@ -119,7 +119,7 @@ export interface PersistentAgentTeamsDriver {
     runtimeActorId: string,
     payload: unknown,
   ): Promise<{ payload: unknown; submittedAt: string }>;
-  complete(binding: RuntimeBinding, runtimeTaskId: string): Promise<void>;
+  complete(binding: RuntimeBinding, contract: RuntimeTaskContract): Promise<void>;
   observe(
     binding: RuntimeBinding,
   ): Promise<{
@@ -408,10 +408,10 @@ export class DockerAgentTeamsV120Driver implements PersistentAgentTeamsDriver {
       submittedAt: dateField(result.task, "submitted_at"),
     };
   }
-  public async complete(binding: RuntimeBinding, runtimeTaskId: string) {
+  public async complete(binding: RuntimeBinding, contract: RuntimeTaskContract) {
     const code =
-      'import sys; from copaw_worker.task import FileSystemTaskStore,parse_dag_tasks,_replace_task_status,replace_dag_tasks; s=FileSystemTaskStore(); p=s.read_project_plan(sys.argv[1]); s.write_project_plan(sys.argv[1],replace_dag_tasks(p,_replace_task_status(parse_dag_tasks(p),sys.argv[2],"completed"))); print("accepted")';
-    await this.exec([
+      'import json,sys\nfrom copaw_worker.task import FileSystemTaskStore,parse_dag_tasks,_replace_task_status,replace_dag_tasks\ns=FileSystemTaskStore()\np=s.read_project_plan(sys.argv[1])\ntasks=parse_dag_tasks(p)\ntarget=next((t for t in tasks if t.task_id==sys.argv[2]),None)\nif target is not None and target.assigned_to==sys.argv[3]:\n s.write_project_plan(sys.argv[1],replace_dag_tasks(p,_replace_task_status(tasks,sys.argv[2],"completed")))\nafter=next((t for t in parse_dag_tasks(s.read_project_plan(sys.argv[1])) if t.task_id==sys.argv[2]),None)\nprint(json.dumps(None if after is None else {"taskId":after.task_id,"assignedTo":after.assigned_to,"status":after.status}))';
+    const observed = JSON.parse(await this.exec([
       "exec",
       "-w",
       workspace(leader),
@@ -420,8 +420,10 @@ export class DockerAgentTeamsV120Driver implements PersistentAgentTeamsDriver {
       "-c",
       code,
       binding.runtimeProjectId,
-      runtimeTaskId,
-    ]);
+      contract.taskId,
+      contract.roleId,
+    ])) as {taskId?:unknown;assignedTo?:unknown;status?:unknown}|null;
+    assertAgentTeamsCompletionObservation(binding,contract,observed);
   }
   public async observe(binding: RuntimeBinding) {
     const code =
@@ -676,6 +678,28 @@ export class DockerAgentTeamsV120Driver implements PersistentAgentTeamsDriver {
       this.terminateGraceMs,
     );
   }
+}
+
+export function assertAgentTeamsCompletionObservation(
+  binding: RuntimeBinding,
+  contract: RuntimeTaskContract,
+  observed: { taskId?: unknown; assignedTo?: unknown; status?: unknown } | null,
+): void {
+  const roleBound = binding.memberBindings.some(
+    (member) => member.roleId === contract.roleId,
+  );
+  if (
+    binding.state !== "BOUND" ||
+    binding.runId !== contract.runId ||
+    !roleBound ||
+    observed?.taskId !== contract.taskId ||
+    observed.assignedTo !== contract.roleId ||
+    observed.status !== "completed"
+  )
+    throw new PersistentRuntimeError(
+      "RUNTIME_VERSION_INCOMPATIBLE",
+      "AGENTTEAMS_COMPLETION_CONFIRMATION_MISMATCH",
+    );
 }
 
 export function runBoundedProcess(

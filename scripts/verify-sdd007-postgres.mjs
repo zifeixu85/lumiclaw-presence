@@ -131,6 +131,7 @@ try {
     staleLeaseRejectedAfterRecovery: true,
     completionOutboxRecovery: true,
     completionConfirmationGatesDependenciesAndRunTerminalState: true,
+    cancelledRunCompletionOutboxTerminalMonotonic: true,
     ticketOneUseAndLeaseFencing: true,
     gatewayProviderCallsFencedByPostgres: true,
     stagedMaterializationRecovery: true,

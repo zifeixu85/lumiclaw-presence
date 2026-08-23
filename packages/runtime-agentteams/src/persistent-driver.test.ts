@@ -1,7 +1,8 @@
-import { AGENTTEAMS_IMAGE_DIGESTS, GOAL_ROLE_IDS } from "@lumiclaw/domain";
+import { AGENTTEAMS_IMAGE_DIGESTS, AGENTTEAMS_SOURCE_TAR_SHA256, GOAL_ROLE_IDS, sha256Digest, type RuntimeBinding, type RuntimeTaskContract } from "@lumiclaw/domain";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
+  assertAgentTeamsCompletionObservation,
   runBoundedProcess,
   verifyAgentTeamsRuntimeIdentity,
   type RuntimeImageObservation,
@@ -97,7 +98,15 @@ describe("SDD-007 runtime identity probe", () => {
     expect(source).toContain('"x-lumiclaw-runtime-actor-id":os.environ["AGENTTEAMS_MATRIX_USER_ID"]');
     expect(source).toContain('`agentteams-worker-${contract.roleId}`');
   });
+
+  it("fails closed when the upstream completion helper silently leaves a task missing or drifted", () => {
+    const {binding,contract}=completionFixture();
+    for(const observed of [null,{taskId:contract.taskId,assignedTo:'independent-auditor',status:'completed'},{taskId:contract.taskId,assignedTo:contract.roleId,status:'submitted'}])expect(()=>assertAgentTeamsCompletionObservation(binding,contract,observed)).toThrow('AGENTTEAMS_COMPLETION_CONFIRMATION_MISMATCH');
+    expect(()=>assertAgentTeamsCompletionObservation(binding,contract,{taskId:contract.taskId,assignedTo:contract.roleId,status:'completed'})).not.toThrow();
+  });
 });
+
+function completionFixture():{binding:RuntimeBinding;contract:RuntimeTaskContract}{const now='2026-08-24T00:00:00.000Z';const contract:RuntimeTaskContract={schemaVersion:1,runId:'run-completion',bundleId:'bundle-completion',bundleDigest:sha256Digest('bundle-completion'),generation:1,taskId:'task-completion',roleId:'campaign-planner',kind:'PLAN_CONTENT',mandate:'Plan only.',dependencyIds:[],inputDigest:sha256Digest('input'),skillLockDigest:sha256Digest('skills'),outputSchema:'lumiclaw.content-plan.v2',substantive:true,externalActionAllowed:false};const binding:RuntimeBinding={schemaVersion:1,runId:contract.runId,runtimeInstanceId:'agentteams-controller',runtimeProjectId:contract.runId,teamProfileVersion:'2.0.0',teamProfileDigest:sha256Digest('profile'),runtimeVersion:'v1.2.0',runtimeDigest:AGENTTEAMS_SOURCE_TAR_SHA256,memberBindings:GOAL_ROLE_IDS.map((roleId)=>({roleId,runtimeActorId:`@${roleId}:matrix.local`})),state:'BOUND',boundAt:now,lastObservedAt:now};return {binding,contract};}
 
 function fixture() {
   const workers = GOAL_ROLE_IDS.map((name) => ({
