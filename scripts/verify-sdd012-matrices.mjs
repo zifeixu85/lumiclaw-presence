@@ -31,7 +31,7 @@ const requireMatches=(patterns)=>patterns.map((pattern)=>{
 
 const matrix={
   providerNeutralAndUnknownCharge:requireMatches([/provider-neutral media contracts/u,/submission intent before the billable call/u,/timeout-before-task-id to UNKNOWN/u,/polls the same task/u]),
-  secureDownloaderAndBlob:requireMatches([/rejects empty bytes/u,/rejects html bytes/u,/rejects svg bytes/u,/blocks credentials, HTTP, loopback/u,/bounded safe redirects/u]),
+  secureDownloaderAndBlob:requireMatches([/rejects empty bytes/u,/rejects html bytes/u,/rejects svg bytes/u,/blocks credentials, HTTP and private addresses, detects DNS drift, and pins the reviewed transport address/u,/bounded safe redirects/u]),
   deterministicCompositor:requireMatches([/reviewed, content-addressed OFL font/u,/renders exact overlay deterministically/u,/fails closed for emoji/u,/fails closed for missing glyph/u,/fails closed for overflow/u]),
   governanceAndTamper:requireMatches([/Owner NO_OVERLAY/u,/Producer\/Auditor separation/u,/invalidates audit, decision and package lineage/u,/deterministic binary ZIP and rejects digest mismatches/u]),
   isolatedSecretGate:requireMatches([/terminal-only isolated media Provider Secret gate/u,/MODEL_PROVIDER scope/u,/rejects symlink roots/u])

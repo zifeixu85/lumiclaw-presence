@@ -1,4 +1,4 @@
-import {createHash} from 'node:crypto';
+import {createHash,createHmac,timingSafeEqual} from 'node:crypto';
 import {sha256Digest} from './canonical.js';
 
 export const MEDIA_CONTRACT_VERSION = 'lumiclaw.media-artifact.v2' as const;
@@ -14,7 +14,7 @@ export const mediaErrorCodes = [
   'MEDIA_PACKAGE_TAMPERED','MEDIA_PROMPT_SECRET_DETECTED','MEDIA_ALT_TEXT_REQUIRED','MEDIA_NO_OVERLAY_OWNER_DECISION_REQUIRED',
   'MEDIA_JOB_STATE_INVALID','MEDIA_LEASE_LOST','MEDIA_PROVIDER_TASK_MISMATCH','MEDIA_SNAPSHOT_NOT_APPROVED',
   'MEDIA_LOGO_BINDING_INVALID','MEDIA_SAFE_AREA_INVALID','SECRET_TICKET_PURPOSE_MISMATCH','SECRET_TICKET_SCOPE_MISMATCH',
-  'SECRET_TICKET_EXPIRED','SECRET_TICKET_REPLAYED'
+  'SECRET_TICKET_EXPIRED','SECRET_TICKET_REPLAYED','SECRET_TICKET_AUTHORITY_INVALID'
 ] as const;
 export type MediaErrorCode = typeof mediaErrorCodes[number];
 
@@ -40,6 +40,7 @@ export const xhsDeliveryProfile = Object.freeze({...deliveryBase,canonicalDigest
 
 export type BrandSnapshotBinding={id:string;digest:string;state:'APPROVED'|'DRAFT'|'SUPERSEDED';approvedAt:string|null;expiresAt:string|null};
 export type KnowledgeSnapshotBinding={id:string;digest:string;state:'APPROVED'|'DRAFT'|'SUPERSEDED';approvedAt:string|null;expiresAt:string|null};
+export type MediaGovernanceSnapshots={brandSnapshot:BrandSnapshotBinding;knowledgeSnapshot:KnowledgeSnapshotBinding};
 export type OwnerNoOverlayDecision={decisionId:string;ownerId:string;decidedAt:string;specDigest:string};
 
 export type MediaGenerationSpec={
@@ -118,7 +119,11 @@ export type MediaGovernanceInvalidation={schemaVersion:1;id:string;ownerId:strin
 
 export type SecretGatePurpose='MODEL_PROVIDER'|'MEDIA_PROVIDER';
 export type SecretTicketScope='model:invoke'|'media:submit'|'media:inspect';
-export type MediaSecretTicket={schemaVersion:1;purpose:SecretGatePurpose;scope:SecretTicketScope;secretFingerprint:string;nonceDigest:string;issuedAt:string;expiresAt:string;canonicalDigest:string};
+export type MediaSecretTicket={schemaVersion:2;issuer:string;purpose:SecretGatePurpose;scope:SecretTicketScope;secretFingerprint:string;nonceDigest:string;issuedAt:string;expiresAt:string;canonicalDigest:string;signature:string};
+export interface MediaSecretTicketReplayStore {consume(ticketDigest:string,expiresAt:string):Promise<boolean>}
+export type MediaProviderCanaryReceipt={schemaVersion:1;id:string;ownerId:string;state:'PASSED'|'FAILED';providerTaskId:string|null;rawAssetId:string|null;rawAssetDigest:string|null;finalAssetId:string|null;finalAssetDigest:string|null;profileRef:string;profileDigest:string|null;sourceDigest:string|null;costReceiptDigest:string|null;rightsReceiptDigest:string|null;secretFingerprint:string;failureCode:MediaErrorCode|null;checkedAt:string;expiresAt:string;canonicalDigest:string};
+export type MediaProviderGateStatus={configured:boolean;fingerprint:string|null;updatedAt:string|null};
+export type MediaProviderReadiness={state:'NOT_CONFIGURED'|'STARTING'|'READY'|'DEGRADED'|'STALE';configured:boolean;fingerprint:string|null;updatedAt:string|null;profileMaturity:'NOT_RUN_NO_KEY'|'SECRET_CONFIGURED'|'CANARY_FAILED'|'CANARY_EXPIRED'|'REAL_PROVIDER_CANARY_READY';profileRef:string;checkedAt:string;expiresAt:string|null;providerEvidence:boolean;canaryReceiptDigest:string|null};
 export type MediaLease={job:MediaGenerationJob;spec:MediaGenerationSpec;leaseToken:string};
 export type MediaBlobStage={ownerId:string;jobId:string;stage:'RAW_BLOB_WRITTEN'|'FINAL_BLOB_WRITTEN';contentDigest:string;blobRef:MediaBlobRef;state:'STAGED'|'COMMITTED'|'QUARANTINED';createdAt:string;committedAt:string|null};
 export type MediaWorkspace={specs:MediaGenerationSpec[];jobs:MediaGenerationJob[];taskReceipts:unknown[];costReceipts:CostReceipt[];rightsReceipts:RightsReceipt[];rawAssets:RawProviderMediaAssetV2[];compositionSpecs:MediaCompositionSpecV1[];finalAssets:CompositedMediaAssetV2[];revisions:ArtifactRevisionV4[];audits:MediaAuditDecisionV4[];ownerDecisions:MediaOwnerDecisionV4[];packages:ManualPublishPackageV4[];invalidations:MediaGovernanceInvalidation[];staging:MediaBlobStage[]};
@@ -135,6 +140,9 @@ export interface MediaArtifactRepository {
   stageBlob(ownerId:string,jobId:string,stage:MediaBlobStage['stage'],blobRef:MediaBlobRef,metadata:unknown,now:Date):Promise<MediaBlobStage>;
   commitRawPipeline(ownerId:string,jobId:string,cost:CostReceipt,rights:RightsReceipt,asset:RawProviderMediaAssetV2,now:Date):Promise<void>;
   commitFinalPipeline(ownerId:string,jobId:string,composition:MediaCompositionSpecV1,asset:CompositedMediaAssetV2,now:Date):Promise<void>;
+  resolveApprovedGovernance(ownerId:string,now:Date):Promise<MediaGovernanceSnapshots>;
+  recordProviderCanaryOutcome(ownerId:string,jobId:string,secretFingerprint:string,state:'PASSED'|'FAILED',failureCode:MediaErrorCode|null,now:Date,expiresAt:Date):Promise<MediaProviderCanaryReceipt>;
+  getProviderReadiness(ownerId:string,gate:MediaProviderGateStatus,now:Date):Promise<MediaProviderReadiness>;
   appendRevision(ownerId:string,revision:ArtifactRevisionV4,now:Date):Promise<ArtifactRevisionV4>;
   appendAudit(ownerId:string,audit:MediaAuditDecisionV4,now:Date):Promise<MediaAuditDecisionV4>;
   appendOwnerDecision(ownerId:string,decision:MediaOwnerDecisionV4,now:Date):Promise<MediaOwnerDecisionV4>;
@@ -295,14 +303,19 @@ export function invalidateMediaGovernance(input:{ownerId:string;revision:Artifac
     reasonCode:input.reasonCode,currentDigest:input.currentDigest,invalidates:['AUDIT','OWNER_DECISION','PACKAGE'] as ['AUDIT','OWNER_DECISION','PACKAGE'],createdAt:input.createdAt};return {...base,canonicalDigest:sha256Digest(base)};
 }
 
-export function issueMediaSecretTicket(input:{purpose:SecretGatePurpose;scope:SecretTicketScope;secretFingerprint:string;nonce:string;issuedAt:string;expiresAt:string}):MediaSecretTicket {
+export function issueMediaSecretTicket(input:{issuer:string;signingKey:string;purpose:SecretGatePurpose;scope:SecretTicketScope;secretFingerprint:string;nonce:string;issuedAt:string;expiresAt:string}):MediaSecretTicket {
   if((input.purpose==='MEDIA_PROVIDER'&&!input.scope.startsWith('media:'))||(input.purpose==='MODEL_PROVIDER'&&!input.scope.startsWith('model:')))throw new MediaContractError('SECRET_TICKET_PURPOSE_MISMATCH');
-  const base={schemaVersion:1 as const,purpose:input.purpose,scope:input.scope,secretFingerprint:input.secretFingerprint,nonceDigest:sha256Digest(input.nonce),issuedAt:input.issuedAt,expiresAt:input.expiresAt};return {...base,canonicalDigest:sha256Digest(base)};
+  if(input.issuer.trim().length<8||Buffer.byteLength(input.signingKey)<32||input.secretFingerprint.trim().length<8)throw new MediaContractError('SECRET_TICKET_AUTHORITY_INVALID');
+  const issued=Date.parse(input.issuedAt);const expires=Date.parse(input.expiresAt);if(!Number.isFinite(issued)||!Number.isFinite(expires)||expires<=issued||expires-issued>60_000)throw new MediaContractError('SECRET_TICKET_AUTHORITY_INVALID');
+  const base={schemaVersion:2 as const,issuer:input.issuer,purpose:input.purpose,scope:input.scope,secretFingerprint:input.secretFingerprint,nonceDigest:sha256Digest(input.nonce),issuedAt:input.issuedAt,expiresAt:input.expiresAt};const canonicalDigest=sha256Digest(base);return {...base,canonicalDigest,signature:createHmac('sha256',input.signingKey).update(canonicalDigest).digest('hex')};
 }
-export function assertMediaSecretTicket(ticket:MediaSecretTicket,input:{purpose:SecretGatePurpose;scope:SecretTicketScope;now:string}):MediaSecretTicket {
-  if(ticket.purpose!==input.purpose)throw new MediaContractError('SECRET_TICKET_PURPOSE_MISMATCH');if(ticket.scope!==input.scope)throw new MediaContractError('SECRET_TICKET_SCOPE_MISMATCH');if(Date.parse(ticket.expiresAt)<=Date.parse(input.now))throw new MediaContractError('SECRET_TICKET_EXPIRED');return ticket;
+export function assertMediaSecretTicket(ticket:MediaSecretTicket,input:{issuer:string;signingKey:string;currentSecretFingerprint:string;purpose:SecretGatePurpose;scope:SecretTicketScope;now:string;maximumFutureSkewMs?:number}):MediaSecretTicket {
+  const {canonicalDigest,signature,...base}=ticket;const expectedDigest=sha256Digest(base);const expectedSignature=createHmac('sha256',input.signingKey).update(expectedDigest).digest('hex');
+  if(canonicalDigest!==expectedDigest||!safeEqual(signature,expectedSignature)||ticket.issuer!==input.issuer||ticket.secretFingerprint!==input.currentSecretFingerprint)throw new MediaContractError('SECRET_TICKET_AUTHORITY_INVALID');
+  if(ticket.purpose!==input.purpose)throw new MediaContractError('SECRET_TICKET_PURPOSE_MISMATCH');if(ticket.scope!==input.scope)throw new MediaContractError('SECRET_TICKET_SCOPE_MISMATCH');const now=Date.parse(input.now);const issued=Date.parse(ticket.issuedAt);const expires=Date.parse(ticket.expiresAt);if(!Number.isFinite(now)||!Number.isFinite(issued)||!Number.isFinite(expires)||issued>now+(input.maximumFutureSkewMs??5_000)||expires<=issued||expires-issued>60_000)throw new MediaContractError('SECRET_TICKET_AUTHORITY_INVALID');if(expires<=now)throw new MediaContractError('SECRET_TICKET_EXPIRED');return ticket;
 }
-export class MediaSecretTicketUseGuard {readonly #used=new Set<string>();public consume(ticket:MediaSecretTicket,input:{purpose:SecretGatePurpose;scope:SecretTicketScope;now:string}){assertMediaSecretTicket(ticket,input);if(this.#used.has(ticket.canonicalDigest))throw new MediaContractError('SECRET_TICKET_REPLAYED');this.#used.add(ticket.canonicalDigest);return ticket;}}
+export class MediaSecretTicketUseGuard {readonly #replay:MediaSecretTicketReplayStore;public constructor(private readonly authority:{issuer:string;signingKey:string;currentSecretFingerprint:string},replay?:MediaSecretTicketReplayStore){this.#replay=replay??new InMemoryMediaSecretTicketReplayStore();}public async consume(ticket:MediaSecretTicket,input:{purpose:SecretGatePurpose;scope:SecretTicketScope;now:string}){assertMediaSecretTicket(ticket,{...this.authority,...input});if(!await this.#replay.consume(ticket.canonicalDigest,ticket.expiresAt))throw new MediaContractError('SECRET_TICKET_REPLAYED');return ticket;}}
+export class InMemoryMediaSecretTicketReplayStore implements MediaSecretTicketReplayStore {readonly #used=new Set<string>();public async consume(ticketDigest:string){if(this.#used.has(ticketDigest))return false;this.#used.add(ticketDigest);return true;}}
 
 function withJobDigest<T extends Omit<MediaGenerationJob,'canonicalDigest'>>(base:T):MediaGenerationJob{return {...base,canonicalDigest:sha256Digest(base)};}
 function withoutJobDigest(job:MediaGenerationJob):Omit<MediaGenerationJob,'canonicalDigest'>{const base={...job};delete (base as Partial<MediaGenerationJob>).canonicalDigest;return base;}
@@ -313,3 +326,4 @@ function stableId(prefix:string,value:unknown){return `${prefix}-${sha256Digest(
 function positive(value:number){return Number.isSafeInteger(value)&&value>0;}
 function nonEmpty(value:unknown):value is string{return typeof value==='string'&&value.trim().length>0;}
 function secretShaped(value:string){return /(?:authorization\s*:\s*bearer|api[_-]?key|sk-[a-z0-9_-]{8,}|-----BEGIN [A-Z ]+PRIVATE KEY-----)/iu.test(value);}
+function safeEqual(left:string,right:string){if(!/^[a-f0-9]{64}$/u.test(left)||!(/^[a-f0-9]{64}$/u.test(right)))return false;return timingSafeEqual(Buffer.from(left,'hex'),Buffer.from(right,'hex'));}

@@ -91,13 +91,16 @@ describe('SDD-012 provider-neutral media contracts',()=>{
     expect(()=>recordProviderSubmissionIntent(unknown,{leaseOwner:'worker-b',leaseTokenHash:'2'.repeat(64),leaseExpiresAt:'2026-08-24T04:03:00.000Z',recordedAt:now})).toThrowError(expect.objectContaining({code:'MEDIA_SUBMIT_UNKNOWN_CHARGE_STATE'}));
   });
 
-  it('keeps model and media secret tickets purpose-separated, expiring and single-use',()=>{
-    const media=issueMediaSecretTicket({purpose:'MEDIA_PROVIDER',scope:'media:submit',secretFingerprint:'abc123',nonce:'n-media',issuedAt:now,expiresAt:'2026-08-24T04:01:00.000Z'});
-    expect(()=>assertMediaSecretTicket(media,{purpose:'MODEL_PROVIDER',scope:'model:invoke',now})).toThrowError(expect.objectContaining({code:'SECRET_TICKET_PURPOSE_MISMATCH'}));
-    expect(assertMediaSecretTicket(media,{purpose:'MEDIA_PROVIDER',scope:'media:submit',now}).purpose).toBe('MEDIA_PROVIDER');
-    const guard=new MediaSecretTicketUseGuard();expect(guard.consume(media,{purpose:'MEDIA_PROVIDER',scope:'media:submit',now})).toBe(media);
-    expect(()=>guard.consume(media,{purpose:'MEDIA_PROVIDER',scope:'media:submit',now})).toThrowError(expect.objectContaining({code:'SECRET_TICKET_REPLAYED'}));
-    expect(()=>assertMediaSecretTicket(media,{purpose:'MEDIA_PROVIDER',scope:'media:submit',now:'2026-08-24T04:02:00.000Z'})).toThrowError(expect.objectContaining({code:'SECRET_TICKET_EXPIRED'}));
+  it('binds media tickets to issuer, signature, current fingerprint, time and one-shot authority',async()=>{
+    const authority={issuer:'media-broker-test-v1',signingKey:'test-only-media-ticket-signing-key-32-bytes',currentSecretFingerprint:'abc12345'};const media=issueMediaSecretTicket({...authority,purpose:'MEDIA_PROVIDER',scope:'media:submit',secretFingerprint:authority.currentSecretFingerprint,nonce:'n-media',issuedAt:now,expiresAt:'2026-08-24T04:01:00.000Z'});
+    expect(()=>assertMediaSecretTicket(media,{...authority,purpose:'MODEL_PROVIDER',scope:'model:invoke',now})).toThrowError(expect.objectContaining({code:'SECRET_TICKET_PURPOSE_MISMATCH'}));
+    expect(assertMediaSecretTicket(media,{...authority,purpose:'MEDIA_PROVIDER',scope:'media:submit',now}).purpose).toBe('MEDIA_PROVIDER');
+    const guard=new MediaSecretTicketUseGuard(authority);expect(await guard.consume(media,{purpose:'MEDIA_PROVIDER',scope:'media:submit',now})).toBe(media);
+    await expect(guard.consume(media,{purpose:'MEDIA_PROVIDER',scope:'media:submit',now})).rejects.toMatchObject({code:'SECRET_TICKET_REPLAYED'});
+    expect(()=>assertMediaSecretTicket({...media,canonicalDigest:'0'.repeat(64)},{...authority,purpose:'MEDIA_PROVIDER',scope:'media:submit',now})).toThrowError(expect.objectContaining({code:'SECRET_TICKET_AUTHORITY_INVALID'}));
+    expect(()=>assertMediaSecretTicket(media,{...authority,currentSecretFingerprint:'changed-fingerprint',purpose:'MEDIA_PROVIDER',scope:'media:submit',now})).toThrowError(expect.objectContaining({code:'SECRET_TICKET_AUTHORITY_INVALID'}));
+    const future=issueMediaSecretTicket({...authority,purpose:'MEDIA_PROVIDER',scope:'media:submit',secretFingerprint:authority.currentSecretFingerprint,nonce:'future',issuedAt:'2026-08-24T04:00:10.001Z',expiresAt:'2026-08-24T04:00:50.000Z'});expect(()=>assertMediaSecretTicket(future,{...authority,purpose:'MEDIA_PROVIDER',scope:'media:submit',now})).toThrowError(expect.objectContaining({code:'SECRET_TICKET_AUTHORITY_INVALID'}));
+    expect(()=>assertMediaSecretTicket(media,{...authority,purpose:'MEDIA_PROVIDER',scope:'media:submit',now:'2026-08-24T04:02:00.000Z'})).toThrowError(expect.objectContaining({code:'SECRET_TICKET_EXPIRED'}));
   });
 });
 

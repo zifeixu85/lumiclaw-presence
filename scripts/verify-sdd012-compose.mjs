@@ -14,6 +14,19 @@ const checks = {};
 const events = [];
 let result = "FAIL";
 let failure = null;
+function canonicalize(value) {
+  if (value === null || typeof value === "boolean" || typeof value === "string")
+    return JSON.stringify(value);
+  if (typeof value === "number") return JSON.stringify(Object.is(value, -0) ? 0 : value);
+  if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`;
+  return `{${Object.keys(value)
+    .sort()
+    .map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`)
+    .join(",")}}`;
+}
+function canonicalDigest(value) {
+  return createHash("sha256").update(canonicalize(value), "utf8").digest("hex");
+}
 function publicLog(value) {
   let redacted = value.replaceAll(process.cwd(), "<WORKTREE>");
   const taskHome = process.env.HOME;
@@ -226,12 +239,13 @@ try {
     openapi.status === 200 &&
     !/mark-published|reported-complete|"PUBLISHED"|upload-to-xiaohongshu|click-publish/iu.test(
       JSON.stringify(openapi.body),
-    );
+  );
   const packageId = afterWorkspace.packages[0].id;
-  docker(["up", "--detach", "--no-build", "--force-recreate", "api"], {
-    env: { LUMICLAW_MEDIA_BRAND_SNAPSHOT_DIGEST: "f".repeat(64) },
-  });
-  await waitHealthy();
+  const nextSnapshotCanonical = JSON.parse(
+    pg(`select json_build_object('ownerId',owner_profile_id,'version',version+1,'sessionRowVersion',session_row_version+1,'sourceRevisionDigests',source_revision_digests,'profileRevisionDigests',profile_revision_digests,'itemBindings',item_bindings,'conflictDecisions',conflict_decisions,'gaps',gaps)::text from knowledge_snapshots where state='APPROVED' limit 1`),
+  );
+  const nextSnapshotDigest = canonicalDigest(nextSnapshotCanonical);
+  pg(`with old as (select * from knowledge_snapshots where state='APPROVED' limit 1), changed as (update knowledge_snapshots s set state='SUPERSEDED' from old where s.owner_profile_id=old.owner_profile_id and s.id=old.id returning s.owner_profile_id,s.id) insert into knowledge_snapshots(owner_profile_id,id,version,state,session_row_version,canonical_digest,source_revision_digests,profile_revision_digests,item_bindings,conflict_decisions,gaps,approved_by,approved_at,created_at) select old.owner_profile_id,'019f0000-0000-7000-8000-000000000012'::uuid,old.version+1,'APPROVED',old.session_row_version+1,'${nextSnapshotDigest}',old.source_revision_digests,old.profile_revision_digests,old.item_bindings,old.conflict_decisions,old.gaps,old.owner_profile_id,now(),now() from old; insert into knowledge_snapshot_source_bindings(owner_profile_id,snapshot_id,source_revision_id,source_digest) select b.owner_profile_id,'019f0000-0000-7000-8000-000000000012'::uuid,b.source_revision_id,b.source_digest from knowledge_snapshot_source_bindings b join knowledge_snapshots s on s.owner_profile_id=b.owner_profile_id and s.id=b.snapshot_id where s.state='SUPERSEDED' order by s.approved_at desc limit 1;`);
   const staleDownload = await api(
     `/api/v1/media-publish-packages/${packageId}/download`,
   );
@@ -240,7 +254,7 @@ try {
     staleDownload.body.code === "MEDIA_REVISION_STALE" &&
     Number(
       pg(
-        `select count(*) from media_invalidation_events_v1 where reason_code='MEDIA_BRAND_SNAPSHOT_CHANGED'`,
+        `select count(*) from media_invalidation_events_v1 where reason_code='MEDIA_KNOWLEDGE_SNAPSHOT_CHANGED'`,
       ),
     ) === 1;
   checks.noSecretInEvidence =

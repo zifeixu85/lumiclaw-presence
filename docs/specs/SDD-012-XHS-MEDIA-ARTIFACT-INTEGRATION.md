@@ -143,6 +143,8 @@ DeterministicMediaCompositor
 - Secret 只由交互式 terminal 无回显读取，经 0600 临时文件/Compose Secret 或等价 broker 进入 adapter；
 - Secret 不进入 browser field/network payload/bundle、普通 env、CLI args、Git、logs、prompt/prompt evidence、trace、business tables、PG dump、Blob、package 或 public evidence；
 - API 只返回 `configured/fingerprint/updatedAt/purpose/profileMaturity`；没有 set/read secret endpoint。
+- 配置 Key 只表示 `SECRET_CONFIGURED/STARTING`，`providerEvidence=false`。`REAL_PROVIDER_CANARY_READY` 只能由 PostgreSQL 中 owner-scoped、fingerprint-matched、未过期的 live canary PASS receipt 派生；读取时必须复核同一 Provider task、真实 raw/final Blob bytes、profile/source/cost/rights lineage。failed/expired/缺 receipt/重启/Blob 缺失均为 `DEGRADED | STALE | NOT_RUN`，不得从 adapter class 或 worker mode 推断成功。
+- Media ticket 使用 v2 authority：broker issuer、当前 Secret fingerprint、purpose/scope、issuedAt/expiry、nonce digest、canonical digest 和 HMAC signature 全部绑定；one-use 消费记录持久化于 PostgreSQL，使伪造、未来签发、过期和进程重启 replay fail closed。
 
 SDD-011 的 real DeepSeek 与 real media provider 因此是两个独立 conditional-live gate，互相不能冒充或补足。
 
@@ -169,7 +171,7 @@ SDD-011 的 real DeepSeek 与 real media provider 因此是两个独立 conditio
 
 Blob key 由 bytes SHA-256 决定；同 digest bytes 可去重，但业务 lineage、position、rights/cost receipt 与 revision binding 不能合并。临时 URL、provider CDN object 或浏览器 object URL 不能成为 `blobRef`。
 
-下载器必须：只接受 adapter-authorized HTTPS result；限制 redirect 次数并阻止 credentials、内网/link-local/loopback 与 DNS rebinding；流式限制 `bytes > 0 && bytes <= 10 MiB`；核对 `Content-Length`（若有）、magic、declared MIME、decoder MIME、exact dimensions；拒绝 empty body、SVG/HTML/polyglot/解码炸弹；对 exact downloaded bytes 先 hash/atomic Blob，再扫描 metadata/EXIF。raw Blob 只在 Owner boundary 显示安全解码 preview，不进入 package；不允许 metadata 使其 quarantine。compositor 的 final encoder 必须清除 metadata 并重新 hash。任何 normalizer/decoder 依赖需在实现 SDD 固定版本、license、NOTICE、漏洞和 source-offer 义务；本规格不预选新依赖。
+下载器必须：只接受 adapter-authorized HTTPS result；限制 redirect 次数并阻止 credentials、内网/link-local/loopback；每个 hop 重做 DNS 审查、检测同 host 地址集合漂移，并把实际 TLS socket 的 lookup 固定到已审查地址，同时保留原 hostname/SNI/证书校验，使 DNS rebinding 不能把已授权请求切换到未审查地址；流式限制 `bytes > 0 && bytes <= 10 MiB`；核对 `Content-Length`（若有）、magic、declared MIME、decoder MIME、exact dimensions；拒绝 empty body、SVG/HTML/polyglot/解码炸弹；对 exact downloaded bytes 先 hash/atomic Blob，再扫描 metadata/EXIF。raw Blob 只在 Owner boundary 显示安全解码 preview，不进入 package；不允许 metadata 使其 quarantine。compositor 的 final encoder 必须清除 metadata 并重新 hash。任何 normalizer/decoder 依赖需在实现 SDD 固定版本、license、NOTICE、漏洞和 source-offer 义务；本规格不预选新依赖。
 
 `MediaCompositionSpec v1` 是 immutable、可摘要的 exact contract：
 
@@ -190,6 +192,7 @@ MediaCompositionSpec {
 - overlayCopy 与背景的 computed contrast ratio 必须全字形区域至少 `4.5:1`；需要底板/描边时其参数属于 exact template/profile digest。品牌色不得为满足对比度而被静默替换；不满足即 fail closed；
 - 字体只允许 repository/vendor-lock 中 exact version + SHA-256 + license 的字体资产和固定顺序 fallback。缺字按该顺序确定性选择；全部缺失时 `MEDIA_GLYPH_MISSING`。首期 overlay 不支持 emoji/color-font，发现 emoji code point 返回 `MEDIA_EMOJI_UNSUPPORTED`；不得交给 OS 字体或 tofu 静默兜底；
 - Logo 必须是 exact approved snapshot 授权的 content-addressed asset，保持比例，不拉伸、不超 safe area；模板、品牌色、Logo 若来自知识库，必须同时绑定 exact approved `BrandSnapshot` 与 `AuthoritativeKnowledgeSnapshot`。任一 snapshot 未批准、digest 不匹配、过期或改变都阻止 composition/bind，并使已有 media revision stale；
+- 首期没有独立 Brand 服务时，BrandSnapshot 的最小权威映射是 owner-scoped exact `APPROVED` KnowledgeSnapshot 所绑定的唯一 `ORGANIZATION` profile revision；系统以 Organization id/digest、组织名、品牌名、KnowledgeSnapshot id/digest 与其真实 `approvedAt` 确定性派生并持久化 BrandSnapshot。KnowledgeSnapshot 必须由 exact Owner 批准、无 gap，所有 source/profile bindings 与 PostgreSQL authority 一致，source 为 `READY`、document 未 tombstone 且 Blob bytes/digest 可复核。环境变量、请求 payload 或进程启动时间不能自证批准；supersession、source tombstone/缺失、审批状态或 Organization binding 变化均使旧链 stale；
 - `NO_OVERLAY` 只允许 image spec 的 `overlayCopy=null` 且 Owner 对 exact spec 显式确认“纯图无文字层”。系统仍创建 composition record，记录 mode、raw digest、snapshot/profile refs 和 Owner decision；最终 bytes 可与 raw bytes 相同，但 raw/final 两个业务 lineage node 不能合并；
 - compositor 是无网络、无模型、无 Secret 的 deterministic local operator；同一 raw bytes + composition spec + pinned dependency/font assets 必须跨 retry/restart 得到同一 final bytes/digest。它不能改 Artifact copy、挑图、审校或批准。
 

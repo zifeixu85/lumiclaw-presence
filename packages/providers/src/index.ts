@@ -1,11 +1,13 @@
 import {lookup as dnsLookup} from 'node:dns/promises';
 import {readFile} from 'node:fs/promises';
+import https from 'node:https';
 import net from 'node:net';
 import path from 'node:path';
+import {Readable} from 'node:stream';
 import {sha256,type BlobRef,type BlobStore} from '@lumiclaw/blob-store';
 import {
   MediaContractError,MediaSecretTicketUseGuard,sha256Digest,xhsDeliveryProfile,type MediaCompositionSpecV1,type MediaGenerationProvider,
-  type MediaProviderExactRequest,type MediaSecretTicket,type ProviderSubmissionResult,type ProviderTaskObservation,
+  type MediaProviderExactRequest,type MediaSecretTicket,type MediaSecretTicketReplayStore,type ProviderSubmissionResult,type ProviderTaskObservation,
   type RawProviderMediaAssetV2
 } from '@lumiclaw/domain';
 import opentype from 'opentype.js';
@@ -28,6 +30,7 @@ export const compositorDependencyManifest=Object.freeze({
   opentype:{version:'1.3.4',license:'MIT',decision:'PINNED_GLYPH_TO_PATH'},archive:{implementation:'LumiClaw deterministic ZIP store writer',license:'Apache-2.0'},
   browserCanvas:false,networkAccess:false,systemFonts:false
 });
+export const controlledFakeMediaTicketAuthority=Object.freeze({issuer:'controlled-fake-media-broker-v1',signingKey:'controlled-fake-ticket-key-public-safe-32-bytes',currentSecretFingerprint:'CONTROLLED_FAKE_NO_SECRET'});
 
 export type DecodedXhsImage={mimeType:'image/png'|'image/jpeg'|'image/webp';width:1080;height:1440;bytes:number;contentDigest:string;metadataState:'CLEAN'|'QUARANTINED'};
 
@@ -44,13 +47,14 @@ export class ControlledFakeMediaProvider {
 
 /** Explicit no-Secret engineering path. Its task references can never be used as real-provider evidence. */
 export class ControlledFakeMediaAdapter implements MediaGenerationProvider {
-  readonly #generator=new ControlledFakeMediaProvider();readonly #tickets=new MediaSecretTicketUseGuard();
+  readonly #generator=new ControlledFakeMediaProvider();readonly #tickets:MediaSecretTicketUseGuard;
+  public constructor(input:{ticketAuthority?:{issuer:string;signingKey:string;currentSecretFingerprint:string};replayStore?:MediaSecretTicketReplayStore}={}){this.#tickets=new MediaSecretTicketUseGuard(input.ticketAuthority??controlledFakeMediaTicketAuthority,input.replayStore);}
   public async submit(request:MediaProviderExactRequest,ticket:MediaSecretTicket):Promise<ProviderSubmissionResult>{
-    this.#tickets.consume(ticket,{purpose:'MEDIA_PROVIDER',scope:'media:submit',now:new Date().toISOString()});
+    await this.#tickets.consume(ticket,{purpose:'MEDIA_PROVIDER',scope:'media:submit',now:new Date().toISOString()});
     return {kind:'ACCEPTED',providerTaskRef:`controlled-fake://${request.requestDigest}`,reservedAmount:0,providerUsageDigest:sha256Digest({maturity:'CONTROLLED_FAKE',request:request.requestDigest}),observedAt:new Date().toISOString()};
   }
   public async inspect(providerTaskRef:string,ticket:MediaSecretTicket):Promise<ProviderTaskObservation>{
-    this.#tickets.consume(ticket,{purpose:'MEDIA_PROVIDER',scope:'media:inspect',now:new Date().toISOString()});
+    await this.#tickets.consume(ticket,{purpose:'MEDIA_PROVIDER',scope:'media:inspect',now:new Date().toISOString()});
     if(!providerTaskRef.startsWith('controlled-fake://'))return {state:'UNKNOWN',providerTaskRef,stableCode:'MEDIA_PROVIDER_TASK_MISMATCH',observedAt:new Date().toISOString()};
     return {state:'COMPLETED',providerTaskRef,resultRef:providerTaskRef,finalAmount:0,providerUsageDigest:sha256Digest({maturity:'CONTROLLED_FAKE',providerTaskRef}),observedAt:new Date().toISOString()};
   }
@@ -69,7 +73,7 @@ export async function decodeAndValidateXhsImage(input:Uint8Array,declaredMime:st
 
 export type AddressRecord={address:string;family:number};
 export type SafeDownloadDependencies={
-  fetcher?:(url:string,init?:RequestInit)=>Promise<Response>;
+  requester?:(url:URL,pinnedAddress:string,init:{headers:Record<string,string>;signal:AbortSignal})=>Promise<Response>;
   resolve?:(hostname:string)=>Promise<AddressRecord[]>;
 };
 
@@ -82,15 +86,15 @@ export async function assertSafeProviderResultUrl(value:string,input:{resolve?:(
   return {url,resolvedAddresses:addresses};
 }
 
-export async function downloadAndIngestProviderResult(value:string,declaredMime:string|null,store:BlobStore,deps:SafeDownloadDependencies={}):Promise<{blobRef:BlobRef;decoded:DecodedXhsImage;ephemeralUrlRetained:false}>{
-  const fetcher=deps.fetcher??((url,init)=>fetch(url,init));let current=value;let sameHostAddresses:string[]|undefined;
+export async function downloadAndIngestProviderResult(value:string,declaredMime:string|null,store:BlobStore,deps:SafeDownloadDependencies={}):Promise<{blobRef:BlobRef;decoded:DecodedXhsImage;ephemeralUrlRetained:false;transportAddressPinned:true}>{
+  const requester=deps.requester??pinnedHttpsRequest;let current=value;let sameHostAddresses:string[]|undefined;
   for(let redirects=0;redirects<=MAX_REDIRECTS;redirects+=1){const safetyInput:{resolve?:(hostname:string)=>Promise<AddressRecord[]>;expectedAddresses?:string[]}={};if(deps.resolve!==undefined)safetyInput.resolve=deps.resolve;if(sameHostAddresses!==undefined)safetyInput.expectedAddresses=sameHostAddresses;const safe=await assertSafeProviderResultUrl(current,safetyInput);sameHostAddresses=safe.resolvedAddresses;
-    let response:Response;try{response=await fetcher(safe.url.toString(),{method:'GET',redirect:'manual',headers:{accept:'image/png,image/jpeg,image/webp'},signal:AbortSignal.timeout(15_000)});}catch{throw new MediaContractError('MEDIA_DOWNLOAD_FAILED');}
+    let response:Response;try{response=await requester(safe.url,safe.resolvedAddresses[0]!,{headers:{accept:'image/png,image/jpeg,image/webp'},signal:AbortSignal.timeout(15_000)});}catch{throw new MediaContractError('MEDIA_DOWNLOAD_FAILED');}
     if([301,302,303,307,308].includes(response.status)){if(redirects===MAX_REDIRECTS)throw new MediaContractError('MEDIA_DOWNLOAD_FAILED');const location=response.headers.get('location');if(location===null)throw new MediaContractError('MEDIA_DOWNLOAD_FAILED');const next=new URL(location,safe.url);if(next.hostname!==safe.url.hostname)sameHostAddresses=undefined;current=next.toString();continue;}
     if(!response.ok||response.body===null)throw new MediaContractError('MEDIA_DOWNLOAD_FAILED');const contentLength=numberHeader(response.headers.get('content-length'));if(contentLength!==null&&(contentLength<=0||contentLength>xhsDeliveryProfile.maxBytes))throw new MediaContractError(contentLength<=0?'MEDIA_RESULT_EMPTY':'MEDIA_RESULT_TOO_LARGE');
     const chunks:Buffer[]=[];let total=0;const reader=response.body.getReader();for(;;){const {done,value:chunk}=await reader.read();if(done)break;total+=chunk.byteLength;if(total>xhsDeliveryProfile.maxBytes){await reader.cancel();throw new MediaContractError('MEDIA_RESULT_TOO_LARGE');}chunks.push(Buffer.from(chunk));}
     if(contentLength!==null&&contentLength!==total)throw new MediaContractError('MEDIA_DOWNLOAD_FAILED');const bytes=Buffer.concat(chunks,total);const headerMime=response.headers.get('content-type')?.split(';')[0]?.trim()??null;if(headerMime===null)throw new MediaContractError('MEDIA_MIME_INVALID');if(declaredMime!==null&&normalMime(headerMime)!==normalMime(declaredMime))throw new MediaContractError('MEDIA_MIME_INVALID');
-    const decoded=await decodeAndValidateXhsImage(bytes,declaredMime??headerMime);if(decoded.metadataState==='QUARANTINED')throw new MediaContractError('MEDIA_METADATA_FORBIDDEN');const blobRef=await store.put(bytes);if(blobRef.digest!==decoded.contentDigest||blobRef.size!==decoded.bytes)throw new MediaContractError('MEDIA_DIGEST_MISMATCH');return {blobRef,decoded,ephemeralUrlRetained:false};
+    const decoded=await decodeAndValidateXhsImage(bytes,declaredMime??headerMime);if(decoded.metadataState==='QUARANTINED')throw new MediaContractError('MEDIA_METADATA_FORBIDDEN');const blobRef=await store.put(bytes);if(blobRef.digest!==decoded.contentDigest||blobRef.size!==decoded.bytes)throw new MediaContractError('MEDIA_DIGEST_MISMATCH');return {blobRef,decoded,ephemeralUrlRetained:false,transportAddressPinned:true};
   }
   throw new MediaContractError('MEDIA_DOWNLOAD_FAILED');
 }
@@ -116,14 +120,14 @@ function fitText(font:opentype.Font,text:string):{fontSize:number;lines:string[]
 function wrapText(font:opentype.Font,text:string,fontSize:number,maxWidth:number):string[]{const lines:string[]=[];let current='';for(const character of Array.from(text)){if(character==='\n'){if(current.length>0)lines.push(current);current='';continue;}const candidate=current+character;if(current.length>0&&font.getAdvanceWidth(candidate,fontSize,{kerning:true})>maxWidth){lines.push(current);current=character;}else current=candidate;}if(current.length>0)lines.push(current);return lines;}
 
 export class EvoLinkMediaAdapter implements MediaGenerationProvider {
-  readonly #fetcher:(url:string,init?:RequestInit)=>Promise<Response>;readonly #now:()=>Date;readonly #tickets=new MediaSecretTicketUseGuard();
-  public constructor(private readonly input:{apiKey:string;fetcher?:(url:string,init?:RequestInit)=>Promise<Response>;now?:()=>Date}){if(Buffer.byteLength(input.apiKey)<16)throw new MediaContractError('MEDIA_SECRET_NOT_CONFIGURED');this.#fetcher=input.fetcher??((url,init)=>fetch(url,init));this.#now=input.now??(()=>new Date());}
-  public async submit(request:MediaProviderExactRequest,ticket:MediaSecretTicket):Promise<ProviderSubmissionResult>{this.#tickets.consume(ticket,{purpose:'MEDIA_PROVIDER',scope:'media:submit',now:this.#now().toISOString()});const observedAt=this.#now().toISOString();let response:Response;
+  readonly #fetcher:(url:string,init?:RequestInit)=>Promise<Response>;readonly #now:()=>Date;readonly #tickets:MediaSecretTicketUseGuard;
+  public constructor(private readonly input:{apiKey:string;ticketAuthority:{issuer:string;signingKey:string;currentSecretFingerprint:string};replayStore?:MediaSecretTicketReplayStore;fetcher?:(url:string,init?:RequestInit)=>Promise<Response>;now?:()=>Date}){if(Buffer.byteLength(input.apiKey)<16)throw new MediaContractError('MEDIA_SECRET_NOT_CONFIGURED');this.#fetcher=input.fetcher??((url,init)=>fetch(url,init));this.#now=input.now??(()=>new Date());this.#tickets=new MediaSecretTicketUseGuard(input.ticketAuthority,input.replayStore);}
+  public async submit(request:MediaProviderExactRequest,ticket:MediaSecretTicket):Promise<ProviderSubmissionResult>{await this.#tickets.consume(ticket,{purpose:'MEDIA_PROVIDER',scope:'media:submit',now:this.#now().toISOString()});const observedAt=this.#now().toISOString();let response:Response;
     try{response=await this.#fetcher(PROVIDER_CREATE_URL,{method:'POST',headers:{authorization:`Bearer ${this.input.apiKey}`,'content-type':'application/json'},body:JSON.stringify({model:PROVIDER_MODEL,prompt:request.promptText,size:'1080x1440',n:1,prompt_extend:false}),signal:AbortSignal.timeout(30_000)});}catch{return {kind:'UNKNOWN',stableCode:'MEDIA_SUBMIT_UNKNOWN_CHARGE_STATE',observedAt};}
     if(!response.ok){if([400,401,402,403].includes(response.status))return {kind:'DEFINITELY_NOT_CREATED',stableCode:'MEDIA_PROVIDER_TASK_FAILED',observedAt};return {kind:'UNKNOWN',stableCode:'MEDIA_SUBMIT_UNKNOWN_CHARGE_STATE',observedAt};}
     const value=await safeJson(response);const taskId=textField(value,'id');if(taskId===null)return {kind:'UNKNOWN',stableCode:'MEDIA_SUBMIT_UNKNOWN_CHARGE_STATE',observedAt};const reserved=numberField(recordField(value,'usage'),'credits_reserved');return {kind:'ACCEPTED',providerTaskRef:taskId,reservedAmount:reserved,providerUsageDigest:recordField(value,'usage')===null?null:sha256(Buffer.from(JSON.stringify(recordField(value,'usage')))),observedAt};
   }
-  public async inspect(providerTaskRef:string,ticket:MediaSecretTicket):Promise<ProviderTaskObservation>{this.#tickets.consume(ticket,{purpose:'MEDIA_PROVIDER',scope:'media:inspect',now:this.#now().toISOString()});const observedAt=this.#now().toISOString();if(!/^task-unified-[a-z0-9-]+$/u.test(providerTaskRef))return {state:'UNKNOWN',providerTaskRef,stableCode:'MEDIA_PROVIDER_TASK_UNKNOWN',observedAt};let response:Response;
+  public async inspect(providerTaskRef:string,ticket:MediaSecretTicket):Promise<ProviderTaskObservation>{await this.#tickets.consume(ticket,{purpose:'MEDIA_PROVIDER',scope:'media:inspect',now:this.#now().toISOString()});const observedAt=this.#now().toISOString();if(!/^task-unified-[a-z0-9-]+$/u.test(providerTaskRef))return {state:'UNKNOWN',providerTaskRef,stableCode:'MEDIA_PROVIDER_TASK_UNKNOWN',observedAt};let response:Response;
     try{response=await this.#fetcher(`${PROVIDER_TASK_ORIGIN}/v1/tasks/${encodeURIComponent(providerTaskRef)}`,{method:'GET',headers:{authorization:`Bearer ${this.input.apiKey}`},signal:AbortSignal.timeout(15_000)});}catch{return {state:'UNKNOWN',providerTaskRef,stableCode:'MEDIA_PROVIDER_TASK_UNKNOWN',observedAt};}
     if(!response.ok)return {state:response.status>=500||response.status===429?'UNKNOWN':'FAILED',providerTaskRef,stableCode:response.status>=500||response.status===429?'MEDIA_PROVIDER_TASK_UNKNOWN':'MEDIA_PROVIDER_TASK_FAILED',observedAt};const value=await safeJson(response);if(textField(value,'id')!==providerTaskRef)return {state:'FAILED',providerTaskRef,stableCode:'MEDIA_PROVIDER_TASK_MISMATCH',observedAt};const status=textField(value,'status');const model=textField(value,'model');if(model!==null&&model!==PROVIDER_MODEL)return {state:'FAILED',providerTaskRef,stableCode:'MEDIA_PROVIDER_TASK_MISMATCH',observedAt};if(status==='pending')return {state:'PENDING',providerTaskRef,observedAt};if(status==='processing')return {state:'PROCESSING',providerTaskRef,observedAt};if(status==='failed')return {state:'FAILED',providerTaskRef,stableCode:'MEDIA_PROVIDER_TASK_FAILED',observedAt};if(status==='completed'){const results=arrayField(value,'results');const result=results?.find((item):item is string=>typeof item==='string');if(result===undefined)return {state:'FAILED',providerTaskRef,stableCode:'MEDIA_RESULT_EMPTY',observedAt};return {state:'COMPLETED',providerTaskRef,resultRef:result,resultExpiresAt:null,finalAmount:numberField(recordField(value,'usage'),'credits_final'),providerUsageDigest:recordField(value,'usage')===null?null:sha256(Buffer.from(JSON.stringify(recordField(value,'usage')))),observedAt};}return {state:'UNKNOWN',providerTaskRef,stableCode:'MEDIA_PROVIDER_TASK_UNKNOWN',observedAt};
   }
@@ -143,6 +147,7 @@ function sniffMime(bytes:Buffer):DecodedXhsImage['mimeType']|null{if(bytes.subar
 function containerEndsExactly(bytes:Buffer,mime:DecodedXhsImage['mimeType']){if(mime==='image/jpeg')return bytes.length>=4&&bytes[bytes.length-2]===0xff&&bytes[bytes.length-1]===0xd9;if(mime==='image/webp')return bytes.length>=12&&bytes.readUInt32LE(4)+8===bytes.length;let offset=8;while(offset+12<=bytes.length){const length=bytes.readUInt32BE(offset);const type=bytes.subarray(offset+4,offset+8).toString('ascii');offset+=12+length;if(type==='IEND')return offset===bytes.length;}return false;}
 function normalMime(value:string){return value.toLowerCase().split(';')[0]?.trim()==='image/jpg'?'image/jpeg':value.toLowerCase().split(';')[0]?.trim();}
 function numberHeader(value:string|null){if(value===null)return null;const parsed=Number(value);return Number.isSafeInteger(parsed)?parsed:null;}
+function pinnedHttpsRequest(url:URL,pinnedAddress:string,input:{headers:Record<string,string>;signal:AbortSignal}):Promise<Response>{return new Promise((resolve,reject)=>{const request=https.request({protocol:'https:',hostname:url.hostname,port:443,path:`${url.pathname}${url.search}`,method:'GET',headers:{...input.headers,host:url.host},servername:url.hostname,lookup:(_hostname,options,callback)=>{const family=net.isIP(pinnedAddress) as 4|6;if(typeof options==='object'&&options.all)callback(null,[{address:pinnedAddress,family}]);else callback(null,pinnedAddress,family);}},(response)=>{const headers=new Headers();for(const [name,value] of Object.entries(response.headers)){if(Array.isArray(value))for(const item of value)headers.append(name,item);else if(value!==undefined)headers.set(name,String(value));}resolve(new Response(Readable.toWeb(response) as ReadableStream,{status:response.statusCode??500,...(response.statusMessage===undefined?{}:{statusText:response.statusMessage}),headers}));});request.once('error',reject);input.signal.addEventListener('abort',()=>request.destroy(input.signal.reason instanceof Error?input.signal.reason:new Error('MEDIA_DOWNLOAD_ABORTED')),{once:true});request.end();});}
 function blockedAddress(address:string){const version=net.isIP(address);if(version===4){const [a,b]=address.split('.').map(Number);return a===0||a===10||a===127||a===169&&b===254||a===172&&b!==undefined&&b>=16&&b<=31||a===192&&b===168||a===224||a===255;}if(version===6){const value=address.toLowerCase();return value==='::'||value==='::1'||value.startsWith('fe8')||value.startsWith('fe9')||value.startsWith('fea')||value.startsWith('feb')||value.startsWith('fc')||value.startsWith('fd')||value.startsWith('::ffff:127.')||value.startsWith('::ffff:10.')||value.startsWith('::ffff:192.168.');}return true;}
 function contrast(foreground:string,background:string){const luminance=(hex:string)=>{if(!/^#[0-9a-f]{6}$/iu.test(hex))throw new MediaContractError('MEDIA_CONTRAST_INVALID');const channels=[1,3,5].map((index)=>Number.parseInt(hex.slice(index,index+2),16)/255).map((value)=>value<=0.03928?value/12.92:((value+0.055)/1.055)**2.4);return 0.2126*channels[0]!+0.7152*channels[1]!+0.0722*channels[2]!;};const a=luminance(foreground);const b=luminance(background);return (Math.max(a,b)+0.05)/(Math.min(a,b)+0.05);}
 function escapeAttribute(value:string){return value.replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;');}

@@ -13,7 +13,7 @@ import {
 const now='2026-08-24T05:00:00.000Z';const ownerId='00000000-0000-4000-8000-000000000001';
 const brand:BrandSnapshotBinding={id:'brand',digest:'b'.repeat(64),state:'APPROVED',approvedAt:now,expiresAt:null};
 const knowledge:KnowledgeSnapshotBinding={id:'knowledge',digest:'c'.repeat(64),state:'APPROVED',approvedAt:now,expiresAt:null};
-const ticket=issueMediaSecretTicket({purpose:'MEDIA_PROVIDER',scope:'media:submit',secretFingerprint:'fp',nonce:'n',issuedAt:now,expiresAt:'2026-08-24T05:10:00.000Z'});
+const realTicketAuthority={issuer:'media-broker-provider-test-v1',signingKey:'provider-test-ticket-signing-key-32-bytes',currentSecretFingerprint:'provider-fingerprint'};const ticket=issueMediaSecretTicket({...realTicketAuthority,purpose:'MEDIA_PROVIDER',scope:'media:submit',secretFingerprint:realTicketAuthority.currentSecretFingerprint,nonce:'n',issuedAt:now,expiresAt:'2026-08-24T05:01:00.000Z'});
 const generationSpec=createMediaGenerationSpec({ownerId,artifactRevisionId:'revision',artifactRevisionDigest:'a'.repeat(64),imageSpecPosition:1,promptTextPrivateRef:'private://prompt/1',promptText:'无文字的暖色抽象背景，不含标题或标识。',altText:'暖色抽象背景',overlayCopy:'把一次发布变成可审校的全球在场',createdAt:now});
 
 describe('controlled fake and secure media ingest',()=>{
@@ -30,7 +30,7 @@ describe('controlled fake and secure media ingest',()=>{
     ['svg',Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'),'image/svg+xml','MEDIA_MIME_INVALID'],
   ])('rejects %s bytes before Blob authority',async(_name,bytes,declared,code)=>{await expect(decodeAndValidateXhsImage(bytes,declared)).rejects.toMatchObject({code});});
 
-  it('blocks credentials, HTTP, loopback, private/link-local IPs and DNS rebinding',async()=>{
+  it('blocks credentials, HTTP and private addresses, detects DNS drift, and pins the reviewed transport address',async()=>{
     const resolve=vi.fn(async(host:string)=>host==='safe.example'?[{address:'203.0.113.8',family:4}]:[{address:'127.0.0.1',family:4}]);
     await expect(assertSafeProviderResultUrl('http://safe.example/a.png',{resolve})).rejects.toMatchObject({code:'MEDIA_DOWNLOAD_FAILED'});
     await expect(assertSafeProviderResultUrl('https://u:p@safe.example/a.png',{resolve})).rejects.toMatchObject({code:'MEDIA_DOWNLOAD_FAILED'});
@@ -42,9 +42,9 @@ describe('controlled fake and secure media ingest',()=>{
 
   it('follows only bounded safe redirects, verifies exact bytes, and persists a content-addressed Blob',async()=>{
     const bytes=await new ControlledFakeMediaProvider().generateBytes({requestDigest:'2'.repeat(64),modelRef:'fake',capabilityProfileRef:'fake',sourcePromptDigest:generationSpec.sourcePromptDigest,promptText:'background',width:1080,height:1440,n:1,promptRewriteAllowed:false,allowedMimes:['image/png'],maxBytes:10*1024*1024,textFreeBackgroundRequired:true});
-    const calls:string[]=[];const fetcher=vi.fn(async(url:string)=>{calls.push(url);return url.endsWith('/start')?new Response(null,{status:302,headers:{location:'https://cdn.example/final.png'}}):new Response(Uint8Array.from(bytes).buffer,{status:200,headers:{'content-type':'image/png','content-length':String(bytes.byteLength)}});});
-    const root=await mkdtemp(path.join(os.tmpdir(),'lumiclaw-sdd012-provider-'));try{const store=new LocalContentAddressedBlobStore(root);const deps:SafeDownloadDependencies={fetcher,resolve:async()=>[{address:'203.0.113.9',family:4}]};
-      const result=await downloadAndIngestProviderResult('https://cdn.example/start','image/png',store,deps);expect(calls).toHaveLength(2);expect(result.blobRef.digest).toBe(sha256(bytes));expect(await store.has(result.blobRef)).toBe(true);expect(result.ephemeralUrlRetained).toBe(false);
+    const calls:Array<{url:string;pinnedAddress:string}>=[];const requester=vi.fn(async(url:URL,pinnedAddress:string)=>{calls.push({url:url.toString(),pinnedAddress});return url.pathname==='/start'?new Response(null,{status:302,headers:{location:'https://cdn.example/final.png'}}):new Response(Uint8Array.from(bytes).buffer,{status:200,headers:{'content-type':'image/png','content-length':String(bytes.byteLength)}});});
+    const root=await mkdtemp(path.join(os.tmpdir(),'lumiclaw-sdd012-provider-'));try{const store=new LocalContentAddressedBlobStore(root);const deps:SafeDownloadDependencies={requester,resolve:async()=>[{address:'203.0.113.9',family:4}]};
+      const result=await downloadAndIngestProviderResult('https://cdn.example/start','image/png',store,deps);expect(calls).toEqual([{url:'https://cdn.example/start',pinnedAddress:'203.0.113.9'},{url:'https://cdn.example/final.png',pinnedAddress:'203.0.113.9'}]);expect(result.blobRef.digest).toBe(sha256(bytes));expect(await store.has(result.blobRef)).toBe(true);expect(result.ephemeralUrlRetained).toBe(false);expect(result.transportAddressPinned).toBe(true);
     }finally{await rm(root,{recursive:true,force:true});}
   });
 });
@@ -76,14 +76,14 @@ describe('pinned deterministic Chinese compositor',()=>{
 describe('real adapter and archive boundary',()=>{
   it('submits n=1 exact size with prompt rewrite disabled and maps timeout-before-task-id to UNKNOWN',async()=>{
     const acceptedFetch=vi.fn<(url:string,init?:RequestInit)=>Promise<Response>>().mockResolvedValue(new Response(JSON.stringify({id:'task-unified-1',status:'pending',usage:{credits_reserved:1.5}}),{status:200,headers:{'content-type':'application/json'}}));
-    const adapter=new EvoLinkMediaAdapter({apiKey:'redacted-test-key-value',fetcher:acceptedFetch,now:()=>new Date(now)});const request={requestDigest:'5'.repeat(64),modelRef:'media-model-ref',capabilityProfileRef:'profile-ref',sourcePromptDigest:generationSpec.sourcePromptDigest,promptText:'text-free background',width:1080 as const,height:1440 as const,n:1 as const,promptRewriteAllowed:false as const,allowedMimes:['image/png'] as const,maxBytes:10*1024*1024,textFreeBackgroundRequired:true as const};
+    const adapter=new EvoLinkMediaAdapter({apiKey:'redacted-test-key-value',ticketAuthority:realTicketAuthority,fetcher:acceptedFetch,now:()=>new Date(now)});const request={requestDigest:'5'.repeat(64),modelRef:'media-model-ref',capabilityProfileRef:'profile-ref',sourcePromptDigest:generationSpec.sourcePromptDigest,promptText:'text-free background',width:1080 as const,height:1440 as const,n:1 as const,promptRewriteAllowed:false as const,allowedMimes:['image/png'] as const,maxBytes:10*1024*1024,textFreeBackgroundRequired:true as const};
     await expect(adapter.submit(request,ticket)).resolves.toMatchObject({kind:'ACCEPTED',providerTaskRef:'task-unified-1',reservedAmount:1.5});
     const body=JSON.parse(String(acceptedFetch.mock.calls[0]?.[1]?.body));expect(body).toMatchObject({model:'wan2.5-text-to-image',size:'1080x1440',n:1,prompt_extend:false});
-    const timeout=new EvoLinkMediaAdapter({apiKey:'redacted-test-key-value',fetcher:async()=>{throw new DOMException('timeout','TimeoutError');},now:()=>new Date(now)});await expect(timeout.submit(request,ticket)).resolves.toMatchObject({kind:'UNKNOWN',stableCode:'MEDIA_SUBMIT_UNKNOWN_CHARGE_STATE'});
+    const timeoutTicket=issueMediaSecretTicket({...realTicketAuthority,purpose:'MEDIA_PROVIDER',scope:'media:submit',secretFingerprint:realTicketAuthority.currentSecretFingerprint,nonce:'timeout',issuedAt:now,expiresAt:'2026-08-24T05:01:00.000Z'});const timeout=new EvoLinkMediaAdapter({apiKey:'redacted-test-key-value',ticketAuthority:realTicketAuthority,fetcher:async()=>{throw new DOMException('timeout','TimeoutError');},now:()=>new Date(now)});await expect(timeout.submit(request,timeoutTicket)).resolves.toMatchObject({kind:'UNKNOWN',stableCode:'MEDIA_SUBMIT_UNKNOWN_CHARGE_STATE'});
   });
 
   it('polls the same task and does not expose raw result URLs in observations after ingestion',async()=>{
-    const adapter=new EvoLinkMediaAdapter({apiKey:'redacted-test-key-value',fetcher:async()=>new Response(JSON.stringify({id:'task-unified-1',status:'completed',results:['https://cdn.example/signed.png'],model:'wan2.5-text-to-image'}),{status:200}),now:()=>new Date(now)});const inspectTicket=issueMediaSecretTicket({purpose:'MEDIA_PROVIDER',scope:'media:inspect',secretFingerprint:'fp',nonce:'inspect',issuedAt:now,expiresAt:'2026-08-24T05:10:00.000Z'});
+    const adapter=new EvoLinkMediaAdapter({apiKey:'redacted-test-key-value',ticketAuthority:realTicketAuthority,fetcher:async()=>new Response(JSON.stringify({id:'task-unified-1',status:'completed',results:['https://cdn.example/signed.png'],model:'wan2.5-text-to-image'}),{status:200}),now:()=>new Date(now)});const inspectTicket=issueMediaSecretTicket({...realTicketAuthority,purpose:'MEDIA_PROVIDER',scope:'media:inspect',secretFingerprint:realTicketAuthority.currentSecretFingerprint,nonce:'inspect',issuedAt:now,expiresAt:'2026-08-24T05:01:00.000Z'});
     const observation=await adapter.inspect('task-unified-1',inspectTicket);expect(observation).toMatchObject({state:'COMPLETED',providerTaskRef:'task-unified-1'});expect(observation.resultRef).toBe('https://cdn.example/signed.png');expect(JSON.stringify(adapter.publicSnapshot())).not.toContain('signed.png');
   });
 

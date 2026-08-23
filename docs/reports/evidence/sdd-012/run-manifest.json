@@ -3,10 +3,10 @@
   "sdd": "SDD-012",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS_WITH_OWNER_UAT_PENDING",
-  "generatedAt": "2026-08-23T20:52:55.248Z",
+  "generatedAt": "2026-08-23T22:41:03.632Z",
   "source": {
     "base": "d3f48331629a3a1e567b0ae4347c16d4bc90f16b",
-    "headAtRun": "d3f48331629a3a1e567b0ae4347c16d4bc90f16b",
+    "headAtRun": "21726572a0ec6f750d9f32689ad827e55d4c06fe",
     "branch": "codex/sdd-012-xhs-media-artifact-integration",
     "workingTreeDirty": true
   },
@@ -26,27 +26,27 @@
     {
       "path": "docs/reports/evidence/sdd-012/media-golden-package.json",
       "bytes": 5120,
-      "sha256": "e9772aade9441cb44cd82e9550df675da1f7dfc04f98938bed1941afc2ed76d8"
+      "sha256": "3d527160d607c4de2c0c512fb3b9b1b6abb9bdf25d47d5b986b276e7fde8fea0"
     },
     {
       "path": "docs/reports/evidence/sdd-012/postgres-verification.json",
-      "bytes": 27137,
-      "sha256": "5653cf83c4366322e0a30f7b55ac44444fe74e2c889f243975915e8b91ca111e"
+      "bytes": 26524,
+      "sha256": "c22b45d98cb4bdb53c44083fc3f5b17ca019ffdf53884f9f8926ad79b71367e6"
     },
     {
       "path": "docs/reports/evidence/sdd-012/fault-security-compositor-matrix.json",
-      "bytes": 4788,
-      "sha256": "6b718cd19f8c85032cb032d69b9c247cced95c22b6c39c61fef6508003ea31e4"
+      "bytes": 4826,
+      "sha256": "d6104f2236f26ad7b9c6da6a9db9998d3b7cd08b79526294f4af8ede5a1ffb8f"
     },
     {
       "path": "docs/reports/evidence/sdd-012/browser-verification.json",
       "bytes": 1974,
-      "sha256": "3098b851f1cac22e0cf3e444270c1ad7223c0d4e31bcf5ac26ed6a86bcd47602"
+      "sha256": "91532beb664c11b8ee0f7e779c3fe5f9ca1e7868285c5ccd13e2cb3ba4e216d3"
     },
     {
       "path": "docs/reports/evidence/sdd-012/compose-verification.json",
-      "bytes": 110538,
-      "sha256": "498ea6e5213b1baa83762b2ceb2cf172c411956823360a415978fe8a66e6510f"
+      "bytes": 98466,
+      "sha256": "204408dd8dffbd57d5ea91bfc215b0e365b14567361c75169d4fa59a7656dbf5"
     },
     {
       "path": "docs/reports/evidence/sdd-012/real-provider-canary.json",
@@ -65,8 +65,8 @@
     },
     {
       "path": "docs/reports/evidence/sdd-012/02-pass-approve-package-zh.png",
-      "bytes": 157494,
-      "sha256": "3cd577c4accd2243cdde5ab57f86a9ccfe1869127f5017870d1bfdfa9b4b0952"
+      "bytes": 157964,
+      "sha256": "123603d35731cda14992afb27a05e70046eb06fa9b4a5350abf9bfe7cca7427d"
     },
     {
       "path": "docs/reports/evidence/sdd-012/03-governed-package-en.png",
@@ -110,12 +110,12 @@
     {
       "path": ".evidence/sdd-012/license-inventory.json",
       "bytes": 341828,
-      "sha256": "dd49d3b6b93b1a9dfde515c37c3e36a25c350777a4b6f617e9f5802f519b46d8"
+      "sha256": "ef75d1df32da1477e2e243606d2e0eab9f1d64b399f9c4ddb8c4ba4e3c2fb942"
     },
     {
       "path": ".evidence/sdd-012/sbom.cdx.json",
       "bytes": 1451601,
-      "sha256": "2e78deeabf3e938830a98a81882e5d0dc245e19df168aca877921bc943af8ebf"
+      "sha256": "716fd301128db7719dfda66d6b35b1b8b36d0d1d9748ad5cac306df15c43c850"
     }
   ]
 }
