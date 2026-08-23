@@ -3,7 +3,7 @@
   "sdd": "SDD-010",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-22T16:49:34.307Z",
+  "generatedAt": "2026-08-23T18:01:24.042Z",
   "locales": [
     "zh-CN",
     "en"
@@ -36,7 +36,7 @@
   "screenshots": [
     {
       "name": "01-x-thread-review-zh.png",
-      "sha256": "64791396b8a8891ff7a8b2758b855d07e82bdf43bcd67d673e8f8275ac6910e1",
+      "sha256": "86ca4c0b0a2cf3d5e0c44ef2b961c48bb9aced21829acb06612fee630df9e52e",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -44,7 +44,7 @@
     },
     {
       "name": "02-owner-edit-diff-zh.png",
-      "sha256": "0d3c5142f92d93e8eb4ce590d68c5f346c061327bb38d179f2de2d27f8cd1be5",
+      "sha256": "d3a7e3efb811585fa789b68743cfc55117770a75f346ad51683d4a5675819059",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -52,7 +52,7 @@
     },
     {
       "name": "03-x-package-ready-zh.png",
-      "sha256": "5c9b27d78b6011ba89728c838fd2be936cae1faf088bf2aa84d18d097308f00d",
+      "sha256": "2b7a5bb82d506abb1abaf9a40ccf154ecebc19e9c5091837917f038d73b89cf4",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -68,7 +68,7 @@
     },
     {
       "name": "05-xhs-package-ready-zh.png",
-      "sha256": "12420603bd92ab33b428d60ccff08774af1ecc9cad07c0de6204bfc8b9751f1d",
+      "sha256": "979d0911db6d5320738249fb9976a5894aeae7e5876cfdbdc9d5735c5ce3e0be",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -76,7 +76,7 @@
     },
     {
       "name": "06-regenerate-reject-zh.png",
-      "sha256": "af132f938130f75cf6e1eef8c36bc7d89fa79e6fb14bb5c0423be0534275781b",
+      "sha256": "8c1ea7fc5c07cd0a244a8f095ecf2eaaa6ebf7267bb8c5322df28735dea0ab78",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -84,7 +84,7 @@
     },
     {
       "name": "06-package-en.png",
-      "sha256": "443aee08fd8664fe967bfc9bc9acca7d1021e85ff7ba66f933955d5506fca94a",
+      "sha256": "f6331a3319dc98308799e6c296e413a3f4453b42b8f9c4ad1f33db698f923c04",
       "viewport": {
         "width": 1440,
         "height": 1000
