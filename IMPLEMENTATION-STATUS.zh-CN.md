@@ -4,8 +4,8 @@
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
 > **快照日期：** 2026-08-24
-> **当前阶段：** M5 本地 Dogfood 闭环；SDD-007 常驻 AgentTeams Runtime 已合并并完成工程验证，下一可执行模块为 SDD-011 完整 Dogfood、恢复与录屏收敛
-> **当前实现真相：** M0 与 M1 已验收。M2-01～M2-06 已实现并完成工程验证，包括锁定版本的六成员 AgentTeams Shadow 路径；Owner UAT 仍待完成。`SDD-004`～`SDD-010` 已提供工程验证过的非执行手工发布包、市场上下文、生产 UX/Onboarding、分步知识、持久 Goal/Plan/已选平台编译、受治理的 X/小红书产物与审校发布包，以及常驻本地 AgentTeams Control Plane。`SDD-007` 经 Coordinator 独立复验后已在 PR #18 合并；其固定版本六成员 Runtime、仅终端 Secret Broker、PostgreSQL Job/Lease、Dispatch 与恢复为 `EVIDENCE_READY`，不是已验收。真实 DeepSeek Canary 与 Owner 浏览器/故障恢复 UAT 仍待完成。当前不授权自动发布、浏览器内平台凭据、`PUBLISHED`、外部用户结果、业务结果或法律合规保证。
+> **当前阶段：** M5 本地 Dogfood 闭环；`SDD-012` / `M5-11` 正在开发小红书实际图片资产，完成后才进入 `SDD-011` 完整 Dogfood、恢复与录屏收敛
+> **当前实现真相：** M0 与 M1 已验收。M2-01～M2-07 已实现并完成工程验证，包括锁定版本的六成员 AgentTeams Shadow 路径和带来源的市场上下文基础；Owner UAT 仍待完成。`SDD-004`～`SDD-010` 已提供工程验证过的非执行手工发布包、市场上下文、生产 UX/Onboarding、分步知识、持久 Goal/Plan/已选平台编译、受治理的 X/小红书产物与审校发布包，以及常驻本地 AgentTeams Control Plane。`SDD-007` 经 Coordinator 独立复验后已在 PR #18 合并；其固定版本六成员 Runtime、仅终端 Secret Broker、PostgreSQL Job/Lease、Dispatch 与恢复为 `EVIDENCE_READY`，不是已验收。`SDD-012` 已达到 `SPEC_READY`，现在承接小红书实际图片文件、确定性中文排版、精确媒体审校/批准绑定和二进制人工发布包的实现。常驻 Runtime 上的真实 DeepSeek、真实媒体 Provider Canary 与所需 Owner UAT 仍待完成。当前不授权自动发布、浏览器内平台凭据、`PUBLISHED`、外部用户结果、业务结果或法律合规保证。
 
 ## 进度状态合同
 
@@ -25,12 +25,12 @@
 
 | 指标 | 当前值 |
 |---|---|
-| 已验收模块 | `13 / 47`（`27.7%`） |
-| 证据已就绪 | `13 / 47` |
-| 被阻塞 | `0 / 47` |
-| 当前实现 SDD | 无；`SDD-011` / `M5-10` 是下一条边界明确的实现任务 |
-| 最早 Owner 阻塞项 | SDD-007 的真实 Canary 需要 Owner 通过仅终端 Secret Broker 提供 DeepSeek Key；模块验收仍需 Owner UAT |
-| 下一个可执行模块 | `SDD-011` / `M5-10`：在已冻结的 SDD-007/009/010 合同上收敛完整本地 Dogfood、恢复与中文讲解 Demo |
+| 已验收模块 | `13 / 48`（`27.1%`） |
+| 证据已就绪 | `13 / 48` |
+| 被阻塞 | `0 / 48` |
+| 当前实现 SDD | `SDD-012` / `M5-11`：小红书受治理媒体资产集成 |
+| 最早 Owner 阻塞项 | SDD-012 最终真实 Canary 需要 Owner 提供媒体 Provider Key、可接受的测试预算并完成视觉 UAT；SDD-007 的真实 DeepSeek 与 Owner 恢复/浏览器 UAT 也仍待完成 |
+| 下一个可执行模块 | 继续 `SDD-012` / `M5-11`；`SDD-011` / `M5-10` Dogfood 与录屏被其实现和 Owner real-media UAT 阻挡 |
 
 ## 里程碑总进度
 
@@ -38,10 +38,10 @@
 |---|---|---:|---|---|
 | M0 — Delivery foundation | `ACCEPTED` | `7 / 7` | 7 个已验收 | [SDD-000 验收报告](docs/reports/acceptance/SDD-000-ACCEPTANCE.md)，以及 Compose、Migration、CI 映射、隔离 AgentTeams Smoke、设计与 i18n 证据 |
 | M1 — Campaign walking skeleton | `ACCEPTED` | `6 / 6` | 6 个已验收 | [SDD-001 验收报告](docs/reports/acceptance/SDD-001-ACCEPTANCE.md)：持久化 Campaign、四平台预览、排程编辑器、统一 Control Plane State；最终视觉与交互收敛仍在规划中 |
-| M2 — Governed shadow campaign | `IN_PROGRESS` | `0 / 7` | 6 个证据已就绪；1 个市场本地化基础进行中 | 六成员 AgentTeams、DeepSeek Gateway/Canary、Revision/Audit、故障拒绝、Trace 与带来源市场上下文；Owner UAT 待完成 |
+| M2 — Governed shadow campaign | `IN_PROGRESS` | `0 / 7` | 7 个证据已就绪 | 六成员 AgentTeams、DeepSeek Gateway/Canary、Revision/Audit、故障拒绝、Trace 与带来源市场上下文；Owner UAT 待完成 |
 | M3 — Controlled live activation | `IN_PROGRESS` | `0 / 8` | 1 个非执行基础模块证据已就绪；7 个未开始 | 精确 Grant、持久化 Scheduler、Bluesky Direct、诚实 Handoff、Receipt/对账 |
 | M4 — Response and learning | `NOT_STARTED` | `0 / 4` | 4 个未开始 | Interaction → Outcome → Scoped Learning → 下一 Mission，隔离 SignalProvider PoC |
-| M5 — Runnable candidate | `IN_PROGRESS` | `0 / 11` | 4 个证据已就绪、1 个开发中、6 个未开始 | 知识、Goal 与受治理 X/小红书产物已证据就绪；当前开发常驻 AgentTeams，之后补齐可用媒体、Fresh Install、恢复和带讲解 Dogfood 证据 |
+| M5 — Runnable candidate | `IN_PROGRESS` | `0 / 12` | 5 个证据已就绪、1 个开发中、6 个未开始 | 知识、Goal、受治理 X/小红书产物和常驻 AgentTeams Runtime 已证据就绪；当前开发小红书实际图片，之后补齐 Fresh Install、恢复和带讲解 Dogfood 证据 |
 | M6 — External calibration | `NOT_STARTED` | `0 / 4` | 4 个未开始 | 设计伙伴 Shadow、隔离、可靠性与外部验收报告 |
 
 ## 模块进度表
@@ -117,7 +117,8 @@
 | M5-07 | 持久 Goal、Agent 生成计划与已选平台编译器 | `EVIDENCE_READY` | M5-06；SDD-009 | 持久 7/30 日 Goal、版本化受控 Planner submission 与精确 Owner 批准、作用域失效及恢复，并只为已选 X/小红书账号确定性编译 Mission Bundle；Owner UAT 待完成 |
 | M5-08 | 常驻本地 AgentTeams Runtime 与 Secret Broker | `EVIDENCE_READY` | M5-07、M5-09；SDD-007 | 固定版本六成员 Runtime、仅终端 Secret Broker、PostgreSQL Job/Lease、Dispatch、重启与恢复已独立工程复验并在 PR #18 合并；真实 DeepSeek 与 Owner UAT 待完成 |
 | M5-09 | X/小红书产物、独立审校与人工 PublishPackage | `EVIDENCE_READY` | M5-07、M3-00；SDD-010 | 版本化 X 单帖/线程与小红书图文产物、独立审校、精确 OwnerDecision 失效及安全复制/下载/打开发布包；已独立复验并在 PR #16 合并，Owner UAT 待完成 |
-| M5-10 | 完整 Dogfood 安装、恢复与录屏门禁 | `NOT_STARTED` | M5-06–M5-09；SDD-011 | Fresh Install/升级/回滚、public-safe Owner Dogfood 正常与失败关闭闭环、重启恢复及可复现带讲解 Demo 证据 |
+| M5-10 | 完整 Dogfood 安装、恢复与录屏门禁 | `NOT_STARTED` | M5-06–M5-09、M5-11；SDD-011 | Fresh Install/升级/回滚、public-safe Owner Dogfood 正常与失败关闭闭环、重启恢复及可复现带讲解 Demo 证据 |
+| M5-11 | 小红书受治理媒体资产集成 | `IN_PROGRESS` | M5-08、M5-09；SDD-012 | 实际 1080×1440 图片文件、Provider-neutral 持久任务、确定性精确中文排版、raw/final Blob lineage、精确 Audit/OwnerDecision 失效与二进制人工发布包；需要真实媒体 Provider Canary 与 Owner 视觉 UAT |
 
 ### M6 — External calibration
 
