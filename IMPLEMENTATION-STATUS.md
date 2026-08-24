@@ -4,8 +4,8 @@
 
 > **Status source of truth:** This file is the canonical implementation progress register. `IMPLEMENTATION-STATUS.zh-CN.md` must mirror the same IDs and states in the same commit.
 > **Snapshot:** 2026-08-24
-> **Current phase:** M5 local dogfood chain; `SDD-012` / `M5-11` is the active bounded implementation for actual Xiaohongshu media assets, before `SDD-011` full dogfood/recovery/recording
-> **Current implementation truth:** M0 and M1 are accepted. M2-01 through M2-07 are implemented and engineering-verified, including the pinned six-member AgentTeams shadow path and the sourced market-context foundation; their Owner UAT is pending. `SDD-004` through `SDD-010` now provide engineering-verified non-executing manual-package, market-context, production UX/onboarding, guided knowledge, persistent Goal/Plan/selected-platform compilation, governed X/Xiaohongshu artifact/audit/package foundations, and a persistent local AgentTeams control plane. `SDD-007` was independently reverified and merged at PR #18; its fixed-version six-member runtime, terminal-only Secret broker, PostgreSQL jobs/leases, dispatch and recovery are `EVIDENCE_READY`, not accepted. `SDD-012` is `SPEC_READY` and now owns implementation of real Xiaohongshu image files, deterministic Chinese composition, exact media review/approval binding and binary manual packages. Real DeepSeek through the persistent runtime, real media-provider canary and required Owner UAT remain pending. No current slice authorizes automated publication, platform credentials in the browser, `PUBLISHED`, external-user results, business outcomes or legal-compliance guarantees.
+> **Current phase:** M5 local dogfood chain; the SDD-012 media foundation is merged, and `M5-11` remains active for exact accepted A5 Auditor-receipt integration before `SDD-011` full dogfood/recovery/recording
+> **Current implementation truth:** M0 and M1 are accepted. M2-01 through M2-07 are implemented and engineering-verified, including the pinned six-member AgentTeams shadow path and the sourced market-context foundation; their Owner UAT is pending. `SDD-004` through `SDD-010` now provide engineering-verified non-executing manual-package, market-context, production UX/onboarding, guided knowledge, persistent Goal/Plan/selected-platform compilation, governed X/Xiaohongshu artifact/audit/package foundations, and a persistent local AgentTeams control plane. `SDD-007` was independently reverified and merged at PR #18; its fixed-version six-member runtime, terminal-only Secret broker, PostgreSQL jobs/leases, dispatch and recovery are `EVIDENCE_READY`, not accepted. The independently verified SDD-012 media foundation was merged in PR #22: it provides provider-neutral durable jobs, actual 1080x1440 final images, deterministic Chinese composition, authoritative Knowledge/Brand bindings, final-only preview/download and fail-closed controlled-Audit evidence. It is not `EVIDENCE_READY`: the controlled A5 fixture is explicitly non-authoritative and cannot unlock Owner approval or an operational ManualPublishPackage until an exact accepted SDD-007 A5 task/output receipt is integrated. Real DeepSeek, the real media-provider canary and required Owner UAT also remain pending. No current slice authorizes automated publication, platform credentials in the browser, `PUBLISHED`, external-user results, business outcomes or legal-compliance guarantees.
 
 ## Progress contract
 
@@ -28,9 +28,9 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | Accepted modules | `13 / 48` (`27.1%`) |
 | Evidence ready | `13 / 48` |
 | Blocked | `0 / 48` |
-| Active implementation SDD | `SDD-012` / `M5-11`: Xiaohongshu governed media artifact integration |
-| Earliest owner blocker | SDD-012 eventually needs an Owner-provided media-provider key, approved test budget and visual UAT for its real canary; SDD-007 real DeepSeek and Owner recovery/browser UAT also remain pending |
-| Next executable module | Continue `SDD-012` / `M5-11`; `SDD-011` / `M5-10` dogfood and recording is gated on its implementation and Owner real-media UAT |
+| Active implementation SDD | `SDD-012` / `M5-11`: exact accepted SDD-007 A5 Auditor-receipt integration for governed Xiaohongshu media |
+| Earliest owner blocker | After the A5 receipt integration, SDD-012 needs an Owner-provided media-provider key, approved test budget and visual/binary UAT; SDD-007 real DeepSeek and Owner recovery/browser UAT also remain pending |
+| Next executable module | Continue `SDD-012` / `M5-11` with the bounded A5 receipt authority integration; `SDD-011` / `M5-10` dogfood and recording remains gated |
 
 ## Milestone progress
 
@@ -118,7 +118,7 @@ Progress is the number of `ACCEPTED` modules divided by active modules. It is a 
 | M5-08 | Persistent local AgentTeams runtime and Secret broker | `EVIDENCE_READY` | M5-07, M5-09; SDD-007 | Fixed-version six-member runtime, terminal-only Secret broker, PostgreSQL jobs/leases, dispatch, restart and recovery are independently engineering-verified and merged in PR #18; real DeepSeek and Owner UAT pending |
 | M5-09 | X/XHS artifacts, independent audit and manual PublishPackage | `EVIDENCE_READY` | M5-07, M3-00; SDD-010 | Versioned X post/thread and Xiaohongshu image-note artifacts, independent audit, exact OwnerDecision invalidation and safe copy/download/open package; independently verified and merged in PR #16, Owner UAT pending |
 | M5-10 | Full dogfood install, recovery and recording gate | `NOT_STARTED` | M5-06–M5-09, M5-11; SDD-011 | Fresh install/upgrade/rollback, public-safe Owner dogfood normal and fail-closed loops, restart recovery and reproducible narrated demo evidence |
-| M5-11 | Xiaohongshu governed media artifact integration | `IN_PROGRESS` | M5-08, M5-09; SDD-012 | Actual 1080x1440 media files, provider-neutral durable jobs, deterministic exact-Chinese composition, raw/final Blob lineage, exact audit/OwnerDecision invalidation and binary manual package; real media-provider canary and Owner visual UAT are required |
+| M5-11 | Xiaohongshu governed media artifact integration | `IN_PROGRESS` | M5-08, M5-09; SDD-012 | Media jobs, actual 1080x1440 final files, deterministic exact-Chinese composition, raw/final Blob lineage and snapshot invalidation were independently verified and merged in PR #22. Controlled Audit is non-authoritative; exact accepted SDD-007 A5 receipt integration, operational OwnerDecision/package, real media-provider canary and Owner visual/binary UAT remain required |
 
 ### M6 — External calibration
 
