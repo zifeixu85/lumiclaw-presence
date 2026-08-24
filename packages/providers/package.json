@@ -1,0 +1,17 @@
+{
+  "name": "@lumiclaw/providers",
+  "version": "0.1.0-sdd012",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "exports": {".": {"types": "./src/index.ts", "import": "./dist/index.js"}},
+  "types": "./src/index.ts",
+  "scripts": {"build": "tsc -p tsconfig.json", "typecheck": "tsc -p tsconfig.json --noEmit"},
+  "dependencies": {
+    "@lumiclaw/blob-store": "*",
+    "@lumiclaw/domain": "*",
+    "opentype.js": "1.3.4",
+    "sharp": "0.35.3"
+  },
+  "devDependencies": {"@types/opentype.js": "1.3.10"}
+}

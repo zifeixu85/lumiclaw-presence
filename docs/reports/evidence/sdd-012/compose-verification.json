@@ -1,0 +1,659 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-012",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "generatedAt": "2026-08-23T23:45:05.703Z",
+  "checks": {
+    "freshComposeHealthy": true,
+    "doubleWorkerHealthy": true,
+    "migration15Applied": true,
+    "productionBrowserJourney": true,
+    "concurrentAuthorityExact": true,
+    "restartStable": true,
+    "actualFinalDownload": true,
+    "controlledAuditCannotUnlockAuthority": true,
+    "noExternalPublishMutation": true,
+    "snapshotChangeInvalidates": true,
+    "noSecretInEvidence": true
+  },
+  "counts": {
+    "specs": 3,
+    "jobs": 3,
+    "tasks": 3,
+    "raw": 3,
+    "final": 3,
+    "revisions": 1,
+    "audits": 1,
+    "decisions": 0,
+    "packages": 0,
+    "files": 0
+  },
+  "restart": {
+    "before": {
+      "jobs": [
+        [
+          "media-job-1c22e00e52e47718f1f8bbb5fa2af2de",
+          "56d32c97aa5696a894c36c31704f5755de9f7eb7070049a25b0cc3a10c013305",
+          "controlled-fake://17bdebd7194d68adda288ea4db3f796cd5695605d3fa825ee9fe04bdaeadbdb1"
+        ],
+        [
+          "media-job-3ed8084617cd1e5ec66b2ba5da36a18f",
+          "130f273615a9cfe9fe6fdc167778f613ce39459221a90045834f75dfd46f8d54",
+          "controlled-fake://0ee1db557b91f7f16218703a81a5e4ef76e9f26f5917257bd84fe6d1e3043811"
+        ],
+        [
+          "media-job-81310b940e79a9d4e31c484983c01316",
+          "5467242f22b372d327305b0b5f320557c23d4df0fecbbc550ed0cdad6860c807",
+          "controlled-fake://0e535b0cbd5e4f85ad5e7aef495d180d67df533958679fde44f83569c155ed1c"
+        ]
+      ],
+      "finals": [
+        [
+          "final-media-611c852f93e439b05827ad58e9a532bc",
+          "98461ea3a622aaa3f6a73119ced708c8cb6f20dc03000e7bbf956e8e09561e12"
+        ],
+        [
+          "final-media-ec453b12835dfc3424e41010d5b4ffb8",
+          "48bb339493eafc19b98cbd377b1ec5bdf5990d540306c9d93a7a0ed6c16660ce"
+        ],
+        [
+          "final-media-b35c549747997a4dd333d53c9fdee884",
+          "7d6c485587e283a8f895c089c77f947644b19d3a420e94d50d43fc2f829d425c"
+        ]
+      ],
+      "audits": [
+        [
+          "media-audit-13036a09392bd0f1884dcdd9be483358",
+          "ae3eadd8604516ef9f7ac3e64ab4a53ba28b1289b010b2f59b9fb3ecabea164e",
+          "CONTROLLED_FIXTURE",
+          false,
+          false
+        ]
+      ],
+      "decisions": 0,
+      "packages": 0
+    },
+    "after": {
+      "jobs": [
+        [
+          "media-job-1c22e00e52e47718f1f8bbb5fa2af2de",
+          "56d32c97aa5696a894c36c31704f5755de9f7eb7070049a25b0cc3a10c013305",
+          "controlled-fake://17bdebd7194d68adda288ea4db3f796cd5695605d3fa825ee9fe04bdaeadbdb1"
+        ],
+        [
+          "media-job-3ed8084617cd1e5ec66b2ba5da36a18f",
+          "130f273615a9cfe9fe6fdc167778f613ce39459221a90045834f75dfd46f8d54",
+          "controlled-fake://0ee1db557b91f7f16218703a81a5e4ef76e9f26f5917257bd84fe6d1e3043811"
+        ],
+        [
+          "media-job-81310b940e79a9d4e31c484983c01316",
+          "5467242f22b372d327305b0b5f320557c23d4df0fecbbc550ed0cdad6860c807",
+          "controlled-fake://0e535b0cbd5e4f85ad5e7aef495d180d67df533958679fde44f83569c155ed1c"
+        ]
+      ],
+      "finals": [
+        [
+          "final-media-611c852f93e439b05827ad58e9a532bc",
+          "98461ea3a622aaa3f6a73119ced708c8cb6f20dc03000e7bbf956e8e09561e12"
+        ],
+        [
+          "final-media-ec453b12835dfc3424e41010d5b4ffb8",
+          "48bb339493eafc19b98cbd377b1ec5bdf5990d540306c9d93a7a0ed6c16660ce"
+        ],
+        [
+          "final-media-b35c549747997a4dd333d53c9fdee884",
+          "7d6c485587e283a8f895c089c77f947644b19d3a420e94d50d43fc2f829d425c"
+        ]
+      ],
+      "audits": [
+        [
+          "media-audit-13036a09392bd0f1884dcdd9be483358",
+          "ae3eadd8604516ef9f7ac3e64ab4a53ba28b1289b010b2f59b9fb3ecabea164e",
+          "CONTROLLED_FIXTURE",
+          false,
+          false
+        ]
+      ],
+      "decisions": 0,
+      "packages": 0
+    }
+  },
+  "snapshotInvalidation": {
+    "status": 412,
+    "code": "MEDIA_REVISION_STALE"
+  },
+  "auditAuthority": {
+    "evidenceMaturity": "CONTROLLED_FIXTURE",
+    "agentTeamsExecuted": false,
+    "authoritativeForOperations": false,
+    "nextState": "WAITING_FOR_SDD_007_ACCEPTED_AUDITOR_RECEIPT"
+  },
+  "authoritativePackageGenerated": false,
+  "finalDownload": {
+    "bytes": 37632,
+    "sha256": "98461ea3a622aaa3f6a73119ced708c8cb6f20dc03000e7bbf956e8e09561e12"
+  },
+  "externalActionCount": 0,
+  "events": [
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "down",
+        "--volumes",
+        "--remove-orphans"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "build"
+      ],
+      "status": 0,
+      "stdout": "6ba7c5e5fcd4e4115f4ce0db703932daf1e7b8d66c13231a4a9ebc45d440\n#23 ...\n\n#20 [mission-worker] exporting to image\n#20 exporting layers 14.5s done\n#20 exporting manifest sha256:f7bf97a08de83c38e4911e7ba78f15a6763dedb70a577c7c8dfeea215bde27ee 0.0s done\n#20 exporting config sha256:dca56ca990d019837ca792093a723c66f0719b858382413c9feb039a934d412e 0.1s done\n#20 exporting attestation manifest sha256:7388ba3febe7cb6a554fe3353379e7682552144eddcb85b9c870594b6e26eba5 0.2s done\n#20 exporting manifest list sha256:fb7d43cbf2a67d479fb6ff575d2b8cff3d9771115325b07fa6ab25922aa3cea0\n#20 exporting manifest list sha256:fb7d43cbf2a67d479fb6ff575d2b8cff3d9771115325b07fa6ab25922aa3cea0 0.1s done\n#20 naming to docker.io/lumiclaw/presence:m2-governed-shadow\n#20 naming to docker.io/lumiclaw/presence:m2-governed-shadow 0.0s done\n#20 unpacking to docker.io/lumiclaw/presence:m2-governed-shadow\n#20 ...\n\n#19 [web] exporting to image\n#19 exporting layers 14.5s done\n#19 exporting manifest sha256:44618b0d2eb90382a58268fb0b972bc6a73d5fc5d7e3c755bfd40bfec4baeab3 0.1s done\n#19 exporting config sha256:f8a93a0e21c516e976583b13d7b3d7d7e53b87214d2fa6a930221bd64aba51f0 0.1s done\n#19 exporting attestation manifest sha256:2c274a04c28c3000fdda1d30a46832879cb8afc21cf5e0298cf5898b68056da1 0.2s done\n#19 exporting manifest list sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82 0.1s done\n#19 naming to docker.io/lumiclaw/presence:m2-governed-shadow 0.0s done\n#19 ...\n\n#22 [migrate] exporting to image\n#22 exporting layers 14.5s done\n#22 exporting manifest sha256:cb0030d23997ea024de8c892244ccf57d61aac3855ec632a03c5e72f956f1bee 0.1s done\n#22 exporting config sha256:63037ec0ee5e90d241612e091f4101aadcc2c7843a63ac4b0617ba225cf7f449 0.1s done\n#22 exporting attestation manifest sha256:2db21f720756e43f6d085f3b0691385629632ca60176186a8f98fa974e0a09d0 0.2s done\n#22 exporting manifest list sha256:4610d99d3df9736da4d04d02a2b72173294d1188e9f54113f7eb1b61b47edf90 0.1s done\n#22 naming to docker.io/lumiclaw/presence:m2-governed-shadow 0.0s done\n#22 ...\n\n#21 [action-operator] exporting to image\n#21 exporting layers 14.5s done\n#21 exporting manifest sha256:2506924be518780704a8b0c47b6e9983cb576392a21648be61340fe3725bfb3e 0.1s done\n#21 exporting config sha256:7cfe3a6d371a9284d5505e22c8339ed2056425a6bf33644a42e530afc73f6e00 0.1s done\n#21 exporting attestation manifest sha256:a0990f73dae77e3590f08888fc3b6520a56bbcb2a61ffcaafeb818c1292b290f 0.2s done\n#21 exporting manifest list sha256:636b449882afff6b14ca400ec9360a132b8a210b37c32c8b80ad6b8274921c93 0.1s done\n#21 naming to docker.io/lumiclaw/presence:m2-governed-shadow 0.0s done\n#21 ...\n\n#23 [api] exporting to image\n#23 exporting config sha256:902e6ba7c5e5fcd4e4115f4ce0db703932daf1e7b8d66c13231a4a9ebc45d440 0.1s done\n#23 exporting attestation manifest sha256:5d7fad69e3569b7e94a13ec7fa01408d50db7b24c601d636e4888315776e03a5 0.2s done\n#23 exporting manifest list sha256:1f4a01e3e53155a274543c63f5ba78077c3947845a03cf27b821a2ca4d612759 0.1s done\n#23 naming to docker.io/lumiclaw/presence:m2-governed-shadow 0.0s done\n#23 unpacking to docker.io/lumiclaw/presence:m2-governed-shadow 31.6s done\n#23 DONE 46.6s\n\n#20 [mission-worker] exporting to image\n#20 unpacking to docker.io/lumiclaw/presence:m2-governed-shadow 31.6s done\n#20 DONE 46.6s\n\n#21 [action-operator] exporting to image\n#21 unpacking to docker.io/lumiclaw/presence:m2-governed-shadow 31.6s done\n#21 DONE 46.6s\n\n#22 [migrate] exporting to image\n#22 unpacking to docker.io/lumiclaw/presence:m2-governed-shadow 31.6s done\n#22 DONE 46.6s\n\n#19 [web] exporting to image\n#19 unpacking to docker.io/lumiclaw/presence:m2-governed-shadow 31.6s done\n#19 DONE 46.7s\n\n#24 [migrate] resolving provenance for metadata file\n#24 DONE 0.3s\n\n#25 [action-operator] resolving provenance for metadata file\n#25 DONE 0.1s\n\n#26 [api] resolving provenance for metadata file\n#26 DONE 0.2s\n\n#27 [mission-worker] resolving provenance for metadata file\n#27 DONE 0.3s\n\n#28 [web] resolving provenance for metadata file\n#28 DONE 0.0s\n",
+      "stderr": " Image lumiclaw/presence:m2-governed-shadow Building \n Image lumiclaw/presence:m2-governed-shadow Building \n Image lumiclaw/presence:m2-governed-shadow Building \n Image lumiclaw/presence:m2-governed-shadow Building \n Image lumiclaw/presence:m2-governed-shadow Building \n Image lumiclaw/presence:m2-governed-shadow Built \n Image lumiclaw/presence:m2-governed-shadow Built \n Image lumiclaw/presence:m2-governed-shadow Built \n Image lumiclaw/presence:m2-governed-shadow Built \n Image lumiclaw/presence:m2-governed-shadow Built \n"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "up",
+        "--detach",
+        "--no-build",
+        "--scale",
+        "mission-worker=2"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": " Network lumiclaw-sdd012-verify_edge Creating \n Network lumiclaw-sdd012-verify_edge Created \n Network lumiclaw-sdd012-verify_data Creating \n Network lumiclaw-sdd012-verify_data Created \n Network lumiclaw-sdd012-verify_runtime Creating \n Network lumiclaw-sdd012-verify_runtime Created \n Volume lumiclaw-sdd012-verify_blob-data Creating \n Volume lumiclaw-sdd012-verify_blob-data Created \n Volume lumiclaw-sdd012-verify_postgres-data Creating \n Volume lumiclaw-sdd012-verify_postgres-data Created \n Container lumiclaw-sdd012-verify-postgres-1 Creating \n Container lumiclaw-sdd012-verify-postgres-1 Created \n Container lumiclaw-sdd012-verify-migrate-1 Creating \n Container lumiclaw-sdd012-verify-migrate-1 Created \n Container lumiclaw-sdd012-verify-action-operator-1 Creating \n Container lumiclaw-sdd012-verify-mission-worker-2 Creating \n Container lumiclaw-sdd012-verify-mission-worker-1 Creating \n Container lumiclaw-sdd012-verify-api-1 Creating \n Container lumiclaw-sdd012-verify-mission-worker-2 Created \n Container lumiclaw-sdd012-verify-mission-worker-1 Created \n Container lumiclaw-sdd012-verify-action-operator-1 Created \n Container lumiclaw-sdd012-verify-api-1 Created \n Container lumiclaw-sdd012-verify-web-1 Creating \n Container lumiclaw-sdd012-verify-web-1 Created \n Container lumiclaw-sdd012-verify-postgres-1 Starting \n Container lumiclaw-sdd012-verify-postgres-1 Started \n Container lumiclaw-sdd012-verify-postgres-1 Waiting \n Container lumiclaw-sdd012-verify-postgres-1 Healthy \n Container lumiclaw-sdd012-verify-migrate-1 Starting \n Container lumiclaw-sdd012-verify-migrate-1 Started \n Container lumiclaw-sdd012-verify-migrate-1 Waiting \n Container lumiclaw-sdd012-verify-migrate-1 Waiting \n Container lumiclaw-sdd012-verify-migrate-1 Waiting \n Container lumiclaw-sdd012-verify-migrate-1 Exited \n Container lumiclaw-sdd012-verify-migrate-1 Exited \n Container lumiclaw-sdd012-verify-action-operator-1 Starting \n Container lumiclaw-sdd012-verify-migrate-1 Exited \n Container lumiclaw-sdd012-verify-mission-worker-2 Starting \n Container lumiclaw-sdd012-verify-api-1 Starting \n Container lumiclaw-sdd012-verify-action-operator-1 Started \n Container lumiclaw-sdd012-verify-api-1 Started \n Container lumiclaw-sdd012-verify-api-1 Waiting \n Container lumiclaw-sdd012-verify-mission-worker-2 Started \n Container lumiclaw-sdd012-verify-mission-worker-1 Starting \n Container lumiclaw-sdd012-verify-mission-worker-1 Started \n Container lumiclaw-sdd012-verify-api-1 Healthy \n Container lumiclaw-sdd012-verify-web-1 Starting \n Container lumiclaw-sdd012-verify-web-1 Started \n"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "-worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"14 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 5 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.service=mission-worker,com.docker.compose.container-number=2\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"14 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 5 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.depends_on=,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.container-number=1,com.docker.compose.oneoff=False,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=postgres,com.docker.compose.version=5.1.2\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"23 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 12 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.service=web,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.container-number=1,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.version=5.1.2\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"13 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up Less than a second (health: starting)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "fy-mission-worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"15 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 7 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.version=5.1.2,com.docker.compose.container-number=2,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=mission-worker,com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.depends_on=migrate:service_completed_successfully:false\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"15 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 7 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=postgres,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.depends_on=,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.container-number=1,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.project=lumiclaw-sdd012-verify\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"24 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 13 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.service=web,com.docker.compose.version=5.1.2,com.docker.compose.container-number=1,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.working_dir=<WORKTREE>\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"14 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 1 second (health: starting)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "y-mission-worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"17 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 8 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=mission-worker,com.docker.compose.version=5.1.2,com.docker.compose.container-number=2,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"17 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 9 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.service=postgres,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"26 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 15 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.container-number=1,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.service=web\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"16 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 3 seconds (health: starting)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "mission-worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"18 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 10 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=mission-worker,com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.version=5.1.2,com.docker.compose.container-number=2,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"18 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 10 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=postgres,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.version=5.1.2,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"27 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 17 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.service=web,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.oneoff=False,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.version=5.1.2,com.docker.compose.container-number=1,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"17 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 4 seconds (health: starting)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "12-verify-mission-worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"20 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 12 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.container-number=2,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.service=mission-worker\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"20 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 12 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.depends_on=,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.container-number=1,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.service=postgres,com.docker.compose.version=5.1.2\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"29 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 18 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.container-number=1,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=web,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.version=5.1.2\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"19 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 6 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "12-verify-mission-worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"20 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 12 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.container-number=2,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.service=mission-worker,com.docker.compose.version=5.1.2,com.docker.compose.depends_on=migrate:service_completed_successfully:false\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"20 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 12 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.depends_on=,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=postgres,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.container-number=1\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"29 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 18 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=web,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.container-number=1,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"19 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 6 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select count(*) from pgmigrations where name='000015_xhs_governed_media_artifacts'"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select json_build_object('specs',(select count(*) from media_generation_specs_v2),'jobs',(select count(*) from media_generation_jobs_v2),'tasks',(select count(distinct provider_task_id) from media_generation_jobs_v2 where provider_task_id is not null),'raw',(select count(*) from media_raw_assets_v2),'final',(select count(*) from media_composited_assets_v2),'revisions',(select count(*) from artifact_revisions_v4),'audits',(select count(*) from artifact_audit_decisions_v4),'decisions',(select count(*) from artifact_owner_decisions_v4),'packages',(select count(*) from manual_publish_packages_v4),'files',(select count(*) from manual_publish_package_files_v4))::text"
+      ],
+      "status": 0,
+      "stdout": "{\"specs\" : 3, \"jobs\" : 3, \"tasks\" : 3, \"raw\" : 3, \"final\" : 3, \"revisions\" : 1, \"audits\" : 1, \"decisions\" : 0, \"packages\" : 0, \"files\" : 0}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "restart",
+        "api",
+        "mission-worker"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": " Container lumiclaw-sdd012-verify-mission-worker-1 Restarting \n Container lumiclaw-sdd012-verify-api-1 Restarting \n Container lumiclaw-sdd012-verify-mission-worker-2 Restarting \n Container lumiclaw-sdd012-verify-api-1 Started \n Container lumiclaw-sdd012-verify-mission-worker-1 Started \n Container lumiclaw-sdd012-verify-mission-worker-2 Started \n"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_runtime,lumiclaw-sdd012-verify_data\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"32 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up Less than a second (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.container-number=2,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.version=5.1.2,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=mission-worker\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"32 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up Less than a second (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.container-number=1,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=postgres,com.docker.compose.depends_on=,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"41 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 30 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=web,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.container-number=1,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.version=5.1.2,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"31 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 18 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "n-worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"33 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 1 second (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.container-number=2,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.service=mission-worker,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"33 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 1 second (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.version=5.1.2,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=postgres\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"42 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 31 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.container-number=1,com.docker.compose.oneoff=False,com.docker.compose.service=web,com.docker.compose.version=5.1.2,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.project=lumiclaw-sdd012-verify\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"32 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 19 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"35 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 3 seconds (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.container-number=2,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.service=mission-worker,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.version=5.1.2\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"35 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 3 seconds (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.service=postgres,com.docker.compose.version=5.1.2\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"44 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 33 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.service=web,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.container-number=1,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"34 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 21 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_runtime,lumiclaw-sdd012-verify_data\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"36 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 5 seconds (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.service=mission-worker,com.docker.compose.version=5.1.2,com.docker.compose.container-number=2\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"36 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 4 seconds (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.container-number=1,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.depends_on=,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.oneoff=False,com.docker.compose.service=postgres,com.docker.compose.version=5.1.2\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"45 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 35 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.version=5.1.2,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.container-number=1,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.service=web\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"35 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 22 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "012-verify-mission-worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"38 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 6 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.container-number=2,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=mission-worker,com.docker.compose.version=5.1.2,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"38 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 6 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.oneoff=False,com.docker.compose.service=postgres,com.docker.compose.version=5.1.2,com.docker.compose.depends_on=,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.container-number=1,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"47 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 36 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.version=5.1.2,com.docker.compose.container-number=1,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.service=web\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"37 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 24 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "restart",
+        "postgres",
+        "api",
+        "mission-worker"
+      ],
+      "status": 0,
+      "stdout": "",
+      "stderr": " Container lumiclaw-sdd012-verify-mission-worker-1 Restarting \n Container lumiclaw-sdd012-verify-api-1 Restarting \n Container lumiclaw-sdd012-verify-mission-worker-2 Restarting \n Container lumiclaw-sdd012-verify-postgres-1 Restarting \n Container lumiclaw-sdd012-verify-api-1 Started \n Container lumiclaw-sdd012-verify-postgres-1 Started \n Container lumiclaw-sdd012-verify-mission-worker-1 Started \n Container lumiclaw-sdd012-verify-mission-worker-2 Started \n"
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "erify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"39 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up Less than a second (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.container-number=2,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=mission-worker,com.docker.compose.version=5.1.2\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"39 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up Less than a second (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.service=postgres,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.oneoff=False,com.docker.compose.project.working_dir=<WORKTREE>\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"48 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up Less than a second (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.version=5.1.2,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.container-number=1,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.service=web\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"38 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 25 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"41 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 1 second (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=mission-worker,com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.container-number=2,com.docker.compose.version=5.1.2,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"41 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 1 second (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.container-number=1,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.service=postgres,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.depends_on=,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.working_dir=<WORKTREE>\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"50 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 2 seconds (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.service=web,com.docker.compose.container-number=1,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project.working_dir=<WORKTREE>\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"40 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 27 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": ",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"43 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 3 seconds (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.container-number=2,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.version=5.1.2,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=mission-worker\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"43 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 3 seconds (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.oneoff=False,com.docker.compose.service=postgres,com.docker.compose.version=5.1.2,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"52 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 3 seconds (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.service=web,com.docker.compose.version=5.1.2,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.container-number=1,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"42 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 29 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "-worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"44 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 5 seconds (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"starting\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.version=5.1.2,com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.container-number=2,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=mission-worker\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"44 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 5 seconds (health: starting)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.oneoff=False,com.docker.compose.service=postgres\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"53 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 5 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.container-number=1,com.docker.compose.depends_on=api:service_healthy:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.oneoff=False,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=web\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"43 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 30 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "ps",
+        "--format",
+        "json"
+      ],
+      "status": 0,
+      "stdout": "d012-verify-mission-worker-1\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-1\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"46 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 6 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:19 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"0b777b9269b9\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.config-hash=033e0f9538e56fdde23aa8567937c9e04cfd2b9a0d84b266fb821a5529e237ee,com.docker.compose.version=5.1.2,com.docker.compose.container-number=2,com.docker.compose.depends_on=migrate:service_completed_successfully:false,com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=mission-worker\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Names\":\"lumiclaw-sdd012-verify-mission-worker-2\",\"Networks\":\"lumiclaw-sdd012-verify_data,lumiclaw-sdd012-verify_runtime\",\"Ports\":\"\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[],\"RunningFor\":\"46 seconds ago\",\"Service\":\"mission-worker\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 6 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:10 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"47ce0684311e\",\"Image\":\"postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4\",\"Labels\":\"com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.service=postgres,com.docker.compose.config-hash=e4e914edc5e19553f1c8208b62dcfbd18ae0e26bbf66b405bac98e44fbda63d0,com.docker.compose.version=5.1.2,com.docker.compose.container-number=1,com.docker.compose.depends_on=,com.docker.compose.image=sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml\",\"LocalVolumes\":\"1\",\"Mounts\":\"lumiclaw-sdd01…\",\"Name\":\"lumiclaw-sdd012-verify-postgres-1\",\"Names\":\"lumiclaw-sdd012-verify-postgres-1\",\"Networks\":\"lumiclaw-sdd012-verify_data\",\"Ports\":\"5432/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"\",\"TargetPort\":5432,\"PublishedPort\":0,\"Protocol\":\"tcp\"}],\"RunningFor\":\"55 seconds ago\",\"Service\":\"postgres\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 7 seconds (healthy)\"}\n{\"Command\":\"\\\"docker-entrypoint.s…\\\"\",\"CreatedAt\":\"2026-08-24 07:44:20 +0800 +08\",\"ExitCode\":0,\"Health\":\"healthy\",\"ID\":\"984fa2a1df8e\",\"Image\":\"lumiclaw/presence:m2-governed-shadow\",\"Labels\":\"com.docker.compose.image=sha256:f47b6da179fd02f46777c94d9a1dd891388a90dfdaad361fbdfda6b18f647e82,com.docker.compose.oneoff=False,com.docker.compose.project=lumiclaw-sdd012-verify,com.docker.compose.service=web,com.docker.compose.container-number=1,com.docker.compose.project.config_files=<WORKTREE>/compose.yml,<WORKTREE>/compose.media-controlled-fake.yml,com.docker.compose.project.working_dir=<WORKTREE>,com.docker.compose.version=5.1.2,com.docker.compose.config-hash=da2d0ead316a00b7f7543a7c2a98a136f5e92f3e48cdc94455ef5f788f48c7ec,com.docker.compose.depends_on=api:service_healthy:false\",\"LocalVolumes\":\"0\",\"Mounts\":\"\",\"Name\":\"lumiclaw-sdd012-verify-web-1\",\"Names\":\"lumiclaw-sdd012-verify-web-1\",\"Networks\":\"lumiclaw-sdd012-verify_edge\",\"Ports\":\"127.0.0.1:3212-\\u003e3000/tcp\",\"Project\":\"lumiclaw-sdd012-verify\",\"Publishers\":[{\"URL\":\"127.0.0.1\",\"TargetPort\":3000,\"PublishedPort\":3212,\"Protocol\":\"tcp\"}],\"RunningFor\":\"45 seconds ago\",\"Service\":\"web\",\"Size\":\"0B\",\"State\":\"running\",\"Status\":\"Up 32 seconds (healthy)\"}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select json_build_object('ownerId',owner_profile_id,'version',version+1,'sessionRowVersion',session_row_version+1,'sourceRevisionDigests',source_revision_digests,'profileRevisionDigests',profile_revision_digests,'itemBindings',item_bindings,'conflictDecisions',conflict_decisions,'gaps',gaps)::text from knowledge_snapshots where state='APPROVED' limit 1"
+      ],
+      "status": 0,
+      "stdout": "ATE\", \"normalizedValue\": \"Repeatable public repository verification.\", \"sourceRevisionIds\": [], \"profileRevisionIds\": [\"01a03103-11b5-7c5d-8c7a-03745e9882a6\"]}, {\"id\": \"01a03103-121b-74b7-b7ce-8635f1ba5ab1\", \"kind\": \"ORGANIZATION_FACT\", \"sensitivity\": \"LOCAL_PRIVATE\", \"ownerAuthority\": \"ORGANIZATION_APPROVED_PRIVATE\", \"normalizedValue\": \"{\\\"name\\\":\\\"LumiClaw Public-safe Studio\\\",\\\"brandName\\\":\\\"LumiClaw\\\",\\\"description\\\":\\\"A public-safe fixture for governed brand operations.\\\",\\\"audiences\\\":[\\\"AI product builders\\\"],\\\"facts\\\":[\\\"The source repository is Apache-2.0.\\\"],\\\"approvedClaims\\\":[{\\\"statement\\\":\\\"LumiClaw Presence is an engineering candidate.\\\",\\\"evidence\\\":\\\"Repeatable public repository verification.\\\"}]}\", \"sourceRevisionIds\": [], \"profileRevisionIds\": [\"01a03103-11b5-7c5d-8c7a-03745e9882a6\"]}, {\"id\": \"01a03103-1225-7848-b55a-3c49c17ac456\", \"kind\": \"PRODUCT_FACT\", \"sensitivity\": \"LOCAL_PRIVATE\", \"ownerAuthority\": \"ORGANIZATION_APPROVED_PRIVATE\", \"normalizedValue\": \"External state is unverified in SDD-012.\", \"sourceRevisionIds\": [], \"profileRevisionIds\": [\"01a03103-11c2-7925-81ed-1afd1d2ad824\"]}, {\"id\": \"01a03103-1226-7a2a-a2ea-03b85abd3c80\", \"kind\": \"CLAIM\", \"sensitivity\": \"LOCAL_PRIVATE\", \"ownerAuthority\": \"ORGANIZATION_APPROVED_PRIVATE\", \"normalizedValue\": \"Media authority is append-only in PostgreSQL.\", \"sourceRevisionIds\": [], \"profileRevisionIds\": [\"01a03103-11c2-7925-81ed-1afd1d2ad824\"]}, {\"id\": \"01a03103-1227-7e6c-a092-51031b88cf06\", \"kind\": \"EVIDENCE\", \"sensitivity\": \"LOCAL_PRIVATE\", \"ownerAuthority\": \"ORGANIZATION_APPROVED_PRIVATE\", \"normalizedValue\": \"SDD-012 migration and restart evidence.\", \"sourceRevisionIds\": [], \"profileRevisionIds\": [\"01a03103-11c2-7925-81ed-1afd1d2ad824\"]}, {\"id\": \"01a03103-1228-7915-a6f9-3100f39d9624\", \"kind\": \"PRODUCT_FACT\", \"sensitivity\": \"LOCAL_PRIVATE\", \"ownerAuthority\": \"ORGANIZATION_APPROVED_PRIVATE\", \"normalizedValue\": \"{\\\"name\\\":\\\"LumiClaw Presence\\\",\\\"description\\\":\\\"A governed operating control-plane candidate.\\\",\\\"valueProposition\\\":\\\"Bind approved knowledge, account mandates, plan revisions, and exact Owner decisions.\\\",\\\"audiences\\\":[\\\"Global product teams\\\"],\\\"facts\\\":[\\\"External state is unverified in SDD-012.\\\"],\\\"approvedClaims\\\":[{\\\"statement\\\":\\\"Media authority is append-only in PostgreSQL.\\\",\\\"evidence\\\":\\\"SDD-012 migration and restart evidence.\\\"}]}\", \"sourceRevisionIds\": [], \"profileRevisionIds\": [\"01a03103-11c2-7925-81ed-1afd1d2ad824\"]}, {\"id\": \"01a03103-123b-72be-bec2-be42352f8c1b\", \"kind\": \"ACCOUNT_PROFILE\", \"sensitivity\": \"LOCAL_PRIVATE\", \"ownerAuthority\": \"ORGANIZATION_APPROVED_PRIVATE\", \"normalizedValue\": \"{\\\"platformCode\\\":\\\"X\\\",\\\"accountExists\\\":true,\\\"handleOrDisplayName\\\":\\\"@lumi_fixture\\\",\\\"producerMandates\\\":[\\\"FOUNDER_VOICE\\\"],\\\"rolePersona\\\":\\\"Founder build notes\\\",\\\"audience\\\":[\\\"English-speaking AI builders\\\"],\\\"targetMarket\\\":\\\"US\\\",\\\"contentLocale\\\":\\\"en-US\\\",\\\"contentPillars\\\":[\\\"Build decisions\\\"],\\\"expressionExamples\\\":[\\\"Evidence first.\\\"],\\\"dos\\\":[\\\"State boundaries\\\"],\\\"donts\\\":[\\\"No outcome promises\\\"],\\\"ctaPolicy\\\":\\\"Invite review of public evidence.\\\",\\\"cadenceHint\\\":\\\"Three useful notes per week.\\\"}\", \"sourceRevisionIds\": [], \"profileRevisionIds\": [\"01a03103-11d8-7d7a-a6a1-eeb0add556ca\"]}, {\"id\": \"01a03103-1243-7e43-a381-804c90e77b01\", \"kind\": \"ACCOUNT_PROFILE\", \"sensitivity\": \"LOCAL_PRIVATE\", \"ownerAuthority\": \"ORGANIZATION_APPROVED_PRIVATE\", \"normalizedValue\": \"{\\\"platformCode\\\":\\\"XIAOHONGSHU\\\",\\\"accountExists\\\":true,\\\"handleOrDisplayName\\\":\\\"LumiClaw 产品手记（示例）\\\",\\\"producerMandates\\\":[\\\"PRODUCT_EXPERTISE\\\"],\\\"rolePersona\\\":\\\"Chinese product education\\\",\\\"audience\\\":[\\\"中国 AI 产品团队\\\"],\\\"targetMarket\\\":\\\"CN\\\",\\\"contentLocale\\\":\\\"zh-CN\\\",\\\"contentPillars\\\":[\\\"产品工作流\\\"],\\\"expressionExamples\\\":[\\\"先看证据，再看结论。\\\"],\\\"dos\\\":[\\\"说明适用边界\\\"],\\\"donts\\\":[\\\"不承诺爆款\\\"],\\\"ctaPolicy\\\":\\\"邀请查看公开说明。\\\",\\\"cadenceHint\\\":\\\"每周三篇有用笔记。\\\"}\", \"sourceRevisionIds\": [], \"profileRevisionIds\": [\"01a03103-11e0-7ba1-b99f-87465f75e031\"]}], \"conflictDecisions\" : [], \"gaps\" : []}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "with old as (select * from knowledge_snapshots where state='APPROVED' limit 1), changed as (update knowledge_snapshots s set state='SUPERSEDED' from old where s.owner_profile_id=old.owner_profile_id and s.id=old.id returning s.owner_profile_id,s.id) insert into knowledge_snapshots(owner_profile_id,id,version,state,session_row_version,canonical_digest,source_revision_digests,profile_revision_digests,item_bindings,conflict_decisions,gaps,approved_by,approved_at,created_at) select old.owner_profile_id,'019f0000-0000-7000-8000-000000000012'::uuid,old.version+1,'APPROVED',old.session_row_version+1,'d26c5d543b1c57df18bbb779db5f44ce3f147ce6a3a4bdd9a6b84aa8249d802c',old.source_revision_digests,old.profile_revision_digests,old.item_bindings,old.conflict_decisions,old.gaps,old.owner_profile_id,now(),now() from old; insert into knowledge_snapshot_source_bindings(owner_profile_id,snapshot_id,source_revision_id,source_digest) select b.owner_profile_id,'019f0000-0000-7000-8000-000000000012'::uuid,b.source_revision_id,b.source_digest from knowledge_snapshot_source_bindings b join knowledge_snapshots s on s.owner_profile_id=b.owner_profile_id and s.id=b.snapshot_id where s.state='SUPERSEDED' order by s.approved_at desc limit 1;"
+      ],
+      "status": 0,
+      "stdout": "INSERT 0 1\nINSERT 0 1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "compose",
+        "--project-name",
+        "lumiclaw-sdd012-verify",
+        "-f",
+        "compose.yml",
+        "-f",
+        "compose.media-controlled-fake.yml",
+        "exec",
+        "-T",
+        "postgres",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "lumiclaw",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select count(*) from media_invalidation_events_v1 where reason_code='MEDIA_KNOWLEDGE_SNAPSHOT_CHANGED'"
+      ],
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    }
+  ]
+}

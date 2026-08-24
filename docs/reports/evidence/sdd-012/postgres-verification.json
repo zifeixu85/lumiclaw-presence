@@ -1,0 +1,520 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-012",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "generatedAt": "2026-08-23T23:33:43.700Z",
+  "image": "postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4",
+  "checks": {
+    "migration15Applied": true,
+    "repositoryAuthority": true,
+    "fiveCrashStages": true,
+    "authorityRowsComplete": true,
+    "unknownChargeNoTaskNoRetry": true,
+    "sameTaskReconciliation": true,
+    "appendOnlyTriggers": true,
+    "exactLineageForeignKeys": true,
+    "appendOnlyMutationBlocked": true,
+    "populatedDownBlocked": true,
+    "backupNonEmpty": true,
+    "backupRestoreExact": true
+  },
+  "counts": {
+    "specs": 5,
+    "jobs": 5,
+    "intents": 5,
+    "tasks": 4,
+    "costs": 4,
+    "rights": 4,
+    "raw": 4,
+    "final": 4,
+    "staging": 8
+  },
+  "unknownCharge": {
+    "count": 1,
+    "tasks": 0,
+    "attempts": 1
+  },
+  "appendOnlyTriggerCount": 53,
+  "exactLineageForeignKeyCount": 11,
+  "backupSha256": "fe2a521bea836be09dea39b7414c6e64502da9416887b8574876234f2fbbcf30",
+  "commands": [
+    {
+      "command": [
+        "docker",
+        "run",
+        "--detach",
+        "--name",
+        "lumiclaw-sdd012-pg-17613",
+        "--env",
+        "POSTGRES_HOST_AUTH_METHOD=trust",
+        "--publish",
+        "127.0.0.1::5432",
+        "postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4"
+      ],
+      "startedAt": "2026-08-23T23:33:34.939Z",
+      "status": 0,
+      "stdout": "cb13c56221b11e50caf19d67a088361143e55f0234d3aa7a55e6226ed74f4d2a\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-At",
+        "-c",
+        "select 1"
+      ],
+      "startedAt": "2026-08-23T23:33:35.304Z",
+      "status": 2,
+      "stdout": "",
+      "stderr": "psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5432\" failed: No such file or directory\n\tIs the server running locally and accepting connections on that socket?\n"
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-At",
+        "-c",
+        "select 1"
+      ],
+      "startedAt": "2026-08-23T23:33:35.856Z",
+      "status": 2,
+      "stdout": "",
+      "stderr": "psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5432\" failed: No such file or directory\n\tIs the server running locally and accepting connections on that socket?\n"
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-At",
+        "-c",
+        "select 1"
+      ],
+      "startedAt": "2026-08-23T23:33:36.404Z",
+      "status": 2,
+      "stdout": "",
+      "stderr": "psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5432\" failed: No such file or directory\n\tIs the server running locally and accepting connections on that socket?\n"
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-At",
+        "-c",
+        "select 1"
+      ],
+      "startedAt": "2026-08-23T23:33:36.949Z",
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-At",
+        "-c",
+        "select 1"
+      ],
+      "startedAt": "2026-08-23T23:33:37.516Z",
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-At",
+        "-c",
+        "select 1"
+      ],
+      "startedAt": "2026-08-23T23:33:38.083Z",
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-At",
+        "-c",
+        "select 1"
+      ],
+      "startedAt": "2026-08-23T23:33:38.638Z",
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "port",
+        "lumiclaw-sdd012-pg-17613",
+        "5432/tcp"
+      ],
+      "startedAt": "2026-08-23T23:33:38.707Z",
+      "status": 0,
+      "stdout": "127.0.0.1:32794\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "createdb",
+        "-U",
+        "postgres",
+        "sdd012_repo"
+      ],
+      "startedAt": "2026-08-23T23:33:38.732Z",
+      "status": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "createdb",
+        "-U",
+        "postgres",
+        "sdd012_worker"
+      ],
+      "startedAt": "2026-08-23T23:33:38.808Z",
+      "status": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "npm",
+        "--workspace",
+        "@lumiclaw/db",
+        "run",
+        "migrate:up"
+      ],
+      "startedAt": "2026-08-23T23:33:38.873Z",
+      "status": 0,
+      "stdout": "AND raw_asset_id IS NOT NULL AND raw_asset_digest IS NOT NULL AND final_asset_id IS NOT NULL AND final_asset_digest IS NOT NULL AND profile_digest IS NOT NULL AND source_digest IS NOT NULL AND cost_receipt_digest IS NOT NULL AND rights_receipt_digest IS NOT NULL AND failure_code IS NULL) OR (state='FAILED' AND failure_code IS NOT NULL));\nCREATE TABLE \"media_secret_ticket_uses_v1\" (\n  \"ticket_digest\" char(64) PRIMARY KEY NOT NULL,\n  \"expires_at\" timestamptz NOT NULL,\n  \"consumed_at\" timestamptz NOT NULL\n);\nCREATE FUNCTION reject_sdd012_media_authority_mutation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'SDD012_APPEND_ONLY_MEDIA_AUTHORITY'; END $$;\nCREATE TRIGGER media_brand_snapshots_v1_immutable BEFORE UPDATE OR DELETE ON media_brand_snapshots_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_generation_specs_v2_immutable BEFORE UPDATE OR DELETE ON media_generation_specs_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_provider_submission_intents_v2_immutable BEFORE UPDATE OR DELETE ON media_provider_submission_intents_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_provider_task_receipts_v2_immutable BEFORE UPDATE OR DELETE ON media_provider_task_receipts_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_cost_receipts_v2_immutable BEFORE UPDATE OR DELETE ON media_cost_receipts_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_rights_receipts_v2_immutable BEFORE UPDATE OR DELETE ON media_rights_receipts_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_raw_assets_v2_immutable BEFORE UPDATE OR DELETE ON media_raw_assets_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_composition_specs_v1_immutable BEFORE UPDATE OR DELETE ON media_composition_specs_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_composited_assets_v2_immutable BEFORE UPDATE OR DELETE ON media_composited_assets_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER artifact_revisions_v4_immutable BEFORE UPDATE OR DELETE ON artifact_revisions_v4 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_set_items_v1_immutable BEFORE UPDATE OR DELETE ON media_set_items_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER artifact_audit_decisions_v4_immutable BEFORE UPDATE OR DELETE ON artifact_audit_decisions_v4 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER artifact_owner_decisions_v4_immutable BEFORE UPDATE OR DELETE ON artifact_owner_decisions_v4 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER manual_publish_packages_v4_immutable BEFORE UPDATE OR DELETE ON manual_publish_packages_v4 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER manual_publish_package_files_v4_immutable BEFORE UPDATE OR DELETE ON manual_publish_package_files_v4 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_invalidation_events_v1_immutable BEFORE UPDATE OR DELETE ON media_invalidation_events_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_idempotency_v2_immutable BEFORE UPDATE OR DELETE ON media_idempotency_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_provider_canary_receipts_v1_immutable BEFORE UPDATE OR DELETE ON media_provider_canary_receipts_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nINSERT INTO \"public\".\"pgmigrations\" (name, run_on) VALUES ('000015_xhs_governed_media_artifacts', NOW());\n\n\nMigrations complete!\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "npm",
+        "--workspace",
+        "@lumiclaw/db",
+        "run",
+        "migrate:up"
+      ],
+      "startedAt": "2026-08-23T23:33:39.327Z",
+      "status": 0,
+      "stdout": "AND raw_asset_id IS NOT NULL AND raw_asset_digest IS NOT NULL AND final_asset_id IS NOT NULL AND final_asset_digest IS NOT NULL AND profile_digest IS NOT NULL AND source_digest IS NOT NULL AND cost_receipt_digest IS NOT NULL AND rights_receipt_digest IS NOT NULL AND failure_code IS NULL) OR (state='FAILED' AND failure_code IS NOT NULL));\nCREATE TABLE \"media_secret_ticket_uses_v1\" (\n  \"ticket_digest\" char(64) PRIMARY KEY NOT NULL,\n  \"expires_at\" timestamptz NOT NULL,\n  \"consumed_at\" timestamptz NOT NULL\n);\nCREATE FUNCTION reject_sdd012_media_authority_mutation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'SDD012_APPEND_ONLY_MEDIA_AUTHORITY'; END $$;\nCREATE TRIGGER media_brand_snapshots_v1_immutable BEFORE UPDATE OR DELETE ON media_brand_snapshots_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_generation_specs_v2_immutable BEFORE UPDATE OR DELETE ON media_generation_specs_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_provider_submission_intents_v2_immutable BEFORE UPDATE OR DELETE ON media_provider_submission_intents_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_provider_task_receipts_v2_immutable BEFORE UPDATE OR DELETE ON media_provider_task_receipts_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_cost_receipts_v2_immutable BEFORE UPDATE OR DELETE ON media_cost_receipts_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_rights_receipts_v2_immutable BEFORE UPDATE OR DELETE ON media_rights_receipts_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_raw_assets_v2_immutable BEFORE UPDATE OR DELETE ON media_raw_assets_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_composition_specs_v1_immutable BEFORE UPDATE OR DELETE ON media_composition_specs_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_composited_assets_v2_immutable BEFORE UPDATE OR DELETE ON media_composited_assets_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER artifact_revisions_v4_immutable BEFORE UPDATE OR DELETE ON artifact_revisions_v4 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_set_items_v1_immutable BEFORE UPDATE OR DELETE ON media_set_items_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER artifact_audit_decisions_v4_immutable BEFORE UPDATE OR DELETE ON artifact_audit_decisions_v4 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER artifact_owner_decisions_v4_immutable BEFORE UPDATE OR DELETE ON artifact_owner_decisions_v4 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER manual_publish_packages_v4_immutable BEFORE UPDATE OR DELETE ON manual_publish_packages_v4 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER manual_publish_package_files_v4_immutable BEFORE UPDATE OR DELETE ON manual_publish_package_files_v4 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_invalidation_events_v1_immutable BEFORE UPDATE OR DELETE ON media_invalidation_events_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_idempotency_v2_immutable BEFORE UPDATE OR DELETE ON media_idempotency_v2 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nCREATE TRIGGER media_provider_canary_receipts_v1_immutable BEFORE UPDATE OR DELETE ON media_provider_canary_receipts_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\nINSERT INTO \"public\".\"pgmigrations\" (name, run_on) VALUES ('000015_xhs_governed_media_artifacts', NOW());\n\n\nMigrations complete!\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "sdd012_repo",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select count(*) from pgmigrations where name='000015_xhs_governed_media_artifacts'"
+      ],
+      "startedAt": "2026-08-23T23:33:39.715Z",
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "packages/db/src/media-artifact-repository.test.ts",
+        "--configLoader=runner"
+      ],
+      "startedAt": "2026-08-23T23:33:39.751Z",
+      "status": 0,
+      "stdout": "\n RUN  v4.1.10 <WORKTREE>\n\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  07:33:40\n   Duration  857ms (transform 129ms, setup 0ms, import 239ms, tests 559ms, environment 0ms)\n\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "npx",
+        "vitest",
+        "run",
+        "apps/mission-worker/src/media-worker.test.ts",
+        "--configLoader=runner"
+      ],
+      "startedAt": "2026-08-23T23:33:40.920Z",
+      "status": 0,
+      "stdout": "\n RUN  v4.1.10 <WORKTREE>\n\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  07:33:41\n   Duration  1.08s (transform 158ms, setup 0ms, import 303ms, tests 718ms, environment 0ms)\n\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "sdd012_worker",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select json_build_object('specs',(select count(*) from media_generation_specs_v2),'jobs',(select count(*) from media_generation_jobs_v2),'intents',(select count(*) from media_provider_submission_intents_v2),'tasks',(select count(*) from media_provider_task_receipts_v2),'costs',(select count(*) from media_cost_receipts_v2),'rights',(select count(*) from media_rights_receipts_v2),'raw',(select count(*) from media_raw_assets_v2),'final',(select count(*) from media_composited_assets_v2),'staging',(select count(*) from media_blob_staging_v1))::text"
+      ],
+      "startedAt": "2026-08-23T23:33:42.325Z",
+      "status": 0,
+      "stdout": "{\"specs\" : 5, \"jobs\" : 5, \"intents\" : 5, \"tasks\" : 4, \"costs\" : 4, \"rights\" : 4, \"raw\" : 4, \"final\" : 4, \"staging\" : 8}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "sdd012_worker",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select json_build_object('count',count(*),'tasks',count(provider_task_id),'attempts',max(attempt_count))::text from media_generation_jobs_v2 where state='UNKNOWN_CHARGE_STATE'"
+      ],
+      "startedAt": "2026-08-23T23:33:42.378Z",
+      "status": 0,
+      "stdout": "{\"count\" : 1, \"tasks\" : 0, \"attempts\" : 1}\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "sdd012_worker",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select count(*)=count(distinct provider_task_id) from media_generation_jobs_v2 where provider_task_id is not null"
+      ],
+      "startedAt": "2026-08-23T23:33:42.418Z",
+      "status": 0,
+      "stdout": "t\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "sdd012_worker",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select count(*) from pg_trigger where not tgisinternal and tgname like '%_immutable'"
+      ],
+      "startedAt": "2026-08-23T23:33:42.454Z",
+      "status": 0,
+      "stdout": "53\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "sdd012_worker",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('artifact_revisions_v4','media_set_items_v1','artifact_audit_decisions_v4','artifact_owner_decisions_v4','manual_publish_packages_v4')"
+      ],
+      "startedAt": "2026-08-23T23:33:42.493Z",
+      "status": 0,
+      "stdout": "11\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "sdd012_worker",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "update media_raw_assets_v2 set content_digest=repeat('0',64)"
+      ],
+      "startedAt": "2026-08-23T23:33:42.531Z",
+      "status": 1,
+      "stdout": "",
+      "stderr": "ERROR:  SDD012_APPEND_ONLY_MEDIA_AUTHORITY\nCONTEXT:  PL/pgSQL function reject_sdd012_media_authority_mutation() line 1 at RAISE\n"
+    },
+    {
+      "command": [
+        "npm",
+        "--workspace",
+        "@lumiclaw/db",
+        "run",
+        "migrate:down",
+        "--",
+        "1"
+      ],
+      "startedAt": "2026-08-23T23:33:42.569Z",
+      "status": 1,
+      "stdout": "\n> @lumiclaw/db@0.1.0-m1 migrate:down\n> node-pg-migrate down -m ${MIGRATIONS_DIR:-migrations} --database-url-var DATABASE_URL 1\n\n> Migrating files:\n> - 000015_xhs_governed_media_artifacts\n### MIGRATION 000015_xhs_governed_media_artifacts (DOWN) ###\nDO $$ BEGIN IF (SELECT (SELECT count(*) FROM media_generation_specs_v2)+(SELECT count(*) FROM media_generation_jobs_v2)+(SELECT count(*) FROM media_raw_assets_v2)+(SELECT count(*) FROM media_composited_assets_v2)+(SELECT count(*) FROM artifact_revisions_v4)+(SELECT count(*) FROM manual_publish_packages_v4)) > 0 THEN RAISE EXCEPTION 'SDD012_DOWN_BLOCKED_EXPORT_MEDIA_AND_OWNER_DECISION_REQUIRED'; END IF; END $$;\nDROP TRIGGER IF EXISTS media_brand_snapshots_v1_immutable ON media_brand_snapshots_v1;\nDROP TRIGGER IF EXISTS media_generation_specs_v2_immutable ON media_generation_specs_v2;\nDROP TRIGGER IF EXISTS media_provider_submission_intents_v2_immutable ON media_provider_submission_intents_v2;\nDROP TRIGGER IF EXISTS media_provider_task_receipts_v2_immutable ON media_provider_task_receipts_v2;\nDROP TRIGGER IF EXISTS media_cost_receipts_v2_immutable ON media_cost_receipts_v2;\nDROP TRIGGER IF EXISTS media_rights_receipts_v2_immutable ON media_rights_receipts_v2;\nDROP TRIGGER IF EXISTS media_raw_assets_v2_immutable ON media_raw_assets_v2;\nDROP TRIGGER IF EXISTS media_composition_specs_v1_immutable ON media_composition_specs_v1;\nDROP TRIGGER IF EXISTS media_composited_assets_v2_immutable ON media_composited_assets_v2;\nDROP TRIGGER IF EXISTS artifact_revisions_v4_immutable ON artifact_revisions_v4;\nDROP TRIGGER IF EXISTS media_set_items_v1_immutable ON media_set_items_v1;\nDROP TRIGGER IF EXISTS artifact_audit_decisions_v4_immutable ON artifact_audit_decisions_v4;\nDROP TRIGGER IF EXISTS artifact_owner_decisions_v4_immutable ON artifact_owner_decisions_v4;\nDROP TRIGGER IF EXISTS manual_publish_packages_v4_immutable ON manual_publish_packages_v4;\nDROP TRIGGER IF EXISTS manual_publish_package_files_v4_immutable ON manual_publish_package_files_v4;\nDROP TRIGGER IF EXISTS media_invalidation_events_v1_immutable ON media_invalidation_events_v1;\nDROP TRIGGER IF EXISTS media_idempotency_v2_immutable ON media_idempotency_v2;\nDROP TRIGGER IF EXISTS media_provider_canary_receipts_v1_immutable ON media_provider_canary_receipts_v1;\nDROP FUNCTION IF EXISTS reject_sdd012_media_authority_mutation();\nDROP TABLE \"media_secret_ticket_uses_v1\";\nDROP TABLE \"media_provider_canary_receipts_v1\";\nDROP TABLE \"media_idempotency_v2\";\nDROP TABLE \"media_invalidation_events_v1\";\nDROP TABLE \"manual_publish_package_files_v4\";\nDROP TABLE \"manual_publish_packages_v4\";\nDROP TABLE \"artifact_owner_decisions_v4\";\nDROP TABLE \"artifact_audit_decisions_v4\";\nDROP TABLE \"media_set_items_v1\";\nDROP TABLE \"artifact_revisions_v4\";\nDROP TABLE \"media_composited_assets_v2\";\nDROP TABLE \"media_composition_specs_v1\";\nDROP TABLE \"media_raw_assets_v2\";\nDROP TABLE \"media_blob_staging_v1\";\nDROP TABLE \"media_rights_receipts_v2\";\nDROP TABLE \"media_cost_receipts_v2\";\nDROP TABLE \"media_provider_task_receipts_v2\";\nDROP TABLE \"media_provider_submission_intents_v2\";\nDROP TABLE \"media_generation_jobs_v2\";\nDROP TABLE \"media_generation_specs_v2\";\nDROP TABLE \"media_brand_snapshots_v1\";\nALTER TABLE \"knowledge_profile_revisions\" DROP CONSTRAINT \"knowledge_profile_exact_digest_unique_sdd012\";\nALTER TABLE \"knowledge_snapshots\" DROP CONSTRAINT \"knowledge_snapshot_exact_digest_unique_sdd012\";\nDELETE FROM \"public\".\"pgmigrations\" WHERE name='000015_xhs_governed_media_artifacts';\n\n\n",
+      "stderr": "Error executing:\nDO $$ BEGIN IF (SELECT (SELECT count(*) FROM media_generation_specs_v2)+(SELECT count(*) FROM media_generation_jobs_v2)+(SELECT count(*) FROM media_raw_assets_v2)+(SELECT count(*) FROM media_composited_assets_v2)+(SELECT count(*) FROM artifact_revisions_v4)+(SELECT count(*) FROM manual_publish_packages_v4)) > 0 THEN RAISE EXCEPTION 'SDD012_DOWN_BLOCKED_EXPORT_MEDIA_AND_OWNER_DECISION_REQUIRED'; END IF; END $$;\nerror: SDD012_DOWN_BLOCKED_EXPORT_MEDIA_AND_OWNER_DECISION_REQUIRED\n\n> Rolling back attempted migration ...\nerror: SDD012_DOWN_BLOCKED_EXPORT_MEDIA_AND_OWNER_DECISION_REQUIRED\n    at <WORKTREE>/node_modules/pg/lib/client.js:652:17\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Object.query (file://<WORKTREE>/node_modules/node-pg-migrate/dist/bundle/index.js:3392:11)\n    at async runner (file://<WORKTREE>/node_modules/node-pg-migrate/dist/bundle/index.js:3590:5) {\n  length: 175,\n  severity: 'ERROR',\n  code: 'P0001',\n  detail: undefined,\n  hint: undefined,\n  position: undefined,\n  internalPosition: undefined,\n  internalQuery: undefined,\n  where: 'PL/pgSQL function inline_code_block line 1 at RAISE',\n  schema: undefined,\n  table: undefined,\n  column: undefined,\n  dataType: undefined,\n  constraint: undefined,\n  file: 'pl_exec.c',\n  line: '3897',\n  routine: 'exec_stmt_raise'\n}\nnpm error Lifecycle script `migrate:down` failed with error:\nnpm error code 1\nnpm error path <WORKTREE>/packages/db\nnpm error workspace @lumiclaw/db@0.1.0-m1\nnpm error location <WORKTREE>/packages/db\nnpm error command failed\nnpm error command sh -c node-pg-migrate down -m ${MIGRATIONS_DIR:-migrations} --database-url-var DATABASE_URL 1\n"
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "pg_dump",
+        "-U",
+        "postgres",
+        "--format=custom",
+        "sdd012_worker"
+      ],
+      "startedAt": "2026-08-23T23:33:42.770Z",
+      "status": 0,
+      "stdout": "<352878 binary bytes>",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "createdb",
+        "-U",
+        "postgres",
+        "sdd012_restore"
+      ],
+      "startedAt": "2026-08-23T23:33:42.888Z",
+      "status": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "-i",
+        "lumiclaw-sdd012-pg-17613",
+        "pg_restore",
+        "-U",
+        "postgres",
+        "--no-owner",
+        "--dbname",
+        "sdd012_restore"
+      ],
+      "startedAt": "2026-08-23T23:33:42.950Z",
+      "status": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-17613",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "sdd012_restore",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select json_build_object('specs',(select count(*) from media_generation_specs_v2),'jobs',(select count(*) from media_generation_jobs_v2),'intents',(select count(*) from media_provider_submission_intents_v2),'tasks',(select count(*) from media_provider_task_receipts_v2),'costs',(select count(*) from media_cost_receipts_v2),'rights',(select count(*) from media_rights_receipts_v2),'raw',(select count(*) from media_raw_assets_v2),'final',(select count(*) from media_composited_assets_v2),'staging',(select count(*) from media_blob_staging_v1))::text"
+      ],
+      "startedAt": "2026-08-23T23:33:43.659Z",
+      "status": 0,
+      "stdout": "{\"specs\" : 5, \"jobs\" : 5, \"intents\" : 5, \"tasks\" : 4, \"costs\" : 4, \"rights\" : 4, \"raw\" : 4, \"final\" : 4, \"staging\" : 8}\n",
+      "stderr": ""
+    }
+  ]
+}

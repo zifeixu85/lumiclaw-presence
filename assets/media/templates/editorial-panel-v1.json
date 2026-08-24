@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "editorial-panel-v1",
+  "canvas": {"width": 1080, "height": 1440},
+  "safeArea": {"left": 96, "right": 96, "top": 120, "bottom": 120},
+  "textInset": {"left": 48, "right": 48, "top": 64, "bottom": 64},
+  "panel": {"radius": 36, "opacity": 1},
+  "defaultColors": {"foreground": "#ffffff", "panel": "#132238", "accent": "#ed6a5a"},
+  "license": "Apache-2.0",
+  "source": "LumiClaw original"
+}

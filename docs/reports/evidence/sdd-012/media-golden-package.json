@@ -1,0 +1,177 @@
+{
+  "schemaVersion": 2,
+  "sdd": "SDD-012",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "artifactKind": "PUBLIC_SAFE_MEDIA_ENGINEERING_EVIDENCE_ARCHIVE",
+  "result": "PASS",
+  "generatedAt": "2026-08-23T23:33:25.303Z",
+  "maturity": "CONTROLLED_FIXTURE",
+  "agentTeamsExecuted": false,
+  "authoritativeForOperations": false,
+  "authoritativePackageGenerated": false,
+  "nextState": "WAITING_FOR_SDD_007_ACCEPTED_AUDITOR_RECEIPT",
+  "providerEvidence": false,
+  "externalActionCount": 0,
+  "profile": {
+    "width": 1080,
+    "height": 1440,
+    "aspectRatio": "3:4",
+    "mimes": [
+      "image/png",
+      "image/jpeg",
+      "image/webp"
+    ],
+    "maxBytes": 10485760
+  },
+  "font": {
+    "path": "assets/media/fonts/NotoSansSC-Regular.otf",
+    "family": "Noto Sans SC",
+    "version": "2.004",
+    "sha256": "faa6c9df652116dde789d351359f3d7e5d2285a2b2a1f04a2d7244df706d5ea9",
+    "license": "OFL-1.1",
+    "source": "https://github.com/notofonts/noto-cjk/tree/Sans2.004",
+    "sourceCommit": "523d033d6cb47f4a80c58a35753646f5c3608a78",
+    "fallbackOrder": [
+      "Noto Sans SC Regular 2.004"
+    ],
+    "systemFallback": false,
+    "remoteFallback": false
+  },
+  "checks": {
+    "threeRealFinalImages": true,
+    "orderedCoverAndAlt": true,
+    "rawFinalSeparated": true,
+    "actualCostRightsBound": true,
+    "snapshotAndCompositionBound": true,
+    "controlledA5FixtureExplicit": true,
+    "producerAuditorSeparated": true,
+    "operationalApprovalBlocked": true,
+    "authoritativePackageBlocked": true,
+    "engineeringArchiveBinaryFiles": true,
+    "manifestDigestPresent": true,
+    "privatePromptExcluded": true,
+    "rawExcludedFromArchive": true,
+    "deterministicZip": true,
+    "tamperBlocked": true,
+    "notOperationalPackage": true
+  },
+  "digests": {
+    "specs": [
+      "3f973cbeea3362fffd5523954e900c2e287e07973095cb7d9a525e1fdb999fb6",
+      "8e73c474dbe205cb592ea8e0ec19beb8b236bec5a5678b36c291bf5924cd334c",
+      "af277c9d2a74987518c876c91db0c6410b6d6a75862ae72c6542faa5932b2adf"
+    ],
+    "raw": [
+      "c856864dcabcf6514c73f3bb7ae4e39716bb4a9c128ec501290b3b621ba09d12",
+      "0f06debbdc9ad2ed10e8d05d101c604229c47ad7ee8b4d5cb68eae63dd42db42",
+      "b18aa2cea3e1664c129f1587aa967ccf2c9c4ba7636c76048bf0ea3f1d442fc1"
+    ],
+    "final": [
+      "7fe9893c0f4e11821958fe88da1a6bd095711c2d5239e07bb0a3fe0ee48e297c",
+      "249804556d418286181d1c3b322e34ee0afe05a6e0283f5bacd789455a718aad",
+      "d558b6faeb736463efb574b6ec0eb4b36b45711552457b58a3c461c5d90681af"
+    ],
+    "composition": [
+      "25983228d20ea91f9f095e7a71bc2d4ffbb8857bc213a818b7e5f2c47127c1d0",
+      "d6610e0e7f930d9a2d00794a10815ccf5fb07ca9ff050ff442ef3fc7fe396cf0",
+      "9ac25cef8524a7103b4bedea26040f686158d0b2b6fa1e527799ddd2f9d5e57b"
+    ],
+    "mediaSet": "ac11388c7563669854531a81c6e152a13479cbc4cdcddccf6a4af3ee794c04f9",
+    "revision": "0865ec39920609f5321d64c353952df3c1a57c16f2f946d0bf6276c74b7a7e59",
+    "controlledAudit": "8c82e63612bee1cf6bfc65667a5627941e83601b6c3a652823e2fa69160c4c92",
+    "ownerDecision": null,
+    "mediaManifest": "423f6f53269f0734cd93ed9dfdb3a6ee0479cb380eaf6d1e80580bc7729256dd",
+    "engineeringManifest": "ab5f76e04b422d1424dcf3d23c7652d3bffa1efebc19335919c783924299cf02",
+    "engineeringArchiveZip": "784aa1c1be5d7067fed60a35f30cdb1a0c0274f99abc841fb3cbf1145360d9db"
+  },
+  "files": [
+    {
+      "fileName": "image-specs.json",
+      "bytes": 959,
+      "sha256": "4da46660b29fa10594adbe1771953fcc4946ca054e0db6f2fd18f1dd38752aa4"
+    },
+    {
+      "fileName": "media-lineage.json",
+      "bytes": 5438,
+      "sha256": "e0e660150b1333ab23e9595d598418b9f2cf3b8c890012f6189362cab6acd97a"
+    },
+    {
+      "fileName": "image-01.png",
+      "bytes": 39064,
+      "sha256": "7fe9893c0f4e11821958fe88da1a6bd095711c2d5239e07bb0a3fe0ee48e297c"
+    },
+    {
+      "fileName": "image-02.png",
+      "bytes": 39251,
+      "sha256": "249804556d418286181d1c3b322e34ee0afe05a6e0283f5bacd789455a718aad"
+    },
+    {
+      "fileName": "image-03.png",
+      "bytes": 39342,
+      "sha256": "d558b6faeb736463efb574b6ec0eb4b36b45711552457b58a3c461c5d90681af"
+    },
+    {
+      "fileName": "manifest.json",
+      "bytes": 1293,
+      "sha256": "0369b7dbb7342a048dada7be62d6b68fc8d9a740e9abe5755171f85e592f56ec"
+    },
+    {
+      "fileName": "media-manifest.json",
+      "bytes": 4579,
+      "sha256": "c525deb15c5156c7226a0cd116c16b6ab4d3ca731d8a3f1e193f9ce04a8b6deb"
+    }
+  ],
+  "layouts": [
+    {
+      "safeArea": {
+        "left": 96,
+        "right": 96,
+        "top": 120,
+        "bottom": 120
+      },
+      "fontSizePx": 72,
+      "lineCount": 1,
+      "contrastRatio": 15.986538979856798,
+      "glyphBounds": {
+        "left": 144,
+        "right": 936,
+        "top": 168,
+        "bottom": 274
+      }
+    },
+    {
+      "safeArea": {
+        "left": 96,
+        "right": 96,
+        "top": 120,
+        "bottom": 120
+      },
+      "fontSizePx": 72,
+      "lineCount": 1,
+      "contrastRatio": 15.986538979856798,
+      "glyphBounds": {
+        "left": 144,
+        "right": 936,
+        "top": 168,
+        "bottom": 274
+      }
+    },
+    {
+      "safeArea": {
+        "left": 96,
+        "right": 96,
+        "top": 120,
+        "bottom": 120
+      },
+      "fontSizePx": 72,
+      "lineCount": 1,
+      "contrastRatio": 15.986538979856798,
+      "glyphBounds": {
+        "left": 144,
+        "right": 936,
+        "top": 168,
+        "bottom": 274
+      }
+    }
+  ]
+}

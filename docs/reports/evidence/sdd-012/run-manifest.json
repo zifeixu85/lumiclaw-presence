@@ -1,0 +1,126 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-012",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS_WITH_OWNER_UAT_PENDING",
+  "generatedAt": "2026-08-23T23:45:24.672Z",
+  "source": {
+    "base": "d3f48331629a3a1e567b0ae4347c16d4bc90f16b",
+    "headAtRun": "02e3d161804179f0e1bd20b0ce1f1c300aa550df",
+    "branch": "codex/sdd-012-xhs-media-artifact-integration",
+    "workingTreeDirty": true
+  },
+  "claims": {
+    "maturity": "ENGINEERING_BLOCKED_PENDING_RUNTIME_AUDIT",
+    "ownerUat": "PENDING",
+    "realProviderCanary": "NOT_RUN_NO_KEY",
+    "controlledFakeEngineering": true,
+    "controlledAuditEvidence": "CONTROLLED_FIXTURE",
+    "agentTeamsAuditExecuted": false,
+    "authoritativeAuditReceipt": false,
+    "authoritativePackageGenerated": false,
+    "nextState": "WAITING_FOR_SDD_007_ACCEPTED_AUDITOR_RECEIPT",
+    "providerEvidence": false,
+    "customerEvidence": false,
+    "businessOutcome": false,
+    "productionReady": false,
+    "platformCompliance": false,
+    "externalActionCount": 0
+  },
+  "evidenceFiles": [
+    {
+      "path": "docs/reports/evidence/sdd-012/media-golden-package.json",
+      "bytes": 5430,
+      "sha256": "d2c4cdc02541ab2b07c3237f6ee6a8ab7f560c9c538033170b1b3c7a006feaf4"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/postgres-verification.json",
+      "bytes": 27064,
+      "sha256": "810c3be2a775fbc6b5e644e095104f403d0a47b14accb7356f16bd75e43e8222"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/fault-security-compositor-matrix.json",
+      "bytes": 4846,
+      "sha256": "b375d166f619a4354174fd0cd8b4317d063e573a12a786379acfcb61a3de707d"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/browser-verification.json",
+      "bytes": 2529,
+      "sha256": "841f313785211dc676dbd7c7174eff10b6e304a82eac271cffe5366dea3588a5"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/compose-verification.json",
+      "bytes": 98633,
+      "sha256": "455135da4e94fc8aa6ccdfa1bca2058fbb059efb6a31272b9887f64c01b0aa89"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/real-provider-canary.json",
+      "bytes": 422,
+      "sha256": "57039d399723b79ed0615b6ebd230251bdd92a935e505a3541bd26528b7dc3ce"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/DEPENDENCY-LICENSE-REVIEW.md",
+      "bytes": 2824,
+      "sha256": "9ad36cc2ce41b9b2a48617082e2d59259a2c67f3247a7f01437aca4cd7e9f19a"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/01-governed-final-preview-zh.png",
+      "bytes": 198825,
+      "sha256": "d20f682fc769d9ae146f52cadd90513e3b81215a60d6af2cc12517545aa40c5a"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/02-controlled-audit-blocked-zh.png",
+      "bytes": 169906,
+      "sha256": "924a2351374a0658a9324f2483f8b94a28101fd02107d06904ba56692b644d09"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/03-controlled-audit-blocked-en.png",
+      "bytes": 174723,
+      "sha256": "591fc190056862ede90cd339bbc40e9cf7a8a641706bdfc4d6a91e0e3c0ae6df"
+    },
+    {
+      "path": "docs/reports/evidence/sdd-012/04-desktop-gate.png",
+      "bytes": 33572,
+      "sha256": "d71c5c0e25413be33a16c212c977671de56600839ad6973d3367b663de7deeb1"
+    }
+  ],
+  "assetFiles": [
+    {
+      "path": "assets/media/ASSET-MANIFEST.json",
+      "bytes": 1304,
+      "sha256": "e36adbdaa10223e5010b3e06aa49fa13a10ebc3b4372a4caf0416e1c8afe1384"
+    },
+    {
+      "path": "assets/media/fonts/NotoSansSC-Regular.otf",
+      "bytes": 8331336,
+      "sha256": "faa6c9df652116dde789d351359f3d7e5d2285a2b2a1f04a2d7244df706d5ea9"
+    },
+    {
+      "path": "assets/media/fonts/OFL-NotoSansCJK.txt",
+      "bytes": 4301,
+      "sha256": "6a73f9541c2de74158c0e7cf6b0a58ef774f5a780bf191f2d7ec9cc53efe2bf2"
+    },
+    {
+      "path": "assets/media/templates/editorial-panel-v1.json",
+      "bytes": 423,
+      "sha256": "933763ac0008ba01254c44a2f8b73fa654ac3e36a872b02b47fa30ab79e6e5ea"
+    },
+    {
+      "path": "assets/media/logo/lumiclaw-mark-v1.svg",
+      "bytes": 400,
+      "sha256": "377c131af75bc8f108f6ef369f5e957f32f5d77a78238518e0ab178d1ac63c5f"
+    }
+  ],
+  "ephemeralCiEvidence": [
+    {
+      "path": ".evidence/sdd-012/license-inventory.json",
+      "bytes": 341828,
+      "sha256": "f31cec5e0e626b6403f31160f892c46e3a22361457d5a1188068fa2239e14cf2"
+    },
+    {
+      "path": ".evidence/sdd-012/sbom.cdx.json",
+      "bytes": 1451601,
+      "sha256": "8e231ae4586522c551732d3105c4f8b65b991780c9a1871a64ce3bffe7e1b869"
+    }
+  ]
+}

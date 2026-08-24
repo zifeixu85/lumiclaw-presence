@@ -5,6 +5,7 @@ WORKDIR /app
 COPY package.json package-lock.json .npmrc ./
 COPY apps ./apps
 COPY packages ./packages
+COPY assets ./assets
 COPY skills ./skills
 COPY scripts ./scripts
 COPY tsconfig.base.json eslint.config.mjs vitest.config.ts ./

@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-012",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "generatedAt": "2026-08-23T23:33:22.756Z",
+  "command": [
+    "npx",
+    "vitest",
+    "run",
+    "packages/domain/src/media-artifact.test.ts",
+    "packages/providers/src/media-integration.test.ts",
+    "scripts/media-provider-secret-cli.test.ts",
+    "--configLoader=runner",
+    "--reporter=json"
+  ],
+  "testFiles": [
+    "packages/domain/src/media-artifact.test.ts",
+    "packages/providers/src/media-integration.test.ts",
+    "scripts/media-provider-secret-cli.test.ts"
+  ],
+  "tests": {
+    "total": 29,
+    "passed": 29,
+    "failed": 0,
+    "pending": 0
+  },
+  "matrix": {
+    "providerNeutralAndUnknownCharge": [
+      "SDD-012 provider-neutral media contracts > pins the exact XHS delivery profile without a provider brand in core semantics",
+      "SDD-012 provider-neutral media contracts > rejects secret-shaped prompts, empty alt text, wrong dimensions and non-contiguous media sets",
+      "SDD-012 provider-neutral media contracts > persists submission intent before the billable call and fails closed on unknown create outcome",
+      "SDD-012 provider-neutral media contracts > binds media tickets to issuer, signature, current fingerprint, time and one-shot authority",
+      "SDD-012 provider-neutral media contracts > persists submission intent before the billable call and fails closed on unknown create outcome",
+      "real adapter and archive boundary > submits n=1 exact size with prompt rewrite disabled and maps timeout-before-task-id to UNKNOWN",
+      "real adapter and archive boundary > polls the same task and does not expose raw result URLs in observations after ingestion"
+    ],
+    "secureDownloaderAndBlob": [
+      "controlled fake and secure media ingest > rejects empty bytes before Blob authority",
+      "controlled fake and secure media ingest > rejects html bytes before Blob authority",
+      "controlled fake and secure media ingest > rejects svg bytes before Blob authority",
+      "controlled fake and secure media ingest > blocks credentials, HTTP and private addresses, detects DNS drift, and pins the reviewed transport address",
+      "controlled fake and secure media ingest > follows only bounded safe redirects, verifies exact bytes, and persists a content-addressed Blob"
+    ],
+    "deterministicCompositor": [
+      "pinned deterministic Chinese compositor > uses a reviewed, content-addressed OFL font rather than a system/CDN font",
+      "pinned deterministic Chinese compositor > renders exact overlay deterministically inside safe area with >=4.5:1 contrast and strips metadata",
+      "pinned deterministic Chinese compositor > fails closed for emoji",
+      "pinned deterministic Chinese compositor > fails closed for missing glyph",
+      "pinned deterministic Chinese compositor > fails closed for overflow"
+    ],
+    "governanceAndTamper": [
+      "SDD-012 exact composition, governance and binary package > requires an exact Owner NO_OVERLAY decision and still creates separate raw/final lineage",
+      "SDD-012 exact composition, governance and binary package > records only an explicit controlled A5 fixture and never promotes it to operational approval or packaging",
+      "SDD-012 exact composition, governance and binary package > invalidates audit, decision and package lineage for MEDIA_BRAND_SNAPSHOT_CHANGED",
+      "SDD-012 exact composition, governance and binary package > invalidates audit, decision and package lineage for MEDIA_KNOWLEDGE_SNAPSHOT_CHANGED",
+      "SDD-012 exact composition, governance and binary package > invalidates audit, decision and package lineage for MEDIA_COMPOSITION_CHANGED",
+      "SDD-012 exact composition, governance and binary package > invalidates audit, decision and package lineage for MEDIA_TAMPER_DETECTED",
+      "real adapter and archive boundary > builds a deterministic binary ZIP and rejects digest mismatches"
+    ],
+    "isolatedSecretGate": [
+      "terminal-only isolated media Provider Secret gate > writes 0700/0600 but remains configured-without-canary and never returns the key",
+      "terminal-only isolated media Provider Secret gate > rejects symlink roots/files and unsafe existing file modes instead of following or replacing them",
+      "terminal-only isolated media Provider Secret gate > does not accept MODEL_PROVIDER scope as media readiness and removes only its exact media key",
+      "terminal-only isolated media Provider Secret gate > does not accept MODEL_PROVIDER scope as media readiness and removes only its exact media key",
+      "terminal-only isolated media Provider Secret gate > rejects symlink roots/files and unsafe existing file modes instead of following or replacing them"
+    ]
+  },
+  "claims": {
+    "providerEvidence": false,
+    "externalActionCount": 0
+  }
+}

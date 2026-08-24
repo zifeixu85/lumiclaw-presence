@@ -1,0 +1,4 @@
+services:
+  mission-worker:
+    environment:
+      MEDIA_WORKER_MODE: CONTROLLED_FAKE

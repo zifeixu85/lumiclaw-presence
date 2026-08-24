@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "sdd": "SDD-012",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PENDING",
+  "status": "NOT_RUN_NO_KEY",
+  "reason": "Owner media-provider Secret and approved spend were not provided to this Executor.",
+  "providerEvidence": false,
+  "ownerVisualUat": "PENDING",
+  "secretCaptured": false,
+  "signedUrlCaptured": false,
+  "rawProviderBodyCaptured": false,
+  "externalActionCount": 0
+}

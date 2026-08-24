@@ -92,8 +92,8 @@ SDD-012 是 SDD-011 的硬前置：在本规格实施、真实 Provider Canary �
 5. Worker 从同一 provider task 恢复，结果出现后立即流式下载到 project-scoped staging，校验 HTTPS/redirect/大小/magic/MIME/exact 1080×1440 解码尺寸，对 exact downloaded bytes 计算 digest 并原子写入 access-controlled 内容寻址 Blob，作为不可变 provider 原始图。metadata/EXIF 出现不允许字段时 raw asset 进入 quarantine；不得静默改写后仍冒充 exact provider 原图。
 6. 系统用 pinned compositor/profile/font assets，把 exact `overlayCopy` 渲染到原始图；模板、品牌色与 Logo 必须来自 exact approved Brand/Knowledge snapshot。排版、缺字、emoji、对比度或 snapshot binding 不合格时 fail closed。组合输出再次解码/hash/Blob 持久化；只有这个最终 digest（或显式 `NO_OVERLAY` 的最终 lineage record）能进入 Audit/approval/package。
 7. 所有 positions ready 后，Owner 预览完整 carousel、逐图查看 exact prompt/composition/provenance/rights/cost/alt text，并选择“绑定此组图片”。系统创建 child XHS ArtifactRevision v4，而不是修改原 revision。
-8. Independent Auditor 对 combined revision 审校。FAIL/ESCALATE 阻止 Owner approve/package；重新生成某一位置、改 `overlayCopy` 或切换 Brand/Knowledge snapshot 都创建新 asset lineage 和 new combined revision，旧链全部 invalidated。
-9. exact Audit PASS 后 Owner 批准 combined revision，生成包含真实组合图片文件、`media-manifest.json` 和 exact manifest digest 的 ManualPublishPackage；可下载单图或完整包。
+8. Independent Auditor 对 combined revision 审校。权威 Audit 必须来自 SDD-007 exact accepted A5 Auditor task/output receipt；浏览器不能提交 Auditor identity 或自报 AgentTeams receipt。受控工程 fixture 只能记录 `evidenceMaturity=CONTROLLED_FIXTURE`、`agentTeamsExecuted=false`、`authoritativeForOperations=false`，不得解锁 Owner approve/package。FAIL/ESCALATE 阻止 Owner approve/package；重新生成某一位置、改 `overlayCopy` 或切换 Brand/Knowledge snapshot 都创建新 asset lineage 和 new combined revision，旧链全部 invalidated。
+9. 只有 exact accepted runtime Audit PASS 后 Owner 才能批准 combined revision，并生成包含真实组合图片文件、`media-manifest.json` 和 exact manifest digest 的 ManualPublishPackage。当前 SDD-012 未接 SDD-007 Auditor receipt authority，故真实运营批准与包保持 `BLOCKED/PLANNED`；public-safe controlled evidence archive 不是 ManualPublishPackage。
 10. 打开官方发布页仍只进入人工交接。复制、下载、刷新、重启、打开页面或 Owner 自报均保持 `UNVERIFIED_EXTERNAL_STATE`。
 
 必须可见的稳定状态：
@@ -143,6 +143,8 @@ DeterministicMediaCompositor
 - Secret 只由交互式 terminal 无回显读取，经 0600 临时文件/Compose Secret 或等价 broker 进入 adapter；
 - Secret 不进入 browser field/network payload/bundle、普通 env、CLI args、Git、logs、prompt/prompt evidence、trace、business tables、PG dump、Blob、package 或 public evidence；
 - API 只返回 `configured/fingerprint/updatedAt/purpose/profileMaturity`；没有 set/read secret endpoint。
+- 配置 Key 只表示 `SECRET_CONFIGURED/STARTING`，`providerEvidence=false`。`REAL_PROVIDER_CANARY_READY` 只能由 PostgreSQL 中 owner-scoped、fingerprint-matched、未过期的 live canary PASS receipt 派生；读取时必须复核同一 Provider task、真实 raw/final Blob bytes、profile/source/cost/rights lineage。failed/expired/缺 receipt/重启/Blob 缺失均为 `DEGRADED | STALE | NOT_RUN`，不得从 adapter class 或 worker mode 推断成功。
+- Media ticket 使用 v2 authority：broker issuer、当前 Secret fingerprint、purpose/scope、issuedAt/expiry、nonce digest、canonical digest 和 HMAC signature 全部绑定；one-use 消费记录持久化于 PostgreSQL，使伪造、未来签发、过期和进程重启 replay fail closed。
 
 SDD-011 的 real DeepSeek 与 real media provider 因此是两个独立 conditional-live gate，互相不能冒充或补足。
 
@@ -169,7 +171,7 @@ SDD-011 的 real DeepSeek 与 real media provider 因此是两个独立 conditio
 
 Blob key 由 bytes SHA-256 决定；同 digest bytes 可去重，但业务 lineage、position、rights/cost receipt 与 revision binding 不能合并。临时 URL、provider CDN object 或浏览器 object URL 不能成为 `blobRef`。
 
-下载器必须：只接受 adapter-authorized HTTPS result；限制 redirect 次数并阻止 credentials、内网/link-local/loopback 与 DNS rebinding；流式限制 `bytes > 0 && bytes <= 10 MiB`；核对 `Content-Length`（若有）、magic、declared MIME、decoder MIME、exact dimensions；拒绝 empty body、SVG/HTML/polyglot/解码炸弹；对 exact downloaded bytes 先 hash/atomic Blob，再扫描 metadata/EXIF。raw Blob 只在 Owner boundary 显示安全解码 preview，不进入 package；不允许 metadata 使其 quarantine。compositor 的 final encoder 必须清除 metadata 并重新 hash。任何 normalizer/decoder 依赖需在实现 SDD 固定版本、license、NOTICE、漏洞和 source-offer 义务；本规格不预选新依赖。
+下载器必须：只接受 adapter-authorized HTTPS result；限制 redirect 次数并阻止 credentials、内网/link-local/loopback；每个 hop 重做 DNS 审查、检测同 host 地址集合漂移，并把实际 TLS socket 的 lookup 固定到已审查地址，同时保留原 hostname/SNI/证书校验，使 DNS rebinding 不能把已授权请求切换到未审查地址；流式限制 `bytes > 0 && bytes <= 10 MiB`；核对 `Content-Length`（若有）、magic、declared MIME、decoder MIME、exact dimensions；拒绝 empty body、SVG/HTML/polyglot/解码炸弹；对 exact downloaded bytes 先 hash/atomic Blob，再扫描 metadata/EXIF。raw Blob 只在 Owner boundary 显示安全解码 preview，不进入 package；不允许 metadata 使其 quarantine。compositor 的 final encoder 必须清除 metadata 并重新 hash。任何 normalizer/decoder 依赖需在实现 SDD 固定版本、license、NOTICE、漏洞和 source-offer 义务；本规格不预选新依赖。
 
 `MediaCompositionSpec v1` 是 immutable、可摘要的 exact contract：
 
@@ -190,6 +192,7 @@ MediaCompositionSpec {
 - overlayCopy 与背景的 computed contrast ratio 必须全字形区域至少 `4.5:1`；需要底板/描边时其参数属于 exact template/profile digest。品牌色不得为满足对比度而被静默替换；不满足即 fail closed；
 - 字体只允许 repository/vendor-lock 中 exact version + SHA-256 + license 的字体资产和固定顺序 fallback。缺字按该顺序确定性选择；全部缺失时 `MEDIA_GLYPH_MISSING`。首期 overlay 不支持 emoji/color-font，发现 emoji code point 返回 `MEDIA_EMOJI_UNSUPPORTED`；不得交给 OS 字体或 tofu 静默兜底；
 - Logo 必须是 exact approved snapshot 授权的 content-addressed asset，保持比例，不拉伸、不超 safe area；模板、品牌色、Logo 若来自知识库，必须同时绑定 exact approved `BrandSnapshot` 与 `AuthoritativeKnowledgeSnapshot`。任一 snapshot 未批准、digest 不匹配、过期或改变都阻止 composition/bind，并使已有 media revision stale；
+- 首期没有独立 Brand 服务时，BrandSnapshot 的最小权威映射是 owner-scoped exact `APPROVED` KnowledgeSnapshot 所绑定的唯一 `ORGANIZATION` profile revision；系统以 Organization id/digest、组织名、品牌名、KnowledgeSnapshot id/digest 与其真实 `approvedAt` 确定性派生并持久化 BrandSnapshot。KnowledgeSnapshot 必须由 exact Owner 批准、无 gap，所有 source/profile bindings 与 PostgreSQL authority 一致，source 为 `READY`、document 未 tombstone 且 Blob bytes/digest 可复核。环境变量、请求 payload 或进程启动时间不能自证批准；supersession、source tombstone/缺失、审批状态或 Organization binding 变化均使旧链 stale；
 - `NO_OVERLAY` 只允许 image spec 的 `overlayCopy=null` 且 Owner 对 exact spec 显式确认“纯图无文字层”。系统仍创建 composition record，记录 mode、raw digest、snapshot/profile refs 和 Owner decision；最终 bytes 可与 raw bytes 相同，但 raw/final 两个业务 lineage node 不能合并；
 - compositor 是无网络、无模型、无 Secret 的 deterministic local operator；同一 raw bytes + composition spec + pinned dependency/font assets 必须跨 retry/restart 得到同一 final bytes/digest。它不能改 Artifact copy、挑图、审校或批准。
 
@@ -217,10 +220,12 @@ MediaSetBinding {
 - final asset bytes、raw asset、position、alt text、overlayCopy、composition/template/font/logo/brand/knowledge snapshot、prompt/policy/profile、rights/cost binding 任一改变都需要 new composition 或 new generation，并创建 new ArtifactRevision；
 - `MEDIA_CHANGED | MEDIA_ORDER_CHANGED | MEDIA_COMPOSITION_CHANGED | MEDIA_BRAND_SNAPSHOT_CHANGED | MEDIA_KNOWLEDGE_SNAPSHOT_CHANGED | MEDIA_RIGHTS_CHANGED | MEDIA_POLICY_CHANGED | MEDIA_TAMPER_DETECTED` invalidation 传播到旧 Audit、OwnerDecision、Package；历史保留；
 - Auditor identity 必须与 Producer 不同；Auditor 输入包含实际 decoded previews、provenance/rights/cost 与 exact combined digest，但无 Secret/raw provider response；Auditor 不能产生或选择资产。
+- v4 controlled audit route 使用 closed schema，只接受 exact `revisionDigest + controlledFixture=true + result`；服务端固定 `controlled-a5-media-auditor` / `A5_INDEPENDENT_AUDITOR`，持久化 `CONTROLLED_FIXTURE`、`agentTeamsExecuted=false`、`authoritativeForOperations=false` 与 `runtimeReceiptBinding=null`。任意客户端 `auditorIdentityId`、缺 marker 或伪造 runtime receipt 均拒绝。
+- 当前没有接入 SDD-007 exact accepted Auditor task/output receipt；因此 controlled PASS 不能创建 `APPROVE` OwnerDecision 或 ManualPublishPackage v4。后续接 runtime 时，repository 必须在同一 transaction/row lock 中重读 exact owner/run/job/task/attempt、A5 role、Skill locks、input revision/media/snapshot digests、accepted output schema/canonical digest，不能把请求字段当 authority。
 
 ### 5.6 ManualPublishPackage v4
 
-只有当前 combined ArtifactRevision 的 exact Audit `PASS` + Owner `APPROVE` 可创建包。XHS v4 包至少按以下顺序包含：
+只有当前 combined ArtifactRevision 的 exact accepted SDD-007 runtime Audit `PASS` + Owner `APPROVE` 可创建包；`CONTROLLED_FIXTURE PASS` 永不满足此条件。当前 runtime binding 未实现，权威 XHS v4 包保持 `BLOCKED/PLANNED`。未来解锁后，包至少按以下顺序包含：
 
 1. `manifest.json`；
 2. `title.txt`；
@@ -308,15 +313,15 @@ SDD-011 可以使用 DeepSeek 与 media provider 两个不同 Secret Gate；只�
 10. 相同 generation key 的双击、并发 API 与双 worker 最多产生一个 billable provider submission；POST unknown 不自动 retry；已有 task id 的 restart 只 reconcile/poll 同一 task。
 11. worker/API/PG/adapter/compositor 在 `SUBMITTING`、`PROVIDER_PENDING`、`DOWNLOADING`、raw Blob-before-DB-commit、composite Blob-before-DB-commit 五个 frozen stage 重启后恢复或进入明确 review，既不丢 asset 也不重复计费。
 12. actual ordered media set 只通过新 child XHS ArtifactRevision v4 绑定；final/raw asset、bytes/order/alt/overlay/composition/brand/knowledge/template/font/logo/prompt/policy/profile/rights/cost 任一变化使旧 Audit、OwnerDecision 与 Package invalidated。
-13. Producer 与 Independent Auditor identity/Skill/context/permission 分离；Auditor不能修改、重生成、排版、批准或生成 package；Leader 没有领域媒体输出。
-14. `FAIL | ESCALATE` 或 rights/profile/snapshot stale 不能 Owner approve/package；只有 exact combined revision 的 active PASS + Owner APPROVE 可建包。
-15. XHS ManualPublishPackage 含真实 final `image-NN` files、`media-manifest.json` 和绑定全部 binary/text/composition/snapshot digests 的 exact manifest；逐文件下载/解压/打开后 bytes/dimensions/MIME/digest 与 Blob/manifest 一致。
+13. Producer 与 Independent Auditor identity/Skill/context/permission 分离；受控 fixture 必须固定服务端 A5 identity 并明示未执行 AgentTeams，真实权威 Audit 必须绑定 SDD-007 exact accepted A5 task/output receipt；Auditor不能修改、重生成、排版、批准或生成 package；Leader 没有领域媒体输出。
+14. `FAIL | ESCALATE`、controlled fixture PASS、伪造 runtime receipt 或 rights/profile/snapshot stale 均不能 Owner approve/package；只有 repository 重读并验证的 exact combined revision active runtime PASS + Owner APPROVE 可建包。
+15. runtime Audit authority 解锁后，XHS ManualPublishPackage 含真实 final `image-NN` files、`media-manifest.json` 和绑定全部 binary/text/composition/snapshot digests 的 exact manifest；逐文件下载/解压/打开后 bytes/dimensions/MIME/digest 与 Blob/manifest 一致。当前 public-safe engineering archive 只能验证真实 final bytes/manifest/tamper 结构，不得称为权威发布包。
 16. copy/download/open official page/refresh/restart/Owner self-report 全部保持 `UNVERIFIED_EXTERNAL_STATE`，系统不存在 auto-upload/click/`PUBLISHED` mutation。
 17. production SaaS Shell 的 zh-CN/en 页面从真实 PG/API/Blob 显示 final preview、raw/final lineage、overlay/snapshot binding、generation/composition failure/recovery、费用、版权来源、profile expiry、重新生成/重排版影响和下载；Story/fixture screenshot 不计为 runtime evidence。
 18. fresh PostgreSQL + fresh Blob volume + Compose 可完成 controlled fake normal/fail-closed matrix；real Provider UAT 必须由 Owner 在 terminal 输入 Secret，并与 no-Secret path 分开标记。
 19. license/SBOM/audit、官方 source register、provider terms/data/retention review、decoder/normalizer/compositor/font/Logo NOTICE/source-offer review通过；这不是法律合规保证。
 20. rollback/restore 在独立 volume 保留 v3/v4 revisions、jobs、receipts、raw/final Blob inventory/digests；旧版本不能把 v4 误报为无媒体成功。
-21. Chinese acceptance report、machine-readable run manifest、tamper/concurrency/restart/compositor matrix、browser screenshots、redacted real canary、Owner binary UAT 与 structured handoff 完整；Owner UAT 前最多 `EVIDENCE_READY`。
+21. Chinese acceptance report、machine-readable run manifest、tamper/concurrency/restart/compositor matrix、browser screenshots、controlled Audit maturity、权威 runtime Audit/package blocker、redacted real canary、Owner binary UAT 与 structured handoff 完整；未接 runtime authority 时必须标为 `BLOCKED/PLANNED`，不得用 controlled fixture 升级成熟度。
 
 ## 10. Test and evidence plan
 
@@ -354,8 +359,8 @@ SDD-011 可以使用 DeepSeek 与 media provider 两个不同 Secret Gate；只�
 
 ### UAT-02｜独立审校、精确批准与实际包核对
 
-1. 由独立 Auditor 对最终 combined revision 执行一次 FAIL/恢复/PASS，确认 Auditor 没有编辑/批准/生成按钮。
-2. Owner 批准 exact PASS revision，下载单图与完整 package。
+1. 先确认 Web 的 `CONTROLLED_FIXTURE PASS` 明示 `AgentTeams 未执行` 且 Owner/package 按钮禁用；直接 API approve/package 也必须返回 runtime authority required。待 SDD-007 exact accepted A5 task/output receipt integration 完成后，再由真实独立 Auditor 对最终 combined revision 执行一次 FAIL/恢复/PASS，确认 Auditor 没有编辑/批准/生成按钮。
+2. 当前步骤 blocked；runtime authority 接入并验证后，Owner 才可批准 exact authoritative PASS revision，下载单图与完整 package。
 3. 核对 package 文件顺序、`manifest.json` / `media-manifest.json` / `image-specs.json`、每个 final `image-NN` 实际可打开；本地计算/验证 digest、MIME、`bytes > 0 && bytes <= 10 MiB`、1080×1440、overlay/snapshot/composition digests 与 Blob inventory 一致，确认 package 不依赖 provider 临时 URL。
 4. 打开 allowlisted 小红书官方发布入口但不登录/上传/点击发布；返回产品确认仍 `UNVERIFIED_EXTERNAL_STATE`。
 5. 重启 API/PG/Web，重开同一 revision/package；核对 ID/digest/preview/download 不变。
@@ -364,9 +369,9 @@ SDD-011 可以使用 DeepSeek 与 media provider 两个不同 Secret Gate；只�
 
 ## 12. Evidence and claims
 
-本 specs-only PR 唯一有效声明是 `SPEC_READY`。实施并通过机器门禁后最多声明：
+本 specs-only PR 唯一有效声明是 `SPEC_READY`。当前 implementation 在未接 SDD-007 exact accepted A5 Audit receipt authority 时，最多声明：
 
-> `ENGINEERING_VERIFIED`：LumiClaw Presence 能把 exact 小红书 image specs 经可替换真实媒体 Provider 异步生成无字 raw 图并立即内容寻址持久化，再由 deterministic local compositor 按 exact overlayCopy 与 approved Brand/Knowledge snapshot 形成 final 图，绑定为新的 combined ArtifactRevision，独立审校并由 Owner 精确批准，最后导出含实际 final 图片的人工发布包；Secret、重复计费、重启和篡改路径已 fail closed 验证。
+> `ENGINEERING_VERIFIED`（仅媒体资产链）：LumiClaw Presence 能把 exact 小红书 image specs 经可替换真实媒体 Provider 异步生成无字 raw 图并立即内容寻址持久化，再由 deterministic local compositor 按 exact overlayCopy 与 approved Brand/Knowledge snapshot 形成 final 图，绑定为新的 combined ArtifactRevision；受控 A5 fixture 明示 `AgentTeams 未执行`，且不能解锁 Owner APPROVE 或 ManualPublishPackage。Secret、重复计费、重启、篡改与权限提升路径已 fail closed 验证。权威独立审校、批准与运营包仍为 `PLANNED/BLOCKED`。
 
 Owner real-provider Canary 只证明一次本地工程路径和视觉决定，不是 external calibration、生产可靠性或商业/法律结果。仍为 `NOT_CLAIMED`：自动发布、OAuth、Cookie/DOM automation、移动端、平台合规保证、版权/商用权保证、病毒式增长、线索/收入、无限 provider/platform 支持。
 
@@ -402,6 +407,6 @@ SDD-012 是一个 bounded 2–3 日 implementation SDD；建议由同一 Executo
 - 本规格状态：`SPEC_READY`；未进入 implementation；
 - Proposed module：`M5-11`，canonical `IMPLEMENTATION-STATUS.md` 与中文镜像本轮零改动；
 - implementation acceptance report：`docs/reports/acceptance/SDD-012-ACCEPTANCE.md`；
-- implementation 最高 proposed state：machine gates完成但 Owner UAT pending 时 `EVIDENCE_READY`；只有 Coordinator 独立验证和 Owner binary PASS 后才可接受；
-- 下游唯一顺序：SDD-012 implementation/UAT → SDD-011 dogfood/install/recording；
+- implementation 最高 proposed state：在 SDD-007 exact accepted A5 Audit receipt authority 未接入时为 `BLOCKED_PENDING_SDD_007_AUDITOR_RUNTIME`，不得用 controlled fixture 建议 `EVIDENCE_READY`；runtime authority、机器门禁与 Owner binary PASS 全部完成后才可接受；
+- 下游唯一顺序：SDD-007 Auditor receipt authority integration → SDD-012 authoritative package/UAT → SDD-011 dogfood/install/recording；
 - specs Executor closeout 必须包含 Worktree/Branch/Base/Full SHA/PR、changed files、规格决策、AC、验证、风险、Owner UAT、下一 implementation task 和 STATUS_HANDOFF；成功交接后才完成 Goal。

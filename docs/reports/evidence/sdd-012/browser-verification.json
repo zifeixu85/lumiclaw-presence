@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 2,
+  "sdd": "SDD-012",
+  "classification": "PUBLIC_SAFE_SYNTHETIC",
+  "result": "PASS",
+  "generatedAt": "2026-08-23T23:44:49.524Z",
+  "locales": [
+    "zh-CN",
+    "en"
+  ],
+  "checks": {
+    "controlledFakeExplicit": true,
+    "exactImages": true,
+    "rawFinalLineage": true,
+    "rawCannotPreview": true,
+    "independentNoSecretGate": true,
+    "finalPreviewOnly": true,
+    "noBrowserSecretField": true,
+    "realProviderDisabled": true,
+    "keyboardFocus": true,
+    "v4BindingVisible": true,
+    "arbitraryAuditorRejected": true,
+    "missingControlledMarkerRejected": true,
+    "fakeRuntimeReceiptRejected": true,
+    "controlledAuditVisible": true,
+    "authoritativeActionsDisabled": true,
+    "auditMaturityPersisted": true,
+    "controlledApprovalBlocked": true,
+    "controlledPackageBlocked": true,
+    "actualFinalDownload": true,
+    "englishControlledBoundary": true,
+    "englishApprovalBlocked": true,
+    "englishPackageBlocked": true,
+    "desktop1024NoOverflow": true,
+    "desktopGate": true,
+    "postgresGovernancePersisted": true,
+    "neverPublished": true
+  },
+  "consoleErrors": [],
+  "screenshots": [
+    {
+      "name": "01-governed-final-preview-zh.png",
+      "sha256": "d20f682fc769d9ae146f52cadd90513e3b81215a60d6af2cc12517545aa40c5a",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "02-controlled-audit-blocked-zh.png",
+      "sha256": "924a2351374a0658a9324f2483f8b94a28101fd02107d06904ba56692b644d09",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "03-controlled-audit-blocked-en.png",
+      "sha256": "591fc190056862ede90cd339bbc40e9cf7a8a641706bdfc4d6a91e0e3c0ae6df",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "04-desktop-gate.png",
+      "sha256": "d71c5c0e25413be33a16c212c977671de56600839ad6973d3367b663de7deeb1",
+      "viewport": {
+        "width": 800,
+        "height": 900
+      }
+    }
+  ],
+  "auditEvidence": {
+    "evidenceMaturity": "CONTROLLED_FIXTURE",
+    "agentTeamsExecuted": false,
+    "authoritativeForOperations": false,
+    "nextState": "WAITING_FOR_SDD_007_ACCEPTED_AUDITOR_RECEIPT"
+  },
+  "authoritativePackageGenerated": false,
+  "finalDownload": {
+    "path": ".evidence/sdd-012/sdd012-final-image-01.png",
+    "bytes": 37632,
+    "sha256": "98461ea3a622aaa3f6a73119ced708c8cb6f20dc03000e7bbf956e8e09561e12"
+  },
+  "externalActionCount": 0,
+  "ownerVisualUat": "PENDING"
+}

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "1.0.0",
-  "sourceLockSha256": "c34bb001f240c75f3b98e35c5c819c41c04a4a37406110a7c9ca1d8fef9491b6",
-  "packageCount": 1020,
+  "sourceLockSha256": "f90fef9074b4894bd8495e55ffd00a29d81660edb2fec49885fa8eded36b3f37",
+  "packageCount": 1024,
   "uniqueLicenses": [
     "(BSD-2-Clause OR MIT OR Apache-2.0)",
     "(MIT OR WTFPL)",
