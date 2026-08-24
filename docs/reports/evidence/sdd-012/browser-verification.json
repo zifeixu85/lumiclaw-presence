@@ -3,7 +3,7 @@
   "sdd": "SDD-012",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-24T01:35:07.976Z",
+  "generatedAt": "2026-08-24T03:37:12.433Z",
   "locales": [
     "zh-CN",
     "en"
@@ -32,6 +32,21 @@
     "controlledApprovalBlocked": true,
     "controlledPackageBlocked": true,
     "actualFinalDownload": true,
+    "engineeringFixtureExplicit": true,
+    "fullSizeReviewAndExactDigests": true,
+    "visualDraftInitiallyFalse": true,
+    "visualConfirmInitiallyDisabled": true,
+    "visualRejectAvailable": true,
+    "visualRejectedCarriesFailureFlags": true,
+    "rejectedRestartKeepsDraftOpen": true,
+    "partialVisualCannotConfirm": true,
+    "allVisualChecksEnableConfirm": true,
+    "confirmedChecklistExact": true,
+    "rejectedAuthorityStaleCurrentConfirmed": true,
+    "confirmedSurfaceLocked": true,
+    "ownerDecisionBindsCurrentVisual": true,
+    "packageBindsExactDecision": true,
+    "engineeringMutationHeadersExact": true,
     "englishControlledBoundary": true,
     "englishApprovalBlocked": true,
     "englishPackageBlocked": true,
@@ -52,7 +67,23 @@
     },
     {
       "name": "02-controlled-audit-blocked-zh.png",
-      "sha256": "1d8fda1fb45618e5dcae224d07a6ec0ddb0312817ccb2935dda145a743dd18ce",
+      "sha256": "cd25db5730126f8c1a6603150f9b506d473cbae2d91e10d259b2c2ee9daad12b",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "05-engineering-visual-confirmed-zh.png",
+      "sha256": "46e0bbdccea007afcf77c1e698af468c19eaea562d8c851ac95eefcaf25dce48",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      }
+    },
+    {
+      "name": "06-engineering-package-ready-zh.png",
+      "sha256": "e6dd8f8847271f2c69711f141c40ca57dd140634df8e5c882385d39cc636c1f3",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -60,7 +91,7 @@
     },
     {
       "name": "03-controlled-audit-blocked-en.png",
-      "sha256": "6b074e7224beed9510ed4f21806a9416f80062cab03fe8f40f352495c5d8c9b9",
+      "sha256": "e9a28ef8dabeb00fa945ec4f0b7b005aa79457c4263cdc35a8b33259180ebf78",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -80,6 +111,13 @@
     "agentTeamsExecuted": false,
     "authoritativeForOperations": false,
     "nextState": "WAITING_FOR_SDD_007_ACCEPTED_AUDITOR_RECEIPT"
+  },
+  "controlledEngineeringVisualFixture": {
+    "classification": "CONTROLLED_ENGINEERING_AUTHORITY_FIXTURE",
+    "uiOnly": true,
+    "productionAuthorityPersisted": false,
+    "publicOrLiveClaim": false,
+    "flow": "REJECTED_RESTART_CONFIRMED_APPROVE_PACKAGE"
   },
   "authoritativePackageGenerated": false,
   "finalDownload": {

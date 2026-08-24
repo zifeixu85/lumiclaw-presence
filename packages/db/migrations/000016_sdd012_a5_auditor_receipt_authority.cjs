@@ -52,14 +52,39 @@ exports.up = (pgm) => {
     CREATE UNIQUE INDEX artifact_audit_v4_one_runtime ON artifact_audit_decisions_v4(owner_profile_id,artifact_revision_id) WHERE evidence_maturity='AGENTTEAMS_RUNTIME';
   `);
   pgm.addConstraint('artifact_audit_decisions_v4','artifact_audit_v4_exact_runtime_receipt_fk',{foreignKeys:[{columns:['owner_profile_id','artifact_revision_id','runtime_receipt_digest'],references:'media_runtime_audit_receipts_v1(owner_profile_id,artifact_revision_id,canonical_digest)',onDelete:'RESTRICT'}]});
+  pgm.createTable('media_owner_visual_reviews_v1',{
+    owner_profile_id:{type:'uuid',notNull:true},id:{type:'text',notNull:true},authority_sequence:{type:'bigserial',notNull:true},artifact_revision_id:{type:'text',notNull:true},artifact_revision_digest:{type:'char(64)',notNull:true},media_set_digest:{type:'char(64)',notNull:true},audit_decision_id:{type:'text',notNull:true},audit_decision_digest:{type:'char(64)',notNull:true},result:{type:'text',notNull:true,check:"result IN ('CONFIRMED','REJECTED')"},canonical_digest:{type:'char(64)',notNull:true},payload:{type:'jsonb',notNull:true},created_at:{type:'timestamptz',notNull:true}
+  },{constraints:{primaryKey:['owner_profile_id','id'],foreignKeys:[
+    {columns:['owner_profile_id','artifact_revision_id','artifact_revision_digest'],references:'artifact_revisions_v4(owner_profile_id,id,canonical_digest)',onDelete:'RESTRICT'},
+    {columns:['owner_profile_id','audit_decision_id','artifact_revision_id','artifact_revision_digest','audit_decision_digest'],references:'artifact_audit_decisions_v4(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,canonical_digest)',onDelete:'RESTRICT'}
+  ]}});
+  pgm.addConstraint('media_owner_visual_reviews_v1','media_owner_visual_review_authority_sequence_unique',{unique:['owner_profile_id','artifact_revision_id','authority_sequence']});
+  pgm.addConstraint('media_owner_visual_reviews_v1','media_owner_visual_review_exact_lineage_unique',{unique:['owner_profile_id','id','artifact_revision_id','artifact_revision_digest','audit_decision_id','audit_decision_digest','canonical_digest']});
+  pgm.sql(`DO $$ DECLARE constraint_row record; BEGIN FOR constraint_row IN SELECT pc.conname FROM pg_constraint pc WHERE pc.conrelid='artifact_owner_decisions_v4'::regclass AND pc.contype='u' AND ARRAY(SELECT pa.attname::text FROM unnest(pc.conkey) WITH ORDINALITY AS key_column(attnum,ordinality) JOIN pg_attribute pa ON pa.attrelid=pc.conrelid AND pa.attnum=key_column.attnum ORDER BY key_column.ordinality)=ARRAY['owner_profile_id','artifact_revision_id']::text[] LOOP EXECUTE format('ALTER TABLE artifact_owner_decisions_v4 DROP CONSTRAINT %I',constraint_row.conname); END LOOP; END $$;`);
+  pgm.addColumns('artifact_owner_decisions_v4',{authority_sequence:{type:'bigserial',notNull:true}});
+  pgm.addConstraint('artifact_owner_decisions_v4','artifact_owner_decision_authority_sequence_unique',{unique:['owner_profile_id','artifact_revision_id','authority_sequence']});
+  pgm.addColumns('artifact_owner_decisions_v4',{visual_review_id:{type:'text'},visual_review_digest:{type:'char(64)'}});
+  pgm.addConstraint('artifact_owner_decisions_v4','artifact_owner_decision_visual_pair_check',{check:"(visual_review_id IS NULL) = (visual_review_digest IS NULL)"});
+  pgm.sql("ALTER TABLE artifact_owner_decisions_v4 ADD CONSTRAINT artifact_owner_decision_approve_visual_check CHECK (result='REJECT' OR (visual_review_id IS NOT NULL AND visual_review_digest IS NOT NULL)) NOT VALID");
+  pgm.addConstraint('artifact_owner_decisions_v4','artifact_owner_decision_exact_visual_fk',{foreignKeys:{columns:['owner_profile_id','visual_review_id','artifact_revision_id','artifact_revision_digest','audit_decision_id','audit_decision_digest','visual_review_digest'],references:'media_owner_visual_reviews_v1(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,audit_decision_id,audit_decision_digest,canonical_digest)',onDelete:'RESTRICT'}});
   pgm.sql(`
     CREATE TRIGGER media_audit_requests_v1_immutable BEFORE UPDATE OR DELETE ON media_audit_requests_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();
     CREATE TRIGGER media_runtime_audit_receipts_v1_immutable BEFORE UPDATE OR DELETE ON media_runtime_audit_receipts_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();
+    CREATE TRIGGER media_owner_visual_reviews_v1_immutable BEFORE UPDATE OR DELETE ON media_owner_visual_reviews_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();
   `);
 };
 
 exports.down = (pgm) => {
-  pgm.sql(`DO $$ BEGIN IF (SELECT count(*) FROM media_audit_requests_v1)+(SELECT count(*) FROM media_runtime_audit_receipts_v1)+(SELECT count(*) FROM artifact_audit_decisions_v4 WHERE evidence_maturity='AGENTTEAMS_RUNTIME') > 0 THEN RAISE EXCEPTION 'SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED'; END IF; END $$;`);
+  pgm.sql(`DO $$ BEGIN IF (SELECT count(*) FROM media_audit_requests_v1)+(SELECT count(*) FROM media_runtime_audit_receipts_v1)+(SELECT count(*) FROM media_owner_visual_reviews_v1)+(SELECT count(*) FROM artifact_audit_decisions_v4 WHERE evidence_maturity='AGENTTEAMS_RUNTIME')+(SELECT count(*) FROM artifact_owner_decisions_v4 WHERE visual_review_id IS NOT NULL)+(SELECT count(*) FROM (SELECT 1 FROM artifact_owner_decisions_v4 GROUP BY owner_profile_id,artifact_revision_id HAVING count(*)>1) owner_decision_collisions) > 0 THEN RAISE EXCEPTION 'SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED'; END IF; END $$;`);
+  pgm.dropConstraint('artifact_owner_decisions_v4','artifact_owner_decision_exact_visual_fk');
+  pgm.dropConstraint('artifact_owner_decisions_v4','artifact_owner_decision_approve_visual_check');
+  pgm.dropConstraint('artifact_owner_decisions_v4','artifact_owner_decision_visual_pair_check');
+  pgm.dropColumns('artifact_owner_decisions_v4',['visual_review_id','visual_review_digest']);
+  pgm.dropConstraint('artifact_owner_decisions_v4','artifact_owner_decision_authority_sequence_unique');
+  pgm.dropColumns('artifact_owner_decisions_v4',['authority_sequence']);
+  pgm.addConstraint('artifact_owner_decisions_v4','artifact_owner_decision_one_per_revision_unique',{unique:['owner_profile_id','artifact_revision_id']});
+  pgm.sql('DROP TRIGGER IF EXISTS media_owner_visual_reviews_v1_immutable ON media_owner_visual_reviews_v1');
+  pgm.dropTable('media_owner_visual_reviews_v1');
   pgm.dropConstraint('artifact_audit_decisions_v4','artifact_audit_v4_exact_runtime_receipt_fk');
   pgm.sql(`
     DROP INDEX IF EXISTS artifact_audit_v4_one_runtime; DROP INDEX IF EXISTS artifact_audit_v4_one_controlled;

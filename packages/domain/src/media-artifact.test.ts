@@ -13,6 +13,7 @@ import {
   createMediaSetBinding,
   materializeXhsMediaRevision,
   createMediaAuditDecision,
+  createMediaOwnerVisualReview,
   createMediaOwnerDecision,
   createManualPublishPackageV4,
   invalidateMediaGovernance,
@@ -24,6 +25,7 @@ import {
   type BrandSnapshotBinding,
   type CompositedMediaAssetV2,
   type KnowledgeSnapshotBinding,
+  type MediaAuditDecisionV4,
   type MediaGenerationSpec,
   type RawProviderMediaAssetV2
 } from './media-artifact.js';
@@ -128,12 +130,22 @@ describe('SDD-012 exact composition, governance and binary package',()=>{
     const fail=createMediaAuditDecision({ownerId,revision,controlledFixture:true,result:'FAIL',createdAt:now});
     expect(fail).toMatchObject({auditorIdentityId:CONTROLLED_MEDIA_AUDITOR_IDENTITY_ID,auditorRole:'A5_INDEPENDENT_AUDITOR',evidenceMaturity:'CONTROLLED_FIXTURE',agentTeamsExecuted:false,authoritativeForOperations:false,runtimeReceiptBinding:null});
     expect(fail.auditorIdentityId).not.toBe(revision.producerIdentityId);
-    expect(()=>createMediaOwnerDecision({ownerId,revision,audit:fail,ownerIdentityId:'owner',result:'APPROVE',createdAt:now})).toThrowError(expect.objectContaining({code:'MEDIA_AUDIT_PASS_REQUIRED'}));
+    expect(()=>createMediaOwnerDecision({ownerId,revision,audit:fail,visualReview:null,ownerIdentityId:'owner',result:'APPROVE',createdAt:now})).toThrowError(expect.objectContaining({code:'MEDIA_AUDIT_PASS_REQUIRED'}));
     const pass=createMediaAuditDecision({ownerId,revision,controlledFixture:true,result:'PASS',createdAt:now});
-    expect(()=>createMediaOwnerDecision({ownerId,revision,audit:pass,ownerIdentityId:'owner',result:'APPROVE',createdAt:now})).toThrowError(expect.objectContaining({code:'MEDIA_AUDIT_RUNTIME_AUTHORITY_REQUIRED'}));
-    const rejected=createMediaOwnerDecision({ownerId,revision,audit:pass,ownerIdentityId:'owner',result:'REJECT',createdAt:now});
+    expect(()=>createMediaOwnerDecision({ownerId,revision,audit:pass,visualReview:null,ownerIdentityId:'owner',result:'APPROVE',createdAt:now})).toThrowError(expect.objectContaining({code:'MEDIA_AUDIT_RUNTIME_AUTHORITY_REQUIRED'}));
+    const rejected=createMediaOwnerDecision({ownerId,revision,audit:pass,visualReview:null,ownerIdentityId:'owner',result:'REJECT',createdAt:now});
     const forgedApproval={...rejected,result:'APPROVE' as const};
     expect(()=>createManualPublishPackageV4({ownerId,revision,audit:pass,decision:forgedApproval,textFiles:[{fileName:'title.txt',mediaType:'text/plain',content:'标题'}],createdAt:now})).toThrowError(expect.objectContaining({code:'MEDIA_AUDIT_RUNTIME_AUTHORITY_REQUIRED'}));
+  });
+
+  it('binds Owner decision identity to the exact visual review and rejects replaced or tampered review authority',()=>{
+    const specs=[spec(1),spec(2)];const revision=materializeXhsMediaRevision({ownerId,sourceRevision:{id:'xhs-revision-v3',canonicalDigest:sourceRevisionDigest,revision:2,producerIdentityId:'product-producer',payloadDigest:'9'.repeat(64)},mediaSetBinding:createMediaSetBinding({items:specs.map(finalAsset),sourceImageSpecs:specs}),brandSnapshot:brand,knowledgeSnapshot:knowledge,createdAt:now});
+    const controlled=createMediaAuditDecision({ownerId,revision,controlledFixture:true,result:'PASS',createdAt:now});const audit={...controlled,auditorIdentityId:'@independent-auditor:matrix.local',evidenceMaturity:'AGENTTEAMS_RUNTIME',agentTeamsExecuted:true,authoritativeForOperations:true,runtimeReceiptBinding:{evidenceMaturity:'AGENTTEAMS_RUNTIME',agentTeamsExecuted:true,controlledProvider:false,authoritativeForOperations:true}} as unknown as MediaAuditDecisionV4;
+    const all={visualQualityConfirmed:true,hiddenContentChecked:true,renderedTextOcrChecked:true,pixelTextMediaSemanticsConfirmed:true};const rejected=createMediaOwnerVisualReview({ownerId,revision,audit,ownerIdentityId:ownerId,result:'REJECTED',checklist:{...all,renderedTextOcrChecked:false},reviewedMediaDigests:revision.mediaSetBinding.items.map((item)=>item.contentDigest),createdAt:now});const confirmed=createMediaOwnerVisualReview({ownerId,revision,audit,ownerIdentityId:ownerId,result:'CONFIRMED',checklist:all,reviewedMediaDigests:revision.mediaSetBinding.items.map((item)=>item.contentDigest),createdAt:now});
+    expect(rejected.id).not.toBe(confirmed.id);expect(rejected.canonicalDigest).not.toBe(confirmed.canonicalDigest);
+    const decision=createMediaOwnerDecision({ownerId,revision,audit,visualReview:confirmed,ownerIdentityId:ownerId,result:'APPROVE',createdAt:now});expect(decision).toMatchObject({visualReviewId:confirmed.id,visualReviewDigest:confirmed.canonicalDigest});
+    expect(()=>createMediaOwnerDecision({ownerId,revision,audit,visualReview:rejected,ownerIdentityId:ownerId,result:'APPROVE',createdAt:now})).toThrowError(expect.objectContaining({code:'MEDIA_OWNER_VISUAL_REVIEW_REQUIRED'}));
+    expect(()=>createMediaOwnerDecision({ownerId,revision,audit,visualReview:{...confirmed,checklist:{...all,hiddenContentChecked:false}},ownerIdentityId:ownerId,result:'APPROVE',createdAt:now})).toThrowError(expect.objectContaining({code:'MEDIA_OWNER_VISUAL_REVIEW_REQUIRED'}));
   });
 
   it.each(['MEDIA_BRAND_SNAPSHOT_CHANGED','MEDIA_KNOWLEDGE_SNAPSHOT_CHANGED','MEDIA_COMPOSITION_CHANGED','MEDIA_TAMPER_DETECTED'] as const)('invalidates audit, decision and package lineage for %s',(reasonCode)=>{

@@ -55,6 +55,7 @@ describe('SDD-007 persistent runtime contracts',()=>{
 
   it('redacts secret-bearing keys and strings while retaining fingerprints',()=>{
     expect(publicRuntimeEventPayload({authorization:'Bearer hidden-secret-value',apiKey:'sk-secret-value-1234567890',fingerprint:'0123456789abcdef',nested:{ticket:'raw-ticket'}})).toEqual({authorization:'[REDACTED]',apiKey:'[REDACTED]',fingerprint:'0123456789abcdef',nested:{ticket:'[REDACTED]'}});
+    expect(publicRuntimeEventPayload({runtimeTaskId:'agentteams-media-audit-5cbd20ee14cff4efdb1d86965079df90'})).toEqual({runtimeTaskId:'agentteams-media-audit-5cbd20ee14cff4efdb1d86965079df90'});
   });
 
   it('fails closed on aggregate or SkillLock tampering without rejecting unrelated valid locks',()=>{

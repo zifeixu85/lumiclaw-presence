@@ -8,7 +8,7 @@
 - Proposed module state：`M5-11 = IN_PROGRESS / BLOCKED_PENDING_SDD_007_AUDITOR_RUNTIME`；不得建议 `EVIDENCE_READY`
 - Owner UAT：`UAT-00 / UAT-01 / UAT-02 = PENDING`
 - 证据分类：`PUBLIC_SAFE_SYNTHETIC`
-- 当前可声明成熟度：媒体链和 exact A5 receipt authority plumbing 为 `IMPLEMENTED`、`ENGINEERING_VERIFIED`；真实 DeepSeek/real A5 receipt、Owner APPROVE 与运营 ManualPublishPackage 为 `PENDING/BLOCKED`
+- 当前可声明成熟度：媒体链、完整 text/spec/machine-fact A5 input、exact evidence authority、receipt/visual/decision/package plumbing 为 `IMPLEMENTED`、`ENGINEERING_VERIFIED`；真实 DeepSeek/real A5 receipt、Owner 四项视觉确认、Owner APPROVE 与运营 ManualPublishPackage 为 `PENDING/BLOCKED`
 
 ## 一、交付结果
 
@@ -20,7 +20,11 @@ Coordinator 前两轮独立复核提出的 repository/snapshot/readiness/ticket/
 
 CR2 已把 exact ArtifactRevisionV4 编译成独立 A5 TaskContract，并复用 SDD-007 的 run/job/task/attempt/member binding/materialization/completion authority。外部 API 只能提交 `{ revisionDigest }` 请求审校或读取状态；Auditor identity、PASS/FAIL/ESCALATE、runtime receipt 与 `authoritativeForOperations` 都不能由调用者提交。mission-worker/reconciler 只会在同一 PostgreSQL transaction/row lock 中重读 exact accepted、completion-confirmed 的 A5 output，验证角色、Skill locks、revision/media/final bytes/Brand/Knowledge/policy/profile/schema/canonical digests 与 real-provider/runtime gates 后物化不可变 receipt 和 Audit。
 
-受控 Audit、controlled model output、工程 fake 与单纯 `SUCCEEDED_RUNTIME` 仍不能解锁 Owner `APPROVE` 或 ManualPublishPackage v4。只有 receipt-backed `AGENTTEAMS_RUNTIME / agentTeamsExecuted=true / authoritativeForOperations=true` 的 exact PASS 才进入 Owner exact decision；FAIL/ESCALATE 保持阻断。由于本轮没有真实 DeepSeek、真实媒体 Provider 或 Owner real-A5 UAT，机器证据不会制造运营权威包，`authoritativePackageGenerated=false`。
+A5 gateway 现在实际收到 Owner 预期公开的完整 title/body/topics/CTA/language/account、cover/ordered image specs 的 purpose/visualBrief/overlay/alt、ordered final media alt/MIME/bytes/dimensions/lineage，以及本地 deterministic machine facts。两阶段 `baseReviewContentDigest → evidence policy → inputProjectionDigest` 消除自引用 hash；正文/visualBrief/overlay/alt 任一改变都会重编译 task。每条 finding 只能引用 contract 冻结的 non-empty、duplicate-free、per-check exact evidence digests；任意 64 位伪 digest、cross-revision/duplicate/empty/unknown check 都拒绝。private prompt、signed URL、Secret、raw provider body、raw bytes/base64 不进入 gateway/evidence/log。
+
+能力边界不再声称 A5 看过 pixels：当前是 `TEXT_ONLY_WITH_SERVER_MACHINE_FACTS`，A5 审正文、visual specs、来源/policy 与 server facts；final pixel视觉质量、隐藏内容、渲染文字/OCR、像素级图文语义明确为 `OWNER_VISUAL_REVIEW_REQUIRED`。Web 在三张可放大 final 旁显示完整 exact revision/media digests、全部 findings/evidence/能力边界；Owner 四项 checkbox 初始均 false，只有全 true 才可 `CONFIRMED`。不全勾可追加 `REJECTED` 及结构化 false flags；刷新/重启后新 draft仍全 false且可修正，只有 current CONFIRMED 锁定 surface。
+
+受控 Audit、controlled model output、工程 fake 与单纯 `SUCCEEDED_RUNTIME` 仍不能解锁 Owner `APPROVE` 或 ManualPublishPackage v4。只有 receipt-backed `AGENTTEAMS_RUNTIME / agentTeamsExecuted=true / authoritativeForOperations=true` 的 exact PASS 加 current exact Owner visual CONFIRMED 才进入 Owner decision/package；FAIL/ESCALATE/REJECTED 保持阻断。visual/decision/package API 均是 closed schema，并强制 `If-Match + Idempotency-Key`；PG advisory transaction lock + `media_idempotency_v2` 提供并发/restart replay，OwnerDecision identity绑定 exact visual id/digest，package每次重读 current visual/decision/receipt。由于本轮没有真实 DeepSeek、真实媒体 Provider 或 Owner real-A5 UAT，机器证据不会制造运营权威包，`authoritativePackageGenerated=false`。
 
 本任务没有收到 Owner media-provider Secret 或预算，真实 Provider canary 与视觉 UAT 未运行，机器文件明确记录 `NOT_RUN_NO_KEY`。未登录、上传、点击或发布到小红书；external actions = 0。不得据此声明 `ACCEPTED`、production-ready、平台/法律合规、外部用户校准或商业结果。
 
@@ -28,13 +32,13 @@ CR2 已把 exact ArtifactRevisionV4 编译成独立 A5 TaskContract，并复用 
 
 | 层 | 已实现 | 边界 |
 |---|---|---|
-| Domain | 既有媒体合同，加上 exact A5 media TaskContract/input/output schema、新 Auditor Skill lock、runtime receipt binding 与 controlled/runtime Audit union | caller 不能自报 runtime truth；controlled PASS 永不满足 operational approval/package |
+| Domain | exact A5 media TaskContract；完整 public artifact/spec/machine facts；无环 input binding；per-check evidence allowlist/policy；text-only capability boundary；Owner visual/decision/package exact contracts | caller 不能自报 runtime truth；A5 未查看 pixels；controlled PASS 或缺 visual CONFIRMED 永不满足 operational approval/package |
 | Provider/Blob | controlled fake、EvoLink async adapter、安全 HTTPS download、逐 hop DNS/SSRF/redirect/MIME/magic/dimension/metadata/digest gate、reviewed-address TLS transport pinning、content-addressed Blob | fake 不产生 Provider evidence；临时/signed URL 不进入资产 authority |
 | Compositor/assets | sharp decoder/normalizer、opentype glyph paths、固定 Noto Sans SC、96/120 safe area、72→48px、最多三行、4.5:1 contrast、固定 template/Logo | 不使用 browser canvas、系统/CDN font；emoji/缺字/溢出/低对比度 fail closed |
-| PostgreSQL/Worker | migration 15 + append-only migration 16；AuditRequest/RuntimeReceipt；exact composite FK；同 transaction 重读 SDD-007 accepted attempt/binding/batch/completion；worker completion reconciler | accepted history 不改写；old/stale/reassigned/leased/unconfirmed/tampered/controlled attempt fail closed；populated down 要求 export + forward-fix |
-| API/Web | request/observe-only A5 route；runtime output server-owned；PG 同源的等待/运行/恢复/结果/Owner/package rail；中文优先、英文 parity | runtime SUCCEEDED 不等于 Audit PASS；浏览器不能提交 identity/outcome/receipt/authority |
-| Package | receipt-backed exact PASS + Owner exact APPROVE 后 deterministic v4 binary builder；public-safe engineering archive继续验证真实 final bytes | 本轮未产生 authoritative package；真实 UAT 前保持阻断 |
-| Evidence/CI | golden、29 项矩阵、fresh PostgreSQL 16 checks、double-worker Compose、Chromium 30 checks、兼容/全量、license/SBOM/Secret/rollback | controlled/no-Secret 只证明 plumbing；real DeepSeek/real A5/Owner binary decision 保持 PENDING |
+| PostgreSQL/Worker | migration 15 + append-only migration 16；AuditRequest/RuntimeReceipt/VisualReview；exact composite FK；authority_sequence current；同 transaction重读 SDD-007与visual/decision/package；advisory/idempotency locks | accepted history不改写；同 timestamp不靠 createdAt猜 current；old/stale/reassigned/leased/unconfirmed/tampered authority fail closed；collision down稳定阻断 |
+| API/Web | request/observe-only A5；visual/decision/package closed schema + ETag/idempotency；完整 findings/evidence/capability；四项显式 Owner visual draft/replacement；中文优先、英文 parity | runtime SUCCEEDED不等于 Audit PASS；浏览器不能提交 identity/outcome/receipt/authority；工程 UI 正向夹具不写 PG、不形成 live claim |
+| Package | receipt-backed exact PASS + current Owner visual CONFIRMED + exact APPROVE 后 deterministic v4 binary builder；public-safe engineering archive继续验证真实 final bytes | 本轮未产生 authoritative package；真实 UAT 前保持阻断；old visual/decision/package不可复活 |
+| Evidence/CI | golden、矩阵、fresh PostgreSQL 20 checks、double-worker Compose 12 checks、Chromium 45 checks/6 screenshots、兼容/全量、license/SBOM/Secret/rollback | `CONTROLLED_ENGINEERING_AUTHORITY_FIXTURE` 只证明 UI请求状态机；real DeepSeek/real A5/Owner binary decision保持 PENDING |
 
 未修改 canonical `IMPLEMENTATION-STATUS.md`、`ROADMAP.md`、`ARCHITECTURE.md`，未创建第二 worktree，未 merge main，未写入内部资料、Secret、客户资料或私有证据。
 
@@ -42,14 +46,14 @@ CR2 已把 exact ArtifactRevisionV4 编译成独立 A5 TaskContract，并复用 
 
 权威 public-safe evidence 位于 `docs/reports/evidence/sdd-012/`：
 
-- `media-golden-package.json`：16/16 checks；三张真实 final PNG，受控 Audit 为 `CONTROLLED_FIXTURE / agentTeamsExecuted=false / authoritativeForOperations=false`，OwnerDecision digest 为 null，`authoritativePackageGenerated=false`。public-safe engineering manifest digest `ab5f76e04b422d1424dcf3d23c7652d3bffa1efebc19335919c783924299cf02`，deterministic archive SHA-256 `784aa1c1be5d7067fed60a35f30cdb1a0c0274f99abc841fb3cbf1145360d9db`；raw/prompt private ref 不入 archive。文件 SHA-256 `d645ad8adb4c0913e9cdf57a7d3ad43331bfacecc0dc9c47eb20836546c5b5ab`。
-- `postgres-verification.json`：16/16 checks；fresh migration 15/16、server-side A5 request、并发/重放 exactly-once、completion-confirmation 前阻断、SDD-007 exact accepted attempt/member binding/Skill/batch/envelope/completion 重读、controlled provider completion 仍不提升、55 append-only triggers、12 v4 lineage FKs、migration 16 至少 11 条 exact A5 composite FKs、direct-SQL forged runtime Audit 被 receipt FK 拒绝、populated down、backup/restore exact。文件 SHA-256 `a06c0b76e6f448a0aa9b836163679c4f08940a4b1fafe71c41c15ad868f2811b`。
-- `fault-security-compositor-matrix.json`：29/29 tests；provider-neutral/UNKNOWN、SSRF/DNS drift/逐 hop redirect/reviewed-address transport pinning/MIME/magic/Blob、字体/emoji/缺字/溢出/确定性排版、Secret issuer/signature/fingerprint/future-issued/expiry/replay/purpose/symlink/mode、snapshot/tamper/controlled A5 authority。文件 SHA-256 `b965c7e5b79c51202c6dbdb767d01b8496665d3bc1669b2bfa1cbf082ef0eabe`。
-- `compose-verification.json`：11/11 checks；fresh Compose、双 Worker、migration 15/16、restart、真实 final PNG download；持久化 controlled Audit 后 Owner decisions=0、packages=0。真实 KnowledgeSnapshot supersession 后旧链返回 412 `MEDIA_REVISION_STALE` 并追加 invalidation。final 下载 SHA-256 `98461ea3a622aaa3f6a73119ced708c8cb6f20dc03000e7bbf956e8e09561e12`，文件 SHA-256 `978d09da2c3094f9df2efef98c3848cda1379b04b6de63a5bddc2bf3908e3fe2`。
-- `browser-verification.json`：30/30 checks、console errors 0、serious/critical axe violations 0、4 张 production screenshot；覆盖 arbitrary Auditor/outcome/fake receipt/authority 拒绝、controlled source 不能排 real A5、受控 `ESCALATE` 与权威 A5 `WAITING_A5` 分离、`CONTROLLED_FIXTURE / AgentTeams=false` 中英展示、Owner/package 控件禁用、direct API fail closed、final-only preview/download、键盘、1024/800 desktop gate。文件 SHA-256 `0102c58e9474d231ad8157c69deeade23fa4a7ebfd54c0495f4a4258fcab1e37`。
+- `media-golden-package.json`：16/16 checks；三张真实 final PNG，受控 Audit 为 `CONTROLLED_FIXTURE / agentTeamsExecuted=false / authoritativeForOperations=false`，OwnerDecision digest 为 null，`authoritativePackageGenerated=false`。public-safe engineering manifest digest `ab5f76e04b422d1424dcf3d23c7652d3bffa1efebc19335919c783924299cf02`，deterministic archive SHA-256 `784aa1c1be5d7067fed60a35f30cdb1a0c0274f99abc841fb3cbf1145360d9db`；raw/prompt private ref 不入 archive。文件 SHA-256 `abf934b4adc87693667879c3ec0a4e69ce256ba77e810b625206d8f0656f4cf3`。
+- `postgres-verification.json`：20/20 checks；fresh migration 15/16、server-side A5 request、并发/重放 exactly-once、completion-confirmation 前阻断、SDD-007 exact accepted attempt/member binding/Skill/batch/envelope/completion 重读、controlled provider completion 仍不提升、56 append-only triggers、13 v4 lineage FKs、migration 16 exact A5 composite FKs、direct-SQL forged runtime Audit 被 receipt FK 拒绝、same-timestamp/restart `authority_sequence` current、null-visual 多 REJECT stable down blocker、populated down、backup/restore exact。文件 SHA-256 `a0cfd5044d4f01c190c06da7211f139c1540144148c69cc2eb9d3f7e61544df4`。
+- `fault-security-compositor-matrix.json`：30/30 tests；provider-neutral/UNKNOWN、SSRF/DNS drift/逐 hop redirect/reviewed-address transport pinning/MIME/magic/Blob、字体/emoji/缺字/溢出/确定性排版、Secret issuer/signature/fingerprint/future-issued/expiry/replay/purpose/symlink/mode、snapshot/tamper/controlled A5 authority。文件 SHA-256 `757879cc789906389ab4f75231d6f64e8d19bf7e9de62e10019d166e457314e1`。
+- `compose-verification.json`：12/12 checks；fresh Compose、双 Worker、migration 15/16、restart、真实 final PNG download；持久化 controlled Audit 后 Owner decisions=0、packages=0。真实 KnowledgeSnapshot supersession 后旧链返回 412 `MEDIA_REVISION_STALE` 并追加 invalidation。final 下载 SHA-256 `98461ea3a622aaa3f6a73119ced708c8cb6f20dc03000e7bbf956e8e09561e12`，文件 SHA-256 `97dc2b9274cf37c5c9d0a0bd8e83b3ef20ebbb1fef2eb127fbb03f92a48b3a92`。
+- `browser-verification.json`：45/45 checks、console errors 0、serious/critical axe violations 0、6 张 screenshot；production 路径覆盖 arbitrary Auditor/outcome/fake receipt/authority 拒绝、controlled source/`ESCALATE` 与 A5 `WAITING_A5` 分离、Owner/package 禁用、final-only/keyboard/desktop；显式 `CONTROLLED_ENGINEERING_AUTHORITY_FIXTURE` 仅覆盖四项全 false→REJECTED→刷新仍可新 draft→逐项全 true→CONFIRMED→exact decision/package UI 请求，且 `productionAuthorityPersisted=false / authoritativePackageGenerated=false`。文件 SHA-256 `a106928afc119ed38740b69719279dd851bfab3637df6250706df475d11144a9`。
 - `real-provider-canary.json`：`PENDING / NOT_RUN_NO_KEY`；明确未捕获 Secret、signed URL、raw Provider body，external actions = 0。
 - `DEPENDENCY-LICENSE-REVIEW.md`：sharp/opentype/font/template/Logo/archive/provider source、许可证、确定性、安全和 NOTICE/SBOM 决策；禁止复制竞品/Postiz/AGPL 源码。
-- `run-manifest.json`：11 个公开证据文件、5 个固定资产与 2 个 CI-only inventory/SBOM 文件的 size/SHA-256；当前文件 SHA-256 为 `e26b97b70b497d503230d395a919537c21e77d1195000ad2ca6cfdc95badfe09`。manifest 明确 `maturity=ENGINEERING_VERIFIED_RECEIPT_PLUMBING_REAL_A5_PENDING`、本次 controlled evidence 中 `agentTeamsAuditExecuted=false`、`authoritativeAuditReceipt=false`、`authoritativePackageGenerated=false`、real canary `NOT_RUN_NO_KEY`、Owner UAT `PENDING`、external actions `0`。
+- `run-manifest.json`：13 个公开证据文件（含 6 张截图）、5 个固定资产与 2 个 CI-only inventory/SBOM 文件的 size/SHA-256；文件 SHA-256 `b7bd395b444bf311e1cc1578efefec474ff74dc4b73d994315540e5363f20eec`。manifest 明确 `maturity=ENGINEERING_VERIFIED_RECEIPT_PLUMBING_REAL_A5_PENDING`、本次 controlled evidence 中 `agentTeamsAuditExecuted=false`、`authoritativeAuditReceipt=false`、`authoritativePackageGenerated=false`、real canary `NOT_RUN_NO_KEY`、Owner UAT `PENDING`、external actions `0`。
 
 固定资产：Noto Sans SC 2.004/OFL-1.1 SHA-256 `faa6c9df652116dde789d351359f3d7e5d2285a2b2a1f04a2d7244df706d5ea9`；template SHA-256 `933763ac0008ba01254c44a2f8b73fa654ac3e36a872b02b47fa30ab79e6e5ea`；Logo SHA-256 `377c131af75bc8f108f6ef369f5e957f32f5d77a78238518e0ab178d1ac63c5f`。
 
@@ -57,24 +61,28 @@ CR2 已把 exact ArtifactRevisionV4 编译成独立 A5 TaskContract，并复用 
 
 | 命令 | 结果 |
 |---|---|
-| `npx vitest run packages/domain/src/media-audit-runtime.test.ts apps/api/src/media-audit-authority-api.test.ts apps/web/src/lib/media-audit-authority.test.ts` | PASS：exact TaskContract/Skill/schema/canonical bindings、cross task/revision/media/Brand/Knowledge/final digest 拒绝、request-only API、arbitrary identity/outcome/receipt/authority 拒绝、package download 先重放 receipt authority、UI presentation |
+| `npm test -- --run apps/api/src/media-audit-authority-api.test.ts packages/domain/src/media-artifact.test.ts packages/domain/src/media-audit-runtime.test.ts packages/mission-compiler/src/persistent-runtime.test.ts apps/mission-worker/src/worker.test.ts` | PASS：5 files / 39 tests；完整 review input、无环 evidence policy、arbitrary/cross/duplicate evidence、privacy、text-only capability、closed mutation、worker gateway projection 与 exact task identity |
 | `npx vitest run packages/domain/src/media-artifact.test.ts packages/providers/src/media-integration.test.ts scripts/media-provider-secret-cli.test.ts apps/api/src/media-readiness-api.test.ts --configLoader=runner` | PASS：4 files / 33 tests；ticket authority、pinned transport、configure/failed/expired/persisted-pass readiness |
 | `npx vitest run apps/web/src/lib/media-readiness.test.ts apps/api/src/media-readiness-api.test.ts scripts/media-provider-secret-cli.test.ts --configLoader=runner` | PASS：3 files / 13 tests；Web/API/CLI 区分 configure-only、failed、expired、persisted PASS，Web 不从 configured/mode 推断 Provider evidence |
 | `npm run evidence:sdd012:media` | PASS：16 checks；3 张 1080×1440 final PNG；deterministic public-safe engineering archive；`authoritativePackageGenerated=false` |
-| `npm run verify:sdd012:matrices` | PASS：3 files / 29 tests；fault/security/compositor/Secret/tamper matrix |
-| `npm run verify:sdd012:postgres` | PASS：16 checks；migration 16、并发 request exactly-once、SDD-007 accepted task/attempt/binding/batch/completion 重读、completion-before-confirmation、controlled provider 不提升、direct-SQL receipt FK、append-only、populated down fail closed |
-| `npm run verify:sdd012:compose` | PASS：11 Compose checks、30 Chromium checks、4 screenshots；request authority 字段拒绝、受控 `ESCALATE` 与 A5 `WAITING_A5` 分离、中英 authority actions disabled、decisions/packages=0、重启与真实 KnowledgeSnapshot supersession 412 |
+| `npm run verify:sdd012:matrices` | PASS：30/30 fault/security/compositor/Secret/tamper tests |
+| `npm run verify:sdd012:postgres` | PASS：20/20 checks；migration 16、并发/restart idempotency、SDD-007 exact completion authority、visual replacement/current gate、direct SQL FKs/append-only、null-visual 多 REJECT stable down blocker、backup/restore |
+| `npm run verify:sdd012:compose` | PASS：12 Compose checks、45 Chromium checks、6 screenshots；production PG decisions/packages=0，工程 UI fixture 覆盖 REJECTED replacement、四项 CONFIRMED、exact headers/decision/package，且不持久化、不提升 public/live claims |
 | `npm run verify:sdd012:compatibility` | PASS：10 files / 71 tests；SDD-008/009/010/007 contracts 回归 |
+| `SDD007_POSTGRES_ADMIN_URL=<fresh-postgres-17.10> npm run verify:sdd007:postgres` | PASS：migration 16→15→14 populated path 由 14 稳定阻断且无部分移除；empty path 仅移除 16–14 并保留 migration 13 及更早 schema |
+| `SDD008_SKIP_BUILD=1 npm run verify:sdd008:compose` | PASS：19 checks、23 Chromium checks/6 screenshots；isolated SDD-008 guard 与 main first-later SDD-009 guard 分别精确验证 |
+| `SDD009_SKIP_BUILD=1 npm run verify:sdd009:compose` | PASS：22 checks、30 Chromium checks/8 screenshots；rollback 深度 5 与 legacy authority 兼容 |
+| `SDD010_SKIP_BUILD=1 npm run verify:sdd010:compose` | PASS：17 checks、22 Chromium checks/8 screenshots；rollback 深度 4 与 v3 authority 兼容 |
 | `DATABASE_URL=<fresh-postgres> npm run verify:shadow-postgres` | PASS：补齐 BlobStore workspace build 后，既有 normalized SHADOW authority/restart/replay/immutable-history gate 全绿 |
 | `npm run verify:sdd012:dependencies` | PASS：1,024 packages、716 CycloneDX components、disallowed license 0；lock SHA-256 `f90fef9074b4894bd8495e55ffd00a29d81660edb2fec49885fa8eded36b3f37` |
 | `npm audit --omit=dev --audit-level=high --json` | PASS：0 total/high/critical |
 | `npm audit --audit-level=high --json` | REVIEWED：3 个既有 Storybook-only dev high，production 0 |
 | `npm run lint -- --no-warn-ignored` | PASS：0 error / 0 warning |
 | `npm run typecheck` | PASS：14 workspaces |
-| `npm test` | PASS：71 passed / 6 skipped files；552 passed / 6 skipped tests；connected tests 已在专项 fresh PostgreSQL/Compose gate 中运行 |
-| `npm run check:messages` | PASS：zh-CN/en 1,017 keys parity |
-| `npm run check:secrets` | PASS：614 files，无 Secret 命中 |
-| `npm run verify` | PASS：lint、14 workspaces typecheck、71 passed/6 skipped test files、552 passed/6 skipped tests、全部报告/Secret/状态/依赖门禁、production Next.js build、Storybook build/browser-safety |
+| `npm test` | PASS：71 passed / 6 skipped files；559 passed / 6 skipped tests；connected tests 已在专项 fresh PostgreSQL/Compose gate 中运行 |
+| `npm run check:messages` | PASS：zh-CN/en 1,034 keys parity |
+| `npm run check:secrets` | PASS：616 files，无 Secret 命中 |
+| `npm run verify` | PASS：lint、14 workspaces typecheck、71 passed/6 skipped test files、559 passed/6 skipped tests、全部报告/Secret/状态/依赖门禁、production Next.js build、Storybook build/browser-safety |
 
 CI 新增 `sdd012-governed-xhs-media` job：exact Chromium、golden/matrix/compatibility、fresh PostgreSQL、double-worker Compose、dependency/SBOM、run manifest 和公开证据上传。远端 Draft PR checks 由 Coordinator/PR 独立核验。
 
@@ -94,14 +102,14 @@ CI 新增 `sdd012-governed-xhs-media` job：exact Chromium、golden/matrix/compa
 | AC-10 | PASS | generation key 并发、双 Worker最多一个 billable submission；intent 先持久化，未知 POST 不重试；有 task id 仅 poll/reconcile 同一 task。 |
 | AC-11 | PASS | `SUBMITTING`、`PROVIDER_PENDING`、`DOWNLOADING`、raw Blob-before-DB、final Blob-before-DB 五阶段恢复或 review，无重复计费/资产丢失。 |
 | AC-12 | PASS | repository 在 row lock transaction 内从 v3 parent + authoritative final/composition/raw/spec/Blob/snapshots 重建 ordered MediaSet/child v4；media/composition/snapshot/source 等变化使旧 Audit/Decision/Package stale。 |
-| AC-13 | ENGINEERING_VERIFIED | exact ArtifactRevisionV4 可编译独立 A5 task，锁定 owner/run/job/task、A5 role、Skill、revision/media/final bytes/snapshots/policy/profile/schema/canonical digests；API 只能 request/observe，receipt 由 SDD-007 PG accepted + completion-confirmed output 派生。真实 A5 尚未运行。 |
-| AC-14 | ENGINEERING_VERIFIED | repository 在同 transaction/row locks 中重读 attempt/member binding/Skill/batch/envelope/completion/canary；arbitrary/cross-owner/controlled provider/unconfirmed/tampered/old authority fail closed。只有 exact runtime PASS 代码路径可进入 Owner/package，真实 PASS 未伪造测试。 |
-| AC-15 | ENGINEERING_VERIFIED / UAT_PENDING | deterministic binary builder 已绑定 runtime receipt + Owner exact decision + ordered final bytes；controlled/no-Secret 证据明确没有生成运营包。real A5 PASS、Owner decision 与 binary verifier 仍 PENDING。 |
+| AC-13 | ENGINEERING_VERIFIED | exact ArtifactRevisionV4 编译独立 A5 task；完整公开正文/spec/final machine facts与per-check evidence policy实际进入Gateway；无环 base/final digest；任一内容变化改变task；privacy payload拒绝。API只能request/observe，receipt由SDD-007 PG accepted + completion-confirmed output派生。真实 A5 尚未运行。 |
+| AC-14 | ENGINEERING_VERIFIED | repository同transaction/row locks重读attempt/member/Skill/batch/envelope/completion/canary；arbitrary/cross-owner/evidence digest/controlled provider/unconfirmed/tampered/old authority fail closed。text-only runtime不能声称pixel PASS；exact runtime PASS后仍需Owner visual review。 |
+| AC-15 | ENGINEERING_VERIFIED / UAT_PENDING | visual/decision/package closed mutation具备ETag/idempotency、并发/restart replay；Owner四项checklist绑定exact revision/media/audit，OwnerDecision identity含visual id/digest；package重读current authority和ordered final bytes。controlled/no-Secret只跑显式工程夹具，未生成运营包。 |
 | AC-16 | PASS | copy/download/open/refresh/restart 仍是 `UNVERIFIED_EXTERNAL_STATE`；OpenAPI 无 auto-upload/click/`PUBLISHED` mutation，external actions=0。 |
-| AC-17 | PASS | production PG/API/Blob Shell 展示 actual final preview、raw/final lineage、overlay/snapshot、cost/rights/profile，以及 `CONTROLLED_FIXTURE / AgentTeams=false` 的阻断状态；Owner approve/package 在中英界面均禁用，keyboard/axe/desktop checks 全绿。 |
+| AC-17 | PASS | production PG/API/Blob Shell 展示可放大final、完整revision/media digests、全部findings/evidence/capability boundary与受控阻断；Chromium覆盖四项false→REJECTED→刷新后新draft→逐项全true→CONFIRMED→APPROVE/package工程UI请求。工程夹具不写PG、不改变public/live claims；中英/keyboard/axe/desktop全绿。 |
 | AC-18 | PENDING | fresh PG/Blob/Compose controlled fake 门禁 PASS；配置 Key 只得到 `SECRET_CONFIGURED/STARTING`，failed/expired receipt 为 `DEGRADED/STALE`，只有持久化且可复核的未过期 live PASS receipt 才 READY；Owner terminal real Provider UAT 因无 Secret/预算保持 `NOT_RUN_NO_KEY`。 |
 | AC-19 | PASS | dependency license/SBOM/audit、source register、provider terms/data/retention、sharp/opentype/font/template/Logo/NOTICE review 完成；不构成法律保证。 |
-| AC-20 | PASS | 独立 volume backup/restore exact、v3/v4 lineage保留、populated down 拒绝、旧 contracts 兼容回归通过；旧 app 不得误报 v4 无媒体成功。 |
+| AC-20 | PASS | 独立 volume backup/restore exact、v3/v4 lineage保留；migration16 rollback显式拒绝null-visual多REJECT collision并保留schema/authority；007/008/009/010/012 legacy down depths校准；同timestamp/restart current由authority_sequence决定。 |
 | AC-21 | ENGINEERING_VERIFIED / BLOCKED | CR2 规格、migration 16、fresh-PG receipt authority、API/PG/Web parity、fault/tamper/concurrency/restart、controlled-Audit screenshots、compatibility/license/SBOM/Secret evidence 已准备；real DeepSeek/real A5/真实媒体 Provider、Owner UAT-00/01/02 仍 PENDING，因此 M5-11 不升级。 |
 
 ## 六、Owner 参与验收
@@ -142,9 +150,52 @@ CI 新增 `sdd012-governed-xhs-media` job：exact Chromium、golden/matrix/compa
    预期只返回 server-compiled request/run/job/task/contract digests。把 body 加入 `result`、`auditorIdentityId`、`runtimeReceipt` 或 `authoritativeForOperations` 的四次负测必须各自返回 422；不得出现可导入 receipt 或设置 PASS 的 API。
 4. 用 `curl --fail http://127.0.0.1:4100/api/v1/media --output /tmp/lumiclaw-media-workspace.json` 轮询；先看到 `WAITING_A5/QUEUED/RUNNING/RECOVERING`，不能因 run=`SUCCEEDED_RUNTIME` 提前出现 Audit PASS。停止并重启 supervisor 一次；预期恢复同一 request/run/job/task，最多一个 accepted attempt/receipt/Audit，不重复调用模型或生成 product row。
 5. 完成后用 `jq` 对 request、runtime Audit 与 receipt binding 核对 exact revision/media/snapshot/input/output/contract digests，确认 `auditorRole=A5_INDEPENDENT_AUDITOR`、actual member role 是 `independent-auditor`、maturity 为 `AGENTTEAMS_RUNTIME`、`agentTeamsExecuted=true`、`authoritativeForOperations=true`。任何 controlled provider、旧 attempt、未 completion-confirmed、Leader/Producer actor 或 digest 不一致都必须保持 `BLOCKED` 且没有 runtime Audit。
-6. 若 exact result 为 `FAIL` 或 `ESCALATE`，Owner APPROVE 与 package API 负测必须返回 `MEDIA_AUDIT_PASS_REQUIRED`，修复媒体/快照后必须产生新 revision/request digest。若 exact result 为 `PASS`，Owner 先在 terminal 审阅 `/tmp/lumiclaw-media-workspace.json` 的完整 findings/lineage，再明确决定是否执行 Owner `APPROVE`；不要把 Agent 成功当 Owner 决定。
-7. Owner 决定 APPROVE 后，以 workspace 返回的 exact `auditDecisionId/auditDecisionDigest` 调用 `/api/v1/media-revisions/${REVISION_ID}/owner-decisions`，随后以 exact revision/audit/owner digests 调用 `POST /api/v1/media-publish-packages`。下载返回的 package，执行 `unzip -t`、`shasum -a 256`，逐项核对 title/body/topics、sanitized image specs、ordered final PNG bytes、manifest digests、1080×1440 与 Blob inventory；缺失/篡改任一 byte 必须拒绝读取/下载。
-8. 全程不打开、不登录、不上传、不点击小红书，不运行 OAuth/DOM automation；预期 external actions=`0`、状态仍 `UNVERIFIED_EXTERNAL_STATE`。返回 sanitized request/run/job/task/attempt/receipt/audit/decision/package digests、package SHA-256、restart 观察及 `UAT-02 PASS|FAIL`，不返回 Secret、raw prompt、Authorization、provider raw body或客户资料。
+6. 若 exact result 为 `FAIL` 或 `ESCALATE`，Owner APPROVE、visual CONFIRMED与package必须保持阻断；修复媒体/快照后必须产生新 revision/request digest。若 result 为 `PASS`，先核对 output capability 必须仍是 `TEXT_ONLY_WITH_SERVER_MACHINE_FACTS / pixelInspectionPerformed=false / ownerVisualReviewRequired=true`，并逐条检查8个finding的message与evidenceDigests；任意finding用未知/重复/cross-revision digest或声称像素已审，返回 `UAT-02 FAIL`。
+7. 只打开本机 `http://127.0.0.1:3100/zh-CN/publish`（不要打开小红书）。在exact三图可放大预览旁确认页面显示完整revision digest与每张media digest。视觉质量、隐藏内容、渲染文字/OCR、图文语义四项初始必须全部未选且CONFIRMED disabled。先保留至少一项未选并点击REJECTED，刷新页面；预期显示旧REJECTED authority，但一个全false的新PENDING draft仍可编辑。逐张人工核对后分别勾选四项；少一项CONFIRMED仍disabled，四项全true后才可提交。保存后记录：
+
+   ```sh
+   curl --fail http://127.0.0.1:4100/api/v1/media --output /tmp/lumiclaw-media-after-visual.json
+   export AUDIT_ID="$(jq -r --arg revision "$REVISION_ID" '[.workspace.audits[]|select(.artifactRevisionId==$revision and .evidenceMaturity=="AGENTTEAMS_RUNTIME")][-1].id' /tmp/lumiclaw-media-after-visual.json)"
+   export AUDIT_DIGEST="$(jq -r --arg id "$AUDIT_ID" '.workspace.audits[]|select(.id==$id)|.canonicalDigest' /tmp/lumiclaw-media-after-visual.json)"
+   export VISUAL_ID="$(jq -r --arg audit "$AUDIT_ID" '[.workspace.visualReviews[]|select(.auditDecisionId==$audit)][-1].id' /tmp/lumiclaw-media-after-visual.json)"
+   export VISUAL_DIGEST="$(jq -r --arg id "$VISUAL_ID" '.workspace.visualReviews[]|select(.id==$id)|.canonicalDigest' /tmp/lumiclaw-media-after-visual.json)"
+   jq --arg id "$VISUAL_ID" '.workspace.visualReviews[]|select(.id==$id)|{id,artifactRevisionDigest,mediaSetDigest,auditDecisionDigest,result,checklist,reviewedMediaDigests,canonicalDigest}' /tmp/lumiclaw-media-after-visual.json
+   ```
+
+   预期current visual=`CONFIRMED`、四项全true、reviewedMediaDigests与ordered final一致；旧REJECTED仍在history但不再是current。若刷新后REJECTED使界面永久锁死、旧false自动变true、或A5 PASS自动生成visual authority，则失败。
+8. Owner确实决定APPROVE后，用closed body、exact visual ETag和新idempotency key调用Owner decision；extra `ownerIdentity/runtimeReceipt/authority/createdAt`负测必须422，缺header必须428，wrong ETag必须412：
+
+   ```sh
+   curl --fail-with-body --request POST "http://127.0.0.1:4100/api/v1/media-revisions/${REVISION_ID}/owner-decisions" \
+     --header 'content-type: application/json' \
+     --header "if-match: \"media-visual-review-${VISUAL_DIGEST}\"" \
+     --header "idempotency-key: owner-uat-decision-${REVISION_ID}" \
+     --data "{\"revisionDigest\":\"${REVISION_DIGEST}\",\"auditDecisionId\":\"${AUDIT_ID}\",\"auditDecisionDigest\":\"${AUDIT_DIGEST}\",\"visualReviewId\":\"${VISUAL_ID}\",\"visualReviewDigest\":\"${VISUAL_DIGEST}\",\"result\":\"APPROVE\"}" \
+     --dump-header /tmp/lumiclaw-owner-decision.headers \
+     --output /tmp/lumiclaw-owner-decision.json
+   export OWNER_DECISION_ID="$(jq -r '.decision.id' /tmp/lumiclaw-owner-decision.json)"
+   export OWNER_DECISION_DIGEST="$(jq -r '.decision.canonicalDigest' /tmp/lumiclaw-owner-decision.json)"
+   ```
+
+   同key同body重放必须200且`Idempotency-Replayed: true`；同key改body必须409。OwnerDecision必须绑定exact visual id/digest。
+9. 以exact decision ETag创建package并重放一次；201 created、200 replay都必须同一id/manifest，PG package/files count保持1套：
+
+   ```sh
+   curl --fail-with-body --request POST 'http://127.0.0.1:4100/api/v1/media-publish-packages' \
+     --header 'content-type: application/json' \
+     --header "if-match: \"media-owner-decision-${OWNER_DECISION_DIGEST}\"" \
+     --header "idempotency-key: owner-uat-package-${REVISION_ID}" \
+     --data "{\"revisionId\":\"${REVISION_ID}\",\"revisionDigest\":\"${REVISION_DIGEST}\",\"auditDecisionId\":\"${AUDIT_ID}\",\"auditDecisionDigest\":\"${AUDIT_DIGEST}\",\"ownerDecisionId\":\"${OWNER_DECISION_ID}\",\"ownerDecisionDigest\":\"${OWNER_DECISION_DIGEST}\"}" \
+     --dump-header /tmp/lumiclaw-package.headers \
+     --output /tmp/lumiclaw-package.json
+   export PACKAGE_ID="$(jq -r '.package.id' /tmp/lumiclaw-package.json)"
+   curl --fail "http://127.0.0.1:4100/api/v1/media-publish-packages/${PACKAGE_ID}/download" --output /tmp/lumiclaw-xhs-v4.zip
+   unzip -t /tmp/lumiclaw-xhs-v4.zip
+   shasum -a 256 /tmp/lumiclaw-xhs-v4.zip
+   ```
+
+   逐项核对title/body/topics、sanitized image specs、ordered final PNG bytes、manifest digests、1080×1440与Blob inventory；篡改或追加replacement visual/decision后旧package必须拒绝读取/下载。
+10. 全程不打开、不登录、不上传、不点击小红书，不运行OAuth/DOM automation；预期external actions=`0`、状态仍`UNVERIFIED_EXTERNAL_STATE`。返回sanitized request/run/job/task/attempt/receipt/audit/visual/decision/package digests、package SHA-256、restart观察及`UAT-02 PASS|FAIL`，不返回Secret、raw prompt、Authorization、provider raw body或客户资料。
 
 失败信号：controlled fixture 可批准/打包、请求可自报 Auditor/outcome/receipt、runtime success 自动变 PASS、FAIL/ESCALATE 可批准、Auditor=Leader/Producer、旧 attempt/stale lease 可物化、包缺真实 bytes或依赖临时 URL、tamper 仍导出、出现外部平台动作、重启后 authority digest 改变。
 
@@ -159,7 +210,7 @@ CI 新增 `sdd012-governed-xhs-media` job：exact Chromium、golden/matrix/compa
 Known limitations：
 
 - real EvoLink path 已实现但没有 Owner Key/预算，故 live availability、费用、rights receipt 和视觉质量均未验证；`CONTROLLED_FAKE` 绝不冒充 real provider。
-- 当前只支持 exact XHS image profile、final 单图下载与 public-safe engineering archive；SDD-007 runtime Audit receipt authority plumbing 已接入，但 real DeepSeek/real A5/Owner binary UAT 未执行，故 Owner APPROVE 与 ManualPublishPackage 仍为 `PENDING/BLOCKED`。不实现 OAuth、Cookie/DOM automation、上传、点击发布、回读或 `PUBLISHED`。
+- 当前只支持 exact XHS image profile、final 单图下载与 public-safe engineering archive。A5 runtime当前是text-only：完整公开正文/spec与server machine facts可审，但真实pixel视觉质量、隐藏内容、渲染文字/OCR、像素图文语义不在A5能力内，必须由Owner四项显式确认。SDD-007 receipt/visual/decision/package plumbing已接入，但real DeepSeek/real A5/Owner binary UAT未执行，故Owner APPROVE与ManualPublishPackage仍为`PENDING/BLOCKED`。不实现OAuth、Cookie/DOM automation、上传、点击发布、回读或`PUBLISHED`。
 - Provider rights/terms 只形成版本化 source snapshot 与 Owner review gate；不保证版权、商用权、平台或法律合规。
 - pinned asset/font/template/Logo 或 Brand/Knowledge snapshot 更新必须形成新 lineage；不能静默继承旧 Audit/Decision/Package。
 - 首期 BrandSnapshot 是持久化的最小权威映射：exact approved KnowledgeSnapshot 内唯一 Organization profile 的 id/digest、组织名、品牌名与真实批准时间；尚未建设独立 Brand 服务。若后续引入独立 Brand authority，必须迁移并使旧 lineage stale，不能把本映射升级为更广泛的品牌治理声明。
@@ -175,13 +226,17 @@ Coordinator 第二轮 `REVISE` 后发现并关闭：浏览器/API 可自选 `aud
 
 本次 CR2 关闭该依赖的代码接缝：新增 exact A5 TaskContract/Skill/input-output schema、migration 16 request/receipt authority、same-transaction SDD-007 control-plane 重读、worker completion reconciler、request-only API、PG 同源中英状态 rail 与 receipt-backed package gate。机器测试刻意只让 controlled provider 走到 completion-confirmed 后仍阻断，没有篡造 real DeepSeek 或 authoritative PASS；因此运营 maturity 和 Owner UAT 保持 PENDING。
 
+本轮后续P0/P1复核继续关闭：A5 digests-only输入、任意64位evidence digest、text-only伪造pixel PASS、Owner visual一键全true、REJECTED后UI永久锁死、OwnerDecision未绑定visual identity、visual/decision/package缺closed schema/ETag/idempotency、workspace以createdAt猜current、migration16 legacy down深度与null-visual多REJECT rollback collision。工程正向浏览器路径使用显式`CONTROLLED_ENGINEERING_AUTHORITY_FIXTURE`，只拦截UI请求并断言body/header/state machine，不写production PG、不生成public/live authority；生产repository正向路径由fresh PG test真实执行。
+
+最终 Compose 复核的第一次启动在执行测试前因 Docker VM `no space left on device` 明确失败；仅清理未使用 build cache 后，重新构建 exact working tree 镜像，并从空 `lumiclaw-sdd012-verify` project 重跑到 12/12 Compose + 45/45 Chromium PASS。该基础设施失败没有被记录为产品 PASS，也不替代后续 exact-HEAD remote CI。
+
 ## 九、回滚与恢复
 
 Rollback 原则：停止新 media dispatch，保留 append-only jobs/intents/tasks/receipts/raw/final/composition/v4 revisions/audits/decisions/packages/Blob inventory，先导出再 forward-fix；不得删除 Owner 资产或把 v4 误报为无媒体成功。
 
 1. 禁用 media generation/controlled-audit/approval/package mutation 与 UI入口，保留 v3/v4 历史只读和 final download（若 snapshot/rights active）。当前权威 approval/package 本就处于阻断状态。
 2. `pg_dump --format=custom` 导出 migration 15/16 authority，记录 AuditRequest/RuntimeReceipt/Audit/Decision/Package 行数、Blob inventory/digests 与 backup SHA-256；在独立 volume 恢复并比较 exact counts/digests。
-3. migration 16 在 request/receipt/runtime Audit 非空时稳定拒绝 `SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED`；migration 15 原 populated-down 保护继续存在。只能先导出、停止写入并 forward-fix，禁止删除 accepted runtime/media history。
+3. migration 16 在 request/receipt/runtime Audit/visual authority非空，或同owner/revision存在多条OwnerDecision（包括visual=null REJECT replacement）而无法恢复migration15 one-per invariant时，稳定拒绝`SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED`并保持schema/authority未部分拆除。migration15原populated-down保护继续存在；007/008/009/010 verifier已按migration16校准rollback深度。只能先导出、停止写入并forward-fix，禁止删除accepted runtime/media history。
 4. authority UPDATE/DELETE 稳定拒绝 `SDD012_APPEND_ONLY_MEDIA_AUTHORITY`；修复只追加 receipt/revision/invalidation。
 5. 恢复本分支应用后 worker 只 reconcile 已有 task；`UNKNOWN_CHARGE_STATE` 保持人工 review，绝不通过 create retry“修复”。
 
@@ -189,8 +244,8 @@ Rollback 原则：停止新 media dispatch，保留 append-only jobs/intents/tas
 
 - Goal：实现、专项机器验证与 public acceptance evidence 已完成；在 commit/push/Draft PR/STATUS_HANDOFF 成功前保持 active。
 - Worktree/Branch/Base：见报告顶部；唯一 worktree，无 main merge。
-- 用户可见结果：中文优先/英文 parity 的受治理媒体面板、真实 final preview/download、raw/final lineage、费用/版权/snapshot、重新生成影响，以及清楚显示 `CONTROLLED_FIXTURE / AgentTeams=false` 的 Audit/Owner/package 阻断状态。
-- 数据与恢复：migration 15/16、PostgreSQL append-only AuditRequest/RuntimeReceipt authority、SDD-007 accepted history 复用、Blob staging、Worker completion reconciler、backup/restore、populated down fail closed。
+- 用户可见结果：中文优先/英文parity的受治理媒体面板、三图可放大preview与完整revision/media digests、全部A5 findings/evidence/capability boundary、四项Owner visual draft/replacement，以及清楚显示`CONTROLLED_FIXTURE / AgentTeams=false`阻断状态。
+- 数据与恢复：migration15/16、PostgreSQL append-only AuditRequest/RuntimeReceipt/VisualReview authority、authority_sequence current、OwnerDecision visual binding、durable idempotency、SDD-007 accepted history复用、backup/restore与collision down fail closed。
 - 安全/隐私：public-safe synthetic；Secret scan PASS；无客户数据、Key、signed URL、private prompt/raw body、真实账号或平台动作。
 - 建议成熟度：`M5-11 = IN_PROGRESS / BLOCKED_PENDING_SDD_007_AUDITOR_RUNTIME`；CR2 engineering plumbing 可复核，但不得建议模块 `EVIDENCE_READY` 或 `ACCEPTED`。
 - 下一候选：Coordinator 独立复核 CR2 后，由 Owner 按 terminal-only UAT-02 运行 real DeepSeek + real A5 + real media lineage 并作 binary decision。Owner UAT-00/01 和 real-provider/视觉 UAT 也仍 PENDING；在这些边界关闭前不进入 SDD-011。

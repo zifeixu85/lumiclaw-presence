@@ -32,7 +32,9 @@ const publicNames=[
   '01-governed-final-preview-zh.png',
   '02-controlled-audit-blocked-zh.png',
   '03-controlled-audit-blocked-en.png',
-  '04-desktop-gate.png'
+  '04-desktop-gate.png',
+  '05-engineering-visual-confirmed-zh.png',
+  '06-engineering-package-ready-zh.png'
 ];
 const evidenceFiles=[];
 for(const name of publicNames){

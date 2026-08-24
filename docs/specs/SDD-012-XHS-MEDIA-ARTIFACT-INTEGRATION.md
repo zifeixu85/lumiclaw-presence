@@ -503,3 +503,37 @@ repository 必须重新计算 TaskContract、SkillLock、input projection、outp
 - `CR2-T05 convergence`：对抗矩阵、fresh PG/Compose/Chromium、full verify、安全/许可证/SBOM/rollback、acceptance、Draft PR 与 STATUS_HANDOFF。
 
 Analyze 结论：复用 SDD-007 已接受的 run/job/attempt/binding/materialization/completion authority；不新增第二套可伪造 runtime receipt，不回写 terminal source run，不让浏览器承载 nested authority，不把 runtime `SUCCEEDED_RUNTIME` 当 Audit PASS。以上任务依赖闭合、范围有界，CR2 状态为 `SPEC_READY`。
+
+### 16.8 CR2 review findings — 可审输入、证据语义与诚实能力边界
+
+P0 复核确认：A5 不能只收到 digest/ID/bytes/MIME 后声称完成“媒体审校”。`A5MediaAuditTaskContractV1` 的输入采用无环两阶段 canonical binding：
+
+1. `baseReviewInputProjection` 冻结 Owner 预期公开的完整 XHS artifact：title/body/topics/CTA/language/account、cover 和 ordered image specs 的 purpose/aspect ratio/visual brief/overlay copy/alt、公开 source bindings；再加 ordered final media 的 alt/MIME/bytes/dimensions/final/content/Blob/raw/generation/composition/rights/cost digests与本地 deterministic verifier machine facts。该投影不含自身 digest，形成 `baseReviewContentDigest`。
+2. repository 仅从已有 authority digests 派生全局 `allowedEvidenceDigests` 与每个 check 的 exact ordered `requiredEvidenceDigests`；再把 `baseReviewContentDigest + allowedEvidenceDigests + evidencePolicy` 交给最终 A5 gateway projection，形成 `inputProjectionDigest`。policy 不引用最终 `inputProjectionDigest`，因此不存在自引用 hash 环。
+3. title/body/topics/CTA、visualBrief、overlayCopy、alt、media facts 或 evidence policy 的任一修改/重排都会改变 base/final input、authority/contract/task identity；worker gateway 必须收到与 contract 完全相同的 projection，tamper/reorder fail closed。
+4. 每条 finding 的 `evidenceDigests` 必须非空、无重复、全部属于 allowlist，并与该 check 的 exact `requiredEvidenceDigests` 顺序一致。任意 64 位伪 digest、cross-revision digest、未知 check、空数组、重复或“所有检查只引用 revision digest”均拒绝；evidenceDigests 保留在 closed schema 与 canonical output 中。
+
+当前 DeepSeek runtime 是 text-only，能力边界固定为 `TEXT_ONLY_WITH_SERVER_MACHINE_FACTS / pixelInspectionPerformed=false / ownerVisualReviewRequired=true`。server verifier只证明 bytes/digest/MIME/dimensions/order/composition lineage；A5 可审公开正文、overlay/alt/visual brief、来源、policy 与 machine facts，但没有实际查看 pixels。`FINAL_PIXEL_VISUAL_QUALITY`、`HIDDEN_PIXEL_CONTENT`、`RENDERED_TEXT_OCR`、`PIXEL_TEXT_MEDIA_SEMANTICS` 必须由 Owner 对 exact final 大图完成；A5 不得对这些项输出或暗示无条件 PASS。
+
+模型输入和 evidence/log 明确排除 private prompt、raw provider body、signed URL、Secret/Authorization、客户私有知识全文、raw bytes/base64。只发送本次待公开 artifact 与 approved safe digest context；最大投影边界固定，secret/signed-url/base64 pattern fail closed。
+
+### 16.9 CR2 review findings — Owner visual authority、exact mutation 与 current lineage
+
+receipt-backed A5 PASS 仍不足以批准：Owner 必须在 final 三图的可放大预览旁查看完整 exact revision/media digests，并分别确认四个 boolean checklist：视觉质量、隐藏内容、渲染文字/OCR、像素级图文语义。四项全 true 才能追加 `CONFIRMED`；任一 false 只能追加 `REJECTED`，false 项就是结构化 failure flags。按钮不得一次点击把四项硬编码为 true，也不得把 Audit PASS 伪装成 Owner visual review。
+
+VisualReview 是 exact owner/revision/media-set/audit/checklist/result-bound append-only authority。首次 `REJECTED` 后 UI 必须显示 current failed authority，同时开启一个全 false 的新 `PENDING` draft；刷新/进程重启后仍可逐项重新确认，旧 false 不会自动提升。只有 current `CONFIRMED` 锁定 surface。PostgreSQL `authority_sequence`（secondary `id`）而不是 caller/fixture `createdAt` 决定 current visual review 和 Owner decision；workspace 按该顺序投影，repository current gate 与 Web current 必须一致。
+
+OwnerDecision `APPROVE` identity/canonical binding 必须包含 exact `visualReviewId/digest`；package 每次创建、重放、读取/下载都重读 current exact decision→visual review→audit receipt。old/replaced/tampered visual review、old decision、stale package、revision/media/snapshot invalidation均失去运营资格。`REJECT` 可以不绑定 visual review，但绝不形成 approve/package authority。
+
+Visual review、Owner decision、package 三个 mutation 使用 closed request schema，拒绝 extra caller-owned `ownerIdentity/runtimeReceipt/authority/createdAt`；强制 exact `If-Match` 与 8–128 字节 `Idempotency-Key`。PG 在 transaction 内使用 `(owner, route, key)` advisory lock + `media_idempotency_v2` request digest，并对同 revision authority加锁：same key/same body restart replay 返回 200，same key/different body fail closed；不同 key 的同一 deterministic authority收敛为一行；并发只允许 one-created/one-replayed，不泄漏 `23505/500`。响应返回 `ETag` 与 `Idempotency-Replayed`。
+
+Migration 16 为 visual/decision 增加 append-only sequence、exact composite FK 和 rollback guard；workspace history不改写。down preflight除 request/receipt/runtime audit/visual authority外，还显式检查同 owner/revision 多条 owner decisions（包括 `visual_review_id IS NULL` 的 REJECT replacement）。无法恢复 migration 15 one-per-revision invariant 时必须稳定抛出 `SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED`，不得落到非稳定 unique violation。migration 16 加入后 legacy verifier rollback 深度冻结为 SDD-007=3、SDD-008=6、SDD-009=5、SDD-010=4、SDD-012=1；各自必须命中预期 fail-closed migration 且不部分拆除 authority。
+
+### 16.10 Revised convergence criteria
+
+- Gateway red/green：完整公开正文/spec/machine facts/evidence policy存在；正文/visualBrief/overlay/alt 变化改变 task；privacy payload不进入 request/evidence/log；text-only pixel claim被拒绝。
+- Evidence red/green：arbitrary/cross-revision/duplicate/empty/unknown-check digest 拒绝，exact per-check policy PASS。
+- API/PG：extra/missing/wrong ETag/short key/same-key different body/concurrent duplicate/restart replay/table count=1/package file count exact；direct SQL composite FK和append-only拒绝。
+- Current lineage：同 timestamp或回拨 timestamp下，workspace current 仍由 `authority_sequence` 决定；old review/decision/package current gate fail closed。
+- Chromium：初始四项 false、CONFIRMED disabled；不全勾可 REJECT；刷新后新 draft仍全 false且可编辑；逐项全勾才 CONFIRMED；旧 REJECTED stale、current CONFIRMED 后才可 Owner APPROVE/package。工程正向仅允许显式 `CONTROLLED_ENGINEERING_AUTHORITY_FIXTURE`，不得持久化为 production authority或进入 real/public claim。
+- real DeepSeek、real A5、real media Provider 与 Owner UAT 继续 PENDING；M5-11 proposed state不变，真实外部平台动作必须为 0。

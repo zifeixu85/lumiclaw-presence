@@ -3,11 +3,12 @@
   "sdd": "SDD-012",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-24T01:27:14.278Z",
+  "generatedAt": "2026-08-24T03:26:48.997Z",
   "image": "postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4",
   "checks": {
     "migration15Applied": true,
     "migration16Applied": true,
+    "latestMigrationCalibrated": true,
     "repositoryAuthority": true,
     "fiveCrashStages": true,
     "authorityRowsComplete": true,
@@ -19,7 +20,10 @@
     "auditRequestAppendOnly": true,
     "exactA5CompositeForeignKeys": true,
     "directSqlRuntimeAuditForgeryBlocked": true,
+    "nullVisualRejectCollisionDownBlocked": true,
+    "collisionDownPreservedMigration16": true,
     "populatedDownBlocked": true,
+    "rollbackDepthTargetsMigration16": true,
     "backupNonEmpty": true,
     "backupRestoreExact": true
   },
@@ -39,9 +43,9 @@
     "tasks": 0,
     "attempts": 1
   },
-  "appendOnlyTriggerCount": 55,
-  "exactLineageForeignKeyCount": 12,
-  "backupSha256": "bd19cc44ac18c0ced54c1830ac26d4a61756f870a6aadf5fd564872f8224eba6",
+  "appendOnlyTriggerCount": 56,
+  "exactLineageForeignKeyCount": 13,
+  "backupSha256": "80b396898a6b255d23461bb47b565f4825e5522a16ca5519bb9963beb4c820e2",
   "commands": [
     {
       "command": [
@@ -49,23 +53,23 @@
         "run",
         "--detach",
         "--name",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "--env",
         "POSTGRES_HOST_AUTH_METHOD=trust",
         "--publish",
         "127.0.0.1::5432",
         "postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4"
       ],
-      "startedAt": "2026-08-24T01:27:03.341Z",
+      "startedAt": "2026-08-24T03:26:37.208Z",
       "status": 0,
-      "stdout": "420fec5130639dbbde748b3fc4550417545fd999193c42dd811d2576f365b43f\n",
+      "stdout": "10a1d6c1cc0163f4ac20d9f788bfc7050ad97853649f7d80b96928d25fa7db9f\n",
       "stderr": ""
     },
     {
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -75,7 +79,7 @@
         "-c",
         "select 1"
       ],
-      "startedAt": "2026-08-24T01:27:03.738Z",
+      "startedAt": "2026-08-24T03:26:37.520Z",
       "status": 2,
       "stdout": "",
       "stderr": "psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5432\" failed: No such file or directory\n\tIs the server running locally and accepting connections on that socket?\n"
@@ -84,7 +88,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -94,7 +98,7 @@
         "-c",
         "select 1"
       ],
-      "startedAt": "2026-08-24T01:27:04.290Z",
+      "startedAt": "2026-08-24T03:26:38.071Z",
       "status": 2,
       "stdout": "",
       "stderr": "psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5432\" failed: No such file or directory\n\tIs the server running locally and accepting connections on that socket?\n"
@@ -103,7 +107,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -113,7 +117,7 @@
         "-c",
         "select 1"
       ],
-      "startedAt": "2026-08-24T01:27:04.846Z",
+      "startedAt": "2026-08-24T03:26:38.621Z",
       "status": 2,
       "stdout": "",
       "stderr": "psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5432\" failed: No such file or directory\n\tIs the server running locally and accepting connections on that socket?\n"
@@ -122,7 +126,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -132,7 +136,7 @@
         "-c",
         "select 1"
       ],
-      "startedAt": "2026-08-24T01:27:05.403Z",
+      "startedAt": "2026-08-24T03:26:39.171Z",
       "status": 2,
       "stdout": "",
       "stderr": "psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5432\" failed: No such file or directory\n\tIs the server running locally and accepting connections on that socket?\n"
@@ -141,7 +145,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -151,7 +155,7 @@
         "-c",
         "select 1"
       ],
-      "startedAt": "2026-08-24T01:27:05.952Z",
+      "startedAt": "2026-08-24T03:26:39.728Z",
       "status": 2,
       "stdout": "",
       "stderr": "psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5432\" failed: No such file or directory\n\tIs the server running locally and accepting connections on that socket?\n"
@@ -160,7 +164,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -170,26 +174,7 @@
         "-c",
         "select 1"
       ],
-      "startedAt": "2026-08-24T01:27:06.499Z",
-      "status": 0,
-      "stdout": "1\n",
-      "stderr": ""
-    },
-    {
-      "command": [
-        "docker",
-        "exec",
-        "lumiclaw-sdd012-pg-1512",
-        "psql",
-        "-U",
-        "postgres",
-        "-d",
-        "postgres",
-        "-At",
-        "-c",
-        "select 1"
-      ],
-      "startedAt": "2026-08-24T01:27:07.074Z",
+      "startedAt": "2026-08-24T03:26:40.273Z",
       "status": 0,
       "stdout": "1\n",
       "stderr": ""
@@ -198,7 +183,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -208,7 +193,7 @@
         "-c",
         "select 1"
       ],
-      "startedAt": "2026-08-24T01:27:07.639Z",
+      "startedAt": "2026-08-24T03:26:40.842Z",
       "status": 0,
       "stdout": "1\n",
       "stderr": ""
@@ -217,7 +202,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -227,7 +212,26 @@
         "-c",
         "select 1"
       ],
-      "startedAt": "2026-08-24T01:27:08.199Z",
+      "startedAt": "2026-08-24T03:26:41.397Z",
+      "status": 0,
+      "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-80897",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-At",
+        "-c",
+        "select 1"
+      ],
+      "startedAt": "2026-08-24T03:26:41.955Z",
       "status": 0,
       "stdout": "1\n",
       "stderr": ""
@@ -236,25 +240,25 @@
       "command": [
         "docker",
         "port",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "5432/tcp"
       ],
-      "startedAt": "2026-08-24T01:27:08.264Z",
+      "startedAt": "2026-08-24T03:26:42.015Z",
       "status": 0,
-      "stdout": "127.0.0.1:32810\n",
+      "stdout": "127.0.0.1:32822\n",
       "stderr": ""
     },
     {
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "createdb",
         "-U",
         "postgres",
         "sdd012_repo"
       ],
-      "startedAt": "2026-08-24T01:27:08.286Z",
+      "startedAt": "2026-08-24T03:26:42.036Z",
       "status": 0,
       "stdout": "",
       "stderr": ""
@@ -263,13 +267,28 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "createdb",
         "-U",
         "postgres",
         "sdd012_worker"
       ],
-      "startedAt": "2026-08-24T01:27:08.378Z",
+      "startedAt": "2026-08-24T03:26:42.109Z",
+      "status": 0,
+      "stdout": "",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-80897",
+        "createdb",
+        "-U",
+        "postgres",
+        "sdd012_down_adversarial"
+      ],
+      "startedAt": "2026-08-24T03:26:42.172Z",
       "status": 0,
       "stdout": "",
       "stderr": ""
@@ -282,9 +301,9 @@
         "run",
         "migrate:up"
       ],
-      "startedAt": "2026-08-24T01:27:08.441Z",
+      "startedAt": "2026-08-24T03:26:42.264Z",
       "status": 0,
-      "stdout": "edia_runtime_audit_receipts_v1\"\n  ADD CONSTRAINT \"media_runtime_audit_batch_fk\" FOREIGN KEY (\"owner_profile_id\", \"run_id\", \"job_id\", \"attempt_id\", \"materialization_batch_id\", \"output_digest\", \"accepted_output_ref\", \"materialization_batch_digest\", \"batch_state\") REFERENCES runtime_materialization_batches_v1(owner_profile_id,run_id,job_id,attempt_id,id,output_digest,accepted_output_ref,batch_digest,state) ON DELETE RESTRICT;\nALTER TABLE \"media_runtime_audit_receipts_v1\"\n  ADD CONSTRAINT \"media_runtime_audit_completion_fk\" FOREIGN KEY (\"owner_profile_id\", \"run_id\", \"job_id\", \"attempt_id\", \"completion_event_id\", \"completion_event_type\") REFERENCES runtime_events_v1(owner_profile_id,run_id,job_id,attempt_id,id,type) ON DELETE RESTRICT;\nALTER TABLE \"media_runtime_audit_receipts_v1\"\n  ADD CONSTRAINT \"media_runtime_audit_canary_fk\" FOREIGN KEY (\"owner_profile_id\", \"media_canary_receipt_digest\") REFERENCES media_provider_canary_receipts_v1(owner_profile_id,canonical_digest) ON DELETE RESTRICT;\nALTER TABLE \"media_runtime_audit_receipts_v1\"\n  ADD CONSTRAINT \"media_runtime_audit_receipts_v1_exact_audit_fk_unique\" UNIQUE (\"owner_profile_id\", \"artifact_revision_id\", \"canonical_digest\");\n\n    DO $$ DECLARE constraint_row record; BEGIN\n      FOR constraint_row IN SELECT conname FROM pg_constraint WHERE conrelid='artifact_audit_decisions_v4'::regclass AND contype='c' LOOP EXECUTE format('ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT %I',constraint_row.conname); END LOOP;\n      FOR constraint_row IN SELECT pc.conname FROM pg_constraint pc WHERE pc.conrelid='artifact_audit_decisions_v4'::regclass AND pc.contype='u' AND ARRAY(SELECT pa.attname::text FROM unnest(pc.conkey) WITH ORDINALITY AS key_column(attnum,ordinality) JOIN pg_attribute pa ON pa.attrelid=pc.conrelid AND pa.attnum=key_column.attnum ORDER BY key_column.ordinality)=ARRAY['owner_profile_id','artifact_revision_id']::text[] LOOP EXECUTE format('ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT %I',constraint_row.conname); END LOOP;\n    END $$;\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_v4_role_check CHECK (auditor_role='A5_INDEPENDENT_AUDITOR');\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_v4_result_check CHECK (result IN ('PASS','FAIL','ESCALATE'));\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_v4_authority_shape CHECK (\n      (auditor_identity_id='controlled-a5-media-auditor' AND evidence_maturity='CONTROLLED_FIXTURE' AND agentteams_executed=false AND authoritative_for_operations=false AND runtime_receipt_digest IS NULL)\n      OR\n      (auditor_identity_id<>'controlled-a5-media-auditor' AND evidence_maturity='AGENTTEAMS_RUNTIME' AND agentteams_executed=true AND authoritative_for_operations=true AND runtime_receipt_digest IS NOT NULL)\n    );\n    CREATE UNIQUE INDEX artifact_audit_v4_one_controlled ON artifact_audit_decisions_v4(owner_profile_id,artifact_revision_id) WHERE evidence_maturity='CONTROLLED_FIXTURE';\n    CREATE UNIQUE INDEX artifact_audit_v4_one_runtime ON artifact_audit_decisions_v4(owner_profile_id,artifact_revision_id) WHERE evidence_maturity='AGENTTEAMS_RUNTIME';\n  ;\nALTER TABLE \"artifact_audit_decisions_v4\"\n  ADD CONSTRAINT \"artifact_audit_v4_exact_runtime_receipt_fk\" FOREIGN KEY (\"owner_profile_id\", \"artifact_revision_id\", \"runtime_receipt_digest\") REFERENCES media_runtime_audit_receipts_v1(owner_profile_id,artifact_revision_id,canonical_digest) ON DELETE RESTRICT;\n\n    CREATE TRIGGER media_audit_requests_v1_immutable BEFORE UPDATE OR DELETE ON media_audit_requests_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n    CREATE TRIGGER media_runtime_audit_receipts_v1_immutable BEFORE UPDATE OR DELETE ON media_runtime_audit_receipts_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n  ;\nINSERT INTO \"public\".\"pgmigrations\" (name, run_on) VALUES ('000016_sdd012_a5_auditor_receipt_authority', NOW());\n\n\nMigrations complete!\n",
+      "stdout": "_id\" text NOT NULL,\n  \"audit_decision_digest\" char(64) NOT NULL,\n  \"result\" text NOT NULL CHECK (result IN ('CONFIRMED','REJECTED')),\n  \"canonical_digest\" char(64) NOT NULL,\n  \"payload\" jsonb NOT NULL,\n  \"created_at\" timestamptz NOT NULL,\n  CONSTRAINT \"media_owner_visual_reviews_v1_pkey\" PRIMARY KEY (\"owner_profile_id\", \"id\"),\n  CONSTRAINT \"media_owner_visual_reviews_v1_fk_owner_profile_id_artifact_revision_id_artifact_revision_digest\" FOREIGN KEY (\"owner_profile_id\", \"artifact_revision_id\", \"artifact_revision_digest\") REFERENCES artifact_revisions_v4(owner_profile_id,id,canonical_digest) ON DELETE RESTRICT,\n  CONSTRAINT \"media_owner_visual_reviews_v1_fk_owner_profile_id_audit_decision_id_artifact_revision_id_artifact_revision_digest_audit_decision_digest\" FOREIGN KEY (\"owner_profile_id\", \"audit_decision_id\", \"artifact_revision_id\", \"artifact_revision_digest\", \"audit_decision_digest\") REFERENCES artifact_audit_decisions_v4(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,canonical_digest) ON DELETE RESTRICT\n);\nALTER TABLE \"media_owner_visual_reviews_v1\"\n  ADD CONSTRAINT \"media_owner_visual_review_authority_sequence_unique\" UNIQUE (\"owner_profile_id\", \"artifact_revision_id\", \"authority_sequence\");\nALTER TABLE \"media_owner_visual_reviews_v1\"\n  ADD CONSTRAINT \"media_owner_visual_review_exact_lineage_unique\" UNIQUE (\"owner_profile_id\", \"id\", \"artifact_revision_id\", \"artifact_revision_digest\", \"audit_decision_id\", \"audit_decision_digest\", \"canonical_digest\");\nDO $$ DECLARE constraint_row record; BEGIN FOR constraint_row IN SELECT pc.conname FROM pg_constraint pc WHERE pc.conrelid='artifact_owner_decisions_v4'::regclass AND pc.contype='u' AND ARRAY(SELECT pa.attname::text FROM unnest(pc.conkey) WITH ORDINALITY AS key_column(attnum,ordinality) JOIN pg_attribute pa ON pa.attrelid=pc.conrelid AND pa.attnum=key_column.attnum ORDER BY key_column.ordinality)=ARRAY['owner_profile_id','artifact_revision_id']::text[] LOOP EXECUTE format('ALTER TABLE artifact_owner_decisions_v4 DROP CONSTRAINT %I',constraint_row.conname); END LOOP; END $$;\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD \"authority_sequence\" bigserial NOT NULL;\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD CONSTRAINT \"artifact_owner_decision_authority_sequence_unique\" UNIQUE (\"owner_profile_id\", \"artifact_revision_id\", \"authority_sequence\");\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD \"visual_review_id\" text,\n  ADD \"visual_review_digest\" char(64);\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD CONSTRAINT \"artifact_owner_decision_visual_pair_check\" CHECK ((visual_review_id IS NULL) = (visual_review_digest IS NULL));\nALTER TABLE artifact_owner_decisions_v4 ADD CONSTRAINT artifact_owner_decision_approve_visual_check CHECK (result='REJECT' OR (visual_review_id IS NOT NULL AND visual_review_digest IS NOT NULL)) NOT VALID;\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD CONSTRAINT \"artifact_owner_decision_exact_visual_fk\" FOREIGN KEY (\"owner_profile_id\", \"visual_review_id\", \"artifact_revision_id\", \"artifact_revision_digest\", \"audit_decision_id\", \"audit_decision_digest\", \"visual_review_digest\") REFERENCES media_owner_visual_reviews_v1(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,audit_decision_id,audit_decision_digest,canonical_digest) ON DELETE RESTRICT;\n\n    CREATE TRIGGER media_audit_requests_v1_immutable BEFORE UPDATE OR DELETE ON media_audit_requests_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n    CREATE TRIGGER media_runtime_audit_receipts_v1_immutable BEFORE UPDATE OR DELETE ON media_runtime_audit_receipts_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n    CREATE TRIGGER media_owner_visual_reviews_v1_immutable BEFORE UPDATE OR DELETE ON media_owner_visual_reviews_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n  ;\nINSERT INTO \"public\".\"pgmigrations\" (name, run_on) VALUES ('000016_sdd012_a5_auditor_receipt_authority', NOW());\n\n\nMigrations complete!\n",
       "stderr": ""
     },
     {
@@ -295,16 +314,29 @@
         "run",
         "migrate:up"
       ],
-      "startedAt": "2026-08-24T01:27:08.917Z",
+      "startedAt": "2026-08-24T03:26:42.739Z",
       "status": 0,
-      "stdout": "edia_runtime_audit_receipts_v1\"\n  ADD CONSTRAINT \"media_runtime_audit_batch_fk\" FOREIGN KEY (\"owner_profile_id\", \"run_id\", \"job_id\", \"attempt_id\", \"materialization_batch_id\", \"output_digest\", \"accepted_output_ref\", \"materialization_batch_digest\", \"batch_state\") REFERENCES runtime_materialization_batches_v1(owner_profile_id,run_id,job_id,attempt_id,id,output_digest,accepted_output_ref,batch_digest,state) ON DELETE RESTRICT;\nALTER TABLE \"media_runtime_audit_receipts_v1\"\n  ADD CONSTRAINT \"media_runtime_audit_completion_fk\" FOREIGN KEY (\"owner_profile_id\", \"run_id\", \"job_id\", \"attempt_id\", \"completion_event_id\", \"completion_event_type\") REFERENCES runtime_events_v1(owner_profile_id,run_id,job_id,attempt_id,id,type) ON DELETE RESTRICT;\nALTER TABLE \"media_runtime_audit_receipts_v1\"\n  ADD CONSTRAINT \"media_runtime_audit_canary_fk\" FOREIGN KEY (\"owner_profile_id\", \"media_canary_receipt_digest\") REFERENCES media_provider_canary_receipts_v1(owner_profile_id,canonical_digest) ON DELETE RESTRICT;\nALTER TABLE \"media_runtime_audit_receipts_v1\"\n  ADD CONSTRAINT \"media_runtime_audit_receipts_v1_exact_audit_fk_unique\" UNIQUE (\"owner_profile_id\", \"artifact_revision_id\", \"canonical_digest\");\n\n    DO $$ DECLARE constraint_row record; BEGIN\n      FOR constraint_row IN SELECT conname FROM pg_constraint WHERE conrelid='artifact_audit_decisions_v4'::regclass AND contype='c' LOOP EXECUTE format('ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT %I',constraint_row.conname); END LOOP;\n      FOR constraint_row IN SELECT pc.conname FROM pg_constraint pc WHERE pc.conrelid='artifact_audit_decisions_v4'::regclass AND pc.contype='u' AND ARRAY(SELECT pa.attname::text FROM unnest(pc.conkey) WITH ORDINALITY AS key_column(attnum,ordinality) JOIN pg_attribute pa ON pa.attrelid=pc.conrelid AND pa.attnum=key_column.attnum ORDER BY key_column.ordinality)=ARRAY['owner_profile_id','artifact_revision_id']::text[] LOOP EXECUTE format('ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT %I',constraint_row.conname); END LOOP;\n    END $$;\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_v4_role_check CHECK (auditor_role='A5_INDEPENDENT_AUDITOR');\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_v4_result_check CHECK (result IN ('PASS','FAIL','ESCALATE'));\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_v4_authority_shape CHECK (\n      (auditor_identity_id='controlled-a5-media-auditor' AND evidence_maturity='CONTROLLED_FIXTURE' AND agentteams_executed=false AND authoritative_for_operations=false AND runtime_receipt_digest IS NULL)\n      OR\n      (auditor_identity_id<>'controlled-a5-media-auditor' AND evidence_maturity='AGENTTEAMS_RUNTIME' AND agentteams_executed=true AND authoritative_for_operations=true AND runtime_receipt_digest IS NOT NULL)\n    );\n    CREATE UNIQUE INDEX artifact_audit_v4_one_controlled ON artifact_audit_decisions_v4(owner_profile_id,artifact_revision_id) WHERE evidence_maturity='CONTROLLED_FIXTURE';\n    CREATE UNIQUE INDEX artifact_audit_v4_one_runtime ON artifact_audit_decisions_v4(owner_profile_id,artifact_revision_id) WHERE evidence_maturity='AGENTTEAMS_RUNTIME';\n  ;\nALTER TABLE \"artifact_audit_decisions_v4\"\n  ADD CONSTRAINT \"artifact_audit_v4_exact_runtime_receipt_fk\" FOREIGN KEY (\"owner_profile_id\", \"artifact_revision_id\", \"runtime_receipt_digest\") REFERENCES media_runtime_audit_receipts_v1(owner_profile_id,artifact_revision_id,canonical_digest) ON DELETE RESTRICT;\n\n    CREATE TRIGGER media_audit_requests_v1_immutable BEFORE UPDATE OR DELETE ON media_audit_requests_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n    CREATE TRIGGER media_runtime_audit_receipts_v1_immutable BEFORE UPDATE OR DELETE ON media_runtime_audit_receipts_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n  ;\nINSERT INTO \"public\".\"pgmigrations\" (name, run_on) VALUES ('000016_sdd012_a5_auditor_receipt_authority', NOW());\n\n\nMigrations complete!\n",
+      "stdout": "_id\" text NOT NULL,\n  \"audit_decision_digest\" char(64) NOT NULL,\n  \"result\" text NOT NULL CHECK (result IN ('CONFIRMED','REJECTED')),\n  \"canonical_digest\" char(64) NOT NULL,\n  \"payload\" jsonb NOT NULL,\n  \"created_at\" timestamptz NOT NULL,\n  CONSTRAINT \"media_owner_visual_reviews_v1_pkey\" PRIMARY KEY (\"owner_profile_id\", \"id\"),\n  CONSTRAINT \"media_owner_visual_reviews_v1_fk_owner_profile_id_artifact_revision_id_artifact_revision_digest\" FOREIGN KEY (\"owner_profile_id\", \"artifact_revision_id\", \"artifact_revision_digest\") REFERENCES artifact_revisions_v4(owner_profile_id,id,canonical_digest) ON DELETE RESTRICT,\n  CONSTRAINT \"media_owner_visual_reviews_v1_fk_owner_profile_id_audit_decision_id_artifact_revision_id_artifact_revision_digest_audit_decision_digest\" FOREIGN KEY (\"owner_profile_id\", \"audit_decision_id\", \"artifact_revision_id\", \"artifact_revision_digest\", \"audit_decision_digest\") REFERENCES artifact_audit_decisions_v4(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,canonical_digest) ON DELETE RESTRICT\n);\nALTER TABLE \"media_owner_visual_reviews_v1\"\n  ADD CONSTRAINT \"media_owner_visual_review_authority_sequence_unique\" UNIQUE (\"owner_profile_id\", \"artifact_revision_id\", \"authority_sequence\");\nALTER TABLE \"media_owner_visual_reviews_v1\"\n  ADD CONSTRAINT \"media_owner_visual_review_exact_lineage_unique\" UNIQUE (\"owner_profile_id\", \"id\", \"artifact_revision_id\", \"artifact_revision_digest\", \"audit_decision_id\", \"audit_decision_digest\", \"canonical_digest\");\nDO $$ DECLARE constraint_row record; BEGIN FOR constraint_row IN SELECT pc.conname FROM pg_constraint pc WHERE pc.conrelid='artifact_owner_decisions_v4'::regclass AND pc.contype='u' AND ARRAY(SELECT pa.attname::text FROM unnest(pc.conkey) WITH ORDINALITY AS key_column(attnum,ordinality) JOIN pg_attribute pa ON pa.attrelid=pc.conrelid AND pa.attnum=key_column.attnum ORDER BY key_column.ordinality)=ARRAY['owner_profile_id','artifact_revision_id']::text[] LOOP EXECUTE format('ALTER TABLE artifact_owner_decisions_v4 DROP CONSTRAINT %I',constraint_row.conname); END LOOP; END $$;\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD \"authority_sequence\" bigserial NOT NULL;\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD CONSTRAINT \"artifact_owner_decision_authority_sequence_unique\" UNIQUE (\"owner_profile_id\", \"artifact_revision_id\", \"authority_sequence\");\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD \"visual_review_id\" text,\n  ADD \"visual_review_digest\" char(64);\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD CONSTRAINT \"artifact_owner_decision_visual_pair_check\" CHECK ((visual_review_id IS NULL) = (visual_review_digest IS NULL));\nALTER TABLE artifact_owner_decisions_v4 ADD CONSTRAINT artifact_owner_decision_approve_visual_check CHECK (result='REJECT' OR (visual_review_id IS NOT NULL AND visual_review_digest IS NOT NULL)) NOT VALID;\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD CONSTRAINT \"artifact_owner_decision_exact_visual_fk\" FOREIGN KEY (\"owner_profile_id\", \"visual_review_id\", \"artifact_revision_id\", \"artifact_revision_digest\", \"audit_decision_id\", \"audit_decision_digest\", \"visual_review_digest\") REFERENCES media_owner_visual_reviews_v1(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,audit_decision_id,audit_decision_digest,canonical_digest) ON DELETE RESTRICT;\n\n    CREATE TRIGGER media_audit_requests_v1_immutable BEFORE UPDATE OR DELETE ON media_audit_requests_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n    CREATE TRIGGER media_runtime_audit_receipts_v1_immutable BEFORE UPDATE OR DELETE ON media_runtime_audit_receipts_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n    CREATE TRIGGER media_owner_visual_reviews_v1_immutable BEFORE UPDATE OR DELETE ON media_owner_visual_reviews_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n  ;\nINSERT INTO \"public\".\"pgmigrations\" (name, run_on) VALUES ('000016_sdd012_a5_auditor_receipt_authority', NOW());\n\n\nMigrations complete!\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "npm",
+        "--workspace",
+        "@lumiclaw/db",
+        "run",
+        "migrate:up"
+      ],
+      "startedAt": "2026-08-24T03:26:43.153Z",
+      "status": 0,
+      "stdout": "_id\" text NOT NULL,\n  \"audit_decision_digest\" char(64) NOT NULL,\n  \"result\" text NOT NULL CHECK (result IN ('CONFIRMED','REJECTED')),\n  \"canonical_digest\" char(64) NOT NULL,\n  \"payload\" jsonb NOT NULL,\n  \"created_at\" timestamptz NOT NULL,\n  CONSTRAINT \"media_owner_visual_reviews_v1_pkey\" PRIMARY KEY (\"owner_profile_id\", \"id\"),\n  CONSTRAINT \"media_owner_visual_reviews_v1_fk_owner_profile_id_artifact_revision_id_artifact_revision_digest\" FOREIGN KEY (\"owner_profile_id\", \"artifact_revision_id\", \"artifact_revision_digest\") REFERENCES artifact_revisions_v4(owner_profile_id,id,canonical_digest) ON DELETE RESTRICT,\n  CONSTRAINT \"media_owner_visual_reviews_v1_fk_owner_profile_id_audit_decision_id_artifact_revision_id_artifact_revision_digest_audit_decision_digest\" FOREIGN KEY (\"owner_profile_id\", \"audit_decision_id\", \"artifact_revision_id\", \"artifact_revision_digest\", \"audit_decision_digest\") REFERENCES artifact_audit_decisions_v4(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,canonical_digest) ON DELETE RESTRICT\n);\nALTER TABLE \"media_owner_visual_reviews_v1\"\n  ADD CONSTRAINT \"media_owner_visual_review_authority_sequence_unique\" UNIQUE (\"owner_profile_id\", \"artifact_revision_id\", \"authority_sequence\");\nALTER TABLE \"media_owner_visual_reviews_v1\"\n  ADD CONSTRAINT \"media_owner_visual_review_exact_lineage_unique\" UNIQUE (\"owner_profile_id\", \"id\", \"artifact_revision_id\", \"artifact_revision_digest\", \"audit_decision_id\", \"audit_decision_digest\", \"canonical_digest\");\nDO $$ DECLARE constraint_row record; BEGIN FOR constraint_row IN SELECT pc.conname FROM pg_constraint pc WHERE pc.conrelid='artifact_owner_decisions_v4'::regclass AND pc.contype='u' AND ARRAY(SELECT pa.attname::text FROM unnest(pc.conkey) WITH ORDINALITY AS key_column(attnum,ordinality) JOIN pg_attribute pa ON pa.attrelid=pc.conrelid AND pa.attnum=key_column.attnum ORDER BY key_column.ordinality)=ARRAY['owner_profile_id','artifact_revision_id']::text[] LOOP EXECUTE format('ALTER TABLE artifact_owner_decisions_v4 DROP CONSTRAINT %I',constraint_row.conname); END LOOP; END $$;\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD \"authority_sequence\" bigserial NOT NULL;\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD CONSTRAINT \"artifact_owner_decision_authority_sequence_unique\" UNIQUE (\"owner_profile_id\", \"artifact_revision_id\", \"authority_sequence\");\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD \"visual_review_id\" text,\n  ADD \"visual_review_digest\" char(64);\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD CONSTRAINT \"artifact_owner_decision_visual_pair_check\" CHECK ((visual_review_id IS NULL) = (visual_review_digest IS NULL));\nALTER TABLE artifact_owner_decisions_v4 ADD CONSTRAINT artifact_owner_decision_approve_visual_check CHECK (result='REJECT' OR (visual_review_id IS NOT NULL AND visual_review_digest IS NOT NULL)) NOT VALID;\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD CONSTRAINT \"artifact_owner_decision_exact_visual_fk\" FOREIGN KEY (\"owner_profile_id\", \"visual_review_id\", \"artifact_revision_id\", \"artifact_revision_digest\", \"audit_decision_id\", \"audit_decision_digest\", \"visual_review_digest\") REFERENCES media_owner_visual_reviews_v1(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,audit_decision_id,audit_decision_digest,canonical_digest) ON DELETE RESTRICT;\n\n    CREATE TRIGGER media_audit_requests_v1_immutable BEFORE UPDATE OR DELETE ON media_audit_requests_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n    CREATE TRIGGER media_runtime_audit_receipts_v1_immutable BEFORE UPDATE OR DELETE ON media_runtime_audit_receipts_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n    CREATE TRIGGER media_owner_visual_reviews_v1_immutable BEFORE UPDATE OR DELETE ON media_owner_visual_reviews_v1 FOR EACH ROW EXECUTE FUNCTION reject_sdd012_media_authority_mutation();\n  ;\nINSERT INTO \"public\".\"pgmigrations\" (name, run_on) VALUES ('000016_sdd012_a5_auditor_receipt_authority', NOW());\n\n\nMigrations complete!\n",
       "stderr": ""
     },
     {
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -316,7 +348,7 @@
         "-c",
         "select count(*) from pgmigrations where name='000015_xhs_governed_media_artifacts'"
       ],
-      "startedAt": "2026-08-24T01:27:09.328Z",
+      "startedAt": "2026-08-24T03:26:43.582Z",
       "status": 0,
       "stdout": "1\n",
       "stderr": ""
@@ -325,7 +357,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -337,9 +369,30 @@
         "-c",
         "select count(*) from pgmigrations where name='000016_sdd012_a5_auditor_receipt_authority'"
       ],
-      "startedAt": "2026-08-24T01:27:09.367Z",
+      "startedAt": "2026-08-24T03:26:43.629Z",
       "status": 0,
       "stdout": "1\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-80897",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "sdd012_repo",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select name from pgmigrations order by run_on desc,name desc limit 1"
+      ],
+      "startedAt": "2026-08-24T03:26:43.666Z",
+      "status": 0,
+      "stdout": "000016_sdd012_a5_auditor_receipt_authority\n",
       "stderr": ""
     },
     {
@@ -350,9 +403,9 @@
         "packages/db/src/media-artifact-repository.test.ts",
         "--configLoader=runner"
       ],
-      "startedAt": "2026-08-24T01:27:09.406Z",
+      "startedAt": "2026-08-24T03:26:43.710Z",
       "status": 0,
-      "stdout": "\n RUN  v4.1.10 <WORKTREE>\n\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  09:27:09\n   Duration  1.04s (transform 149ms, setup 0ms, import 272ms, tests 707ms, environment 0ms)\n\n",
+      "stdout": "\n RUN  v4.1.10 <WORKTREE>\n\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  11:26:44\n   Duration  1.43s (transform 163ms, setup 0ms, import 320ms, tests 1.04s, environment 0ms)\n\n",
       "stderr": ""
     },
     {
@@ -363,16 +416,16 @@
         "apps/mission-worker/src/media-worker.test.ts",
         "--configLoader=runner"
       ],
-      "startedAt": "2026-08-24T01:27:10.759Z",
+      "startedAt": "2026-08-24T03:26:45.614Z",
       "status": 0,
-      "stdout": "\n RUN  v4.1.10 <WORKTREE>\n\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  09:27:11\n   Duration  1.15s (transform 185ms, setup 0ms, import 369ms, tests 718ms, environment 0ms)\n\n",
+      "stdout": "\n RUN  v4.1.10 <WORKTREE>\n\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  11:26:45\n   Duration  1.13s (transform 184ms, setup 0ms, import 384ms, tests 681ms, environment 0ms)\n\n",
       "stderr": ""
     },
     {
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -384,7 +437,7 @@
         "-c",
         "select json_build_object('specs',(select count(*) from media_generation_specs_v2),'jobs',(select count(*) from media_generation_jobs_v2),'intents',(select count(*) from media_provider_submission_intents_v2),'tasks',(select count(*) from media_provider_task_receipts_v2),'costs',(select count(*) from media_cost_receipts_v2),'rights',(select count(*) from media_rights_receipts_v2),'raw',(select count(*) from media_raw_assets_v2),'final',(select count(*) from media_composited_assets_v2),'staging',(select count(*) from media_blob_staging_v1))::text"
       ],
-      "startedAt": "2026-08-24T01:27:12.244Z",
+      "startedAt": "2026-08-24T03:26:47.071Z",
       "status": 0,
       "stdout": "{\"specs\" : 5, \"jobs\" : 5, \"intents\" : 5, \"tasks\" : 4, \"costs\" : 4, \"rights\" : 4, \"raw\" : 4, \"final\" : 4, \"staging\" : 8}\n",
       "stderr": ""
@@ -393,7 +446,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -405,7 +458,7 @@
         "-c",
         "select json_build_object('count',count(*),'tasks',count(provider_task_id),'attempts',max(attempt_count))::text from media_generation_jobs_v2 where state='UNKNOWN_CHARGE_STATE'"
       ],
-      "startedAt": "2026-08-24T01:27:12.333Z",
+      "startedAt": "2026-08-24T03:26:47.168Z",
       "status": 0,
       "stdout": "{\"count\" : 1, \"tasks\" : 0, \"attempts\" : 1}\n",
       "stderr": ""
@@ -414,7 +467,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -426,7 +479,7 @@
         "-c",
         "select count(*)=count(distinct provider_task_id) from media_generation_jobs_v2 where provider_task_id is not null"
       ],
-      "startedAt": "2026-08-24T01:27:12.378Z",
+      "startedAt": "2026-08-24T03:26:47.214Z",
       "status": 0,
       "stdout": "t\n",
       "stderr": ""
@@ -435,7 +488,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -447,16 +500,16 @@
         "-c",
         "select count(*) from pg_trigger where not tgisinternal and tgname like '%_immutable'"
       ],
-      "startedAt": "2026-08-24T01:27:12.424Z",
+      "startedAt": "2026-08-24T03:26:47.258Z",
       "status": 0,
-      "stdout": "55\n",
+      "stdout": "56\n",
       "stderr": ""
     },
     {
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -468,16 +521,16 @@
         "-c",
         "select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('artifact_revisions_v4','media_set_items_v1','artifact_audit_decisions_v4','artifact_owner_decisions_v4','manual_publish_packages_v4')"
       ],
-      "startedAt": "2026-08-24T01:27:12.460Z",
+      "startedAt": "2026-08-24T03:26:47.303Z",
       "status": 0,
-      "stdout": "12\n",
+      "stdout": "13\n",
       "stderr": ""
     },
     {
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -489,7 +542,7 @@
         "-c",
         "update media_raw_assets_v2 set content_digest=repeat('0',64)"
       ],
-      "startedAt": "2026-08-24T01:27:12.500Z",
+      "startedAt": "2026-08-24T03:26:47.344Z",
       "status": 1,
       "stdout": "",
       "stderr": "ERROR:  SDD012_APPEND_ONLY_MEDIA_AUTHORITY\nCONTEXT:  PL/pgSQL function reject_sdd012_media_authority_mutation() line 1 at RAISE\n"
@@ -498,7 +551,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -510,7 +563,7 @@
         "-c",
         "update media_audit_requests_v1 set task_contract_digest=repeat('0',64)"
       ],
-      "startedAt": "2026-08-24T01:27:12.540Z",
+      "startedAt": "2026-08-24T03:26:47.382Z",
       "status": 1,
       "stdout": "",
       "stderr": "ERROR:  SDD012_APPEND_ONLY_MEDIA_AUTHORITY\nCONTEXT:  PL/pgSQL function reject_sdd012_media_authority_mutation() line 1 at RAISE\n"
@@ -519,7 +572,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -531,7 +584,7 @@
         "-c",
         "select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('media_audit_requests_v1','media_runtime_audit_receipts_v1')"
       ],
-      "startedAt": "2026-08-24T01:27:12.580Z",
+      "startedAt": "2026-08-24T03:26:47.420Z",
       "status": 0,
       "stdout": "11\n",
       "stderr": ""
@@ -540,7 +593,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -552,10 +605,31 @@
         "-c",
         "insert into artifact_audit_decisions_v4(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,auditor_role,auditor_identity_id,evidence_maturity,agentteams_executed,authoritative_for_operations,runtime_receipt_digest,result,canonical_digest,payload,created_at) select owner_profile_id,'direct-sql-forged-runtime-audit',id,canonical_digest,'A5_INDEPENDENT_AUDITOR','browser-selected-a5','AGENTTEAMS_RUNTIME',true,true,repeat('f',64),'PASS',repeat('e',64),'{}'::jsonb,now() from artifact_revisions_v4 limit 1"
       ],
-      "startedAt": "2026-08-24T01:27:12.621Z",
+      "startedAt": "2026-08-24T03:26:47.459Z",
       "status": 1,
       "stdout": "",
       "stderr": "ERROR:  insert or update on table \"artifact_audit_decisions_v4\" violates foreign key constraint \"artifact_audit_v4_exact_runtime_receipt_fk\"\nDETAIL:  Key (owner_profile_id, artifact_revision_id, runtime_receipt_digest)=(018f0000-0000-7000-8000-000000000012, xhs-media-revision-e101a173aa30b59a319c9e0091c913b9, ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff) is not present in table \"media_runtime_audit_receipts_v1\".\n"
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-80897",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "sdd012_down_adversarial",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "set session_replication_role=replica;\n     insert into artifact_revisions_v4(owner_profile_id,id,parent_revision_id,parent_revision_digest,revision,media_set_digest,brand_snapshot_id,brand_snapshot_digest,knowledge_snapshot_id,knowledge_snapshot_digest,canonical_digest,payload,created_at)\n     values('018f0000-0000-7000-8000-000000000999','down-collision-revision','missing-parent',repeat('1',64),4,repeat('2',64),'missing-brand',repeat('3',64),'018f0000-0000-7000-8000-000000000998',repeat('4',64),repeat('5',64),'{}'::jsonb,'2026-08-24T08:00:00Z');\n     insert into artifact_audit_decisions_v4(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,auditor_role,auditor_identity_id,evidence_maturity,agentteams_executed,authoritative_for_operations,runtime_receipt_digest,result,canonical_digest,payload,created_at)\n     values('018f0000-0000-7000-8000-000000000999','down-collision-audit','down-collision-revision',repeat('5',64),'A5_INDEPENDENT_AUDITOR','controlled-a5-media-auditor','CONTROLLED_FIXTURE',false,false,null,'ESCALATE',repeat('6',64),'{}'::jsonb,'2026-08-24T08:00:00Z');\n     insert into artifact_owner_decisions_v4(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,audit_decision_id,audit_decision_digest,visual_review_id,visual_review_digest,result,canonical_digest,payload,created_at)\n     values\n       ('018f0000-0000-7000-8000-000000000999','down-null-reject-1','down-collision-revision',repeat('5',64),'down-collision-audit',repeat('6',64),null,null,'REJECT',repeat('7',64),'{}'::jsonb,'2026-08-24T08:00:00Z'),\n       ('018f0000-0000-7000-8000-000000000999','down-null-reject-2','down-collision-revision',repeat('5',64),'down-collision-audit',repeat('6',64),null,null,'REJECT',repeat('8',64),'{}'::jsonb,'2026-08-24T08:00:00Z');\n     set session_replication_role=origin;"
+      ],
+      "startedAt": "2026-08-24T03:26:47.497Z",
+      "status": 0,
+      "stdout": "SET\nINSERT 0 1\nINSERT 0 1\nINSERT 0 2\nSET\n",
+      "stderr": ""
     },
     {
       "command": [
@@ -567,38 +641,74 @@
         "--",
         "1"
       ],
-      "startedAt": "2026-08-24T01:27:12.663Z",
+      "startedAt": "2026-08-24T03:26:47.540Z",
       "status": 1,
-      "stdout": "\n> @lumiclaw/db@0.1.0-m1 migrate:down\n> node-pg-migrate down -m ${MIGRATIONS_DIR:-migrations} --database-url-var DATABASE_URL 1\n\n> Migrating files:\n> - 000016_sdd012_a5_auditor_receipt_authority\n### MIGRATION 000016_sdd012_a5_auditor_receipt_authority (DOWN) ###\nDO $$ BEGIN IF (SELECT count(*) FROM media_audit_requests_v1)+(SELECT count(*) FROM media_runtime_audit_receipts_v1)+(SELECT count(*) FROM artifact_audit_decisions_v4 WHERE evidence_maturity='AGENTTEAMS_RUNTIME') > 0 THEN RAISE EXCEPTION 'SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED'; END IF; END $$;\nALTER TABLE \"artifact_audit_decisions_v4\" DROP CONSTRAINT \"artifact_audit_v4_exact_runtime_receipt_fk\";\n\n    DROP INDEX IF EXISTS artifact_audit_v4_one_runtime; DROP INDEX IF EXISTS artifact_audit_v4_one_controlled;\n    ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT artifact_audit_v4_authority_shape;\n    ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT artifact_audit_v4_result_check;\n    ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT artifact_audit_v4_role_check;\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_auditor_role_check CHECK (auditor_role='A5_INDEPENDENT_AUDITOR');\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_auditor_identity_id_check CHECK (auditor_identity_id='controlled-a5-media-auditor');\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_evidence_maturity_check CHECK (evidence_maturity='CONTROLLED_FIXTURE');\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_agentteams_executed_check CHECK (agentteams_executed=false);\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_authoritative_for_operations_check CHECK (authoritative_for_operations=false);\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_runtime_receipt_digest_check CHECK (runtime_receipt_digest is null);\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_result_check CHECK (result IN ('PASS','FAIL','ESCALATE'));\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_owner_profile_id_artifact_revision_id_key UNIQUE(owner_profile_id,artifact_revision_id);\n  ;\nDROP TRIGGER IF EXISTS media_runtime_audit_receipts_v1_immutable ON media_runtime_audit_receipts_v1;\nDROP TRIGGER IF EXISTS media_audit_requests_v1_immutable ON media_audit_requests_v1;\nDROP TABLE \"media_runtime_audit_receipts_v1\";\nDROP TABLE \"media_audit_requests_v1\";\nALTER TABLE \"runtime_materialization_batches_v1\" DROP CONSTRAINT \"runtime_materialization_batches_v1_audit_exact_authority_unique\";\nALTER TABLE \"runtime_events_v1\" DROP CONSTRAINT \"runtime_events_v1_audit_completion_unique\";\nALTER TABLE \"runtime_bindings_v1\" DROP CONSTRAINT \"runtime_bindings_v1_audit_exact_authority_unique\";\nALTER TABLE \"agent_task_attempts_v1\" DROP CONSTRAINT \"agent_task_attempts_v1_audit_exact_authority_unique\";\nALTER TABLE \"mission_jobs_v1\" DROP CONSTRAINT \"mission_jobs_v1_audit_exact_authority_unique\";\nALTER TABLE \"mission_runs_v1\" DROP CONSTRAINT \"mission_runs_v1_audit_exact_source_unique\";\nDELETE FROM \"public\".\"pgmigrations\" WHERE name='000016_sdd012_a5_auditor_receipt_authority';\n\n\n",
-      "stderr": "Error executing:\nDO $$ BEGIN IF (SELECT count(*) FROM media_audit_requests_v1)+(SELECT count(*) FROM media_runtime_audit_receipts_v1)+(SELECT count(*) FROM artifact_audit_decisions_v4 WHERE evidence_maturity='AGENTTEAMS_RUNTIME') > 0 THEN RAISE EXCEPTION 'SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED'; END IF; END $$;\nerror: SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED\n\n> Rolling back attempted migration ...\nerror: SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED\n    at <WORKTREE>/node_modules/pg/lib/client.js:652:17\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Object.query (file://<WORKTREE>/node_modules/node-pg-migrate/dist/bundle/index.js:3392:11)\n    at async runner (file://<WORKTREE>/node_modules/node-pg-migrate/dist/bundle/index.js:3590:5) {\n  length: 177,\n  severity: 'ERROR',\n  code: 'P0001',\n  detail: undefined,\n  hint: undefined,\n  position: undefined,\n  internalPosition: undefined,\n  internalQuery: undefined,\n  where: 'PL/pgSQL function inline_code_block line 1 at RAISE',\n  schema: undefined,\n  table: undefined,\n  column: undefined,\n  dataType: undefined,\n  constraint: undefined,\n  file: 'pl_exec.c',\n  line: '3897',\n  routine: 'exec_stmt_raise'\n}\nnpm error Lifecycle script `migrate:down` failed with error:\nnpm error code 1\nnpm error path <WORKTREE>/packages/db\nnpm error workspace @lumiclaw/db@0.1.0-m1\nnpm error location <WORKTREE>/packages/db\nnpm error command failed\nnpm error command sh -c node-pg-migrate down -m ${MIGRATIONS_DIR:-migrations} --database-url-var DATABASE_URL 1\n"
+      "stdout": "ECT count(*) FROM artifact_owner_decisions_v4 WHERE visual_review_id IS NOT NULL)+(SELECT count(*) FROM (SELECT 1 FROM artifact_owner_decisions_v4 GROUP BY owner_profile_id,artifact_revision_id HAVING count(*)>1) owner_decision_collisions) > 0 THEN RAISE EXCEPTION 'SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED'; END IF; END $$;\nALTER TABLE \"artifact_owner_decisions_v4\" DROP CONSTRAINT \"artifact_owner_decision_exact_visual_fk\";\nALTER TABLE \"artifact_owner_decisions_v4\" DROP CONSTRAINT \"artifact_owner_decision_approve_visual_check\";\nALTER TABLE \"artifact_owner_decisions_v4\" DROP CONSTRAINT \"artifact_owner_decision_visual_pair_check\";\nALTER TABLE \"artifact_owner_decisions_v4\"\n  DROP \"visual_review_id\",\n  DROP \"visual_review_digest\";\nALTER TABLE \"artifact_owner_decisions_v4\" DROP CONSTRAINT \"artifact_owner_decision_authority_sequence_unique\";\nALTER TABLE \"artifact_owner_decisions_v4\"\n  DROP \"authority_sequence\";\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD CONSTRAINT \"artifact_owner_decision_one_per_revision_unique\" UNIQUE (\"owner_profile_id\", \"artifact_revision_id\");\nDROP TRIGGER IF EXISTS media_owner_visual_reviews_v1_immutable ON media_owner_visual_reviews_v1;\nDROP TABLE \"media_owner_visual_reviews_v1\";\nALTER TABLE \"artifact_audit_decisions_v4\" DROP CONSTRAINT \"artifact_audit_v4_exact_runtime_receipt_fk\";\n\n    DROP INDEX IF EXISTS artifact_audit_v4_one_runtime; DROP INDEX IF EXISTS artifact_audit_v4_one_controlled;\n    ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT artifact_audit_v4_authority_shape;\n    ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT artifact_audit_v4_result_check;\n    ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT artifact_audit_v4_role_check;\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_auditor_role_check CHECK (auditor_role='A5_INDEPENDENT_AUDITOR');\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_auditor_identity_id_check CHECK (auditor_identity_id='controlled-a5-media-auditor');\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_evidence_maturity_check CHECK (evidence_maturity='CONTROLLED_FIXTURE');\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_agentteams_executed_check CHECK (agentteams_executed=false);\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_authoritative_for_operations_check CHECK (authoritative_for_operations=false);\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_runtime_receipt_digest_check CHECK (runtime_receipt_digest is null);\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_result_check CHECK (result IN ('PASS','FAIL','ESCALATE'));\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_owner_profile_id_artifact_revision_id_key UNIQUE(owner_profile_id,artifact_revision_id);\n  ;\nDROP TRIGGER IF EXISTS media_runtime_audit_receipts_v1_immutable ON media_runtime_audit_receipts_v1;\nDROP TRIGGER IF EXISTS media_audit_requests_v1_immutable ON media_audit_requests_v1;\nDROP TABLE \"media_runtime_audit_receipts_v1\";\nDROP TABLE \"media_audit_requests_v1\";\nALTER TABLE \"runtime_materialization_batches_v1\" DROP CONSTRAINT \"runtime_materialization_batches_v1_audit_exact_authority_unique\";\nALTER TABLE \"runtime_events_v1\" DROP CONSTRAINT \"runtime_events_v1_audit_completion_unique\";\nALTER TABLE \"runtime_bindings_v1\" DROP CONSTRAINT \"runtime_bindings_v1_audit_exact_authority_unique\";\nALTER TABLE \"agent_task_attempts_v1\" DROP CONSTRAINT \"agent_task_attempts_v1_audit_exact_authority_unique\";\nALTER TABLE \"mission_jobs_v1\" DROP CONSTRAINT \"mission_jobs_v1_audit_exact_authority_unique\";\nALTER TABLE \"mission_runs_v1\" DROP CONSTRAINT \"mission_runs_v1_audit_exact_source_unique\";\nDELETE FROM \"public\".\"pgmigrations\" WHERE name='000016_sdd012_a5_auditor_receipt_authority';\n\n\n",
+      "stderr": "Error executing:\nDO $$ BEGIN IF (SELECT count(*) FROM media_audit_requests_v1)+(SELECT count(*) FROM media_runtime_audit_receipts_v1)+(SELECT count(*) FROM media_owner_visual_reviews_v1)+(SELECT count(*) FROM artifact_audit_decisions_v4 WHERE evidence_maturity='AGENTTEAMS_RUNTIME')+(SELECT count(*) FROM artifact_owner_decisions_v4 WHERE visual_review_id IS NOT NULL)+(SELECT count(*) FROM (SELECT 1 FROM artifact_owner_decisions_v4 GROUP BY owner_profile_id,artifact_revision_id HAVING count(*)>1) owner_decision_collisions) > 0 THEN RAISE EXCEPTION 'SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED'; END IF; END $$;\nerror: SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED\n\n> Rolling back attempted migration ...\nerror: SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED\n    at <WORKTREE>/node_modules/pg/lib/client.js:652:17\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Object.query (file://<WORKTREE>/node_modules/node-pg-migrate/dist/bundle/index.js:3392:11)\n    at async runner (file://<WORKTREE>/node_modules/node-pg-migrate/dist/bundle/index.js:3590:5) {\n  length: 177,\n  severity: 'ERROR',\n  code: 'P0001',\n  detail: undefined,\n  hint: undefined,\n  position: undefined,\n  internalPosition: undefined,\n  internalQuery: undefined,\n  where: 'PL/pgSQL function inline_code_block line 1 at RAISE',\n  schema: undefined,\n  table: undefined,\n  column: undefined,\n  dataType: undefined,\n  constraint: undefined,\n  file: 'pl_exec.c',\n  line: '3897',\n  routine: 'exec_stmt_raise'\n}\nnpm error Lifecycle script `migrate:down` failed with error:\nnpm error code 1\nnpm error path <WORKTREE>/packages/db\nnpm error workspace @lumiclaw/db@0.1.0-m1\nnpm error location <WORKTREE>/packages/db\nnpm error command failed\nnpm error command sh -c node-pg-migrate down -m ${MIGRATIONS_DIR:-migrations} --database-url-var DATABASE_URL 1\n"
     },
     {
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
+        "psql",
+        "-U",
+        "postgres",
+        "-d",
+        "sdd012_down_adversarial",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-At",
+        "-c",
+        "select (select count(*) from pgmigrations where name='000016_sdd012_a5_auditor_receipt_authority')=1 and exists(select 1 from information_schema.columns where table_name='artifact_owner_decisions_v4' and column_name='authority_sequence') and (select count(*) from artifact_owner_decisions_v4)=2"
+      ],
+      "startedAt": "2026-08-24T03:26:47.724Z",
+      "status": 0,
+      "stdout": "t\n",
+      "stderr": ""
+    },
+    {
+      "command": [
+        "npm",
+        "--workspace",
+        "@lumiclaw/db",
+        "run",
+        "migrate:down",
+        "--",
+        "1"
+      ],
+      "startedAt": "2026-08-24T03:26:47.770Z",
+      "status": 1,
+      "stdout": "ECT count(*) FROM artifact_owner_decisions_v4 WHERE visual_review_id IS NOT NULL)+(SELECT count(*) FROM (SELECT 1 FROM artifact_owner_decisions_v4 GROUP BY owner_profile_id,artifact_revision_id HAVING count(*)>1) owner_decision_collisions) > 0 THEN RAISE EXCEPTION 'SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED'; END IF; END $$;\nALTER TABLE \"artifact_owner_decisions_v4\" DROP CONSTRAINT \"artifact_owner_decision_exact_visual_fk\";\nALTER TABLE \"artifact_owner_decisions_v4\" DROP CONSTRAINT \"artifact_owner_decision_approve_visual_check\";\nALTER TABLE \"artifact_owner_decisions_v4\" DROP CONSTRAINT \"artifact_owner_decision_visual_pair_check\";\nALTER TABLE \"artifact_owner_decisions_v4\"\n  DROP \"visual_review_id\",\n  DROP \"visual_review_digest\";\nALTER TABLE \"artifact_owner_decisions_v4\" DROP CONSTRAINT \"artifact_owner_decision_authority_sequence_unique\";\nALTER TABLE \"artifact_owner_decisions_v4\"\n  DROP \"authority_sequence\";\nALTER TABLE \"artifact_owner_decisions_v4\"\n  ADD CONSTRAINT \"artifact_owner_decision_one_per_revision_unique\" UNIQUE (\"owner_profile_id\", \"artifact_revision_id\");\nDROP TRIGGER IF EXISTS media_owner_visual_reviews_v1_immutable ON media_owner_visual_reviews_v1;\nDROP TABLE \"media_owner_visual_reviews_v1\";\nALTER TABLE \"artifact_audit_decisions_v4\" DROP CONSTRAINT \"artifact_audit_v4_exact_runtime_receipt_fk\";\n\n    DROP INDEX IF EXISTS artifact_audit_v4_one_runtime; DROP INDEX IF EXISTS artifact_audit_v4_one_controlled;\n    ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT artifact_audit_v4_authority_shape;\n    ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT artifact_audit_v4_result_check;\n    ALTER TABLE artifact_audit_decisions_v4 DROP CONSTRAINT artifact_audit_v4_role_check;\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_auditor_role_check CHECK (auditor_role='A5_INDEPENDENT_AUDITOR');\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_auditor_identity_id_check CHECK (auditor_identity_id='controlled-a5-media-auditor');\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_evidence_maturity_check CHECK (evidence_maturity='CONTROLLED_FIXTURE');\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_agentteams_executed_check CHECK (agentteams_executed=false);\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_authoritative_for_operations_check CHECK (authoritative_for_operations=false);\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_runtime_receipt_digest_check CHECK (runtime_receipt_digest is null);\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_result_check CHECK (result IN ('PASS','FAIL','ESCALATE'));\n    ALTER TABLE artifact_audit_decisions_v4 ADD CONSTRAINT artifact_audit_decisions_v4_owner_profile_id_artifact_revision_id_key UNIQUE(owner_profile_id,artifact_revision_id);\n  ;\nDROP TRIGGER IF EXISTS media_runtime_audit_receipts_v1_immutable ON media_runtime_audit_receipts_v1;\nDROP TRIGGER IF EXISTS media_audit_requests_v1_immutable ON media_audit_requests_v1;\nDROP TABLE \"media_runtime_audit_receipts_v1\";\nDROP TABLE \"media_audit_requests_v1\";\nALTER TABLE \"runtime_materialization_batches_v1\" DROP CONSTRAINT \"runtime_materialization_batches_v1_audit_exact_authority_unique\";\nALTER TABLE \"runtime_events_v1\" DROP CONSTRAINT \"runtime_events_v1_audit_completion_unique\";\nALTER TABLE \"runtime_bindings_v1\" DROP CONSTRAINT \"runtime_bindings_v1_audit_exact_authority_unique\";\nALTER TABLE \"agent_task_attempts_v1\" DROP CONSTRAINT \"agent_task_attempts_v1_audit_exact_authority_unique\";\nALTER TABLE \"mission_jobs_v1\" DROP CONSTRAINT \"mission_jobs_v1_audit_exact_authority_unique\";\nALTER TABLE \"mission_runs_v1\" DROP CONSTRAINT \"mission_runs_v1_audit_exact_source_unique\";\nDELETE FROM \"public\".\"pgmigrations\" WHERE name='000016_sdd012_a5_auditor_receipt_authority';\n\n\n",
+      "stderr": "Error executing:\nDO $$ BEGIN IF (SELECT count(*) FROM media_audit_requests_v1)+(SELECT count(*) FROM media_runtime_audit_receipts_v1)+(SELECT count(*) FROM media_owner_visual_reviews_v1)+(SELECT count(*) FROM artifact_audit_decisions_v4 WHERE evidence_maturity='AGENTTEAMS_RUNTIME')+(SELECT count(*) FROM artifact_owner_decisions_v4 WHERE visual_review_id IS NOT NULL)+(SELECT count(*) FROM (SELECT 1 FROM artifact_owner_decisions_v4 GROUP BY owner_profile_id,artifact_revision_id HAVING count(*)>1) owner_decision_collisions) > 0 THEN RAISE EXCEPTION 'SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED'; END IF; END $$;\nerror: SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED\n\n> Rolling back attempted migration ...\nerror: SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED\n    at <WORKTREE>/node_modules/pg/lib/client.js:652:17\n    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)\n    at async Object.query (file://<WORKTREE>/node_modules/node-pg-migrate/dist/bundle/index.js:3392:11)\n    at async runner (file://<WORKTREE>/node_modules/node-pg-migrate/dist/bundle/index.js:3590:5) {\n  length: 177,\n  severity: 'ERROR',\n  code: 'P0001',\n  detail: undefined,\n  hint: undefined,\n  position: undefined,\n  internalPosition: undefined,\n  internalQuery: undefined,\n  where: 'PL/pgSQL function inline_code_block line 1 at RAISE',\n  schema: undefined,\n  table: undefined,\n  column: undefined,\n  dataType: undefined,\n  constraint: undefined,\n  file: 'pl_exec.c',\n  line: '3897',\n  routine: 'exec_stmt_raise'\n}\nnpm error Lifecycle script `migrate:down` failed with error:\nnpm error code 1\nnpm error path <WORKTREE>/packages/db\nnpm error workspace @lumiclaw/db@0.1.0-m1\nnpm error location <WORKTREE>/packages/db\nnpm error command failed\nnpm error command sh -c node-pg-migrate down -m ${MIGRATIONS_DIR:-migrations} --database-url-var DATABASE_URL 1\n"
+    },
+    {
+      "command": [
+        "docker",
+        "exec",
+        "lumiclaw-sdd012-pg-80897",
         "pg_dump",
         "-U",
         "postgres",
         "--format=custom",
         "sdd012_worker"
       ],
-      "startedAt": "2026-08-24T01:27:12.862Z",
+      "startedAt": "2026-08-24T03:26:47.973Z",
       "status": 0,
-      "stdout": "<376520 binary bytes>",
+      "stdout": "<386365 binary bytes>",
       "stderr": ""
     },
     {
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "createdb",
         "-U",
         "postgres",
         "sdd012_restore"
       ],
-      "startedAt": "2026-08-24T01:27:12.982Z",
+      "startedAt": "2026-08-24T03:26:48.100Z",
       "status": 0,
       "stdout": "",
       "stderr": ""
@@ -608,7 +718,7 @@
         "docker",
         "exec",
         "-i",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "pg_restore",
         "-U",
         "postgres",
@@ -616,7 +726,7 @@
         "--dbname",
         "sdd012_restore"
       ],
-      "startedAt": "2026-08-24T01:27:13.048Z",
+      "startedAt": "2026-08-24T03:26:48.203Z",
       "status": 0,
       "stdout": "",
       "stderr": ""
@@ -625,7 +735,7 @@
       "command": [
         "docker",
         "exec",
-        "lumiclaw-sdd012-pg-1512",
+        "lumiclaw-sdd012-pg-80897",
         "psql",
         "-U",
         "postgres",
@@ -637,7 +747,7 @@
         "-c",
         "select json_build_object('specs',(select count(*) from media_generation_specs_v2),'jobs',(select count(*) from media_generation_jobs_v2),'intents',(select count(*) from media_provider_submission_intents_v2),'tasks',(select count(*) from media_provider_task_receipts_v2),'costs',(select count(*) from media_cost_receipts_v2),'rights',(select count(*) from media_rights_receipts_v2),'raw',(select count(*) from media_raw_assets_v2),'final',(select count(*) from media_composited_assets_v2),'staging',(select count(*) from media_blob_staging_v1))::text"
       ],
-      "startedAt": "2026-08-24T01:27:14.221Z",
+      "startedAt": "2026-08-24T03:26:48.952Z",
       "status": 0,
       "stdout": "{\"specs\" : 5, \"jobs\" : 5, \"intents\" : 5, \"tasks\" : 4, \"costs\" : 4, \"rights\" : 4, \"raw\" : 4, \"final\" : 4, \"staging\" : 8}\n",
       "stderr": ""

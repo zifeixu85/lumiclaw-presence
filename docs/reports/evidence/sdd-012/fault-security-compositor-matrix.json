@@ -3,7 +3,7 @@
   "sdd": "SDD-012",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-24T01:14:44.816Z",
+  "generatedAt": "2026-08-24T03:18:16.534Z",
   "command": [
     "npx",
     "vitest",
@@ -20,8 +20,8 @@
     "scripts/media-provider-secret-cli.test.ts"
   ],
   "tests": {
-    "total": 29,
-    "passed": 29,
+    "total": 30,
+    "passed": 30,
     "failed": 0,
     "pending": 0
   },

@@ -6,6 +6,7 @@ import path from 'node:path';
 const project='lumiclaw-sdd008-verify';const webPort='3188';const apiPort='4188';
 const apiUrl=`http://127.0.0.1:${apiPort}`;const webUrl=`http://127.0.0.1:${webPort}`;
 const evidencePath=path.resolve('docs/reports/evidence/sdd-008/compose-verification.json');
+const latestMigration='000016_sdd012_a5_auditor_receipt_authority';const rollbackDepthThroughSdd008=6;
 const checks={};const events=[];let result='FAIL';let failure=null;
 let migrationManifest=null;let apiContractResults=null;let sourceSnapshotManifest=null;let restartTranscript=null;
 
@@ -22,26 +23,27 @@ try{
   if(process.env.SDD008_SKIP_BUILD!=='1')docker(['build','api'],true);
   docker(['up','--no-build','--detach'],true);await waitHealthy();checks.freshComposeHealthy=true;
   if(pg("select count(*) from pgmigrations where name='000011_guided_knowledge_onboarding'")!=='1')throw new Error('SDD008_MIGRATION_11_MISSING');
+  if(pg('select name from pgmigrations order by run_on desc,name desc limit 1')!==latestMigration)throw new Error('SDD008_LATEST_MIGRATION_UNEXPECTED');
   checks.nextMigrationNumberApplied=true;
 
   pg('create database lumiclaw_sdd008_empty_down');
   docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:up']);
-  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','5']);
-  if(pg("select to_regclass('public.knowledge_snapshots') is null",'lumiclaw_sdd008_empty_down')!=='t')throw new Error('SDD008_EMPTY_DOWN_DID_NOT_REMOVE_SCHEMA');
+  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_empty_down','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--',String(rollbackDepthThroughSdd008)]);
+  if(pg("select to_regclass('public.knowledge_snapshots') is null",'lumiclaw_sdd008_empty_down')!=='t'||pg('select name from pgmigrations order by run_on desc,name desc limit 1','lumiclaw_sdd008_empty_down')!=='000010_onboarding_completion_reservation'||pg("select count(*) from information_schema.columns where table_name='local_onboarding_sessions' and column_name='completion_digest'",'lumiclaw_sdd008_empty_down')!=='1')throw new Error('SDD008_EMPTY_DOWN_DID_NOT_REMOVE_ONLY_SDD008_AND_LATER_SCHEMA');
   checks.freshEmptyDownPass=true;
 
   pg('create database lumiclaw_sdd008_legacy');
   docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:up']);
-  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','5']);
+  docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--',String(rollbackDepthThroughSdd008)]);
   const legacyText='# Legacy public-safe fixture\\nOwner review is required.';const legacyDigest=createHash('sha256').update(legacyText).digest('hex');const ownerId='018f0000-0000-7000-8000-000000000001';const materialId='018f0000-0000-7000-8000-000000000002';
   pg(`insert into local_owner_profiles(id,singleton_key,schema_version,display_name,state,created_at,updated_at) values('${ownerId}',true,1,'Legacy fixture Owner','PROFILE_READY',now(),now());insert into local_onboarding_sessions(owner_profile_id,schema_version,path,state,data_mode,organization_id,campaign_id,market_code,content_locale,platform,time_zone,material_ids,created_at,updated_at,market_codes,content_locales,platforms,default_time_zone,completion_digest) values('${ownerId}',1,'LOCAL_MATERIALS','MATERIALS_READY','LOCAL_PRIVATE',null,null,null,null,null,null,'["${materialId}"]'::jsonb,now(),now(),'[]'::jsonb,'[]'::jsonb,'[]'::jsonb,null,null);insert into local_material_manifests(owner_profile_id,id,schema_version,file_name,media_type,byte_size,digest,state,extracted_text,failure_code,blob_ref,created_at,updated_at) values('${ownerId}','${materialId}',1,'legacy.md','text/markdown',${Buffer.byteLength(legacyText)},'${legacyDigest}','READY',${sqlLiteral(legacyText)},null,'{"algorithm":"sha256","digest":"${legacyDigest}","size":${Buffer.byteLength(legacyText)}}'::jsonb,now(),now());`,'lumiclaw_sdd008_legacy');
   docker(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:up']);
   const legacy=pg("select status||'|'||trim(blob_digest)||'|'||source_kind from source_document_revisions",'lumiclaw_sdd008_legacy');
   if(legacy!==`LEGACY_NEEDS_REVIEW|${legacyDigest}|LEGACY_LOCAL_MATERIAL`)throw new Error('SDD008_LEGACY_MIGRATION_LOST_DIGEST_OR_AUTO_APPROVED');
-  const legacyDown=dockerExpectedFailure(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','5']);
+  const legacyDown=dockerExpectedFailure(['exec','-T','-e','DATABASE_URL=postgres://postgres@postgres:5432/lumiclaw_sdd008_legacy','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--',String(rollbackDepthThroughSdd008)]);
   if(legacyDown.status===0||!legacyDown.output.includes('SDD008_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED'))throw new Error('SDD008_LEGACY_POPULATED_DOWN_NOT_BLOCKED');
   checks.legacyUpgradePreservesDigestAndRequiresReview=true;checks.populatedDownBlocksDestructiveRollback=true;
-  migrationManifest={schemaVersion:1,sdd:'SDD-008',classification:'PUBLIC_SAFE_SYNTHETIC',migrations:JSON.parse(pg("select json_agg(name order by run_on)::text from pgmigrations")),sdd008Migration:'000011_guided_knowledge_onboarding',freshEmptyDown:{result:'PASS',schemaRemoved:true},populatedDown:{result:'BLOCKED',stableCode:'SDD008_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED',schemaAndDataPreserved:true},legacyUpgrade:{result:'PASS',status:'LEGACY_NEEDS_REVIEW',sourceKind:'LEGACY_LOCAL_MATERIAL',digestPreserved:true}};
+  migrationManifest={schemaVersion:1,sdd:'SDD-008',classification:'PUBLIC_SAFE_SYNTHETIC',migrations:JSON.parse(pg("select json_agg(name order by run_on)::text from pgmigrations")),sdd008Migration:'000011_guided_knowledge_onboarding',latestMigration,rollbackDepthThroughSdd008,freshEmptyDown:{result:'PASS',schemaRemoved:true,earlierMigration10Preserved:true},isolatedSdd008PopulatedDown:{result:'BLOCKED',stableCode:'SDD008_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED',schemaAndDataPreserved:true},legacyUpgrade:{result:'PASS',status:'LEGACY_NEEDS_REVIEW',sourceKind:'LEGACY_LOCAL_MATERIAL',digestPreserved:true}};
 
   execFileSync(process.execPath,['scripts/verify-sdd008-browser.mjs'],{cwd:process.cwd(),stdio:'inherit',env:{...process.env,SDD008_WEB_URL:webUrl},timeout:300_000});checks.realChromiumBilingualOrdinaryFlow=true;
   const workspace=await json('/api/v1/local-workspace');if(workspace.status!==200||workspace.body.knowledge?.session?.state!=='KNOWLEDGE_APPROVED_NEEDS_GOAL')throw new Error('SDD008_BROWSER_RESULT_NOT_APPROVED');
@@ -92,11 +94,12 @@ try{
 
   if(Number(pg('select count(*) from campaigns'))!==0||Number(pg('select count(*) from agent_runs'))!==0)throw new Error('SDD008_CREATED_CAMPAIGN_OR_AGENT_RUN');checks.noGoalCampaignAgentRunOrPlatformAction=true;
   const mainDataBeforeDown=pg("select json_build_object('documents',(select count(*) from source_documents),'revisions',(select count(*) from source_document_revisions),'snapshots',(select count(*) from knowledge_snapshots),'source_bindings',(select count(*) from knowledge_snapshot_source_bindings))::text");
-  const mainDown=dockerExpectedFailure(['exec','-T','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--','5']);
+  const mainDown=dockerExpectedFailure(['exec','-T','api','npm','--workspace','@lumiclaw/db','run','migrate:down','--',String(rollbackDepthThroughSdd008)]);
   const mainSchemaPreserved=pg("select to_regclass('public.knowledge_snapshots') is not null");
   const mainDataAfterDown=pg("select json_build_object('documents',(select count(*) from source_documents),'revisions',(select count(*) from source_document_revisions),'snapshots',(select count(*) from knowledge_snapshots),'source_bindings',(select count(*) from knowledge_snapshot_source_bindings))::text");
-  const mainDownBlocked=mainDown.output.includes('SDD008_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED')||mainDown.output.includes('SDD009_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED');
-  if(mainDown.status===0||!mainDownBlocked||mainSchemaPreserved!=='t'||mainDataAfterDown!==mainDataBeforeDown)throw new Error(`SDD008_MAIN_POPULATED_DOWN_NOT_BLOCKED:${mainDown.status}:${mainSchemaPreserved}:${mainDataBeforeDown}:${mainDataAfterDown}:${mainDown.output.slice(-1200)}`);checks.populatedMainDownPreservesSchemaAndData=true;
+  const mainDownBlockedByLaterSdd009Authority=mainDown.output.includes('SDD009_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED');
+  if(mainDown.status===0||!mainDownBlockedByLaterSdd009Authority||mainSchemaPreserved!=='t'||mainDataAfterDown!==mainDataBeforeDown)throw new Error(`SDD008_MAIN_POPULATED_DOWN_NOT_BLOCKED_BY_FIRST_LATER_AUTHORITY:${mainDown.status}:${mainSchemaPreserved}:${mainDataBeforeDown}:${mainDataAfterDown}:${mainDown.output.slice(-1200)}`);checks.populatedMainDownPreservesSchemaAndData=true;checks.mainPopulatedDownStopsAtFirstLaterAuthority=true;
+  migrationManifest.mainPopulatedDown={result:'BLOCKED',stableCode:'SDD009_DOWN_BLOCKED_DATA_EXPORT_AND_OWNER_DECISION_REQUIRED',reason:'SDD-009 context bindings created by the current SDD-008 journey are the first populated later authority encountered while walking migrations 16 through 11.',schemaAndDataPreserved:true};
   apiContractResults={schemaVersion:1,sdd:'SDD-008',classification:'PUBLIC_SAFE_SYNTHETIC',result:'PASS',contracts:[{name:'approved exact RoleContext',method:'GET',route:'/api/v1/knowledge/snapshots/:id/role-context',status:200},{name:'concurrent stale ETag',method:'PUT',route:'/api/v1/profiles/product',statuses:[200,412],stableCode:'SNAPSHOT_STALE'},{name:'digest tamper',method:'POST',route:'/api/v1/knowledge/snapshots/approve',status:422,stableCode:'SNAPSHOT_APPROVAL_DIGEST_MISMATCH'},{name:'secret-shaped account field',method:'PUT',route:'/api/v1/profiles/accounts/X',status:422,stableCode:'BROWSER_SECRET_FIELD_FORBIDDEN'},{name:'missing source blob',method:'POST',route:'/api/v1/knowledge/snapshots/approve',status:422,stableCode:'SOURCE_BLOB_MISSING'},{name:'delete source creates new draft',method:'DELETE',route:'/api/v1/knowledge/sources/:id',status:200},{name:'historical RoleContext fails stale after source change',method:'GET',route:'/api/v1/knowledge/snapshots/:id/role-context',status:412,stableCode:'SNAPSHOT_STALE'}],rejectionAudit:{redacted:true,rawSecretPresent:false},ownerBoundary:{compositeForeignKeysEnforced:true},externalActionCount:0};
   result='PASS';
 }catch(error){failure=error instanceof Error?{name:error.name,message:error.message,stack:error.stack}:String(error);throw error;}finally{

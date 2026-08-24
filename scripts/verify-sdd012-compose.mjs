@@ -130,6 +130,10 @@ try {
     pg(
       "select count(*) from pgmigrations where name='000015_xhs_governed_media_artifacts'",
     ) === "1";
+  checks.migration16Applied =
+    pg(
+      "select count(*) from pgmigrations where name='000016_sdd012_a5_auditor_receipt_authority'",
+    ) === "1";
   execFileSync(process.execPath, ["scripts/verify-sdd012-browser.mjs"], {
     cwd: process.cwd(),
     stdio: "inherit",
@@ -216,7 +220,7 @@ try {
   const nextSnapshotDigest = canonicalDigest(nextSnapshotCanonical);
   pg(`with old as (select * from knowledge_snapshots where state='APPROVED' limit 1), changed as (update knowledge_snapshots s set state='SUPERSEDED' from old where s.owner_profile_id=old.owner_profile_id and s.id=old.id returning s.owner_profile_id,s.id) insert into knowledge_snapshots(owner_profile_id,id,version,state,session_row_version,canonical_digest,source_revision_digests,profile_revision_digests,item_bindings,conflict_decisions,gaps,approved_by,approved_at,created_at) select old.owner_profile_id,'019f0000-0000-7000-8000-000000000012'::uuid,old.version+1,'APPROVED',old.session_row_version+1,'${nextSnapshotDigest}',old.source_revision_digests,old.profile_revision_digests,old.item_bindings,old.conflict_decisions,old.gaps,old.owner_profile_id,now(),now() from old; insert into knowledge_snapshot_source_bindings(owner_profile_id,snapshot_id,source_revision_id,source_digest) select b.owner_profile_id,'019f0000-0000-7000-8000-000000000012'::uuid,b.source_revision_id,b.source_digest from knowledge_snapshot_source_bindings b join knowledge_snapshots s on s.owner_profile_id=b.owner_profile_id and s.id=b.snapshot_id where s.state='SUPERSEDED' order by s.approved_at desc limit 1;`);
   const revision=afterWorkspace.revisions[0];const audit=afterWorkspace.audits[0];const staleDownload = await api(
-    `/api/v1/media-revisions/${revision.id}/owner-decisions`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({revisionDigest:revision.canonicalDigest,auditDecisionId:audit.id,auditDecisionDigest:audit.canonicalDigest,result:"APPROVE"})}
+    `/api/v1/media-revisions/${revision.id}/owner-decisions`,{method:"POST",headers:{"content-type":"application/json","if-match":`"media-audit-${revision.canonicalDigest}-${audit.canonicalDigest}"`,"idempotency-key":"sdd012-snapshot-invalidation-check"},body:JSON.stringify({revisionDigest:revision.canonicalDigest,auditDecisionId:audit.id,auditDecisionDigest:audit.canonicalDigest,visualReviewId:null,visualReviewDigest:null,result:"APPROVE"})}
   );
   checks.snapshotChangeInvalidates =
     staleDownload.status === 412 &&
