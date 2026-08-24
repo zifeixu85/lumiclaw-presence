@@ -4,8 +4,8 @@
 
 > **进度真源：** 本文件是中文镜像，规范状态以 `IMPLEMENTATION-STATUS.md` 为准；两份文件的 ID 与状态必须在同一次提交中同步。
 > **快照日期：** 2026-08-24
-> **当前阶段：** M5 本地 Dogfood 闭环；SDD-012 媒体基础已合并，`M5-11` 继续接入精确且已接受的 A5 Auditor receipt，完成后才进入 `SDD-011` 完整 Dogfood、恢复与录屏收敛
-> **当前实现真相：** M0 与 M1 已验收。M2-01～M2-07 已实现并完成工程验证，包括锁定版本的六成员 AgentTeams Shadow 路径和带来源的市场上下文基础；Owner UAT 仍待完成。`SDD-004`～`SDD-010` 已提供工程验证过的非执行手工发布包、市场上下文、生产 UX/Onboarding、分步知识、持久 Goal/Plan/已选平台编译、受治理的 X/小红书产物与审校发布包，以及常驻本地 AgentTeams Control Plane。`SDD-007` 经 Coordinator 独立复验后已在 PR #18 合并；其固定版本六成员 Runtime、仅终端 Secret Broker、PostgreSQL Job/Lease、Dispatch 与恢复为 `EVIDENCE_READY`，不是已验收。经独立复验的 SDD-012 媒体基础已在 PR #22 合并：已具备 Provider-neutral 持久任务、实际 1080×1440 final 图片、确定性中文排版、权威 Knowledge/Brand 绑定、仅 final 预览/下载，以及受控 Audit 的失败关闭证据。它还不是 `EVIDENCE_READY`：受控 A5 fixture 明确不是运营权威，在接入精确且已接受的 SDD-007 A5 task/output receipt 前，不能解锁 Owner 批准或运营 ManualPublishPackage。常驻 Runtime 上的真实 DeepSeek、真实媒体 Provider Canary 与所需 Owner UAT 也仍待完成。当前不授权自动发布、浏览器内平台凭据、`PUBLISHED`、外部用户结果、业务结果或法律合规保证。
+> **当前阶段：** M5 本地 Dogfood 闭环；SDD-012 的 A5 receipt 权威接入机制已合并，`M5-11` 继续完成真实 Provider、真实 A5 与 Owner UAT 收敛，之后才进入 `SDD-011` 完整 Dogfood、恢复与录屏
+> **当前实现真相：** M0 与 M1 已验收。M2-01～M2-07 已实现并完成工程验证，包括锁定版本的六成员 AgentTeams Shadow 路径和带来源的市场上下文基础；Owner UAT 仍待完成。`SDD-004`～`SDD-010` 已提供工程验证过的非执行手工发布包、市场上下文、生产 UX/Onboarding、分步知识、持久 Goal/Plan/已选平台编译、受治理的 X/小红书产物与审校发布包，以及常驻本地 AgentTeams Control Plane。`SDD-007` 经 Coordinator 独立复验后已在 PR #18 合并；其固定版本六成员 Runtime、仅终端 Secret Broker、PostgreSQL Job/Lease、Dispatch 与恢复为 `EVIDENCE_READY`，不是已验收。经独立复验的 SDD-012 媒体基础已在 PR #22 合并。PR #24 又加入精确且已接受/已确认完成的 A5 task/output receipt 校验、仅接受请求的闭合审校 API、append-only Owner 视觉审阅、精确 OwnerDecision/package 绑定与 migration 16 回滚保护。这些接入机制已完成工程验证，但机器证据刻意不包含真实 DeepSeek 运行、真实已接受 A5 receipt、真实媒体 Provider Canary 或运营发布包；受控 fixture 仍不具备运营权威。因此 M5-11 保持 `IN_PROGRESS`，直到仅终端真实 Provider/真实 A5 路径和 Owner 视觉/二进制 UAT 通过。当前不授权自动发布、浏览器内平台凭据、`PUBLISHED`、外部用户结果、业务结果或法律合规保证。
 
 ## 进度状态合同
 
@@ -28,9 +28,9 @@
 | 已验收模块 | `13 / 48`（`27.1%`） |
 | 证据已就绪 | `13 / 48` |
 | 被阻塞 | `0 / 48` |
-| 当前实现 SDD | `SDD-012` / `M5-11`：为受治理小红书媒体接入精确且已接受的 SDD-007 A5 Auditor receipt |
-| 最早 Owner 阻塞项 | A5 receipt 接入后，SDD-012 还需要 Owner 提供媒体 Provider Key、可接受的测试预算并完成视觉/二进制 UAT；SDD-007 的真实 DeepSeek 与 Owner 恢复/浏览器 UAT 也仍待完成 |
-| 下一个可执行模块 | 继续 `SDD-012` / `M5-11` 的有界 A5 receipt 权威集成；`SDD-011` / `M5-10` Dogfood 与录屏继续保持阻塞 |
+| 当前实现 SDD | `SDD-012` / `M5-11`：受治理小红书媒体的真实 Provider、真实 A5 receipt 与 Owner 视觉/二进制 UAT 收敛 |
+| 最早 Owner 阻塞项 | Owner 需要仅在终端提供模型与媒体 Provider Secret、批准有界测试预算，并执行文档中的真实 A5 与视觉/二进制 UAT；SDD-007 的恢复/浏览器 UAT 也仍待完成 |
+| 下一个可执行模块 | 使用真实且已接受的 A5 receipt 执行 `SDD-012` / `M5-11` conditional-live UAT；`SDD-011` / `M5-10` Dogfood 与录屏继续保持阻塞 |
 
 ## 里程碑总进度
 
@@ -118,7 +118,7 @@
 | M5-08 | 常驻本地 AgentTeams Runtime 与 Secret Broker | `EVIDENCE_READY` | M5-07、M5-09；SDD-007 | 固定版本六成员 Runtime、仅终端 Secret Broker、PostgreSQL Job/Lease、Dispatch、重启与恢复已独立工程复验并在 PR #18 合并；真实 DeepSeek 与 Owner UAT 待完成 |
 | M5-09 | X/小红书产物、独立审校与人工 PublishPackage | `EVIDENCE_READY` | M5-07、M3-00；SDD-010 | 版本化 X 单帖/线程与小红书图文产物、独立审校、精确 OwnerDecision 失效及安全复制/下载/打开发布包；已独立复验并在 PR #16 合并，Owner UAT 待完成 |
 | M5-10 | 完整 Dogfood 安装、恢复与录屏门禁 | `NOT_STARTED` | M5-06–M5-09、M5-11；SDD-011 | Fresh Install/升级/回滚、public-safe Owner Dogfood 正常与失败关闭闭环、重启恢复及可复现带讲解 Demo 证据 |
-| M5-11 | 小红书受治理媒体资产集成 | `IN_PROGRESS` | M5-08、M5-09；SDD-012 | 媒体任务、实际 1080×1440 final 文件、确定性精确中文排版、raw/final Blob lineage 与 snapshot 失效已独立复验并在 PR #22 合并。受控 Audit 不是运营权威；仍需接入精确且已接受的 SDD-007 A5 receipt、运营 OwnerDecision/package、真实媒体 Provider Canary 与 Owner 视觉/二进制 UAT |
+| M5-11 | 小红书受治理媒体资产集成 | `IN_PROGRESS` | M5-08、M5-09；SDD-012 | PR #22 已合并媒体基础；PR #24 已合并精确 A5 receipt 权威校验、闭合审校请求、append-only Owner 视觉审阅与精确 OwnerDecision/package 门禁。受控 fixture 仍不是运营权威；真实 DeepSeek 支持的已接受 A5 receipt、真实媒体 Provider Canary、运营发布包与 Owner 视觉/二进制 UAT 仍待完成 |
 
 ### M6 — External calibration
 
