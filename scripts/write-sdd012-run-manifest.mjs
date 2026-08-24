@@ -32,7 +32,9 @@ const publicNames=[
   '01-governed-final-preview-zh.png',
   '02-controlled-audit-blocked-zh.png',
   '03-controlled-audit-blocked-en.png',
-  '04-desktop-gate.png'
+  '04-desktop-gate.png',
+  '05-engineering-visual-confirmed-zh.png',
+  '06-engineering-package-ready-zh.png'
 ];
 const evidenceFiles=[];
 for(const name of publicNames){
@@ -51,8 +53,8 @@ const manifest={
   classification:'PUBLIC_SAFE_SYNTHETIC',
   result:'PASS_WITH_OWNER_UAT_PENDING',
   generatedAt:new Date().toISOString(),
-  source:{base:'d3f48331629a3a1e567b0ae4347c16d4bc90f16b',headAtRun:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),branch:execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim(),workingTreeDirty:true},
-  claims:{maturity:'ENGINEERING_BLOCKED_PENDING_RUNTIME_AUDIT',ownerUat:'PENDING',realProviderCanary:'NOT_RUN_NO_KEY',controlledFakeEngineering:true,controlledAuditEvidence:'CONTROLLED_FIXTURE',agentTeamsAuditExecuted:false,authoritativeAuditReceipt:false,authoritativePackageGenerated:false,nextState:'WAITING_FOR_SDD_007_ACCEPTED_AUDITOR_RECEIPT',providerEvidence:false,customerEvidence:false,businessOutcome:false,productionReady:false,platformCompliance:false,externalActionCount:0},
+  source:{base:'a2c37deaca20b1eb31616bb6eb4f56436dcd3db3',headAtRun:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(),branch:execFileSync('git',['branch','--show-current'],{encoding:'utf8'}).trim(),workingTreeDirty:true},
+  claims:{maturity:'ENGINEERING_VERIFIED_RECEIPT_PLUMBING_REAL_A5_PENDING',ownerUat:'PENDING',realProviderCanary:'NOT_RUN_NO_KEY',controlledFakeEngineering:true,controlledAuditEvidence:'CONTROLLED_FIXTURE',agentTeamsAuditExecuted:false,authoritativeAuditReceipt:false,authoritativePackageGenerated:false,nextState:'WAITING_FOR_REAL_DEEPSEEK_MEDIA_A5_OWNER_UAT',providerEvidence:false,customerEvidence:false,businessOutcome:false,productionReady:false,platformCompliance:false,externalActionCount:0},
   evidenceFiles,
   assetFiles,
   ephemeralCiEvidence:ephemeralFiles

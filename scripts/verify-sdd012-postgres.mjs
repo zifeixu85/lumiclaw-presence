@@ -7,6 +7,8 @@ const image =
   "postgres:17-alpine@sha256:dc17045ccfd343b49600570ea734b9c4991cf1c3f3302e67df51e3b402dd55c4";
 const container = `lumiclaw-sdd012-pg-${process.pid}`;
 const evidenceDirectory = path.resolve("docs/reports/evidence/sdd-012");
+const latestMigration = "000016_sdd012_a5_auditor_receipt_authority";
+const rollbackDepthThroughSdd012 = 1;
 const checks = {};
 const commands = [];
 let result = "FAIL";
@@ -106,11 +108,12 @@ try {
   const portText = docker(["port", container, "5432/tcp"]).stdout.trim();
   const port = /:(\d+)$/u.exec(portText)?.[1];
   if (port === undefined) throw new Error("POSTGRES_PORT_NOT_FOUND");
-  for (const database of ["sdd012_repo", "sdd012_worker"])
+  for (const database of ["sdd012_repo", "sdd012_worker", "sdd012_down_adversarial"])
     docker(["exec", container, "createdb", "-U", "postgres", database]);
   const repoUrl = `postgres://postgres@127.0.0.1:${port}/sdd012_repo`;
   const workerUrl = `postgres://postgres@127.0.0.1:${port}/sdd012_worker`;
-  for (const url of [repoUrl, workerUrl])
+  const downAdversarialUrl = `postgres://postgres@127.0.0.1:${port}/sdd012_down_adversarial`;
+  for (const url of [repoUrl, workerUrl, downAdversarialUrl])
     run("npm", ["--workspace", "@lumiclaw/db", "run", "migrate:up"], {
       env: { DATABASE_URL: url },
     });
@@ -119,6 +122,16 @@ try {
       "sdd012_repo",
       "select count(*) from pgmigrations where name='000015_xhs_governed_media_artifacts'",
     ).stdout.trim() === "1";
+  checks.migration16Applied =
+    psql(
+      "sdd012_repo",
+      "select count(*) from pgmigrations where name='000016_sdd012_a5_auditor_receipt_authority'",
+    ).stdout.trim() === "1";
+  checks.latestMigrationCalibrated =
+    psql(
+      "sdd012_repo",
+      "select name from pgmigrations order by run_on desc,name desc limit 1",
+    ).stdout.trim() === latestMigration;
   run(
     "npx",
     [
@@ -192,16 +205,79 @@ try {
     `${immutable.stdout}${immutable.stderr}`.includes(
       "SDD012_APPEND_ONLY_MEDIA_AUTHORITY",
     );
+  const auditRequestImmutable = psql(
+    "sdd012_repo",
+    `update media_audit_requests_v1 set task_contract_digest=repeat('0',64)`,
+    { allowFailure: true },
+  );
+  checks.auditRequestAppendOnly =
+    auditRequestImmutable.status !== 0 &&
+    `${auditRequestImmutable.stdout}${auditRequestImmutable.stderr}`.includes(
+      "SDD012_APPEND_ONLY_MEDIA_AUTHORITY",
+    );
+  const a5ForeignKeys = Number(
+    psql(
+      "sdd012_repo",
+      `select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('media_audit_requests_v1','media_runtime_audit_receipts_v1')`,
+    ).stdout.trim(),
+  );
+  checks.exactA5CompositeForeignKeys = a5ForeignKeys >= 11;
+  const forgedRuntimeAudit = psql(
+    "sdd012_repo",
+    `insert into artifact_audit_decisions_v4(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,auditor_role,auditor_identity_id,evidence_maturity,agentteams_executed,authoritative_for_operations,runtime_receipt_digest,result,canonical_digest,payload,created_at) select owner_profile_id,'direct-sql-forged-runtime-audit',id,canonical_digest,'A5_INDEPENDENT_AUDITOR','browser-selected-a5','AGENTTEAMS_RUNTIME',true,true,repeat('f',64),'PASS',repeat('e',64),'{}'::jsonb,now() from artifact_revisions_v4 limit 1`,
+    { allowFailure: true },
+  );
+  checks.directSqlRuntimeAuditForgeryBlocked =
+    forgedRuntimeAudit.status !== 0 &&
+    `${forgedRuntimeAudit.stdout}${forgedRuntimeAudit.stderr}`.includes(
+      "artifact_audit_v4_exact_runtime_receipt_fk",
+    );
+  psql(
+    "sdd012_down_adversarial",
+    `set session_replication_role=replica;
+     insert into artifact_revisions_v4(owner_profile_id,id,parent_revision_id,parent_revision_digest,revision,media_set_digest,brand_snapshot_id,brand_snapshot_digest,knowledge_snapshot_id,knowledge_snapshot_digest,canonical_digest,payload,created_at)
+     values('018f0000-0000-7000-8000-000000000999','down-collision-revision','missing-parent',repeat('1',64),4,repeat('2',64),'missing-brand',repeat('3',64),'018f0000-0000-7000-8000-000000000998',repeat('4',64),repeat('5',64),'{}'::jsonb,'2026-08-24T08:00:00Z');
+     insert into artifact_audit_decisions_v4(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,auditor_role,auditor_identity_id,evidence_maturity,agentteams_executed,authoritative_for_operations,runtime_receipt_digest,result,canonical_digest,payload,created_at)
+     values('018f0000-0000-7000-8000-000000000999','down-collision-audit','down-collision-revision',repeat('5',64),'A5_INDEPENDENT_AUDITOR','controlled-a5-media-auditor','CONTROLLED_FIXTURE',false,false,null,'ESCALATE',repeat('6',64),'{}'::jsonb,'2026-08-24T08:00:00Z');
+     insert into artifact_owner_decisions_v4(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,audit_decision_id,audit_decision_digest,visual_review_id,visual_review_digest,result,canonical_digest,payload,created_at)
+     values
+       ('018f0000-0000-7000-8000-000000000999','down-null-reject-1','down-collision-revision',repeat('5',64),'down-collision-audit',repeat('6',64),null,null,'REJECT',repeat('7',64),'{}'::jsonb,'2026-08-24T08:00:00Z'),
+       ('018f0000-0000-7000-8000-000000000999','down-null-reject-2','down-collision-revision',repeat('5',64),'down-collision-audit',repeat('6',64),null,null,'REJECT',repeat('8',64),'{}'::jsonb,'2026-08-24T08:00:00Z');
+     set session_replication_role=origin;`,
+  );
+  const collisionDown = run(
+    "npm",
+    ["--workspace", "@lumiclaw/db", "run", "migrate:down", "--", String(rollbackDepthThroughSdd012)],
+    { env: { DATABASE_URL: downAdversarialUrl }, allowFailure: true },
+  );
+  checks.nullVisualRejectCollisionDownBlocked =
+    collisionDown.status !== 0 &&
+    `${collisionDown.stdout}${collisionDown.stderr}`.includes(
+      "SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED",
+    );
+  checks.collisionDownPreservedMigration16 =
+    psql(
+      "sdd012_down_adversarial",
+      `select (select count(*) from pgmigrations where name='000016_sdd012_a5_auditor_receipt_authority')=1 and exists(select 1 from information_schema.columns where table_name='artifact_owner_decisions_v4' and column_name='authority_sequence') and (select count(*) from artifact_owner_decisions_v4)=2`,
+    ).stdout.trim() === "t";
   const down = run(
     "npm",
-    ["--workspace", "@lumiclaw/db", "run", "migrate:down", "--", "1"],
-    { env: { DATABASE_URL: workerUrl }, allowFailure: true },
+    [
+      "--workspace",
+      "@lumiclaw/db",
+      "run",
+      "migrate:down",
+      "--",
+      String(rollbackDepthThroughSdd012),
+    ],
+    { env: { DATABASE_URL: repoUrl }, allowFailure: true },
   );
   checks.populatedDownBlocked =
     down.status !== 0 &&
     `${down.stdout}${down.stderr}`.includes(
-      "SDD012_DOWN_BLOCKED_EXPORT_MEDIA_AND_OWNER_DECISION_REQUIRED",
+      "SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED",
     );
+  checks.rollbackDepthTargetsMigration16 = rollbackDepthThroughSdd012 === 1;
   const dump = docker(
     [
       "exec",

@@ -113,6 +113,23 @@ export type RuntimeRequirement = {
   teamProfileDigest: string;
 };
 
+export type RuntimeSkillLock = {id:string;version:string;digest:string;source:string;sourceDigest:string;license:'Apache-2.0'};
+export type MediaAuditAuthorityCheckCode='REVISION_BINDING'|'TEXT_VISUAL_SPEC_COHERENCE'|'FINAL_MEDIA_MACHINE_FACTS'|'PROVENANCE_COMPOSITION'|'RIGHTS_COST'|'BRAND_KNOWLEDGE_SNAPSHOTS'|'PLATFORM_CONSTRAINTS'|'SENSITIVE_TEXT_SPEC_RISK';
+export type MediaAuditEvidencePolicyV1={checkCode:MediaAuditAuthorityCheckCode;requiredEvidenceDigests:string[]};
+export type MediaAuditCapabilityBoundaryV1={reviewMode:'TEXT_ONLY_WITH_SERVER_MACHINE_FACTS';pixelInspectionPerformed:false;ownerVisualReviewRequired:true;notReviewed:['FINAL_PIXEL_VISUAL_QUALITY','HIDDEN_PIXEL_CONTENT','RENDERED_TEXT_OCR','PIXEL_TEXT_MEDIA_SEMANTICS']};
+export type MediaAuditPublicArtifactV1={kind:'XIAOHONGSHU';title:string;body:string;topics:string[];cta:string|null;language:string;accountProfileRevisionId:string;coverSpec:{purpose:string;aspectRatio:string;visualBrief:string;overlayCopy:string|null};imageSpecs:Array<{position:number;purpose:string;aspectRatio:string;visualBrief:string;overlayCopy:string|null;altDescription:string|null}>;sourceBindings:Array<{sourceItemId:string;bindingDigest:string}>};
+export type MediaAuditMachineFactsV1={schemaVersion:1;verifierRef:'lumiclaw.media-machine-verifier.v1';items:Array<{position:number;assetId:string;altText:string;mimeType:string;bytes:number;width:number;height:number;finalAssetDigest:string;contentDigest:string;blobDigest:string;rawAssetDigest:string;generationSpecDigest:string;compositionSpecDigest:string;rightsReceiptDigest:string;costReceiptDigest:string;orderedPosition:true;contentDigestMatchesBlob:true;byteSizeMatchesBlob:true;mimeAllowed:true;dimensionsMatchProfile:true;lineageDigestsPresent:true}>;allAssertionsPassed:true;capabilityBoundary:MediaAuditCapabilityBoundaryV1;canonicalDigest:string};
+export type MediaAuditTaskAuthorityBindingV1 = {
+  schemaVersion:1;authorityType:'XHS_MEDIA_AUDIT_V4';sourceRunId:string;sourceBundleId:string;sourceBundleDigest:string;
+  artifactRevisionId:string;artifactRevisionDigest:string;parentRevisionId:string;parentRevisionDigest:string;parentPayloadDigest:string;
+  mediaSetDigest:string;finalMedia:Array<{position:number;assetId:string;finalAssetDigest:string;contentDigest:string;blobDigest:string;bytes:number;mimeType:string;rawAssetDigest:string;generationSpecDigest:string;compositionSpecDigest:string;rightsReceiptDigest:string;costReceiptDigest:string}>;
+  brandSnapshotId:string;brandSnapshotDigest:string;knowledgeSnapshotId:string;knowledgeSnapshotDigest:string;
+  accountProfileId:string;accountProfileDigest:string;artifactProfileRef:string;artifactProfileDigest:string;mediaProfileRef:string;mediaProfileDigest:string;
+  publicArtifact:MediaAuditPublicArtifactV1;machineFacts:MediaAuditMachineFactsV1;baseReviewContentDigest:string;
+  policyDigest:string;teamRoleSkillLocks:string[];domainSkillLocks:RuntimeSkillLock[];inputProjectionSchema:'lumiclaw.media-audit-input.v4';inputProjectionDigest:string;
+  outputSchema:'lumiclaw.media-audit-output.v4';outputSchemaDigest:string;allowedEvidenceDigests:string[];evidencePolicy:MediaAuditEvidencePolicyV1[];canonicalDigest:string;
+};
+
 export type RuntimeTaskContract = {
   schemaVersion: 1;
   runId: string;
@@ -129,6 +146,9 @@ export type RuntimeTaskContract = {
   outputSchema: string;
   substantive: boolean;
   externalActionAllowed: false;
+  authorityBinding?:MediaAuditTaskAuthorityBindingV1;
+  outputSchemaDigest?:string;
+  canonicalDigest?:string;
 };
 
 export type MissionRun = {
@@ -1121,7 +1141,7 @@ function secretKey(key: string): boolean {
   );
 }
 function looksSecret(value: string): boolean {
-  return /(?:sk-[A-Za-z0-9_-]{12,}|Bearer\s+\S{12,}|x-lumiclaw-runtime-ticket)/u.test(
+  return /(?:(?:^|[^A-Za-z0-9])sk-[A-Za-z0-9_-]{12,}|Bearer\s+\S{12,}|x-lumiclaw-runtime-ticket)/u.test(
     value,
   );
 }
