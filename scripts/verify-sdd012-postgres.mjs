@@ -119,6 +119,11 @@ try {
       "sdd012_repo",
       "select count(*) from pgmigrations where name='000015_xhs_governed_media_artifacts'",
     ).stdout.trim() === "1";
+  checks.migration16Applied =
+    psql(
+      "sdd012_repo",
+      "select count(*) from pgmigrations where name='000016_sdd012_a5_auditor_receipt_authority'",
+    ).stdout.trim() === "1";
   run(
     "npx",
     [
@@ -192,15 +197,42 @@ try {
     `${immutable.stdout}${immutable.stderr}`.includes(
       "SDD012_APPEND_ONLY_MEDIA_AUTHORITY",
     );
+  const auditRequestImmutable = psql(
+    "sdd012_repo",
+    `update media_audit_requests_v1 set task_contract_digest=repeat('0',64)`,
+    { allowFailure: true },
+  );
+  checks.auditRequestAppendOnly =
+    auditRequestImmutable.status !== 0 &&
+    `${auditRequestImmutable.stdout}${auditRequestImmutable.stderr}`.includes(
+      "SDD012_APPEND_ONLY_MEDIA_AUTHORITY",
+    );
+  const a5ForeignKeys = Number(
+    psql(
+      "sdd012_repo",
+      `select count(*) from information_schema.table_constraints where constraint_type='FOREIGN KEY' and table_name in ('media_audit_requests_v1','media_runtime_audit_receipts_v1')`,
+    ).stdout.trim(),
+  );
+  checks.exactA5CompositeForeignKeys = a5ForeignKeys >= 11;
+  const forgedRuntimeAudit = psql(
+    "sdd012_repo",
+    `insert into artifact_audit_decisions_v4(owner_profile_id,id,artifact_revision_id,artifact_revision_digest,auditor_role,auditor_identity_id,evidence_maturity,agentteams_executed,authoritative_for_operations,runtime_receipt_digest,result,canonical_digest,payload,created_at) select owner_profile_id,'direct-sql-forged-runtime-audit',id,canonical_digest,'A5_INDEPENDENT_AUDITOR','browser-selected-a5','AGENTTEAMS_RUNTIME',true,true,repeat('f',64),'PASS',repeat('e',64),'{}'::jsonb,now() from artifact_revisions_v4 limit 1`,
+    { allowFailure: true },
+  );
+  checks.directSqlRuntimeAuditForgeryBlocked =
+    forgedRuntimeAudit.status !== 0 &&
+    `${forgedRuntimeAudit.stdout}${forgedRuntimeAudit.stderr}`.includes(
+      "artifact_audit_v4_exact_runtime_receipt_fk",
+    );
   const down = run(
     "npm",
     ["--workspace", "@lumiclaw/db", "run", "migrate:down", "--", "1"],
-    { env: { DATABASE_URL: workerUrl }, allowFailure: true },
+    { env: { DATABASE_URL: repoUrl }, allowFailure: true },
   );
   checks.populatedDownBlocked =
     down.status !== 0 &&
     `${down.stdout}${down.stderr}`.includes(
-      "SDD012_DOWN_BLOCKED_EXPORT_MEDIA_AND_OWNER_DECISION_REQUIRED",
+      "SDD012_A5_RECEIPT_DOWN_BLOCKED_EXPORT_AND_FORWARD_FIX_REQUIRED",
     );
   const dump = docker(
     [

@@ -113,6 +113,17 @@ export type RuntimeRequirement = {
   teamProfileDigest: string;
 };
 
+export type RuntimeSkillLock = {id:string;version:string;digest:string;source:string;sourceDigest:string;license:'Apache-2.0'};
+export type MediaAuditTaskAuthorityBindingV1 = {
+  schemaVersion:1;authorityType:'XHS_MEDIA_AUDIT_V4';sourceRunId:string;sourceBundleId:string;sourceBundleDigest:string;
+  artifactRevisionId:string;artifactRevisionDigest:string;parentRevisionId:string;parentRevisionDigest:string;parentPayloadDigest:string;
+  mediaSetDigest:string;finalMedia:Array<{position:number;assetId:string;finalAssetDigest:string;contentDigest:string;blobDigest:string;bytes:number;mimeType:string;rawAssetDigest:string;generationSpecDigest:string;compositionSpecDigest:string;rightsReceiptDigest:string;costReceiptDigest:string}>;
+  brandSnapshotId:string;brandSnapshotDigest:string;knowledgeSnapshotId:string;knowledgeSnapshotDigest:string;
+  accountProfileId:string;accountProfileDigest:string;artifactProfileRef:string;artifactProfileDigest:string;mediaProfileRef:string;mediaProfileDigest:string;
+  policyDigest:string;teamRoleSkillLocks:string[];domainSkillLocks:RuntimeSkillLock[];inputProjectionSchema:'lumiclaw.media-audit-input.v4';inputProjectionDigest:string;
+  outputSchema:'lumiclaw.media-audit-output.v4';outputSchemaDigest:string;canonicalDigest:string;
+};
+
 export type RuntimeTaskContract = {
   schemaVersion: 1;
   runId: string;
@@ -129,6 +140,9 @@ export type RuntimeTaskContract = {
   outputSchema: string;
   substantive: boolean;
   externalActionAllowed: false;
+  authorityBinding?:MediaAuditTaskAuthorityBindingV1;
+  outputSchemaDigest?:string;
+  canonicalDigest?:string;
 };
 
 export type MissionRun = {

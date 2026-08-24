@@ -14,6 +14,7 @@ export * from './goal-plan.js';
 export * from './id.js';
 export * from './market-localization.js';
 export * from './media-artifact.js';
+export * from './media-audit-runtime.js';
 export * from './persistent-runtime.js';
 export * from './runtime-output-schemas.js';
 export * from './local-presence.js';

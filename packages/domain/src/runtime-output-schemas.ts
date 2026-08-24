@@ -33,13 +33,16 @@ const producer=closed(['submissions'],{submissions:{type:'array',minItems:1,maxI
 const finding=closed(['checkCode','result','path','message','evidenceBindings','recoveryAction'],{checkCode:{enum:['SCHEMA_AND_ORDER','SOURCE_GROUNDING','CLAIM_EVIDENCE','GOAL_AND_PLAN_FIT','ACCOUNT_VOICE','PLATFORM_CONSTRAINTS','SENSITIVE_RISK']},result:{enum:['PASS','FAIL','ESCALATE']},path:text,message:text,evidenceBindings:{type:'array',items:digest},recoveryAction:{oneOf:[{type:'null'},text]}});
 const auditItem=closed(['artifactRevisionId','auditorIdentityId','evidenceBindings','findings','result'],{artifactRevisionId:text,auditorIdentityId:text,evidenceBindings:{type:'array',items:digest},findings:{type:'array',minItems:7,maxItems:7,items:finding},result:{enum:['PASS','FAIL','ESCALATE']}});
 const audit=closed(['audits'],{audits:{type:'array',minItems:1,maxItems:30,items:auditItem}});
+const mediaAuditFinding=closed(['checkCode','result','message','evidenceDigests','recoveryAction'],{checkCode:{enum:['REVISION_BINDING','TEXT_MEDIA_COHERENCE','FINAL_MEDIA_BYTES','PROVENANCE_COMPOSITION','RIGHTS_COST','BRAND_KNOWLEDGE_SNAPSHOTS','PLATFORM_CONSTRAINTS','SENSITIVE_RISK']},result:{enum:['PASS','FAIL','ESCALATE']},message:text,evidenceDigests:{type:'array',minItems:1,items:digest},recoveryAction:{oneOf:[{type:'null'},text]}});
+const mediaAudit=closed(['schemaVersion','taskId','inputDigest','artifactRevisionId','artifactRevisionDigest','mediaSetDigest','brandSnapshotDigest','knowledgeSnapshotDigest','actualMediaDigests','result','findings'],{schemaVersion:{const:4},taskId:text,inputDigest:digest,artifactRevisionId:text,artifactRevisionDigest:digest,mediaSetDigest:digest,brandSnapshotDigest:digest,knowledgeSnapshotDigest:digest,actualMediaDigests:{type:'array',minItems:1,items:digest},result:{enum:['PASS','FAIL','ESCALATE']},findings:{type:'array',minItems:8,maxItems:8,items:mediaAuditFinding}});
 
 const registry:Record<string,{kind:RuntimeTaskContract['kind'];roleIds:string[];schema:JsonSchema}>={
   'lumiclaw.orchestration-receipt.v2':{kind:'ORCHESTRATE',roleIds:['presence-mission-leader'],schema:orchestration},
   'lumiclaw.frozen-claim-set.v2':{kind:'FREEZE_CLAIMS',roleIds:['evidence-claim-steward'],schema:claimFreeze},
   'lumiclaw.content-plan.v2':{kind:'PLAN_CONTENT',roleIds:['campaign-planner'],schema:plan},
   'lumiclaw.selected-platform-artifact.sdd010':{kind:'PRODUCE_CONTENT',roleIds:['founder-identity-producer','product-account-producer'],schema:producer},
-  'lumiclaw.audit-decision.sdd010':{kind:'AUDIT_CONTENT',roleIds:['independent-auditor'],schema:audit}
+  'lumiclaw.audit-decision.sdd010':{kind:'AUDIT_CONTENT',roleIds:['independent-auditor'],schema:audit},
+  'lumiclaw.media-audit-output.v4':{kind:'AUDIT_CONTENT',roleIds:['independent-auditor'],schema:mediaAudit}
 };
 const ajv=new Ajv({allErrors:true,strict:true,formats:{'date-time':true}});
 const validators=new Map<string,ValidateFunction>();

@@ -3,7 +3,7 @@
   "sdd": "SDD-012",
   "classification": "PUBLIC_SAFE_SYNTHETIC",
   "result": "PASS",
-  "generatedAt": "2026-08-23T23:44:49.524Z",
+  "generatedAt": "2026-08-24T01:35:07.976Z",
   "locales": [
     "zh-CN",
     "en"
@@ -20,9 +20,13 @@
     "keyboardFocus": true,
     "v4BindingVisible": true,
     "arbitraryAuditorRejected": true,
-    "missingControlledMarkerRejected": true,
+    "arbitraryOutcomeRejected": true,
     "fakeRuntimeReceiptRejected": true,
+    "fakeAuthorityRejected": true,
+    "controlledSourceCannotQueueA5": true,
+    "controlledCallerOutcomeRejected": true,
     "controlledAuditVisible": true,
+    "controlledOutcomeSeparatedFromA5": true,
     "authoritativeActionsDisabled": true,
     "auditMaturityPersisted": true,
     "controlledApprovalBlocked": true,
@@ -48,7 +52,7 @@
     },
     {
       "name": "02-controlled-audit-blocked-zh.png",
-      "sha256": "924a2351374a0658a9324f2483f8b94a28101fd02107d06904ba56692b644d09",
+      "sha256": "1d8fda1fb45618e5dcae224d07a6ec0ddb0312817ccb2935dda145a743dd18ce",
       "viewport": {
         "width": 1440,
         "height": 1000
@@ -56,7 +60,7 @@
     },
     {
       "name": "03-controlled-audit-blocked-en.png",
-      "sha256": "591fc190056862ede90cd339bbc40e9cf7a8a641706bdfc4d6a91e0e3c0ae6df",
+      "sha256": "6b074e7224beed9510ed4f21806a9416f80062cab03fe8f40f352495c5d8c9b9",
       "viewport": {
         "width": 1440,
         "height": 1000
